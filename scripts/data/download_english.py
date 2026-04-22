@@ -42,11 +42,15 @@ from scripts.data._common import (
 EN_BYTES_PER_TOKEN = 4.0
 
 
-def _open_dataset_streaming(name: str, **kwargs: Any):
-    """Lazy import of ``datasets`` so the module imports cheaply for --help."""
+def _open_dataset_streaming(path: str, **kwargs: Any):
+    """Lazy import of ``datasets`` so the module imports cheaply for --help.
+
+    The first positional arg is renamed ``path`` to avoid a kwargs collision
+    with HF's ``name`` (the config identifier).
+    """
     from datasets import load_dataset
 
-    return load_dataset(name, split="train", streaming=True, **kwargs)
+    return load_dataset(path, split="train", streaming=True, **kwargs)
 
 
 def _write_source(

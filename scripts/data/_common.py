@@ -23,6 +23,15 @@ from typing import Any
 
 import yaml
 
+# Windows default stdout is cp1252 and cannot print non-Latin1 glyphs
+# (arrows, tqdm block chars, German umlauts on some systems). Reconfigure
+# once at import time so every data script is safe.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except AttributeError:
+        pass
+
 # Repo root = two levels up from this file (scripts/data/_common.py).
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG = REPO_ROOT / "configs" / "data_paths.yaml"

@@ -45,9 +45,9 @@ LANG_SHARES: dict[str, float] = {
 }
 
 
-def _open_streaming(name: str, **kwargs: Any):
+def _open_streaming(path: str, **kwargs: Any):
     from datasets import load_dataset
-    return load_dataset(name, split="train", streaming=True, **kwargs)
+    return load_dataset(path, split="train", streaming=True, **kwargs)
 
 
 def _stream_starcoder_language(lang: str, filters: dict[str, Any]) -> Iterator[tuple[str, dict[str, int]]]:

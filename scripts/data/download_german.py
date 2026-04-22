@@ -36,9 +36,9 @@ from scripts.data._common import (
 DE_BYTES_PER_TOKEN = 5.0
 
 
-def _open_streaming(name: str, **kwargs: Any):
+def _open_streaming(path: str, **kwargs: Any):
     from datasets import load_dataset
-    return load_dataset(name, split="train", streaming=True, **kwargs)
+    return load_dataset(path, split="train", streaming=True, **kwargs)
 
 
 def _write_source(
