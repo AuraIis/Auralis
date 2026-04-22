@@ -1,8 +1,8 @@
 # STATUS — Auralis v2
 
-**Letzte Aktualisierung:** 2026-04-22
-**Aktive Phase:** Phase 0 **abgeschlossen** → bereit für Phase 0.5 (Modell-Architektur)
-**Modellgröße:** 1B (final)
+**Letzte Aktualisierung:** 2026-04-23
+**Aktive Phase:** Phase 0.5 **abgeschlossen** → bereit für Phase 1 (Pretraining)
+**Modellgröße:** 1B (final, Konfig ~954 M Params)
 **Phase-1-Token-Budget:** 25B geplant → **21B tatsächlich** bereitgestellt (84 % Deckung; Lücke in Phase 2 schließbar)
 
 ## Phase 0 — Tokenizer ✓
@@ -55,18 +55,44 @@ Nicht eingeflossen: SlimPajama (entfernt), Dolma (script-basiert), Proof-Pile-2 
 - Tokenizer-Pipeline (`prepare_corpus` → `train_tokenizer` → `report_quality`)
 - `LESSONS.md` erweitert um L-007..L-012 (SP-Fallstricke aus Phase 0)
 
+## Phase 0.5 — Modell-Architektur ✓
+
+**Module** (in `src/auralis/model/`):
+- `config.py` — `AuralisConfig` + Sub-Configs (Layer/FFN/MoE/MTP/RoPE/Init/Dropout/Advanced)
+- `layers/norm.py` — `RMSNorm`
+- `layers/ffn.py` — `DenseFFN` (SwiGLU) + `MoEFFN`-Placeholder + `build_ffn` Factory
+- `layers/mamba_layer.py` — Mamba-2 Pure-PyTorch Referenz (selective scan)
+- `layers/gla_layer.py` — Gated Linear Attention Pure-PyTorch Referenz
+- `layers/sparse_attn_layer.py` — Sliding-Window + Global-Tokens Attention
+- `utils/rotary.py` — RoPE mit Cache
+- `utils/init.py` — Scaled-Normal Init mit Output-Scale-Trick
+- `utils/kv_cache.py` — KVCache Dataclass (für Inference später)
+- `helix_model.py` — `HelixBlock` + `HelixModel` + `build_model(yaml_path)` Factory
+
+**Configs** (`configs/model/`):
+- `helix_v2_100m.yaml` — 8-Layer Test-Modell (2 Mamba + 4 GLA + 2 Sparse, d=512)
+- `helix_v2_1b.yaml` — 28-Layer Production (6 Mamba + 16 GLA + 6 Sparse, d=1280, ~954 M Params)
+
+**Tests** (50/50 grün, ~3 s):
+- `tests/model/test_config.py` — YAML-Load, Validation, Param-Estimates (10 Tests)
+- `tests/model/test_layers.py` — RMSNorm, SwiGLU, RoPE-Roundtrip, Mamba/GLA Forward+Backward, Sparse-Attention Causal-/Window-/Global-Masking (14 Tests)
+- `tests/model/test_helix_model.py` — Build, Forward, Backward, Loss, Layer-Reihenfolge, Tied-Embeddings (10 Tests)
+- Plus 16 Tests aus Phase 0 (Tokenizer + Baseline + Atomic-Writer)
+
+**Forward-Loss** auf frisch-initialisiertem 100M-Modell: **12.37 ≈ ln(200 000) = 12.20** → uniformer Prior über Vocab, genau wie erwartet. Keine NaN/Inf in Logits oder Gradienten.
+
 ## Nächster Schritt
 
-**Phase 0.5 — Modell-Architektur.** Siehe [Doc/SPECs/SPEC_PHASE_0.5_MODEL_ARCHITECTURE.md](Doc/SPECs/SPEC_PHASE_0.5_MODEL_ARCHITECTURE.md):
+**Phase 1 — EN-Heavy Pretraining.** Siehe [Doc/SPECs/SPEC_PHASE_1_PRETRAINING.md](Doc/SPECs/SPEC_PHASE_1_PRETRAINING.md). Wichtige Bausteine vor dem ersten Run:
 
-1. `src/auralis/model/config.py` — `AuralisConfig` dataclass
-2. `src/auralis/model/layers/` — Mamba-2, GLA, Sparse Attention, FFN, RMSNorm, Rotary
-3. `src/auralis/model/helix_model.py` — heterogener 28-Layer-Stack
-4. `configs/model/helix_v2_100m.yaml` (Test) und `helix_v2_1b.yaml` (Produktion)
-5. Unit-Tests für jeden Layer + kompletter Forward/Backward auf 100 M-Variante
+1. **Tokenizer-Integration in die Datenpipeline** — `scripts/data/tokenize_for_pretraining.py` konvertiert `cleaned/*.txt` → `tokenized/phase1/*.bin` (uint32 memmap-ready)
+2. **Data-Loader** mit Streaming aus den `.bin`-Files + Mix-Ratios (75 EN / 20 DE / 5 Code)
+3. **Training-Loop** (Torch + FSDP/DeepSpeed auf RunPod) mit Sanity-Check vor dem ersten Step
+4. **Monitoring** (WandB) + 50-Baseline-Fragen pro Checkpoint
 
 ## Offene Entscheidungen
 
 - Multi-GPU-Setup für Phase 1 (`1×H200` vs. `4×A40`) — siehe [SPEC_MULTI_GPU_TRAINING.md](Doc/SPECs/SPEC_MULTI_GPU_TRAINING.md).
+- Phase-1 Backends: Pure-Python-Mamba/GLA reicht für CPU-Tests. Für echtes GPU-Pretraining **zusätzlich** `mamba_ssm` und `flash-linear-attention` installieren und per Config-Flag aktivieren.
 - Phase-2-Ergänzung: Ersatz für Dolma/SlimPajama/Proof-Pile-2 suchen (Cosmopedia? RedPajama-V2?) oder synthetisch auffüllen.
 - Open-Weights vs. proprietär für Release (Brief §10.4).

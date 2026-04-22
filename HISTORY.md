@@ -23,3 +23,11 @@ Chronologisch, Milestones. Append-Only.
 - **Tokenizer-Training (SentencePiece Unigram, 200 k Vocab, 32 Threads):** 14.6 Min.
 - **Quality-Report PASS:** EN 123 tok/100 w (Ziel ≤135), DE 133.8 (≤150, v1 war ~220), Code 313.6 tok/KB (≤350), Unknown 0 %, **Chat-Template-Roundtrip byte-exakt**.
 - **Neue Lessons L-007..L-012** in `LESSONS.md`: SP-Normalisierung `identity` zwingend, NUL-Strip-Pflicht, `num_threads ≥ 1`, `input_sentence_size = 5 M` bei 32-GB-RAM, HF v4 `Dataset-scripts` verbot, Code-Metrik auf `tokens/KB` umgestellt.
+
+## 2026-04-23 — Phase 0.5 abgeschlossen (Modell-Architektur)
+- `src/auralis/model/` komplett implementiert: config dataclass, RMSNorm, SwiGLU-FFN, Mamba-2 (pure torch), Gated Linear Attention (pure torch), Sparse Attention mit Sliding-Window + Global Tokens, RoPE, Scaled-Normal Init, KV-Cache-Dataclass.
+- `helix_model.py`: `HelixBlock` pre-norm style, `HelixModel` mit heterogenem Stack aus Config, `build_model(yaml)` Factory, tied-embedding LM-Head.
+- Zwei Configs: **`helix_v2_100m.yaml`** (8 Layers, 134 M Params, Test-Modell für CPU) und **`helix_v2_1b.yaml`** (28 Layers, d=1280, ~954 M Params — trifft 1B-Ziel innerhalb 5 %).
+- **50/50 Tests grün** in 2.7 s auf CPU: Config-Loading + Validation, alle Layer (Shapes, Backward, Causal-Masking, Window-Masking, Global-Tokens-Bypass, RoPE-Norm-Preservation), End-to-End Forward/Backward auf 100M-Modell.
+- Forward auf frisch-initialisiertem 100M-Modell liefert Loss **12.37** — nahe dem Theorie-Wert von `ln(200000) = 12.20` für uniform-prior über das 200k-Vocab. Keine NaN/Inf.
+- Pure-Python-Varianten von Mamba-2 und GLA liefern die Referenz-Semantik für CPU-Tests. Für echtes GPU-Pretraining wird Phase 1 zusätzlich `mamba_ssm` und `flash-linear-attention` einbinden (Config-Flag, Interface bleibt gleich).
