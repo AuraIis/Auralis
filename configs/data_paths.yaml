@@ -1,0 +1,68 @@
+# data_paths.yaml — zentrale Pfad-Konfiguration.
+#
+# Alle Daten-Scripts lesen diese Datei. Keine Pfade im Code hardcoden.
+# Pfade sind Windows-/UNC-freundlich; Forward-Slashes funktionieren auch in
+# Python unter Windows (pathlib normalisiert).
+
+# Root für Downloads / tokenisierte Daten. Das NAS-Share hat 25+ TB frei,
+# lokal (I:) bleibt das Repo schlank.
+data_root: "//BITBASTION/Auralis/AuralisV2"
+
+# Pfade unter data_root. relative = data_root + subpath.
+raw:
+  english: "raw/english"
+  german:  "raw/german"
+  code:    "raw/code"
+  sft:     "raw/sft"
+  orpo:    "raw/orpo"
+
+cleaned:
+  english: "cleaned/english.txt"
+  german:  "cleaned/german.txt"
+  code:    "cleaned/code.txt"
+
+tokenized:
+  phase1_english: "tokenized/phase1/english.bin"
+  phase1_german:  "tokenized/phase1/german.bin"
+  phase1_code:    "tokenized/phase1/code.bin"
+  phase2_english: "tokenized/phase2/english.bin"
+  phase2_german:  "tokenized/phase2/german.bin"
+  phase2_code:    "tokenized/phase2/code.bin"
+
+# v1-Daten zur Wiederverwendung (DE-SFT). Lokaler Pfad auf I:.
+v1_data_root: "I:/Auralis/NEWGPT/data"
+
+# Target-Tokens pro Quelle (Phase 1, 25B Total, EN/DE/Code = 75/20/5).
+# Quellen siehe Doc/SPEC_DATASETS.md.
+phase1_targets:
+  english:
+    fineweb_edu:   10_000_000_000
+    wikipedia_en:   3_000_000_000
+    slimpajama:     3_000_000_000
+    openmath:       2_000_000_000
+  german:
+    german_commons: 3_000_000_000
+    wikipedia_de:   1_000_000_000
+    oscar_de:       1_000_000_000
+  code:
+    starcoder:      1_000_000_000
+    proof_pile:       250_000_000
+
+# Filter-Defaults (override per Quelle falls nötig).
+filters:
+  english:
+    min_length: 200
+    max_length: 100_000
+    fineweb_min_score: 2.5
+  german:
+    min_length: 300
+    max_length: 100_000
+    max_perplexity: 500
+    cultural_keep_ratio: 0.05     # aus v1 gelernt: nur 5% historisch
+    excluded_subsets:
+      - gutenberg_pre_1900
+      - dta_historical
+  code:
+    min_length: 50
+    max_length: 30_000
+    min_stars: 5
