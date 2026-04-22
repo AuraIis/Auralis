@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 import time
@@ -52,7 +53,7 @@ def main() -> None:
     parser.add_argument("--output-dir", type=Path, required=True,
                         help="Where to write helix_v2_tokenizer.{model,vocab} and manifest")
     parser.add_argument("--num-threads", type=int, default=0,
-                        help="0 = all cores (default).")
+                        help="0 = auto (os.cpu_count()). SentencePiece requires 1-1024.")
     parser.add_argument("--input-sentence-size", type=int, default=None,
                         help="Override cap on sentences fed to EM training.")
     args = parser.parse_args()
@@ -83,7 +84,7 @@ def main() -> None:
         "user_defined_symbols": _user_defined_symbols(cfg),
         "input_sentence_size": input_sentence_size,
         "shuffle_input_sentence": bool(training["shuffle_input_sentence"]),
-        "num_threads": args.num_threads,
+        "num_threads": args.num_threads or max(1, (os.cpu_count() or 1)),
         "max_sentence_length": int(training["max_sentence_length"]),
         "normalization_rule_name": training["normalization_rule_name"],
         "remove_extra_whitespaces": bool(training["remove_extra_whitespaces"]),
