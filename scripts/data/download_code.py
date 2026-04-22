@@ -118,15 +118,15 @@ def _download_starcoder(
     return stats
 
 
-def _stream_proof_pile(_filters: dict[str, Any]) -> Iterator[tuple[str, dict[str, int]]]:
-    ds = _open_streaming("EleutherAI/proof-pile-2", name="default")
-    wanted = {"open-web-math", "arxiv"}
+def _stream_open_web_math(_filters: dict[str, Any]) -> Iterator[tuple[str, dict[str, int]]]:
+    """Replaces Proof-Pile-2 (script-based, unsupported by datasets v4+).
+
+    open-web-math/open-web-math is the standalone parquet release of the
+    math-web-content subset that used to live inside Proof-Pile-2. Same
+    math/formal-reasoning flavour.
+    """
+    ds = _open_streaming("open-web-math/open-web-math")
     for ex in ds:
-        meta = ex.get("meta", {}) or {}
-        subset = str(meta.get("subset", meta.get("config_name", ""))).lower()
-        if subset and not any(w in subset for w in wanted):
-            yield None, {"subset_not_wanted": 1}
-            continue
         text = ex.get("text", "") or ex.get("content", "") or ""
         if len(text) < 200:
             yield None, {"too_short": 1}
@@ -134,10 +134,10 @@ def _stream_proof_pile(_filters: dict[str, Any]) -> Iterator[tuple[str, dict[str
         yield clean_text(text), {}
 
 
-def _download_proof_pile(out_dir: Path, target_tokens: int, filters: dict[str, Any]) -> DownloadStats:
-    output_path = out_dir / "proof_pile_2.txt"
+def _download_open_web_math(out_dir: Path, target_tokens: int, filters: dict[str, Any]) -> DownloadStats:
+    output_path = out_dir / "open_web_math.txt"
     stats = DownloadStats(
-        source="proof_pile_2",
+        source="open_web_math",
         output_file=str(output_path),
         target_tokens=target_tokens,
         estimated_bytes_per_token=CODE_BYTES_PER_TOKEN,
@@ -146,7 +146,7 @@ def _download_proof_pile(out_dir: Path, target_tokens: int, filters: dict[str, A
     )
     target_bytes = stats.target_bytes()
     with atomic_text_writer(output_path) as fh:
-        for line, reasons in tqdm(_stream_proof_pile(filters), desc="proof_pile_2", unit="doc"):
+        for line, reasons in tqdm(_stream_open_web_math(filters), desc="open_web_math", unit="doc"):
             if line is None:
                 for reason, count in reasons.items():
                     stats.filtered_reasons[reason] = stats.filtered_reasons.get(reason, 0) + count
@@ -165,8 +165,8 @@ def _download_proof_pile(out_dir: Path, target_tokens: int, filters: dict[str, A
 def main() -> None:
     parser = argparse.ArgumentParser(description="Download Phase 1 Code pretraining data.")
     parser.add_argument("--config", type=Path, default=None)
-    parser.add_argument("--sources", nargs="+", choices=["starcoder", "proof_pile"],
-                        default=["starcoder", "proof_pile"])
+    parser.add_argument("--sources", nargs="+", choices=["starcoder", "open_web_math"],
+                        default=["starcoder", "open_web_math"])
     parser.add_argument("--required-free-gb", type=float, default=8.0)
     args = parser.parse_args()
 
@@ -181,8 +181,8 @@ def main() -> None:
     summaries: list[DownloadStats] = []
     if "starcoder" in args.sources:
         summaries.append(_download_starcoder(out_dir, int(targets["starcoder"]), filters))
-    if "proof_pile" in args.sources:
-        summaries.append(_download_proof_pile(out_dir, int(targets["proof_pile"]), filters))
+    if "open_web_math" in args.sources:
+        summaries.append(_download_open_web_math(out_dir, int(targets["open_web_math"]), filters))
 
     print("\n=== Summary ===")
     for s in summaries:

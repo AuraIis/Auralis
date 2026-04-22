@@ -121,15 +121,22 @@ def _stream_wikipedia_en(filters: dict[str, Any]) -> Iterator[tuple[str, dict[st
         yield clean_text(text), {}
 
 
-def _stream_slimpajama(filters: dict[str, Any]) -> Iterator[tuple[str, dict[str, int]]]:
-    ds = _open_dataset_streaming("cerebras/SlimPajama-627B")
-    wanted = {"arxiv", "stackexchange", "book", "wikipedia"}
+def _stream_dolma(filters: dict[str, Any]) -> Iterator[tuple[str, dict[str, int]]]:
+    """AllenAI Dolma — replaces SlimPajama (removed from HF).
+
+    Dolma is a curated multi-source mix (Common Crawl, Wikipedia, books, arXiv,
+    StackExchange, code, etc.). We filter by `source` field to stay close to
+    what SlimPajama provided: diversity-giving sources *outside* of straight
+    web crawl (which FineWeb-Edu already covers).
+    """
+    ds = _open_dataset_streaming("allenai/dolma")
+    # Prefer non-CC sources — FineWeb-Edu already covers general web.
+    wanted_substrings = ("wiki", "book", "arxiv", "stack", "peS2o", "pes2o")
     min_len = filters["min_length"]
     max_len = filters["max_length"]
     for ex in ds:
-        meta = ex.get("meta", {}) or {}
-        source = str(meta.get("redpajama_set_name", "")).lower()
-        if not any(w in source for w in wanted):
+        source = str(ex.get("source", "") or "").lower()
+        if source and not any(w in source for w in wanted_substrings):
             yield None, {"source_not_wanted": 1}
             continue
         text = ex.get("text", "") or ""
@@ -157,7 +164,7 @@ def _stream_openmath(_filters: dict[str, Any]) -> Iterator[tuple[str, dict[str, 
 SOURCES: dict[str, Any] = {
     "fineweb_edu":    {"stream": _stream_fineweb_edu,   "filename": "fineweb_edu.txt"},
     "wikipedia_en":   {"stream": _stream_wikipedia_en,  "filename": "wikipedia_en.txt"},
-    "slimpajama":     {"stream": _stream_slimpajama,    "filename": "slimpajama.txt"},
+    "dolma":          {"stream": _stream_dolma,         "filename": "dolma.txt"},
     "openmath":       {"stream": _stream_openmath,      "filename": "openmath.txt"},
 }
 
