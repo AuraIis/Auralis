@@ -7,16 +7,16 @@
 
 - [x] Projektstruktur angelegt (`data/`, `src/`, `scripts/`, `tests/`, `configs/`, `checkpoints/`, `eval/`, `docs/`)
 - [x] `pyproject.toml` + `.gitignore` + `README.md`
-- [ ] Git-Repo initialisieren + erster Commit
-- [ ] 50 Baseline-Fragen als YAML
-- [ ] Prompt-Builder + byte-gleicher Training/Inference-Test
+- [x] Git-Repo initialisiert (branch `main`, 3 Commits)
+- [x] 50 Baseline-Fragen als YAML + Runner-Script (`scripts/eval/run_baseline.py --dry` ✓)
+- [x] Prompt-Builder + byte-gleiche Training/Inference-Tests (12/12 pytest ✓)
 - [ ] Tokenizer-Korpus Download-Script
 - [ ] SentencePiece Training + Quality-Report
 
 ## Nächster Schritt
 
-Git initialisieren, dann `eval/baseline_questions.yaml` anlegen — vor dem ersten Training muss das
-Test-Set committed sein, damit jede spätere Regression sichtbar wird.
+Phase 0 Tokenizer: Korpus-Prep (`scripts/tokenizer/prepare_corpus.py`) → SentencePiece-Training
+(`train_tokenizer.py`) → Quality-Report mit Token-Effizienz pro Sprache.
 
 ## Offene Entscheidungen
 
