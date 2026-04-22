@@ -1,0 +1,64 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# --- IDE ---
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# --- Auralis: grosse Artefakte NIE committen ---
+# Rohdaten und bearbeitete Korpora (Ordnerstruktur via .gitkeep erhalten)
+data/raw/*
+!data/raw/.gitkeep
+data/cleaned/*
+!data/cleaned/.gitkeep
+data/training/*
+!data/training/.gitkeep
+# Eval-Ergebnisse (werden pro Run frisch erzeugt)
+eval/results/*
+!eval/results/.gitkeep
+# Checkpoints
+checkpoints/*
+!checkpoints/.gitkeep
+# Tokenizer-Artefakte (Modell + Vocab)
+tokenizer/*.model
+tokenizer/*.vocab
+# WandB lokale Logs
+wandb/
+# Large file markers
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.ckpt
+*.gguf
+
+# --- Environment / Secrets ---
+.env
+.env.*
+!.env.example
+*.key
+credentials.json
+
+# --- Laufzeit ---
+*.log
+logs/
+tmp/
+.cache/

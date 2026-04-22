@@ -1,0 +1,60 @@
+# MANIFEST.yaml — pro Training-/Eval-Run EIN Exemplar.
+# Kopiere diese Datei in den Run-Ordner und fülle sie aus.
+# Ziel: jeder Run ist reproduzierbar (Config + Code-Hash + Daten-Hash + Metrics).
+
+run:
+  id: ""                     # z.B. "phase1_pretrain_2026-04-22_01"
+  phase: ""                  # tokenizer | phase1_pretrain | phase2_continued | phase3_sft | phase4_orpo | phase5_lora
+  started_at: ""             # ISO-8601, UTC
+  finished_at: ""            # ISO-8601, UTC
+  owner: "Michael Speckels"
+  notes: ""                  # kurzer Prosa-Text: was war das Ziel dieses Runs?
+
+code:
+  git_sha: ""                # `git rev-parse HEAD`
+  git_branch: ""
+  git_dirty: false           # true, falls uncommitted changes beim Start
+  python_version: ""
+  cuda_version: ""
+  torch_version: ""
+
+config:
+  file: ""                   # z.B. "configs/pretrain/phase1_h200.yaml"
+  file_sha256: ""             # Hash der Config-Datei
+  hyperparams_snapshot: {}   # vollständiger Dump der effektiven Config
+
+data:
+  sources:                   # Liste der Daten-Quellen mit Hashes
+    - name: ""
+      path: ""
+      sha256: ""
+      num_samples: 0
+      num_tokens: 0
+  mix_ratios: {}             # z.B. {en: 0.75, de: 0.2, code: 0.05}
+  val_split_disjoint: true   # muss true sein — siehe LESSONS L-002
+
+hardware:
+  provider: "runpod"         # runpod | local | other
+  instance_type: ""          # z.B. "1xH200", "4xA40"
+  vram_total_gb: 0
+  cost_per_hour_usd: 0.0
+
+metrics:
+  # Aggregierte End-Metriken
+  final_train_loss: null
+  final_val_loss: null
+  english_retention_pct: null   # nur Phase 2+
+  baseline_score_pct: null      # 0..100, aus eval/baseline_questions.yaml
+  total_tokens_seen: 0
+  total_runtime_hours: 0.0
+  total_cost_usd: 0.0
+
+artifacts:
+  checkpoints:
+    - path: ""
+      step: 0
+      sha256: ""
+  eval_results: ""           # Pfad zu JSON mit Baseline-Eval
+  wandb_run_url: ""
+
+issues_encountered: []       # freie Liste — jede Zeile eine Lesson
