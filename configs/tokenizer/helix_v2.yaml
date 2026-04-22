@@ -80,11 +80,18 @@ special_tokens:
 # 200k bilingual SP models elsewhere. Override via CLI if tuning.
 training:
   model_type: unigram
-  input_sentence_size: 10_000_000    # cap sentences fed to EM (sampled)
+  # 5M sentences keeps SP's EM memory footprint under ~60-80 GB for a 200k
+  # vocab. 10M was tried once and OOM'd on a 32-core host. Bump back up
+  # only if we move to a 256+ GB RAM pod.
+  input_sentence_size: 5_000_000
   shuffle_input_sentence: true
-  num_threads: 0                     # 0 = all cores
+  num_threads: 0                     # 0 = all cores (os.cpu_count())
   max_sentence_length: 16_384
-  normalization_rule_name: nmt_nfkc  # conservative NFKC
+  # identity: no whitespace collapsing. nmt_nfkc normalised \n → space, which
+  # broke the chat-template byte-exact round-trip (L-001 regression risk).
+  # byte_fallback below guarantees we can still encode *any* byte, including
+  # \n (<0x0A>), \r (<0x0D>), \t (<0x09>).
+  normalization_rule_name: identity
   remove_extra_whitespaces: false    # we keep code whitespace semantics
   byte_fallback: true                # any unseen byte decodes cleanly
 
@@ -92,5 +99,8 @@ training:
 quality_targets:
   english_tokens_per_100_words_max: 135   # aim ≤ 135 (SOTA is ~130)
   german_tokens_per_100_words_max: 150    # aim ≤ 150 (v1 needed ~220 with GPT-2)
-  code_tokens_per_100_words_max: 170
+  # "tokens per 100 words" is a poor metric for code (many tokens are
+  # non-word symbols like { } ( ) ; etc.). We gate code on tokens/KB instead:
+  # ≤ 350 tokens/KB ≈ ≥ 2.9 bytes/token, competitive for SP on code.
+  code_tokens_per_kb_max: 350
   unknown_token_rate_max: 0.0001          # must be near-zero thanks to byte_fallback

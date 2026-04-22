@@ -105,15 +105,36 @@ def main() -> None:
     sp = spm.SentencePieceProcessor(model_file=str(args.model))
     print(f"Loaded tokenizer: {args.model} (vocab={sp.GetPieceSize():,})\n")
 
+    # data_paths.yaml now stores per-language lists of paths/globs. For the
+    # quality report we just pick the first existing file per language as a
+    # representative probe corpus (random sampling inside the file takes care
+    # of diversity).
+    def _first_existing(entries: list[str] | str) -> Path | None:
+        if isinstance(entries, str):
+            entries = [entries]
+        for e in entries:
+            p = data_root / e
+            if p.is_file():
+                return p
+            # glob expand
+            matches = sorted(data_root.glob(e))
+            if matches:
+                return matches[0]
+        return None
+
     sources = {
-        "english": data_root / data_cfg["cleaned"]["english"],
-        "german":  data_root / data_cfg["cleaned"]["german"],
-        "code":    data_root / data_cfg["cleaned"]["code"],
+        "english": _first_existing(data_cfg["cleaned"]["english"]),
+        "german":  _first_existing(data_cfg["cleaned"]["german"]),
+        "code":    _first_existing(data_cfg["cleaned"]["code"]),
     }
-    target_map = {
-        "english": targets["english_tokens_per_100_words_max"],
-        "german":  targets["german_tokens_per_100_words_max"],
-        "code":    targets["code_tokens_per_100_words_max"],
+    # Per-language gate + which metric it applies to.
+    # EN/DE use tokens/100-words (natural-language compression metric).
+    # Code uses tokens/KB (byte-compression metric) because "words" is
+    # poorly defined for code (3 "words" but many symbol tokens per line).
+    gate_map = {
+        "english": ("tokens_per_100_words", float(targets["english_tokens_per_100_words_max"])),
+        "german":  ("tokens_per_100_words", float(targets["german_tokens_per_100_words_max"])),
+        "code":    ("tokens_per_kb",        float(targets["code_tokens_per_kb_max"])),
     }
     unk_target = float(targets["unknown_token_rate_max"])
 
@@ -122,22 +143,26 @@ def main() -> None:
     per_lang: dict[str, dict[str, float]] = {}
 
     for lang, src in sources.items():
-        if not src.exists():
-            report_lines.append(f"\n## {lang}\nMissing source: `{src}` — skipped.\n")
+        if src is None or not src.exists():
+            report_lines.append(f"\n## {lang}\nMissing source — skipped.\n")
             continue
         lines = _sample_lines(src, args.samples_per_language)
         m = _metrics(sp, lines)
         per_lang[lang] = m
-        t = target_map[lang]
-        pass_tokens = m["tokens_per_100_words"] <= t
+        metric_key, target_value = gate_map[lang]
+        gated_value = m[metric_key]
+        pass_gate = gated_value <= target_value
         pass_unk = m["unknown_rate"] <= unk_target
-        all_pass = all_pass and pass_tokens and pass_unk
+        all_pass = all_pass and pass_gate and pass_unk
+        gate_label = "Tokens / 100 words" if metric_key == "tokens_per_100_words" else "Tokens / KB"
+        other_label = "Tokens / KB" if metric_key == "tokens_per_100_words" else "Tokens / 100 words"
+        other_key = "tokens_per_kb" if metric_key == "tokens_per_100_words" else "tokens_per_100_words"
         report_lines += [
             f"\n## {lang}",
             f"- Samples: {m['n_samples']:,} lines ({m['total_words']:,} words)",
-            f"- **Tokens / 100 words:** {m['tokens_per_100_words']:.1f}"
-            f" (target ≤ {t}) — {'✓' if pass_tokens else '✗'}",
-            f"- Tokens / KB: {m['tokens_per_kb']:.1f}",
+            f"- **{gate_label}:** {gated_value:.1f}"
+            f" (target ≤ {target_value}) — {'✓' if pass_gate else '✗'}",
+            f"- {other_label}: {m[other_key]:.1f}",
             f"- Unknown-token rate: {m['unknown_rate']:.6f}"
             f" (target ≤ {unk_target}) — {'✓' if pass_unk else '✗'}",
         ]

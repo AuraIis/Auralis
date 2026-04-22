@@ -40,9 +40,11 @@ eval/results/*
 # Checkpoints
 checkpoints/*
 !checkpoints/.gitkeep
-# Tokenizer-Artefakte (Modell + Vocab)
-tokenizer/*.model
-tokenizer/*.vocab
+# Tokenizer-Artefakte: das trainierte Helix-v2-SP-Modell ist der
+# kanonische Artefakt und MUSS versioniert sein (~4 MB). Nur Nebenläufer
+# ignorieren wir (z.B. .tmp während Training).
+tokenizer/*.model.tmp
+tokenizer/*.vocab.tmp
 # WandB lokale Logs
 wandb/
 # Large file markers

@@ -1,0 +1,56 @@
+name: helix_v2_tokenizer
+version: '1.0'
+algorithm: sentencepiece_unigram
+vocab_size_requested: 200000
+vocab_size_actual: 200000
+corpus_file: \\BITBASTION\Auralis\AuralisV2\tokenizer_corpus\corpus_clean.txt
+corpus_bytes: 15554937261
+config_file: I:\AuralisV2\configs\tokenizer\helix_v2.yaml
+config_sha: 615445fd9a1a859132413991eeb202d2c750649c8eb51d45dde6c419494f3b14
+git_sha: 69d0449143944a394f66ef89b2f615997ea11631
+sp_args:
+  input: \\BITBASTION\Auralis\AuralisV2\tokenizer_corpus\corpus_clean.txt
+  model_prefix: I:\AuralisV2\tokenizer\helix_v2_tokenizer
+  vocab_size: 200000
+  model_type: unigram
+  character_coverage: 0.99995
+  pad_id: 0
+  unk_id: 1
+  bos_id: 2
+  eos_id: 3
+  pad_piece: <pad>
+  unk_piece: <unk>
+  bos_piece: <s>
+  eos_piece: </s>
+  input_sentence_size: 5000000
+  shuffle_input_sentence: true
+  num_threads: 32
+  max_sentence_length: 16384
+  normalization_rule_name: identity
+  remove_extra_whitespaces: false
+  byte_fallback: true
+  train_extremely_large_corpus: true
+num_user_defined_symbols: 34
+training_seconds: 873.2
+first_10_pieces:
+- <pad>
+- <unk>
+- <s>
+- </s>
+- <|system|>
+- <|user|>
+- <|assistant|>
+- <|end|>
+- <think>
+- </think>
+last_10_pieces:
+- Ś
+- Đ
+- ►
+- 😉
+- 🙂
+- ⚭
+- ễ
+- ↔
+- ◗
+- ◖
