@@ -23,6 +23,9 @@ htmlcov/
 *.swo
 .DS_Store
 
+# --- Claude Code local state ---
+.claude/
+
 # --- Auralis: grosse Artefakte NIE committen ---
 # Rohdaten und bearbeitete Korpora (Ordnerstruktur via .gitkeep erhalten)
 data/raw/*
