@@ -1,0 +1,96 @@
+# Tokenizer configuration for Helix v2 (see Doc/AURALIS_V2_PROJECT_BRIEF.md §3.2).
+#
+# This is THE canonical spec. Any change here invalidates every checkpoint
+# trained under the old tokenizer — a retraining.
+
+name: helix_v2_tokenizer
+version: "1.0"
+algorithm: sentencepiece_unigram     # BPE is an alternative; we pin unigram.
+vocab_size: 200000
+character_coverage: 0.99995          # full Unicode DE + EN + common code syms
+
+# Source-mix for the tokenizer corpus. Ratios are *bytes*, not tokens.
+# Rationale: FineWeb-Edu is EN-heavy; german-commons + v1 fineweb2_de feed DE;
+# StarCoderData feeds code. Keep the tokenizer neutral across languages —
+# 50/50 EN/DE in the tokenizer corpus (even though pretraining will be 75/20
+# EN/DE) because we want balanced *token efficiency* across both.
+corpus_mix_bytes:
+  english: 0.50
+  german:  0.40
+  code:    0.10
+
+# Target byte budget per language for the sampled tokenizer-training corpus.
+# SentencePiece can comfortably handle ~30 GB of text; beyond that we hit RAM
+# and training time becomes painful. 15 GB total is plenty for 200k vocab.
+corpus_budget_gb:
+  total: 15.0
+  per_line_max_bytes: 32768          # clamp very long lines (rare)
+
+# Special tokens (IDs 0..N-1 reserved). Order is stable; do NOT renumber.
+# Must match src/auralis/tokenizer/chat_template.py exactly.
+special_tokens:
+  # Tokenizer-essentials
+  - "<pad>"
+  - "<unk>"
+  - "<s>"
+  - "</s>"
+  # Chat template
+  - "<|system|>"
+  - "<|user|>"
+  - "<|assistant|>"
+  - "<|end|>"
+  # Reasoning
+  - "<think>"
+  - "</think>"
+  - "<reflection>"
+  - "</reflection>"
+  # LoRA routing
+  - "<lora>"
+  - "</lora>"
+  - "<route>"
+  - "</route>"
+  # Tool use
+  - "<tool>"
+  - "</tool>"
+  - "<tool_result>"
+  - "</tool_result>"
+  # Memory
+  - "<memory>"
+  - "</memory>"
+  - "<recall>"
+  - "</recall>"
+  # Code
+  - "<|code|>"
+  - "<|endcode|>"
+  - "<|python|>"
+  - "<|javascript|>"
+  - "<|typescript|>"
+  - "<|rust|>"
+  - "<|cpp|>"
+  - "<|go|>"
+  - "<|java|>"
+  - "<|shell|>"
+  - "<|sql|>"
+  # Multi-Token Prediction placeholders (optional MTP heads 1..3)
+  - "<|mtp_1|>"
+  - "<|mtp_2|>"
+  - "<|mtp_3|>"
+
+# Unigram training knobs. These are conservative defaults that worked for
+# 200k bilingual SP models elsewhere. Override via CLI if tuning.
+training:
+  model_type: unigram
+  input_sentence_size: 10_000_000    # cap sentences fed to EM (sampled)
+  shuffle_input_sentence: true
+  num_threads: 0                     # 0 = all cores
+  max_sentence_length: 16_384
+  normalization_rule_name: nmt_nfkc  # conservative NFKC
+  remove_extra_whitespaces: false    # we keep code whitespace semantics
+  byte_fallback: true                # any unseen byte decodes cleanly
+
+# Quality targets — report_quality.py compares against these.
+quality_targets:
+  english_tokens_per_100_words_max: 135   # aim ≤ 135 (SOTA is ~130)
+  german_tokens_per_100_words_max: 150    # aim ≤ 150 (v1 needed ~220 with GPT-2)
+  code_tokens_per_100_words_max: 170
+  unknown_token_rate_max: 0.0001          # must be near-zero thanks to byte_fallback
