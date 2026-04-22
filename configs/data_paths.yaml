@@ -16,10 +16,22 @@ raw:
   sft:     "raw/sft"
   orpo:    "raw/orpo"
 
+# A list of (path or glob) per language, relative to data_root.
+# Globs are expanded at runtime by prepare_corpus.py / report_quality.py.
+# Keep `german.txt` as a single pre-concatenated file because it was built
+# by reuse_v1_de_pretrain.py with full content-hash dedup already.
 cleaned:
-  english: "cleaned/english.txt"
-  german:  "cleaned/german.txt"
-  code:    "cleaned/code.txt"
+  english:
+    - "raw/english/fineweb_edu.txt"     # 40 GB, ~10B tokens
+    - "raw/english/wikipedia_en.txt"    # 12 GB,  ~3B tokens
+    - "raw/english/openmath.txt"        #  8 GB,  ~2B tokens
+    # Dolma (3B target) skipped — script-based loader, unsupported by
+    # datasets v4+. Gap (~3B EN tokens) left for phase-2 top-up.
+  german:
+    - "cleaned/german.txt"              # 23.7 GB, ~4.7B tokens (v1-reused)
+  code:
+    - "raw/code/starcoderdata.txt"      # 3.5 GB, ~1B tokens
+    - "raw/code/open_web_math.txt"      # 0.9 GB, ~250M tokens
 
 tokenized:
   phase1_english: "tokenized/phase1/english.bin"

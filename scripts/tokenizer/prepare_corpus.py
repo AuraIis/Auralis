@@ -51,44 +51,63 @@ class CorpusStats:
     tokenizer_config_file: str = ""
 
 
-def _count_bytes(path: Path) -> int:
-    return path.stat().st_size if path.exists() else 0
+def _expand_sources(data_root: Path, entries: list[str] | str) -> list[Path]:
+    """Expand a list of path-or-glob entries to concrete existing files."""
+    if isinstance(entries, str):
+        entries = [entries]
+    files: list[Path] = []
+    for e in entries:
+        p = data_root / e
+        if any(ch in e for ch in "*?["):
+            files.extend(sorted(data_root.glob(e)))
+        elif p.is_file():
+            files.append(p)
+        # missing files are silently skipped; _sample_and_write_language logs them
+    return files
+
+
+def _total_bytes(paths: list[Path]) -> int:
+    return sum(p.stat().st_size for p in paths if p.exists())
 
 
 def _sample_and_write_language(
     lang: str,
-    source: Path,
+    sources: list[Path],
     target_bytes: int,
     max_line_bytes: int,
     fh_out,
     seed: int,
 ) -> tuple[int, int]:
-    """Reservoir-style sample. Returns (bytes_written, lines_written)."""
-    source_bytes = _count_bytes(source)
-    if source_bytes == 0:
-        print(f"  warn: {lang} source missing or empty: {source}", file=sys.stderr)
+    """Reservoir-style sample across a list of source files.
+
+    All files share one keep_prob so the resulting sample is proportional
+    to each file's size (big files contribute more). Early-stops when the
+    language target is met.
+    """
+    source_bytes = _total_bytes(sources)
+    if not sources or source_bytes == 0:
+        print(f"  warn: {lang} has no readable sources", file=sys.stderr)
         return 0, 0
-    # If source is already smaller than the target, take everything.
     keep_prob = 1.0 if source_bytes <= target_bytes else (target_bytes / source_bytes)
     rng = random.Random(seed)
 
     written_bytes = 0
     written_lines = 0
-    with source.open("r", encoding="utf-8", errors="replace") as fh_in:
-        for line in tqdm(fh_in, desc=f"sample {lang}", unit="line"):
-            if rng.random() > keep_prob:
-                continue
-            line = line.rstrip("\n")
-            if len(line.encode("utf-8")) > max_line_bytes:
-                line = line[:max_line_bytes]
-            if not line:
-                continue
-            fh_out.write(line + "\n")
-            written_bytes += len(line.encode("utf-8")) + 1
-            written_lines += 1
-            # Stop early — saves I/O on very oversized sources.
-            if written_bytes >= target_bytes * 1.05:
-                break
+    for src in sources:
+        with src.open("r", encoding="utf-8", errors="replace") as fh_in:
+            for line in tqdm(fh_in, desc=f"sample {lang}:{src.name}", unit="line"):
+                if rng.random() > keep_prob:
+                    continue
+                line = line.rstrip("\n")
+                if len(line.encode("utf-8")) > max_line_bytes:
+                    line = line[:max_line_bytes]
+                if not line:
+                    continue
+                fh_out.write(line + "\n")
+                written_bytes += len(line.encode("utf-8")) + 1
+                written_lines += 1
+                if written_bytes >= target_bytes * 1.05:
+                    return written_bytes, written_lines
     return written_bytes, written_lines
 
 
@@ -115,10 +134,9 @@ def main() -> None:
     mix = tok_cfg["corpus_mix_bytes"]
     max_line_bytes = int(tok_cfg["corpus_budget_gb"]["per_line_max_bytes"])
 
-    sources: dict[str, Path] = {
-        "english": data_root / data_cfg["cleaned"]["english"],
-        "german":  data_root / data_cfg["cleaned"]["german"],
-        "code":    data_root / data_cfg["cleaned"]["code"],
+    sources: dict[str, list[Path]] = {
+        lang: _expand_sources(data_root, data_cfg["cleaned"][lang])
+        for lang in ("english", "german", "code")
     }
 
     stats = CorpusStats(
@@ -133,15 +151,17 @@ def main() -> None:
 
     with atomic_text_writer(output) as fh:
         for lang in ("english", "german", "code"):
-            src = sources[lang]
+            srcs = sources[lang]
             share = float(mix[lang])
             target = int(budget_bytes * share)
-            source_bytes = _count_bytes(src)
+            source_bytes = _total_bytes(srcs)
             stats.per_language_source_bytes[lang] = source_bytes
             stats.per_language_target_bytes[lang] = target
-            print(f"[{lang}] source={source_bytes/1e9:.2f}GB  target={target/1e9:.2f}GB  src={src}")
+            print(f"[{lang}] sources={len(srcs)} total={source_bytes/1e9:.2f}GB  target={target/1e9:.2f}GB")
+            for p in srcs:
+                print(f"  - {p}")
             written_bytes, written_lines = _sample_and_write_language(
-                lang, src, target, max_line_bytes, fh, seed=args.seed + hash(lang) % 1000,
+                lang, srcs, target, max_line_bytes, fh, seed=args.seed + hash(lang) % 1000,
             )
             stats.per_language_written_bytes[lang] = written_bytes
             stats.per_language_written_lines[lang] = written_lines
