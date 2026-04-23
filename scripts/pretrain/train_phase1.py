@@ -42,8 +42,11 @@ sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(REPO / "src"))
 
 from auralis.model import build_model
+from auralis.model.backend_info import describe_model_backends, format_backend_summary
 from auralis.training.dataset import MixedDataLoader
+from auralis.training.health import HealthStop
 from auralis.training.optimizer import build_optimizer, build_scheduler
+from auralis.training.run_report import write_end_manifest, write_start_manifest
 from auralis.training.trainer import PretrainTrainer
 from auralis.training.utils import load_yaml, preflight_check, set_seed
 
@@ -185,9 +188,39 @@ def main() -> None:
         trainer.load_checkpoint(args.resume)
         print(f"  resumed from {args.resume} at step {trainer.state.step}")
 
+    # Kernel/back-end summary
+    backends = describe_model_backends(model.inner if hasattr(model, "inner") else model)
+    print(format_backend_summary(backends))
+
+    # Run-report: start
+    manifest_path = Path(config["checkpointing"]["output_dir"]) / "MANIFEST.yaml"
+    write_start_manifest(
+        path=manifest_path,
+        config=config,
+        metadata=trainer.metadata,
+        backend_summary=backends,
+    )
+    print(f"  manifest: {manifest_path}")
+
+    exit_reason = "completed"
     try:
         trainer.train()
+    except HealthStop as e:
+        exit_reason = f"health_stop:{e}"
+        print(f"  exit: {exit_reason}")
+    except KeyboardInterrupt:
+        exit_reason = "keyboard_interrupt"
+    except Exception as e:                                     # noqa: BLE001
+        exit_reason = f"{type(e).__name__}: {e}"
+        raise
     finally:
+        # Run-report: end (always written, even on exception)
+        write_end_manifest(
+            path=manifest_path,
+            state=trainer.state,
+            exit_reason=exit_reason,
+            health_summary=trainer.health.summary(),
+        )
         if wandb_run is not None:
             wandb_run.finish()
 

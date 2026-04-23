@@ -227,6 +227,8 @@ class AuralisConfig:
                 layers_total += self.d_model * self.n_heads       # alpha
             elif lc.type == "sparse_attention":
                 layers_total += 4 * self.d_model * self.d_model  # q,k,v,o
+            elif lc.type == "plain_attention":
+                layers_total += 4 * self.d_model * self.d_model  # q,k,v,o (ablation)
             else:
                 raise ValueError(f"Unknown layer type: {lc.type}")
 

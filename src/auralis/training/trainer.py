@@ -30,6 +30,13 @@ import torch.nn as nn
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LambdaLR
 
+from auralis.training.health import (
+    AlertLevel,
+    HealthConfig,
+    HealthMonitor,
+    HealthStop,
+)
+
 
 _AMP_DTYPES: dict[str, torch.dtype] = {
     "fp32": torch.float32,
@@ -169,6 +176,17 @@ class PretrainTrainer:
         self._keep_last = int(ccfg.get("save_last_n", 3))
         self._external_backup = ccfg.get("external_backup") or {}
 
+        # ---- Health monitor (auto-stop guards) ----
+        mon_cfg = (config.get("monitoring") or {}).get("health") or {}
+        self.health = HealthMonitor(HealthConfig(
+            **{k: v for k, v in mon_cfg.items() if k in HealthConfig.__dataclass_fields__}
+        ))
+
+        # ---- Cost tracker ----
+        cost_cfg = config.get("cost") or {}
+        self._cost_per_gpu_hour = float(cost_cfg.get("gpu_hourly_usd", 0.0))
+        self._cost_budget = float(cost_cfg.get("budget_usd", 0.0))
+
         # ---- Run metadata (captured once, persisted with every ckpt) ----
         repo_root = Path(__file__).resolve().parents[3]
         self.metadata = RunMetadata(
@@ -271,7 +289,31 @@ class PretrainTrainer:
                     metrics["train/vram_alloc_gb"] = torch.cuda.memory_allocated() / 1e9
                     metrics["train/vram_reserved_gb"] = torch.cuda.memory_reserved() / 1e9
                     metrics["train/vram_peak_gb"] = torch.cuda.max_memory_allocated() / 1e9
+
+                # Cost tracking ($/step, projected total, ETA vs budget)
+                if self._cost_per_gpu_hour > 0:
+                    hours = self.state.wall_clock_seconds / 3600.0
+                    spent = hours * self._cost_per_gpu_hour
+                    steps_per_hour = self.state.step / max(hours, 1e-9)
+                    eta_hours = max(0, (self._total_steps - self.state.step)) / max(steps_per_hour, 1e-9)
+                    metrics["cost/usd_spent"] = spent
+                    metrics["cost/usd_projected_total"] = spent + eta_hours * self._cost_per_gpu_hour
+                    metrics["cost/usd_per_1k_steps"] = (spent / max(self.state.step, 1)) * 1000
+                    metrics["cost/usd_per_1b_tokens"] = (spent / max(self.state.tokens_seen, 1)) * 1e9
+                    metrics["cost/eta_hours"] = eta_hours
+                    if self._cost_budget > 0 and metrics["cost/usd_projected_total"] > self._cost_budget:
+                        # Not a hard stop by default — alert level. Raise to STOP
+                        # by setting monitoring.health.grad_explosion_threshold=0 etc.
+                        self.state.alerts.append(
+                            f"projected cost ${metrics['cost/usd_projected_total']:.0f} "
+                            f"> budget ${self._cost_budget:.0f}"
+                        )
+
                 self.log(metrics, self.state.step)
+
+                # Health check — may set self.health.stop_requested
+                for level, msg in self.health.observe(metrics, self.state.step):
+                    print(f"  health[{level.value}]: {msg}", flush=True)
                 extra = ""
                 if self.device.type == "cuda":
                     extra = f" | vram {metrics['train/vram_alloc_gb']:.1f}/{metrics['train/vram_peak_gb']:.1f}GB"
@@ -291,9 +333,23 @@ class PretrainTrainer:
             if self.val_dataloader is not None and self.state.step % self._eval_every == 0:
                 val_loss = self._evaluate()
                 self._track_val(val_loss)
+                # Health may also STOP on sustained val regression.
+                for level, msg in self.health.observe_val(
+                    val_loss,
+                    self.state.best_val_loss,
+                    self.state.consecutive_val_increases,
+                    self.state.step,
+                ):
+                    print(f"  health[{level.value}]: {msg}", flush=True)
 
             if self.state.step % self._save_every == 0:
                 self.save_checkpoint(f"step_{self.state.step}")
+
+            if self.health.should_stop():
+                reason = self.health.state.stop_reason
+                print(f"  AUTO-STOP: {reason}. Saving emergency ckpt and exiting.", flush=True)
+                self.save_checkpoint(f"step_{self.state.step}_emergency")
+                raise HealthStop(reason)
 
         # Final checkpoint
         self.save_checkpoint(f"step_{self.state.step}")

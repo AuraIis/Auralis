@@ -22,6 +22,7 @@ from auralis.model.layers.ffn import build_ffn
 from auralis.model.layers.gla_layer import GLALayer
 from auralis.model.layers.mamba_layer import Mamba2Layer
 from auralis.model.layers.norm import RMSNorm
+from auralis.model.layers.plain_attn_layer import PlainAttentionLayer
 from auralis.model.layers.sparse_attn_layer import SparseAttentionLayer
 from auralis.model.utils.init import scaled_normal_init
 from auralis.model.utils.rotary import RotaryEmbedding
@@ -55,6 +56,13 @@ def _build_attn_sublayer(config: AuralisConfig, layer_cfg: LayerConfig) -> nn.Mo
             global_tokens=layer_cfg.global_tokens or 32,
             use_rope=layer_cfg.use_rope if layer_cfg.use_rope is not None else True,
         )
+    if t == "plain_attention":
+        return PlainAttentionLayer(
+            d_model=config.d_model,
+            n_heads=config.n_heads,
+            d_head=config.d_head,
+            use_rope=layer_cfg.use_rope if layer_cfg.use_rope is not None else True,
+        )
     raise ValueError(f"Unknown layer type: {t!r}")
 
 
@@ -77,7 +85,7 @@ class HelixBlock(nn.Module):
     ) -> torch.Tensor:
         # Attention / SSM sub-layer (call signature differs per type)
         t = self.layer_config.type
-        if t == "sparse_attention":
+        if t in ("sparse_attention", "plain_attention"):
             attn_out, _ = self.attn(self.norm1(x), rope=rope)
         else:
             # Mamba & GLA: (x, state) → (out, new_state); we discard new_state
