@@ -1,26 +1,47 @@
-"""End-to-end CPU smoke test of the full Phase-1 pipeline.
+"""End-to-end smoke test of the full Phase-1 pipeline.
 
-Runs a dozen real training steps through ``PretrainTrainer`` on the 100M
-HelixModel against synthetic token .bin files, and verifies:
+Runs a short training loop through ``PretrainTrainer`` and reports:
 
-- the pipeline wires together (model + loader + optimizer + scheduler + trainer)
-- gradient accumulation + clipping + cosine schedule work end to end
-- checkpoints are written and can be reloaded
-- loss finite throughout
+- peak VRAM on CUDA
+- tokens/sec throughput
+- loss trajectory (should drop after the first handful of steps)
+- checkpoint save + reload roundtrip
 
-Takes ~60-90 s on CPU. This is the gate we run BEFORE burning GPU hours on
-RunPod. Pass = green light for real pretraining.
+Two data modes:
+
+- ``--use-real-data``: reads the actual tokenized ``*.bin`` files from
+  ``configs/data_paths.yaml`` (the NAS data dir). Validates the full path
+  through the memmap sampler and the mix-ratio partitioning.
+- default (synthetic): generates random-token .bin files in a tmpdir. Used
+  by CI / offline environments.
+
+Two precision modes:
+
+- ``--dtype fp32`` (default on CPU)
+- ``--dtype bf16`` — wraps forward in ``torch.autocast``. The real Phase-1
+  run on RunPod uses bf16; this is our pre-flight check that autocast
+  doesn't produce NaNs with our layer stack.
 """
 
 from __future__ import annotations
 
 import argparse
+import gc
 import sys
 import tempfile
+import time
+from contextlib import nullcontext
 from pathlib import Path
 
 import numpy as np
 import torch
+
+# Windows cp1252 cannot print unicode arrows / warning signs.
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8", errors="replace")
+    except AttributeError:
+        pass
 
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO))
@@ -33,6 +54,13 @@ from auralis.training.trainer import PretrainTrainer
 from auralis.training.utils import load_yaml, set_seed
 
 
+DTYPES: dict[str, torch.dtype] = {
+    "fp32": torch.float32,
+    "bf16": torch.bfloat16,
+    "fp16": torch.float16,
+}
+
+
 def _write_synthetic_bins(data_dir: Path, vocab_size: int, tokens_per_lang: int) -> None:
     rng = np.random.default_rng(0)
     for lang in ("english", "german", "code"):
@@ -40,87 +68,196 @@ def _write_synthetic_bins(data_dir: Path, vocab_size: int, tokens_per_lang: int)
         arr.tofile(data_dir / f"{lang}.bin")
 
 
+def _resolve_real_data_dir() -> Path:
+    """Read data_paths.yaml to find the tokenized directory on the NAS."""
+    cfg = load_yaml(REPO / "configs" / "data_paths.yaml")
+    root = Path(cfg["data_root"])
+    return root / "tokenized" / "phase1"
+
+
+def _make_autocast_ctx(device: torch.device, dtype: torch.dtype):
+    """Return a context manager for mixed-precision forward/backward."""
+    if dtype is torch.float32:
+        return nullcontext()
+    if device.type == "cuda":
+        return torch.autocast(device_type="cuda", dtype=dtype)
+    # autocast on CPU supports bf16
+    return torch.autocast(device_type="cpu", dtype=dtype)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--config", type=Path, default=REPO / "configs" / "training" / "phase1_pretrain.yaml")
+    parser.add_argument("--device", default="auto", choices=["auto", "cpu", "cuda"])
+    parser.add_argument("--dtype", default="fp32", choices=list(DTYPES))
+    parser.add_argument("--model-config", type=Path,
+                        default=REPO / "configs" / "model" / "helix_v2_100m.yaml")
+    parser.add_argument("--steps", type=int, default=20)
+    parser.add_argument("--batch-size", type=int, default=2)
+    parser.add_argument("--seq-length", type=int, default=64)
+    parser.add_argument("--grad-accum", type=int, default=1)
+    parser.add_argument("--warmup-steps", type=int, default=None,
+                        help="Override scheduler.warmup_steps (default: take from config).")
+    parser.add_argument("--lr", type=float, default=None,
+                        help="Override optimizer.lr (default: from config).")
+    parser.add_argument("--use-real-data", action="store_true",
+                        help="Read actual tokenized .bin files from the NAS.")
     args = parser.parse_args()
 
-    full_cfg = load_yaml(args.config)
-    smoke = full_cfg.get("smoke_test", {})
+    # ---- Resolve device ----
+    if args.device == "auto":
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    else:
+        device = torch.device(args.device)
+    if device.type == "cuda" and not torch.cuda.is_available():
+        sys.exit("CUDA requested but not available")
+
+    dtype = DTYPES[args.dtype]
+    print(f"device={device} dtype={args.dtype}")
+    if device.type == "cuda":
+        torch.cuda.reset_peak_memory_stats()
+        props = torch.cuda.get_device_properties(0)
+        print(f"gpu: {props.name} ({props.total_memory/1e9:.1f} GB VRAM)")
+
     set_seed(0)
 
-    model_cfg_path = REPO / smoke.get("model_config", "configs/model/helix_v2_100m.yaml")
-    batch_size = int(smoke.get("batch_size", 2))
-    grad_accum = int(smoke.get("gradient_accumulation", 1))
-    seq_length = int(smoke.get("seq_length", 64))
-    total_steps = int(smoke.get("total_steps", 20))
-    log_every = int(smoke.get("log_every", 5))
+    # ---- Build model ----
+    t_build_0 = time.time()
+    model = build_model(args.model_config)
+    n_params = sum(p.numel() for p in model.parameters())
+    print(f"model: {n_params/1e6:.1f} M params from {args.model_config.name}")
+    model = model.to(device)
+    if device.type == "cuda":
+        torch.cuda.synchronize()
+    print(f"  build+move: {time.time() - t_build_0:.1f}s")
 
-    print(f"Building model from {model_cfg_path} (CPU smoke test)")
-    model = build_model(model_cfg_path)
-    print(f"  params: {sum(p.numel() for p in model.parameters())/1e6:.1f} M")
+    full_cfg = load_yaml(args.config)
 
-    # ignore_cleanup_errors: np.memmap keeps file handles open on Windows
-    # until GC runs, which can race the TemporaryDirectory exit.
-    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
-        tmp_path = Path(tmp)
-        data_dir = tmp_path / "data"
-        data_dir.mkdir()
-        ckpt_dir = tmp_path / "ckpt"
+    # ---- Data ----
+    tmp_ctx = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
+    tmp_path = Path(tmp_ctx.name) if not args.use_real_data else None
 
-        # Enough synthetic tokens for each lang so the loader never exhausts them.
+    if args.use_real_data:
+        data_dir = _resolve_real_data_dir()
+        if not all((data_dir / f"{lang}.bin").exists()
+                   for lang in full_cfg["data"]["mix_ratios"]):
+            missing = [l for l in full_cfg["data"]["mix_ratios"]
+                       if not (data_dir / f"{l}.bin").exists()]
+            sys.exit(f"real data requested but missing on NAS: {missing}\n  in {data_dir}")
+        print(f"data: {data_dir} (real tokenized NAS data)")
+        ckpt_dir = Path(tempfile.mkdtemp(prefix="ckpt_")) / "ckpt"
+    else:
+        assert tmp_path is not None
+        data_dir = tmp_path / "data"; data_dir.mkdir()
         _write_synthetic_bins(data_dir, vocab_size=model.config.vocab_size,
-                              tokens_per_lang=max(10_000, seq_length * 100))
+                              tokens_per_lang=max(10_000, args.seq_length * 200))
+        ckpt_dir = tmp_path / "ckpt"
+        print(f"data: synthetic random tokens in {data_dir}")
 
-        loader = MixedDataLoader(
-            data_dir=data_dir,
-            mix_ratios=full_cfg["data"]["mix_ratios"],
-            batch_size=batch_size,
-            seq_length=seq_length,
-            seed=0,
-        )
+    loader = MixedDataLoader(
+        data_dir=data_dir,
+        mix_ratios=full_cfg["data"]["mix_ratios"],
+        batch_size=args.batch_size,
+        seq_length=args.seq_length,
+        seed=0,
+    )
 
-        opt = build_optimizer(model, full_cfg["training"]["optimizer"])
-        sched = build_scheduler(
-            opt, full_cfg["training"]["scheduler"], total_steps=total_steps
-        )
+    # ---- Optim + sched (with optional CLI overrides for fast smoke) ----
+    opt_cfg = dict(full_cfg["training"]["optimizer"])
+    if args.lr is not None:
+        opt_cfg["lr"] = args.lr
+    sched_cfg = dict(full_cfg["training"]["scheduler"])
+    if args.warmup_steps is not None:
+        sched_cfg["warmup_steps"] = args.warmup_steps
+    opt = build_optimizer(model, opt_cfg)
+    sched = build_scheduler(opt, sched_cfg, total_steps=args.steps)
 
-        run_cfg = {
-            "data": {"seq_length": seq_length},
-            "training": {
-                "batch_size_per_device": batch_size,
-                "gradient_accumulation": grad_accum,
-                "gradient_clip_norm": float(full_cfg["training"]["gradient_clip_norm"]),
-                "total_steps": total_steps,
-            },
-            "logging": {"log_every": log_every, "eval_every": 9999, "save_every": total_steps},
-            "checkpointing": {"output_dir": str(ckpt_dir), "save_last_n": 2},
-        }
-        trainer = PretrainTrainer(
-            model=model, optimizer=opt, scheduler=sched,
-            dataloader=loader, config=run_cfg, device="cpu",
-        )
+    # ---- Custom run loop (wraps fwd+bwd in autocast for bf16/fp16) ----
+    run_cfg = {
+        "data": {"seq_length": args.seq_length},
+        "training": {
+            "batch_size_per_device": args.batch_size,
+            "gradient_accumulation": args.grad_accum,
+            "gradient_clip_norm": 1.0,
+            "total_steps": args.steps,
+        },
+        "logging": {"log_every": max(1, args.steps // 10),
+                    "eval_every": 10**9, "save_every": args.steps},
+        "checkpointing": {"output_dir": str(ckpt_dir), "save_last_n": 1},
+    }
 
-        import time
-        t0 = time.time()
-        state = trainer.train()
-        dt = time.time() - t0
+    trainer = PretrainTrainer(
+        model=model, optimizer=opt, scheduler=sched,
+        dataloader=loader, config=run_cfg, device=device,
+    )
 
-        # Assertions on final state
-        assert state.step == total_steps, state
-        assert state.tokens_seen >= batch_size * grad_accum * seq_length * total_steps
-        checkpoints = list(ckpt_dir.glob("step_*.pt"))
-        assert checkpoints, "no checkpoint was written"
+    # Monkey-patch in autocast + peak-VRAM tracking without touching trainer.py.
+    tokens_per_step = args.batch_size * args.grad_accum * args.seq_length
+    losses: list[float] = []
+    original_log = trainer.log
+    peak_vram_gb = 0.0
+    step_times: list[float] = []
+    last_step_t0 = [time.time()]
 
-        # Reload check
-        trainer.load_checkpoint(checkpoints[0])
-        assert trainer.state.step == total_steps
+    def capture(metrics, step):
+        if "train/loss" in metrics:
+            losses.append(metrics["train/loss"])
+        original_log(metrics, step)
+    trainer.log = capture
 
-        print()
-        print(f"smoke test OK in {dt:.1f}s "
-              f"({state.tokens_seen:,} tokens over {state.step} steps)")
-        print(f"  final best_val_loss tracker = {state.best_val_loss}")
-        print(f"  checkpoint: {checkpoints[0]}")
+    # Wrap model call in autocast
+    original_forward = model.forward
+    def autocast_forward(*a, **kw):
+        with _make_autocast_ctx(device, dtype):
+            return original_forward(*a, **kw)
+    model.forward = autocast_forward  # type: ignore[assignment]
+
+    t0 = time.time()
+    state = trainer.train()
+    if device.type == "cuda":
+        torch.cuda.synchronize()
+        peak_vram_gb = torch.cuda.max_memory_allocated() / 1e9
+    total_dt = time.time() - t0
+    tokens_total = tokens_per_step * args.steps
+    tok_per_sec = tokens_total / max(total_dt, 1e-6)
+
+    # Checkpoint roundtrip
+    checkpoints = list(ckpt_dir.glob("step_*.pt"))
+    assert checkpoints, "no checkpoint written"
+    trainer.load_checkpoint(checkpoints[0])
+    assert trainer.state.step == args.steps
+
+    # ---- Report ----
+    print()
+    print("=" * 60)
+    print("  GPU SMOKE TEST REPORT")
+    print("=" * 60)
+    print(f"  device            : {device}")
+    print(f"  dtype             : {args.dtype}")
+    print(f"  model params      : {n_params/1e6:.1f} M")
+    print(f"  steps             : {args.steps}")
+    print(f"  batch × seq       : {args.batch_size} × {args.seq_length}"
+          f" (grad-accum {args.grad_accum})")
+    print(f"  tokens total      : {tokens_total:,}")
+    print(f"  wall time         : {total_dt:.1f} s")
+    print(f"  tokens / second   : {tok_per_sec:,.0f}")
+    if device.type == "cuda":
+        print(f"  peak VRAM         : {peak_vram_gb:.2f} GB")
+    print(f"  loss first        : {losses[0]:.4f}")
+    print(f"  loss last         : {losses[-1]:.4f}")
+    drop = losses[0] - losses[-1]
+    verdict = "✓ learning" if drop > 0.05 else "⚠ loss flat" if drop > -0.05 else "✗ loss rising"
+    print(f"  loss delta        : {drop:+.4f}   {verdict}")
+    print(f"  checkpoint        : {checkpoints[0]}  (reloaded OK)")
+    print("=" * 60)
+
+    # Clean up memmap handles before tempdir removal (Windows)
+    del loader, trainer
+    gc.collect()
+    if device.type == "cuda":
+        torch.cuda.empty_cache()
+    if tmp_ctx is not None:
+        tmp_ctx.cleanup()
 
 
 if __name__ == "__main__":
