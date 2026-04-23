@@ -70,3 +70,7 @@ ignore_missing_imports = true
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "-v --tb=short"
+# Let `pytest` work without an editable install (pip install -e .) by
+# putting src/ on sys.path at collection time. Matches what every test
+# module expects: `from auralis... import ...`.
+pythonpath = ["src"]
