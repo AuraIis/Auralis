@@ -190,22 +190,23 @@ class PretrainTrainer:
         # ---- Run metadata (captured once, persisted with every ckpt) ----
         repo_root = Path(__file__).resolve().parents[3]
         self.metadata = RunMetadata(
-            git_sha=_git_sha(repo_root),
+            git_sha=str(_git_sha(repo_root)),
             config_sha16=hashlib.sha256(json.dumps(config, sort_keys=True, default=str)
                                         .encode("utf-8")).hexdigest()[:16],
             config_path=str(config.get("_source_path", "")),
-            tokenizer_sha16=_sha256_short(Path(
+            tokenizer_sha16=str(_sha256_short(Path(
                 config.get("data", {}).get("tokenizer_path")
                 or repo_root / "tokenizer" / "helix_v2_tokenizer.model"
-            )),
+            ))),
             tokenizer_path=str(config.get("data", {}).get("tokenizer_path")
                                or repo_root / "tokenizer" / "helix_v2_tokenizer.model"),
-            hostname=socket.gethostname(),
-            python_version=platform.python_version(),
-            torch_version=torch.__version__,
-            cuda_version=(torch.version.cuda if torch.cuda.is_available() else None),
-            gpu_name=(torch.cuda.get_device_name(0) if torch.cuda.is_available() else None),
-            dtype=dtype_str,
+            hostname=str(socket.gethostname()),
+            python_version=str(platform.python_version()),
+            # torch.__version__ is a TorchVersion object; str() makes it yaml-safe.
+            torch_version=str(torch.__version__),
+            cuda_version=(str(torch.version.cuda) if torch.cuda.is_available() else None),
+            gpu_name=(str(torch.cuda.get_device_name(0)) if torch.cuda.is_available() else None),
+            dtype=str(dtype_str),
         )
 
     def _autocast(self):
@@ -285,10 +286,18 @@ class PretrainTrainer:
                     "train/data_frac": window_data_time / max(elapsed, 1e-9),
                     "train/compute_frac": window_compute_time / max(elapsed, 1e-9),
                 }
+                metrics["system/step_time_ms"] = (elapsed / max(self._log_every, 1)) * 1000.0
                 if self.device.type == "cuda":
                     metrics["train/vram_alloc_gb"] = torch.cuda.memory_allocated() / 1e9
                     metrics["train/vram_reserved_gb"] = torch.cuda.memory_reserved() / 1e9
                     metrics["train/vram_peak_gb"] = torch.cuda.max_memory_allocated() / 1e9
+                    total_vram_gb = torch.cuda.get_device_properties(0).total_memory / 1e9
+                    metrics["train/vram_total_gb"] = total_vram_gb
+                    # VRAM-pressure alert (may request STOP)
+                    for level, msg in self.health.observe_vram(
+                        metrics["train/vram_alloc_gb"], total_vram_gb, self.state.step,
+                    ):
+                        print(f"  health[{level.value}]: {msg}", flush=True)
 
                 # Cost tracking ($/step, projected total, ETA vs budget)
                 if self._cost_per_gpu_hour > 0:
@@ -484,6 +493,9 @@ class PretrainTrainer:
             },
             self.state.step,
         )
+        # Ckpt-write anomaly detection (over rolling median)
+        for level, msg in self.health.observe_checkpoint_write(write_seconds, self.state.step):
+            print(f"  health[{level.value}]: {msg}", flush=True)
         note = f"  ckpt {name} written in {write_seconds:.1f}s" \
                f" ({path.stat().st_size/1e9:.2f} GB)"
         if backup_ran:

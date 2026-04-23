@@ -48,6 +48,27 @@ def test_val_regression_triggers_stop():
     assert mon.should_stop()
 
 
+def test_vram_warn_then_stop():
+    mon = HealthMonitor(HealthConfig(vram_frac_warn=0.90, vram_frac_stop=0.95))
+    fresh = mon.observe_vram(alloc_gb=9.0, total_gb=10.0, step=1)   # 90 % → WARN
+    assert any(lvl == AlertLevel.WARN for lvl, _ in fresh)
+    assert not mon.should_stop()
+    fresh = mon.observe_vram(alloc_gb=9.6, total_gb=10.0, step=2)   # 96 % → STOP
+    assert any(lvl == AlertLevel.STOP for lvl, _ in fresh)
+    assert mon.should_stop()
+
+
+def test_ckpt_write_anomaly_triggers_warn():
+    mon = HealthMonitor(HealthConfig(ckpt_time_factor=3.0, ckpt_time_median_window=5))
+    # Establish a median around 2 s
+    for i in range(4):
+        fresh = mon.observe_checkpoint_write(seconds=2.0 + 0.1 * i, step=100 + i)
+        assert not fresh
+    # Spike: 10 s > 3 × ~2.15 s median
+    fresh = mon.observe_checkpoint_write(seconds=10.0, step=200)
+    assert any(lvl == AlertLevel.WARN for lvl, _ in fresh)
+
+
 def test_summary_serialisable():
     mon = HealthMonitor(HealthConfig())
     mon.observe({"train/grad_norm": 5.0, "train/loss": 2.0, "train/tokens_per_second": 1000}, step=1)

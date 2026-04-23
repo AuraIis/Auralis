@@ -1,0 +1,105 @@
+# Canary Runde 1 — Infrastruktur-Validierung auf Blackwell
+#
+# Ziel: Bugs finden, nicht benchmarken. NICHT der Sieger-Lauf für Runde 3.
+# Erwartete Dauer: 1-2 h auf RTX PRO 5000 Blackwell (47 GB), Kosten $0.
+#
+# Eingangsgate: inference_compat.py auf frischem Init-Checkpoint PASS.
+# Ausgangsgates (alle JA): keine NaN, grad_norm gesund, val_loss fällt
+# über 5+ Evalpunkte, 0 Health-STOPs, Checkpoint save+reload OK.
+#
+# Start (im auralis-training Container auf Unraid):
+#   docker exec auralis-training bash -lc '
+#     cd /workspace/auralis_v2 &&
+#     TRITON_OVERRIDE_ARCH=sm89 AURALIS_USE_CUDA_KERNELS=1 \
+#     PYTHONPATH=src python scripts/pretrain/train_phase1.py \
+#       --config configs/training/canary_runde1.yaml
+#   '
+
+experiment:
+  name: canary_runde1
+  version: "1.0"
+  description: "Infrastructure canary — 250M × ~160M tokens on Blackwell."
+
+model:
+  config_path: "configs/model/helix_v2_250m.yaml"    # 261M, schneller als mid_500m
+
+data:
+  data_dir: "/workspace/v2data/tokenized/phase1"
+  # Canary ohne code — code.bin Tokenization läuft noch im Hintergrund.
+  # Infrastrukturvalidierung braucht kein Code. Für Runde 2+ steht 75/20/5.
+  mix_ratios:
+    english: 0.80
+    german:  0.20
+  seq_length: 2048
+  val_split_bytes: 50_000_000           # 50 MB / lang held out, ≈ 12.5M tokens each
+  dataloader_seed: 42
+
+training:
+  device: "cuda"
+  dtype: "bf16"
+
+  optimizer:
+    name: adamw
+    lr: 3.0e-4
+    betas: [0.9, 0.95]
+    weight_decay: 0.1
+    eps: 1.0e-8
+
+  scheduler:
+    type: cosine
+    warmup_steps: 200
+    min_lr_ratio: 0.1
+
+  # 5 000 steps × batch 4 × grad-accum 4 × seq 2048 ≈ 160 M tokens
+  batch_size_per_device: 4
+  gradient_accumulation: 4
+  gradient_clip_norm: 1.0
+  total_steps: 5000
+
+  gradient_checkpointing: true
+  torch_compile: false                  # Blackwell + Triton → compile riskant
+
+logging:
+  log_every: 25
+  eval_every: 500
+  save_every: 1000
+  wandb:
+    enabled: false                      # WANDB_API_KEY erst setzen
+    project: "auralis-v2"
+    tags: ["canary", "runde1", "blackwell", "250m"]
+
+checkpointing:
+  output_dir: "/workspace/v2data/checkpoints/canary_runde1"
+  save_last_n: 3
+  save_best: true
+  external_backup:
+    enabled: false                      # NAS ist bereits der write-target
+
+evaluation:
+  max_val_batches: 16                   # kurz, aber mixed + per-language
+  per_language_batches: 4
+  benchmarks:
+    - {name: baseline_smoke, path: "eval/baseline_questions.yaml", frequency: 2500}
+
+monitoring:
+  health:
+    grad_explosion_threshold: 50.0
+    grad_explosion_k: 3
+    grad_collapse_threshold: 1.0e-5
+    grad_collapse_k: 10
+    loss_spike_factor: 3.0
+    loss_spike_avg_window: 20
+    tps_min_ratio: 0.30
+    tps_warmup_logs: 5
+    tps_k: 3
+    val_regression_stop_k: 5
+    vram_frac_warn: 0.95
+    vram_frac_stop: 0.98
+    ckpt_time_factor: 3.0
+    ckpt_time_median_window: 5
+
+cost:
+  # Blackwell = eigene Hardware, kostenmäßig 0. Felder leer gelassen, damit
+  # kein falsches $-Reporting entsteht.
+  gpu_hourly_usd: 0.0
+  budget_usd: 0.0

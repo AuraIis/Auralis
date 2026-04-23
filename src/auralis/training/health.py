@@ -35,11 +35,11 @@ class AlertLevel(str, Enum):
 @dataclass
 class HealthConfig:
     # Gradient explosion: grad_norm above this for K consecutive logged windows.
-    grad_explosion_threshold: float = 100.0
+    grad_explosion_threshold: float = 50.0
     grad_explosion_k: int = 3
     # Gradient collapse: grad_norm below this for K consecutive windows.
-    grad_collapse_threshold: float = 1e-6
-    grad_collapse_k: int = 5
+    grad_collapse_threshold: float = 1e-5
+    grad_collapse_k: int = 10
     # Loss spike: current > factor * running_avg, window of last N.
     loss_spike_factor: float = 3.0
     loss_spike_avg_window: int = 20
@@ -47,9 +47,14 @@ class HealthConfig:
     tps_min_ratio: float = 0.3
     tps_warmup_logs: int = 5
     tps_k: int = 3
-    # Val-loss regression: stop if val rose K consecutive evals (Trainer already
-    # tracks a 3-increase warning; this is the hard cutoff).
+    # Val-loss regression: stop if val rose K consecutive evals.
     val_regression_stop_k: int = 5
+    # VRAM pressure (CUDA only). alloc/total ratio.
+    vram_frac_warn: float = 0.95
+    vram_frac_stop: float = 0.98
+    # Checkpoint write-time anomaly: write > factor * rolling median of last N.
+    ckpt_time_factor: float = 3.0
+    ckpt_time_median_window: int = 5
 
 
 @dataclass
@@ -59,6 +64,7 @@ class HealthState:
     tps_below_count: int = 0
     tps_peak: float = 0.0
     loss_window: deque[float] = field(default_factory=lambda: deque(maxlen=32))
+    ckpt_times: deque[float] = field(default_factory=lambda: deque(maxlen=5))
     alerts: list[tuple[int, AlertLevel, str]] = field(default_factory=list)
     stop_requested: bool = False
     stop_reason: str = ""
@@ -78,6 +84,7 @@ class HealthMonitor:
         self.config = config or HealthConfig()
         self.state = HealthState()
         self.state.loss_window = deque(maxlen=max(8, self.config.loss_spike_avg_window))
+        self.state.ckpt_times = deque(maxlen=max(3, self.config.ckpt_time_median_window))
 
     # ------------------------------------------------------------------
     def observe(self, metrics: dict[str, float], step: int) -> list[tuple[AlertLevel, str]]:
@@ -147,6 +154,42 @@ class HealthMonitor:
             self._request_stop("val_regression")
         for level, msg in fresh:
             self.state.alerts.append((step, level, msg))
+        return fresh
+
+    # ------------------------------------------------------------------
+    def observe_vram(self, alloc_gb: float, total_gb: float, step: int) -> list[tuple[AlertLevel, str]]:
+        """Allocated/total ratio — fires at 95 % / 98 %."""
+        fresh: list[tuple[AlertLevel, str]] = []
+        if total_gb <= 0:
+            return fresh
+        frac = alloc_gb / total_gb
+        if frac >= self.config.vram_frac_stop:
+            msg = f"VRAM {alloc_gb:.1f}/{total_gb:.1f}GB = {frac*100:.1f}% (stop threshold)"
+            fresh.append((AlertLevel.STOP, msg))
+            self._request_stop("vram_saturated")
+        elif frac >= self.config.vram_frac_warn:
+            msg = f"VRAM {alloc_gb:.1f}/{total_gb:.1f}GB = {frac*100:.1f}% (warn threshold)"
+            fresh.append((AlertLevel.WARN, msg))
+        for level, m in fresh:
+            self.state.alerts.append((step, level, m))
+        return fresh
+
+    # ------------------------------------------------------------------
+    def observe_checkpoint_write(self, seconds: float, step: int) -> list[tuple[AlertLevel, str]]:
+        """Catch write-time drift (NFS hiccup, disk pressure)."""
+        fresh: list[tuple[AlertLevel, str]] = []
+        window = self.state.ckpt_times
+        if len(window) >= 3:
+            import statistics
+            median = statistics.median(window)
+            if median > 0 and seconds > self.config.ckpt_time_factor * median:
+                fresh.append((AlertLevel.WARN,
+                              f"ckpt write {seconds:.1f}s > "
+                              f"{self.config.ckpt_time_factor}× median "
+                              f"{median:.1f}s (last {len(window)} saves)"))
+        window.append(seconds)
+        for level, m in fresh:
+            self.state.alerts.append((step, level, m))
         return fresh
 
     # ------------------------------------------------------------------

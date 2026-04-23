@@ -31,8 +31,23 @@ def write_start_manifest(
     if extra:
         payload.update(extra)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(yaml.safe_dump(payload, sort_keys=False, allow_unicode=True),
-                    encoding="utf-8")
+    # default_flow_style=False + allow_unicode; stringify unknown types so
+    # torch.__version__ / Path / similar don't trip the YAML representer.
+    path.write_text(
+        yaml.safe_dump(_yaml_sanitise(payload), sort_keys=False, allow_unicode=True),
+        encoding="utf-8",
+    )
+
+
+def _yaml_sanitise(obj):
+    """Recursively cast non-primitive scalars to str so yaml.safe_dump works."""
+    if isinstance(obj, dict):
+        return {str(k): _yaml_sanitise(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_yaml_sanitise(v) for v in obj]
+    if isinstance(obj, (str, int, float, bool)) or obj is None:
+        return obj
+    return str(obj)
 
 
 def write_end_manifest(
@@ -52,12 +67,14 @@ def write_end_manifest(
             existing = {}
     existing.update({
         "status": "finished",
-        "exit_reason": exit_reason,
+        "exit_reason": str(exit_reason),
         "final_state": asdict(state),
         "health": health_summary or {},
     })
-    path.write_text(yaml.safe_dump(existing, sort_keys=False, allow_unicode=True),
-                    encoding="utf-8")
+    path.write_text(
+        yaml.safe_dump(_yaml_sanitise(existing), sort_keys=False, allow_unicode=True),
+        encoding="utf-8",
+    )
 
 
 __all__ = ["write_start_manifest", "write_end_manifest"]
