@@ -1,26 +1,43 @@
-"""Sparse attention layer — sliding window + global tokens.
+"""Sparse attention layer — sliding window + optional global tokens.
 
-Pure-PyTorch reference. Late layers (22-27 in the 28-layer stack) use this
-to support long-context retrieval (needle-in-haystack). Earlier layers stay
-on Mamba / GLA which are linear in sequence length.
+Two back-ends:
 
-Attention pattern (per query position ``t``):
+- **native**: pure-PyTorch causal softmax with a custom mask (window + globals).
+  Portable, O(L²) memory, quadratic in seq length.
+- **flash** (``AURALIS_USE_CUDA_KERNELS=1`` + CUDA + ``flash-attn`` installed):
+  uses ``flash_attn_func`` with its built-in sliding-window option. Linear
+  memory in seq length, much faster. ``global_tokens`` are NOT supported by
+  the stock flash-attn API, so when they are needed we fall back to native.
 
-- attend to the last ``window_size`` positions ``[t - window_size + 1, t]``
-- attend to the first ``global_tokens`` positions ``[0, global_tokens)`` — these
-  act as a shared "summary bus" that every position can see
-- causal: never attend to positions ``> t``
-
-Production GPU path: swap for ``flash_attn`` with a sliding-window mask.
+Same parameters for both, so swapping is transparent.
 """
 
 from __future__ import annotations
+
+import os
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from auralis.model.utils.rotary import RotaryEmbedding, apply_rotary_pos_emb
+from auralis.model.utils.rotary import apply_rotary_pos_emb
+
+try:
+    from flash_attn import flash_attn_func as _flash_attn_func  # type: ignore
+    _FLASH_AVAILABLE = True
+except Exception:
+    _flash_attn_func = None
+    _FLASH_AVAILABLE = False
+
+
+def _use_flash(on_cuda: bool, global_tokens: int) -> bool:
+    if not (_FLASH_AVAILABLE and on_cuda):
+        return False
+    if global_tokens != 0:
+        return False                               # stock flash-attn has no global-tokens
+    if os.environ.get("AURALIS_USE_FLASH_ATTN", "") == "1":
+        return True
+    return os.environ.get("AURALIS_USE_CUDA_KERNELS", "0") == "1"
 
 
 class SparseAttentionLayer(nn.Module):
@@ -46,58 +63,48 @@ class SparseAttentionLayer(nn.Module):
         self.v_proj = nn.Linear(d_model, n_heads * d_head, bias=False)
         self.out_proj = nn.Linear(n_heads * d_head, d_model, bias=False)
 
-    # ------------------------------------------------------------------
-    # Forward
-    # ------------------------------------------------------------------
-    def forward(
-        self,
-        x: torch.Tensor,                                       # [B, L, d_model]
-        rope: tuple[torch.Tensor, torch.Tensor] | None = None, # (cos, sin) each [L, d_head]
-    ) -> tuple[torch.Tensor, None]:
+    def forward(self, x, rope=None):
         B, L, _ = x.shape
         H, D = self.n_heads, self.d_head
 
         q = self.q_proj(x).view(B, L, H, D)
         k = self.k_proj(x).view(B, L, H, D)
         v = self.v_proj(x).view(B, L, H, D)
-
         if self.use_rope and rope is not None:
             q, k = apply_rotary_pos_emb(q, k, rope[0], rope[1])
 
-        # [B, L, H, D] → [B, H, L, D]
+        if _use_flash(x.is_cuda, self.global_tokens):
+            # flash_attn expects [B, L, H, D] and takes window_size=(left, right)
+            out = _flash_attn_func(
+                q, k, v,
+                causal=True,
+                window_size=(self.window_size - 1, 0),        # causal → right=0
+                softmax_scale=None,                            # uses 1/sqrt(d_head) by default
+            )
+        else:
+            out = self._native(q, k, v)
+
+        return self.out_proj(out.reshape(B, L, H * D)), None
+
+    def _native(self, q, k, v):
+        B, L, H, D = q.shape
         q = q.transpose(1, 2)
         k = k.transpose(1, 2)
         v = v.transpose(1, 2)
-
-        scores = torch.matmul(q, k.transpose(-2, -1)) * (D ** -0.5)      # [B, H, L, L]
-
-        mask = self._build_mask(L, device=x.device)                      # [L, L]
+        scores = torch.matmul(q, k.transpose(-2, -1)) * (D ** -0.5)
+        mask = self._build_mask(L, device=q.device)
         scores = scores.masked_fill(mask.unsqueeze(0).unsqueeze(0), float("-inf"))
-
         attn = F.softmax(scores, dim=-1, dtype=torch.float32).to(q.dtype)
-        out = torch.matmul(attn, v)                                      # [B, H, L, D]
+        out = torch.matmul(attn, v)
+        return out.transpose(1, 2).contiguous()
 
-        out = out.transpose(1, 2).contiguous().view(B, L, H * D)
-        return self.out_proj(out), None
-
-    # ------------------------------------------------------------------
-    # Mask: True = blocked (will be -inf before softmax)
-    # ------------------------------------------------------------------
-    def _build_mask(self, L: int, device: torch.device) -> torch.Tensor:
-        i = torch.arange(L, device=device).unsqueeze(1)                  # [L, 1] query pos
-        j = torch.arange(L, device=device).unsqueeze(0)                  # [1, L] key pos
-
-        # Causal: block future
+    def _build_mask(self, L, device):
+        i = torch.arange(L, device=device).unsqueeze(1)
+        j = torch.arange(L, device=device).unsqueeze(0)
         causal = j > i
-
-        # Within-window: keep j in [i - window + 1, i]
         outside_window = (i - j) >= self.window_size
-
-        # Global tokens always attendable (override outside_window for first N keys)
         global_ok = j < self.global_tokens
-
-        blocked = causal | (outside_window & ~global_ok)
-        return blocked
+        return causal | (outside_window & ~global_ok)
 
 
 __all__ = ["SparseAttentionLayer"]

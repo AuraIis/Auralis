@@ -1,20 +1,39 @@
-"""Gated Linear Attention (GLA) layer — pure-PyTorch reference.
+"""Gated Linear Attention (GLA) layer.
 
-Linear-attention variant with a learnable per-head decay ``alpha``.
-Computes an outer-product hidden state ``S_t = alpha * S_{t-1} + k v^T``
-and reads with ``q S_t``, then gates the output.
+Two back-ends, same ``forward(x) -> (out, state)`` contract:
 
-Reference: Yang et al., "Gated Linear Attention Transformers with
-Hardware-Efficient Training" (2024). v1's Triton kernel gave ~20x speedup;
-production path will swap this implementation for that kernel on GPU.
-The interface stays the same so ``HelixBlock`` never changes.
+- **native** (default): pure-PyTorch sequential outer-product scan. Portable.
+- **fla** (when ``AURALIS_USE_CUDA_KERNELS=1`` + CUDA + ``flash-linear-attention``
+  installed): wraps ``fla.ops.gla.chunk_gla`` — fused Triton chunk-wise kernel,
+  20–30× faster on GPU.
+
+Both back-ends share the same trainable parameters (Q/K/V/G projections +
+alpha-gate + output) so a checkpoint trained with one works with the other.
+Only the inner scan math differs.
 """
 
 from __future__ import annotations
 
+import os
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+try:
+    from fla.ops.gla import chunk_gla as _chunk_gla  # type: ignore
+    _FLA_AVAILABLE = True
+except Exception:
+    _chunk_gla = None
+    _FLA_AVAILABLE = False
+
+
+def _use_fla(on_cuda: bool) -> bool:
+    if not (_FLA_AVAILABLE and on_cuda):
+        return False
+    if os.environ.get("AURALIS_USE_GLA_KERNEL", "") == "1":
+        return True
+    return os.environ.get("AURALIS_USE_CUDA_KERNELS", "0") == "1"
 
 
 class GLALayer(nn.Module):
@@ -29,82 +48,62 @@ class GLALayer(nn.Module):
         self.d_model = d_model
         self.n_heads = n_heads
         self.d_head = d_head
-        # d_state is nominally the "memory key dimension". GLA ties it to d_head
-        # in most published variants; accept an override but default to d_head.
         self.d_state = d_state or d_head
 
-        # Projections (bias-free, matches Llama/Mistral convention)
         self.q_proj = nn.Linear(d_model, n_heads * d_head, bias=False)
         self.k_proj = nn.Linear(d_model, n_heads * d_head, bias=False)
         self.v_proj = nn.Linear(d_model, n_heads * d_head, bias=False)
-        self.g_proj = nn.Linear(d_model, n_heads * d_head, bias=False)  # output gate
-
-        # alpha: per-head decay in (0, 1). Bias init ~log(0.9/(1-0.9)) so
-        # initial decay is ~0.9 — similar to RetNet / Mamba dt init in spirit.
-        self.alpha_proj = nn.Linear(d_model, n_heads, bias=True)
+        self.g_proj = nn.Linear(d_model, n_heads * d_head, bias=False)
+        # Per-head-per-dim log-decay projection. fla's ``chunk_gla`` expects g
+        # shaped [B, L, H, D] in log-space; we parameterise with a logistic
+        # bias that puts init decay near 0.9 (log(0.9)≈-0.105).
+        self.alpha_proj = nn.Linear(d_model, n_heads * d_head, bias=True)
         with torch.no_grad():
-            self.alpha_proj.bias.fill_(2.2)                    # sigmoid(2.2) ≈ 0.9
+            self.alpha_proj.bias.fill_(-0.105)  # decay ≈ 0.9 per channel
 
         self.out_proj = nn.Linear(n_heads * d_head, d_model, bias=False)
 
-    def forward(
-        self,
-        x: torch.Tensor,                                       # [B, L, d_model]
-        state: torch.Tensor | None = None,                     # [B, H, d_head, d_head]
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, x, state=None):
         B, L, _ = x.shape
         H, D = self.n_heads, self.d_head
 
         q = self.q_proj(x).view(B, L, H, D)
         k = self.k_proj(x).view(B, L, H, D)
         v = self.v_proj(x).view(B, L, H, D)
-        g = torch.sigmoid(self.g_proj(x).view(B, L, H, D))
-        alpha = torch.sigmoid(self.alpha_proj(x))              # [B, L, H] in (0,1)
+        g_out = torch.sigmoid(self.g_proj(x).view(B, L, H, D))
+        # log-decay gate for the scan: keep it negative (decay in (0,1])
+        log_alpha = -F.softplus(-self.alpha_proj(x).view(B, L, H, D))
 
-        out, new_state = self._gla_scan(q, k, v, alpha, state)
-        out = out * g                                          # per-channel gate
+        if _use_fla(x.is_cuda):
+            out, new_state = _chunk_gla(q, k, v, log_alpha,
+                                        scale=D ** -0.5,
+                                        initial_state=state,
+                                        output_final_state=False)
+        else:
+            out, new_state = self._native_scan(q, k, v, log_alpha, state)
+
+        out = out * g_out                                     # per-channel output gate
         return self.out_proj(out.reshape(B, L, H * D)), new_state
 
-    # ------------------------------------------------------------------
-    # Sequential linear-attention scan (O(L) in time, pure torch).
-    # Production GPU path: chunkwise kernel from flash-linear-attention.
-    # ------------------------------------------------------------------
-    def _gla_scan(
-        self,
-        q: torch.Tensor,                                       # [B, L, H, D]
-        k: torch.Tensor,                                       # [B, L, H, D]
-        v: torch.Tensor,                                       # [B, L, H, D]
-        alpha: torch.Tensor,                                   # [B, L, H]
-        state: torch.Tensor | None,
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+    def _native_scan(self, q, k, v, log_alpha, state):
+        """Sequential reference — matches chunk_gla semantics."""
         B, L, H, D = q.shape
-        # Scale queries (as in softmax attention) to keep inner products sane.
         q = q * (D ** -0.5)
+        alpha = torch.exp(log_alpha)                          # [B, L, H, D] in (0, 1]
 
         if state is None:
             S = torch.zeros(B, H, D, D, device=q.device, dtype=q.dtype)
         else:
             S = state.to(q.dtype)
 
-        # Per-head, per-step: S = alpha * S + k_t v_t^T ; out = q_t S
-        alpha = alpha.permute(0, 2, 1)                         # [B, H, L]
         outs = []
         for t in range(L):
-            k_t = k[:, t]                                      # [B, H, D]
-            v_t = v[:, t]                                      # [B, H, D]
-            q_t = q[:, t]                                      # [B, H, D]
-            a_t = alpha[..., t].unsqueeze(-1).unsqueeze(-1)    # [B, H, 1, 1]
-
-            # Outer product k_t v_t^T → [B, H, D, D]
-            update = torch.einsum("bhd,bhe->bhde", k_t, v_t)
+            # per-channel decay broadcast over the D key dimension of S
+            a_t = alpha[:, t].unsqueeze(-2)                   # [B, H, 1, D]
+            update = torch.einsum("bhd,bhe->bhde", k[:, t], v[:, t])
             S = a_t * S + update
-
-            # Read: q_t dot S
-            y_t = torch.einsum("bhd,bhde->bhe", q_t, S)        # [B, H, D]
-            outs.append(y_t)
-
-        out = torch.stack(outs, dim=1)                         # [B, L, H, D]
-        return out, S
+            outs.append(torch.einsum("bhd,bhde->bhe", q[:, t], S))
+        return torch.stack(outs, dim=1), S
 
 
 __all__ = ["GLALayer"]
