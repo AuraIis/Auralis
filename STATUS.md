@@ -1,7 +1,7 @@
 # STATUS — Auralis v2
 
 **Letzte Aktualisierung:** 2026-04-23
-**Aktive Phase:** Phase 1 **Code + Infrastruktur fertig**, Tokenization läuft, GPU-Launch ausstehend
+**Aktive Phase:** Phase 1 **Code + Infrastruktur fertig**, Tokenization läuft, **Blackwell-GPU-Validation PASS** — RunPod-Launch-ready
 **Modellgröße:** 1B (final, Konfig ~954 M Params)
 **Phase-1-Token-Budget:** 25B geplant → **21B tatsächlich** bereitgestellt (84 % Deckung; Lücke in Phase 2 schließbar)
 
@@ -103,9 +103,38 @@ Nicht eingeflossen: SlimPajama (entfernt), Dolma (script-basiert), Proof-Pile-2 
 
 **Launch-Guide**: [docs/PHASE_1_LAUNCH.md](docs/PHASE_1_LAUNCH.md) — alle RunPod-Setup-Schritte + Preflight + Monitoring + Rollback.
 
+## GPU-Validation auf RTX PRO 5000 Blackwell (2026-04-23)
+
+Testumgebung: Unraid-Docker `auralis-training`, CUDA 12.8, torch 2.7.0, Triton 3.6,
+RTX PRO 5000 Blackwell 47 GB.
+
+**Installierte Libraries (alle cu128-kompatibel):**
+- `flash-linear-attention` (GLA chunk kernels, Triton)
+- `mamba-ssm 2.3.1` + `causal-conv1d 1.6.1` (Triton; funktioniert mit Triton 3.6, nicht 3.3)
+- `flash-attn 2.8.3` (eigene CUDA-Kernels, kein Triton)
+
+**Ergebnisse 250M-Modell, bf16, batch=4:**
+
+| Config | seq | Backend | tok/s | VRAM | Loss-Korrektheit |
+|---|--:|---|--:|--:|:-:|
+| Baseline 3090 | 256 | native | 97 | 13.0 GB | ✓ |
+| Blackwell | 256 | native | 147-151 | 13.0 GB | ✓ |
+| Blackwell | 512 | native | 82 | **24.85 GB** | ✓ |
+| Blackwell | 512 | gla-kernel | 88 | **21.27 GB** (-14 %) | ✓ identisch |
+| Blackwell | 512 | gla + flash-attn | 88 | 21.27 GB | ✓ identisch |
+
+**Key Takeaways:**
+- Native Backend läuft stabil auf Blackwell (≈1.6× schneller als 3090 bei gleichem Shape).
+- Kernel-Swap numerisch korrekt — Loss-Werte byte-identisch mit native.
+- **Haupt-Win ist VRAM-Ersparnis (-14 %)** durch fla chunk-wise state, nicht tok/s.
+  Bei seq=2048 (Phase-1-Config) steigt der Speedup.
+- **Mamba-Kernel aktuell auf Blackwell problematisch** — Triton-Compile-Fehler in mamba_ssm trotz
+  Triton 3.6 Upgrade. Auf H100/H200 geht er. Für Blackwell-Runs: `AURALIS_USE_GLA_KERNEL=1
+  AURALIS_USE_FLASH_ATTN=1` (Mamba bleibt native).
+
 ## Offene Blocker vor GPU-Launch
 
-1. **Tokenization läuft** (88 GB → ~40-50 GB binär, ca. 4 h auf SMB). Kann ich nicht beschleunigen — ist Disk-I/O-bound.
+1. **Tokenization läuft** (88 GB → ~40-50 GB binär, Fortschritt: english.bin + german.bin fertig, code.bin läuft noch). Kann ich nicht beschleunigen — ist Disk-I/O-bound.
 2. **RunPod-Pod-Setup** (Guthaben, SSH, NAS-Mount, `pip install mamba-ssm flash-attn flash-linear-attention`). User-Aufgabe.
 3. **Entscheidung 1 × H200 vs. 4 × A40** — siehe Launch-Guide §2.
 

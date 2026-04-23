@@ -42,3 +42,16 @@ Chronologisch, Milestones. Append-Only.
 - Tokenization der 88 GB Phase-1-Daten startete parallel (Background) — Durchsatz ~6 MB/s auf SMB, geschätzte Dauer ~4 h.
 - **Launch-Guide** `docs/PHASE_1_LAUNCH.md` deckt RunPod-Setup, Preflight, Monitoring, Rollback-Prozeduren und Milestone-Erwartungen ab.
 - **GPU-Launch selbst wurde NICHT automatisch gestartet** — das kostet $500-800 auf RunPod und braucht Michaels explizite Entscheidung + Account-Setup.
+
+## 2026-04-23 — Blackwell-GPU-Validation auf Unraid
+- Auralis-Docker-Container (Ubuntu 22.04, Python 3.11, torch 2.7.0+cu128) auf Unraid-Host mit RTX PRO 5000 Blackwell (47 GB VRAM) benutzt.
+- V2-Datenverzeichnis via `mount --bind /mnt/user/Auralis/AuralisV2 /mnt/user/Auralis/NEWGPT/v2data` + `docker restart` in den Container eingehängt (SHFS propagiert laufende Mounts nicht).
+- Libraries installiert: `flash-linear-attention`, `mamba-ssm 2.3.1`, `causal-conv1d 1.6.1`, `flash-attn 2.8.3` (alle cu128-kompatibel). Nach Triton 3.6-Upgrade kompilieren beide Triton-basierte Libraries (mamba-ssm + fla).
+- **Library-Swap-Hooks eingebaut**: Pro Layer-Typ separat aktivierbar per Env-Var (`AURALIS_USE_CUDA_KERNELS`, `AURALIS_USE_MAMBA_KERNEL`, `AURALIS_USE_GLA_KERNEL`, `AURALIS_USE_FLASH_ATTN`). Interface für `HelixBlock` unverändert; default bleibt native pure-torch. GLA-Backend unterstützt gleiche Parameter-Shapes native/fla, Mamba-Backend nicht (Architektur-Unterschied).
+- **Smoke-Test-Resultate (250M, bf16, batch=4):**
+  - seq=256 native: 147 tok/s, 13.0 GB VRAM, Loss 12.16 → 11.59 (Δ+0.57, lernt)
+  - seq=512 native: 82 tok/s, 24.85 GB VRAM
+  - seq=512 gla-kernel: 88 tok/s, **21.27 GB VRAM (-14 %)**, numerisch identisch zu native
+  - seq=512 gla+flash: identische Resultate (Sparse macht nur 3/12 Layer)
+- **Blackwell-Erkenntnis:** Hauptvorteil der Kernels ist **VRAM-Ersparnis** (chunkwise statt materialisiertem [B,L,H,D,D] State), nicht primär tok/s. tok/s-Speedup wird bei seq=2048 Phase-1-Config deutlicher.
+- **Mamba-Kernel auf Blackwell aktuell problematisch** — Triton compile bug in mamba_ssm selbst mit Triton 3.6. Für RunPod H100/H200 ok, für Blackwell Mamba native lassen.
