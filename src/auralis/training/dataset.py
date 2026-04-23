@@ -37,20 +37,30 @@ def _mmap_bin(path: Path) -> np.memmap:
 class PretrainDataset:
     """Infinite token-stream sampler over one .bin file.
 
-    Each call to :meth:`sample` draws a random start offset and returns a
-    contiguous block of ``seq_length + 1`` tokens as an ``int64`` tensor.
+    Each call to :meth:`sample` draws a random start offset inside the
+    ``[train_start, train_end)`` window and returns a contiguous block of
+    ``seq_length + 1`` tokens as an ``int64`` tensor.
+
+    The ``train_end`` / ``val_start`` split supports a disjoint validation
+    holdout: the last ``val_split_tokens`` tokens of the .bin file are
+    reserved for validation and are never yielded by a train-mode sampler.
     """
 
     bin_path: Path
     seq_length: int
     rng: np.random.Generator
+    train_start: int = 0
+    train_end: int | None = None          # exclusive; None → all tokens
 
     def __post_init__(self) -> None:
         self._mmap = _mmap_bin(Path(self.bin_path))
         self._n_tokens = self._mmap.shape[0]
-        if self._n_tokens <= self.seq_length + 1:
+        if self.train_end is None:
+            self.train_end = self._n_tokens
+        if self.train_end - self.train_start <= self.seq_length + 1:
             raise ValueError(
-                f"{self.bin_path} has {self._n_tokens} tokens, need > seq_length+1"
+                f"{self.bin_path} window [{self.train_start}, {self.train_end}) has "
+                f"{self.train_end - self.train_start} tokens, need > seq_length+1"
             )
 
     @property
@@ -58,7 +68,9 @@ class PretrainDataset:
         return int(self._n_tokens)
 
     def sample(self) -> torch.Tensor:
-        start = int(self.rng.integers(0, self._n_tokens - self.seq_length - 1))
+        lo = self.train_start
+        hi = self.train_end - self.seq_length - 1
+        start = int(self.rng.integers(lo, hi))
         block = self._mmap[start : start + self.seq_length + 1].astype(np.int64, copy=True)
         return torch.from_numpy(block)
 
@@ -82,27 +94,51 @@ class MixedDataLoader:
         batch_size: int,
         seq_length: int,
         seed: int = 42,
+        split: str = "train",                    # "train" | "val"
+        val_split_bytes: int = 0,                # last N BYTES of each .bin reserved for val
     ):
         self.data_dir = Path(data_dir)
         self.mix_ratios = dict(mix_ratios)
         self.batch_size = batch_size
         self.seq_length = seq_length
+        self.split = split
+        if split not in ("train", "val"):
+            raise ValueError(f"split must be 'train' or 'val', got {split!r}")
 
         total = sum(self.mix_ratios.values())
         if not 0.99 <= total <= 1.01:
             raise ValueError(f"mix_ratios must sum to 1, got {total}")
 
+        # uint32 = 4 bytes per token
+        val_split_tokens = int(val_split_bytes) // 4
+
         # Per-language RNGs (distinct seeds so draws do not correlate).
+        # Val gets its own offset in the seed so train and val do not align.
         self.datasets: dict[str, PretrainDataset] = {}
         for i, lang in enumerate(sorted(self.mix_ratios)):
             bin_path = self.data_dir / f"{lang}.bin"
             if not bin_path.exists():
                 raise FileNotFoundError(bin_path)
-            lang_rng = np.random.default_rng(seed + i * 7919)
+            n_tokens_total = bin_path.stat().st_size // 4
+
+            if split == "train":
+                train_start = 0
+                train_end = max(seq_length + 2, n_tokens_total - val_split_tokens)
+                rng = np.random.default_rng(seed + i * 7919)
+            else:
+                # Val window: last val_split_tokens of the file. Must be > seq_length+1.
+                train_start = max(0, n_tokens_total - val_split_tokens)
+                train_end = n_tokens_total
+                if train_end - train_start <= seq_length + 1:
+                    raise ValueError(
+                        f"val split for {lang} too small: {train_end - train_start} tokens "
+                        f"(need > seq_length+1={seq_length+1}). Increase val_split_bytes."
+                    )
+                rng = np.random.default_rng(seed + i * 7919 + 1_000_003)
+
             self.datasets[lang] = PretrainDataset(
-                bin_path=bin_path,
-                seq_length=seq_length,
-                rng=lang_rng,
+                bin_path=bin_path, seq_length=seq_length, rng=rng,
+                train_start=train_start, train_end=train_end,
             )
 
         # Rows-per-batch per language.

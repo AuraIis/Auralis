@@ -102,6 +102,13 @@ def main() -> None:
                         help="Override optimizer.lr (default: from config).")
     parser.add_argument("--use-real-data", action="store_true",
                         help="Read actual tokenized .bin files from the NAS.")
+    parser.add_argument("--val-split-bytes", type=int, default=0,
+                        help="If > 0, reserve a tail slice per .bin as held-out val; "
+                             "the trainer will then compute val_loss mid-run.")
+    parser.add_argument("--eval-every", type=int, default=0,
+                        help="Run evaluation every N steps (requires --val-split-bytes).")
+    parser.add_argument("--gradient-checkpointing", action="store_true",
+                        help="Enable torch gradient checkpointing on the model.")
     args = parser.parse_args()
 
     # ---- Resolve device ----
@@ -126,6 +133,10 @@ def main() -> None:
     model = build_model(args.model_config)
     n_params = sum(p.numel() for p in model.parameters())
     print(f"model: {n_params/1e6:.1f} M params from {args.model_config.name}")
+    if args.gradient_checkpointing:
+        model.gradient_checkpointing_enable()
+        print(f"  gradient_checkpointing: ENABLED (is_gradient_checkpointing="
+              f"{model.is_gradient_checkpointing})")
     model = model.to(device)
     if device.type == "cuda":
         torch.cuda.synchronize()
@@ -160,7 +171,21 @@ def main() -> None:
         batch_size=args.batch_size,
         seq_length=args.seq_length,
         seed=0,
+        split="train",
+        val_split_bytes=args.val_split_bytes,
     )
+    val_loader = None
+    if args.val_split_bytes > 0:
+        val_loader = MixedDataLoader(
+            data_dir=data_dir,
+            mix_ratios=full_cfg["data"]["mix_ratios"],
+            batch_size=args.batch_size,
+            seq_length=args.seq_length,
+            seed=0,
+            split="val",
+            val_split_bytes=args.val_split_bytes,
+        )
+        print(f"  val enabled: {args.val_split_bytes/1e6:.1f} MB per lang held out")
 
     # ---- Optim + sched (with optional CLI overrides for fast smoke) ----
     opt_cfg = dict(full_cfg["training"]["optimizer"])
@@ -173,6 +198,7 @@ def main() -> None:
     sched = build_scheduler(opt, sched_cfg, total_steps=args.steps)
 
     # ---- Custom run loop (wraps fwd+bwd in autocast for bf16/fp16) ----
+    eval_every = args.eval_every if args.eval_every > 0 else 10**9
     run_cfg = {
         "data": {"seq_length": args.seq_length},
         "training": {
@@ -180,37 +206,36 @@ def main() -> None:
             "gradient_accumulation": args.grad_accum,
             "gradient_clip_norm": 1.0,
             "total_steps": args.steps,
+            "dtype": args.dtype,                       # trainer reads this for autocast
         },
         "logging": {"log_every": max(1, args.steps // 10),
-                    "eval_every": 10**9, "save_every": args.steps},
+                    "eval_every": eval_every, "save_every": args.steps},
         "checkpointing": {"output_dir": str(ckpt_dir), "save_last_n": 1},
+        "evaluation": {"max_val_batches": 4},
     }
 
     trainer = PretrainTrainer(
         model=model, optimizer=opt, scheduler=sched,
-        dataloader=loader, config=run_cfg, device=device,
+        dataloader=loader, val_dataloader=val_loader,
+        config=run_cfg, device=device,
     )
+    print(f"  trainer amp_dtype: {trainer._amp_dtype}")
 
-    # Monkey-patch in autocast + peak-VRAM tracking without touching trainer.py.
+    # Capture metrics (trainer handles autocast itself now).
     tokens_per_step = args.batch_size * args.grad_accum * args.seq_length
     losses: list[float] = []
+    val_losses: list[float] = []
     original_log = trainer.log
-    peak_vram_gb = 0.0
-    step_times: list[float] = []
-    last_step_t0 = [time.time()]
 
     def capture(metrics, step):
         if "train/loss" in metrics:
             losses.append(metrics["train/loss"])
+        if "eval/val_loss" in metrics:
+            val_losses.append(metrics["eval/val_loss"])
         original_log(metrics, step)
     trainer.log = capture
 
-    # Wrap model call in autocast
-    original_forward = model.forward
-    def autocast_forward(*a, **kw):
-        with _make_autocast_ctx(device, dtype):
-            return original_forward(*a, **kw)
-    model.forward = autocast_forward  # type: ignore[assignment]
+    peak_vram_gb = 0.0
 
     t0 = time.time()
     state = trainer.train()
@@ -248,6 +273,11 @@ def main() -> None:
     drop = losses[0] - losses[-1]
     verdict = "✓ learning" if drop > 0.05 else "⚠ loss flat" if drop > -0.05 else "✗ loss rising"
     print(f"  loss delta        : {drop:+.4f}   {verdict}")
+    if val_losses:
+        print(f"  val_loss observed : {val_losses}")
+        print(f"  best_val_loss     : {trainer.state.best_val_loss:.4f}")
+    elif args.val_split_bytes > 0:
+        print(f"  val_loss          : (none — no eval step triggered within {args.steps} steps)")
     print(f"  checkpoint        : {checkpoints[0]}  (reloaded OK)")
     print("=" * 60)
 

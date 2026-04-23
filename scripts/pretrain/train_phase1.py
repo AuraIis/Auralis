@@ -6,6 +6,15 @@ FSDP or DeepSpeed outside this script — the module deliberately stays
 single-process so the smoke-test path (CPU) and the production path share
 the same code.
 
+What this wires up from ``configs/training/phase1_pretrain.yaml``:
+
+- ``training.dtype`` → forward-pass autocast (bf16 / fp16 on GPU)
+- ``training.gradient_checkpointing`` → torch checkpoint per block
+- ``data.val_split_bytes`` → reserve N bytes at tail of each .bin for a
+  held-out validation loader (never overlapping with train samples)
+- ``logging.wandb.enabled`` → init W&B run, pass its logger to the trainer
+- ``checkpointing.external_backup`` → ``Trainer`` copies ckpt to NAS every N steps
+
 Typical invocation (GPU host)::
 
     python scripts/pretrain/train_phase1.py \
@@ -47,6 +56,26 @@ def _resolve_device(cfg_device: str, override: str | None) -> torch.device:
     return torch.device(wanted)
 
 
+def _maybe_init_wandb(config: dict, args: argparse.Namespace):
+    """Return (logger_callable, run) — logger is a no-op when W&B is off."""
+    wandb_cfg = (config.get("logging") or {}).get("wandb") or {}
+    if not wandb_cfg.get("enabled") or args.no_wandb:
+        return (lambda _m, _s: None), None
+    try:
+        import wandb  # type: ignore
+    except ImportError:
+        print("warn: wandb not installed, skipping W&B logger", file=sys.stderr)
+        return (lambda _m, _s: None), None
+
+    run = wandb.init(
+        project=wandb_cfg.get("project", "auralis-v2"),
+        name=config.get("experiment", {}).get("name"),
+        tags=list(wandb_cfg.get("tags", []) or []),
+        config=config,
+    )
+    return (lambda metrics, step: wandb.log(metrics, step=step)), run
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--config", type=Path, default=REPO / "configs" / "training" / "phase1_pretrain.yaml")
@@ -54,6 +83,8 @@ def main() -> None:
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--device", default=None, help="Override config.training.device")
     parser.add_argument("--no-compile", action="store_true")
+    parser.add_argument("--no-wandb", action="store_true",
+                        help="Skip wandb.init even if config.logging.wandb.enabled.")
     args = parser.parse_args()
 
     config = load_yaml(args.config)
@@ -73,37 +104,80 @@ def main() -> None:
         print("preflight ok — exiting (--dry-run)")
         return
 
-    # Model
+    # ---- Model ----
     print(f"building model from {config['model']['config_path']}")
     model = build_model(REPO / config["model"]["config_path"]).to(device)
     n_params = sum(p.numel() for p in model.parameters())
     print(f"  parameters: {n_params/1e9:.2f} B ({n_params/1e6:.1f} M)")
 
+    # Gradient checkpointing — takes the flag from config.advanced already;
+    # also honour training.gradient_checkpointing as an override.
+    gc_flag = bool(
+        config.get("training", {}).get("gradient_checkpointing")
+        or getattr(getattr(model, "config", None), "advanced", None)
+        and model.config.advanced.gradient_checkpointing
+    )
+    if gc_flag:
+        model.gradient_checkpointing_enable()
+        print("  gradient_checkpointing: ENABLED")
+    else:
+        print("  gradient_checkpointing: disabled")
+
+    # torch.compile gate
     if config["training"].get("torch_compile") and not args.no_compile and device.type == "cuda":
+        print("  torch.compile: compiling model…")
         model = torch.compile(model)
 
-    # Data
-    dataloader = MixedDataLoader(
-        data_dir=config["data"]["data_dir"],
-        mix_ratios=config["data"]["mix_ratios"],
-        batch_size=config["training"]["batch_size_per_device"],
-        seq_length=config["data"]["seq_length"],
-        seed=int(config["data"].get("dataloader_seed", 42)),
-    )
-    print(f"  rows/batch per language: {dataloader.rows_per_language}")
+    # dtype announce
+    dtype_str = str(config["training"].get("dtype", "fp32"))
+    print(f"  autocast dtype: {dtype_str}")
 
-    # Optim + sched
+    # ---- Data ----
+    dcfg = config["data"]
+    val_split_bytes = int(dcfg.get("val_split_bytes", 0))
+    train_loader = MixedDataLoader(
+        data_dir=dcfg["data_dir"],
+        mix_ratios=dcfg["mix_ratios"],
+        batch_size=config["training"]["batch_size_per_device"],
+        seq_length=dcfg["seq_length"],
+        seed=int(dcfg.get("dataloader_seed", 42)),
+        split="train",
+        val_split_bytes=val_split_bytes,
+    )
+    print(f"  train rows/batch per language: {train_loader.rows_per_language}")
+
+    val_loader = None
+    if val_split_bytes > 0:
+        val_loader = MixedDataLoader(
+            data_dir=dcfg["data_dir"],
+            mix_ratios=dcfg["mix_ratios"],
+            batch_size=config["training"]["batch_size_per_device"],
+            seq_length=dcfg["seq_length"],
+            seed=int(dcfg.get("dataloader_seed", 42)),
+            split="val",
+            val_split_bytes=val_split_bytes,
+        )
+        print(f"  val enabled: hold-out {val_split_bytes/1e6:.1f} MB per language")
+    else:
+        print("  val disabled: set data.val_split_bytes > 0 to enable")
+
+    # ---- Optim + sched ----
     optimizer = build_optimizer(model, config["training"]["optimizer"])
     scheduler = build_scheduler(
         optimizer, config["training"]["scheduler"], total_steps=int(config["training"]["total_steps"])
     )
 
-    # Trainer
+    # ---- W&B ----
+    wandb_logger, wandb_run = _maybe_init_wandb(config, args)
+
+    # ---- Trainer ----
     trainer = PretrainTrainer(
         model=model,
         optimizer=optimizer,
         scheduler=scheduler,
-        dataloader=dataloader,
+        dataloader=train_loader,
+        val_dataloader=val_loader,
+        wandb_logger=wandb_logger,
         config=config,
         device=device,
     )
@@ -111,7 +185,11 @@ def main() -> None:
         trainer.load_checkpoint(args.resume)
         print(f"  resumed from {args.resume} at step {trainer.state.step}")
 
-    trainer.train()
+    try:
+        trainer.train()
+    finally:
+        if wandb_run is not None:
+            wandb_run.finish()
 
 
 if __name__ == "__main__":

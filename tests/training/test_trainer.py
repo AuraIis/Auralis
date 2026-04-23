@@ -143,6 +143,55 @@ def test_trainer_saves_and_loads_checkpoint(trainer_env):
     assert trainer2.state.step == 10
 
 
+def test_trainer_runs_evaluation_when_val_loader_present(trainer_env, tmp_path: Path):
+    trainer, _ = trainer_env
+    # Build a tiny val loader that reuses the same synthetic bins with a
+    # fresh split (no bytes reserved — just reuse the full window for the test).
+    import numpy as np
+    from auralis.training.dataset import MixedDataLoader
+    data_dir = tmp_path / "valdata"
+    data_dir.mkdir()
+    rng = np.random.default_rng(1)
+    for lang in ("english", "german", "code"):
+        rng.integers(0, 4096, size=2000, dtype=np.uint32).tofile(data_dir / f"{lang}.bin")
+    trainer.val_dataloader = MixedDataLoader(
+        data_dir=data_dir,
+        mix_ratios={"english": 0.5, "german": 0.5, "code": 0.0},
+        batch_size=2, seq_length=16, seed=1,
+    )
+    # Make eval fire once during the 10-step run
+    trainer._eval_every = 5
+    trainer.config["evaluation"] = {"max_val_batches": 3}
+
+    metrics_captured: list[dict[str, float]] = []
+    original = trainer.log
+    def cap(m, s):
+        metrics_captured.append(dict(m))
+        original(m, s)
+    trainer.log = cap
+
+    trainer.train()
+    # At least one eval metric must have been logged.
+    assert any("eval/val_loss" in m for m in metrics_captured), metrics_captured
+    # best.pt must exist after the first successful eval.
+    best = Path(trainer.config["checkpointing"]["output_dir"]) / "best.pt"
+    assert best.exists()
+
+
+def test_trainer_bf16_autocast_selected_on_config(trainer_env):
+    trainer, _ = trainer_env
+    trainer.config["training"]["dtype"] = "bf16"
+    # Re-run __init__-style flags
+    trainer._amp_dtype = torch.bfloat16
+    trainer._use_amp = True
+    ctx = trainer._autocast()
+    # Can't assert much at a type level, but the autocast manager must be usable
+    with ctx:
+        t = torch.randn(2, 3)
+        y = t @ t.T
+    assert y.shape == (2, 2)
+
+
 def test_trainer_raises_on_nan_loss(trainer_env, monkeypatch):
     trainer, _ = trainer_env
 

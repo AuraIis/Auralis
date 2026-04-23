@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import shutil
 import time
+from contextlib import nullcontext
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Iterator
@@ -23,6 +24,15 @@ import torch
 import torch.nn as nn
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LambdaLR
+
+
+_AMP_DTYPES: dict[str, torch.dtype] = {
+    "fp32": torch.float32,
+    "bf16": torch.bfloat16,
+    "bfloat16": torch.bfloat16,
+    "fp16": torch.float16,
+    "float16": torch.float16,
+}
 
 
 @dataclass
@@ -70,6 +80,15 @@ class PretrainTrainer:
             tcfg["batch_size_per_device"] * self._grad_accum * config["data"]["seq_length"]
         )
 
+        # AMP dtype — config.training.dtype drives the forward-pass autocast.
+        # CPU only supports bf16 autocast (no fp16); we fall back to fp32
+        # automatically if the caller picks fp16 on CPU.
+        dtype_str = str(tcfg.get("dtype", "fp32")).lower()
+        self._amp_dtype = _AMP_DTYPES.get(dtype_str, torch.float32)
+        if self.device.type == "cpu" and self._amp_dtype == torch.float16:
+            self._amp_dtype = torch.float32
+        self._use_amp = self._amp_dtype != torch.float32
+
         lcfg = config["logging"]
         self._log_every = int(lcfg.get("log_every", 10))
         self._eval_every = int(lcfg.get("eval_every", 1000))
@@ -79,6 +98,14 @@ class PretrainTrainer:
         self._ckpt_dir = Path(ccfg["output_dir"])
         self._ckpt_dir.mkdir(parents=True, exist_ok=True)
         self._keep_last = int(ccfg.get("save_last_n", 3))
+        self._external_backup = ccfg.get("external_backup") or {}
+
+    def _autocast(self):
+        """Context manager for mixed-precision forward/backward."""
+        if not self._use_amp:
+            return nullcontext()
+        # torch.autocast is device-type specific.
+        return torch.autocast(device_type=self.device.type, dtype=self._amp_dtype)
 
     # ------------------------------------------------------------------
     def train(self) -> TrainerState:
@@ -94,8 +121,9 @@ class PretrainTrainer:
             for _ in range(self._grad_accum):
                 batch = next(data_iter)
                 batch = {k: v.to(self.device, non_blocking=True) for k, v in batch.items()}
-                out = self.model(input_ids=batch["input_ids"], labels=batch["labels"])
-                loss = out["loss"] / self._grad_accum
+                with self._autocast():
+                    out = self.model(input_ids=batch["input_ids"], labels=batch["labels"])
+                    loss = out["loss"] / self._grad_accum
                 if not torch.isfinite(loss):
                     msg = f"non-finite loss at step {self.state.step}: {loss.item()}"
                     self.state.alerts.append(msg)
@@ -160,7 +188,8 @@ class PretrainTrainer:
         for _ in range(max_batches):
             batch = next(it)
             batch = {k: v.to(self.device, non_blocking=True) for k, v in batch.items()}
-            out = self.model(input_ids=batch["input_ids"], labels=batch["labels"])
+            with self._autocast():
+                out = self.model(input_ids=batch["input_ids"], labels=batch["labels"])
             losses.append(out["loss"].item())
         self.model.train()
         val = sum(losses) / max(1, len(losses))
@@ -199,6 +228,20 @@ class PretrainTrainer:
         # Sidecar JSON for quick introspection without loading the tensors.
         sidecar = path.with_suffix(".json")
         sidecar.write_text(json.dumps(asdict(self.state), indent=2), encoding="utf-8")
+
+        # External backup (e.g. NAS) every N steps.
+        backup_cfg = self._external_backup
+        if backup_cfg.get("enabled"):
+            interval = int(backup_cfg.get("interval_steps", 0))
+            if interval > 0 and self.state.step % interval == 0:
+                backup_root = Path(backup_cfg["path"])
+                try:
+                    backup_root.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(path, backup_root / path.name)
+                    shutil.copy2(sidecar, backup_root / sidecar.name)
+                except OSError as e:
+                    # Non-fatal: a failed backup should not interrupt training.
+                    self.state.alerts.append(f"backup to {backup_root} failed: {e}")
 
         self._rotate_checkpoints()
         return path

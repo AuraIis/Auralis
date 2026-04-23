@@ -15,6 +15,7 @@ from pathlib import Path
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.utils.checkpoint import checkpoint as _torch_checkpoint
 
 from auralis.model.config import AuralisConfig, LayerConfig
 from auralis.model.layers.ffn import build_ffn
@@ -111,6 +112,11 @@ class HelixModel(nn.Module):
             [HelixBlock(config, layer_idx=i) for i in range(config.n_layers)]
         )
 
+        # Gradient checkpointing — trades a forward recompute for ~3-5x less
+        # activation memory. Driven by config.advanced.gradient_checkpointing;
+        # can also be toggled at runtime via gradient_checkpointing_enable().
+        self._gradient_checkpointing: bool = bool(config.advanced.gradient_checkpointing)
+
         self.norm_out = RMSNorm(config.d_model, eps=config.norm_eps)
 
         # LM head: either a separate linear or tied to embeddings.
@@ -147,6 +153,19 @@ class HelixModel(nn.Module):
         )
 
     # ------------------------------------------------------------------
+    # Gradient checkpointing toggles (HF-style API)
+    # ------------------------------------------------------------------
+    def gradient_checkpointing_enable(self) -> None:
+        self._gradient_checkpointing = True
+
+    def gradient_checkpointing_disable(self) -> None:
+        self._gradient_checkpointing = False
+
+    @property
+    def is_gradient_checkpointing(self) -> bool:
+        return self._gradient_checkpointing
+
+    # ------------------------------------------------------------------
     # Forward
     # ------------------------------------------------------------------
     def forward(
@@ -159,8 +178,15 @@ class HelixModel(nn.Module):
         if self.rope is not None:
             rope = self.rope(input_ids.size(1), device=x.device, dtype=x.dtype)
 
+        # Enable checkpointing only when training (no use during eval/inference).
+        use_ckpt = self._gradient_checkpointing and self.training and x.requires_grad
         for block in self.blocks:
-            x = block(x, rope=rope)
+            if use_ckpt:
+                # use_reentrant=False is the modern non-reentrant autograd path
+                # and preserves our custom block signature.
+                x = _torch_checkpoint(block, x, rope, use_reentrant=False)
+            else:
+                x = block(x, rope=rope)
 
         x = self.norm_out(x)
 

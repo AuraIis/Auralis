@@ -99,3 +99,51 @@ def test_mixed_dataloader_missing_bin_raises(tmp_path: Path):
             batch_size=2,
             seq_length=8,
         )
+
+
+def test_mixed_dataloader_train_val_split_disjoint(three_bins: Path):
+    """Train and val should sample from disjoint regions of the same .bin."""
+    # val_split_bytes: reserve last 4000 tokens (=16000 bytes, uint32) per lang.
+    # english.bin has 20k tokens → train window [0, 16000), val [16000, 20000).
+    val_bytes = 16_000
+    train = MixedDataLoader(
+        data_dir=three_bins,
+        mix_ratios={"english": 0.5, "german": 0.5, "code": 0.0},
+        batch_size=8, seq_length=32, seed=0,
+        split="train", val_split_bytes=val_bytes,
+    )
+    val = MixedDataLoader(
+        data_dir=three_bins,
+        mix_ratios={"english": 0.5, "german": 0.5, "code": 0.0},
+        batch_size=8, seq_length=32, seed=0,
+        split="val", val_split_bytes=val_bytes,
+    )
+    en_train = train.datasets["english"]
+    en_val = val.datasets["english"]
+    # Val starts where train ends (approximately — train_end is clamped down
+    # so there's always room for one seq+1 even if val is huge).
+    assert en_train.train_end <= en_val.train_start
+    assert en_val.train_end > en_val.train_start
+    # Train and val have different RNG streams → first samples must differ.
+    a = train.datasets["english"].sample()
+    b = val.datasets["english"].sample()
+    assert not torch.equal(a, b)
+
+
+def test_mixed_dataloader_val_too_small_raises(three_bins: Path):
+    with pytest.raises(ValueError, match="val split for"):
+        MixedDataLoader(
+            data_dir=three_bins,
+            mix_ratios={"english": 1.0, "german": 0.0, "code": 0.0},
+            batch_size=2, seq_length=64, seed=0,
+            split="val", val_split_bytes=100,    # far too small
+        )
+
+
+def test_mixed_dataloader_split_name_validated(three_bins: Path):
+    with pytest.raises(ValueError, match="split must be"):
+        MixedDataLoader(
+            data_dir=three_bins,
+            mix_ratios={"english": 1.0, "german": 0.0, "code": 0.0},
+            batch_size=2, seq_length=16, split="holdout",
+        )
