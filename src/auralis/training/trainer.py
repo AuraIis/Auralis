@@ -12,8 +12,13 @@ signature changes here — only dict-key lookups.
 
 from __future__ import annotations
 
+import hashlib
 import json
+import os
+import platform
 import shutil
+import socket
+import subprocess
 import time
 from contextlib import nullcontext
 from dataclasses import asdict, dataclass, field
@@ -35,6 +40,37 @@ _AMP_DTYPES: dict[str, torch.dtype] = {
 }
 
 
+def _safe_log(logger: Callable[[dict[str, float], int], None]):
+    """Wrap a metrics logger so a logging error never kills training."""
+    def inner(metrics: dict[str, float], step: int) -> None:
+        try:
+            logger(metrics, step)
+        except Exception as e:                                 # noqa: BLE001
+            # Very noisy to print every failure; emit the type once per call.
+            print(f"  warn: metrics logger failed: {type(e).__name__}: {e}", flush=True)
+    return inner
+
+
+def _git_sha(repo_root: Path) -> str:
+    try:
+        return subprocess.check_output(
+            ["git", "-C", str(repo_root), "rev-parse", "HEAD"],
+            stderr=subprocess.DEVNULL,
+        ).decode().strip()
+    except Exception:
+        return "unknown"
+
+
+def _sha256_short(path: Path) -> str:
+    if not path or not Path(path).is_file():
+        return ""
+    h = hashlib.sha256()
+    with Path(path).open("rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()[:16]
+
+
 @dataclass
 class TrainerState:
     """Pure-data training state — persisted in every checkpoint."""
@@ -45,6 +81,31 @@ class TrainerState:
     tokens_seen: int = 0
     wall_clock_seconds: float = 0.0
     alerts: list[str] = field(default_factory=list)
+    # Cheap counters for post-hoc analysis of backups + logging reliability
+    external_backups_ok: int = 0
+    external_backups_failed: int = 0
+
+
+@dataclass
+class RunMetadata:
+    """Run-level provenance captured once at Trainer construction.
+
+    Written into every checkpoint alongside TrainerState so a reloaded
+    checkpoint is self-explanatory ("which git rev, which config, which
+    tokenizer file, which machine produced this").
+    """
+
+    git_sha: str = "unknown"
+    config_sha16: str = ""
+    config_path: str = ""
+    tokenizer_sha16: str = ""
+    tokenizer_path: str = ""
+    hostname: str = ""
+    python_version: str = ""
+    torch_version: str = ""
+    cuda_version: str | None = None
+    gpu_name: str | None = None
+    dtype: str = "fp32"
 
 
 class PretrainTrainer:
@@ -69,7 +130,7 @@ class PretrainTrainer:
         self.config = config
         self.state = state or TrainerState()
         self.device = torch.device(device)
-        self.log = wandb_logger or (lambda _metrics, _step: None)
+        self.log = _safe_log(wandb_logger or (lambda _metrics, _step: None))
 
         # Unpack knobs that get hit every step.
         tcfg = config["training"]
@@ -81,13 +142,21 @@ class PretrainTrainer:
         )
 
         # AMP dtype — config.training.dtype drives the forward-pass autocast.
-        # CPU only supports bf16 autocast (no fp16); we fall back to fp32
-        # automatically if the caller picks fp16 on CPU.
+        # We do NOT silently fall back: picking fp16 on CPU is almost always a
+        # config mistake that would later manifest as NaNs at unknown cost.
         dtype_str = str(tcfg.get("dtype", "fp32")).lower()
-        self._amp_dtype = _AMP_DTYPES.get(dtype_str, torch.float32)
-        if self.device.type == "cpu" and self._amp_dtype == torch.float16:
-            self._amp_dtype = torch.float32
+        if dtype_str not in _AMP_DTYPES:
+            raise ValueError(f"unknown dtype {dtype_str!r}; one of {sorted(_AMP_DTYPES)}")
+        self._amp_dtype = _AMP_DTYPES[dtype_str]
+
+        # fp16 requires a GradScaler to stay numerically stable; bf16 and fp32
+        # do not. Create the scaler only when fp16 on CUDA is actually active.
         self._use_amp = self._amp_dtype != torch.float32
+        self._scaler: torch.cuda.amp.GradScaler | None = None
+        if self._amp_dtype == torch.float16:
+            if self.device.type != "cuda":
+                raise ValueError("fp16 training requires a CUDA device.")
+            self._scaler = torch.cuda.amp.GradScaler()
 
         lcfg = config["logging"]
         self._log_every = int(lcfg.get("log_every", 10))
@@ -99,6 +168,27 @@ class PretrainTrainer:
         self._ckpt_dir.mkdir(parents=True, exist_ok=True)
         self._keep_last = int(ccfg.get("save_last_n", 3))
         self._external_backup = ccfg.get("external_backup") or {}
+
+        # ---- Run metadata (captured once, persisted with every ckpt) ----
+        repo_root = Path(__file__).resolve().parents[3]
+        self.metadata = RunMetadata(
+            git_sha=_git_sha(repo_root),
+            config_sha16=hashlib.sha256(json.dumps(config, sort_keys=True, default=str)
+                                        .encode("utf-8")).hexdigest()[:16],
+            config_path=str(config.get("_source_path", "")),
+            tokenizer_sha16=_sha256_short(Path(
+                config.get("data", {}).get("tokenizer_path")
+                or repo_root / "tokenizer" / "helix_v2_tokenizer.model"
+            )),
+            tokenizer_path=str(config.get("data", {}).get("tokenizer_path")
+                               or repo_root / "tokenizer" / "helix_v2_tokenizer.model"),
+            hostname=socket.gethostname(),
+            python_version=platform.python_version(),
+            torch_version=torch.__version__,
+            cuda_version=(torch.version.cuda if torch.cuda.is_available() else None),
+            gpu_name=(torch.cuda.get_device_name(0) if torch.cuda.is_available() else None),
+            dtype=dtype_str,
+        )
 
     def _autocast(self):
         """Context manager for mixed-precision forward/backward."""
@@ -113,14 +203,22 @@ class PretrainTrainer:
         data_iter = iter(self.dataloader)
         window_loss_sum = 0.0
         window_t0 = time.time()
+        window_data_time = 0.0
+        window_compute_time = 0.0
 
         while self.state.step < self._total_steps:
             loss_acc = 0.0
             self.optimizer.zero_grad(set_to_none=True)
 
             for _ in range(self._grad_accum):
+                t_data_0 = time.time()
                 batch = next(data_iter)
                 batch = {k: v.to(self.device, non_blocking=True) for k, v in batch.items()}
+                if self.device.type == "cuda":
+                    torch.cuda.synchronize()
+                window_data_time += time.time() - t_data_0
+
+                t_compute_0 = time.time()
                 with self._autocast():
                     out = self.model(input_ids=batch["input_ids"], labels=batch["labels"])
                     loss = out["loss"] / self._grad_accum
@@ -128,13 +226,26 @@ class PretrainTrainer:
                     msg = f"non-finite loss at step {self.state.step}: {loss.item()}"
                     self.state.alerts.append(msg)
                     raise RuntimeError(msg)
-                loss.backward()
+                if self._scaler is not None:
+                    self._scaler.scale(loss).backward()
+                else:
+                    loss.backward()
                 loss_acc += loss.item()
+                if self.device.type == "cuda":
+                    torch.cuda.synchronize()
+                window_compute_time += time.time() - t_compute_0
 
+            # Clip + step (unscale first if fp16 + GradScaler)
+            if self._scaler is not None:
+                self._scaler.unscale_(self.optimizer)
             grad_norm = torch.nn.utils.clip_grad_norm_(
                 self.model.parameters(), max_norm=self._clip_norm
             )
-            self.optimizer.step()
+            if self._scaler is not None:
+                self._scaler.step(self.optimizer)
+                self._scaler.update()
+            else:
+                self.optimizer.step()
             self.scheduler.step()
 
             self.state.step += 1
@@ -147,24 +258,35 @@ class PretrainTrainer:
                 avg_loss = window_loss_sum / self._log_every
                 tps = (self._batch_tokens * self._log_every) / max(elapsed, 1e-9)
                 lr = self.scheduler.get_last_lr()[0]
-                self.log(
-                    {
-                        "train/loss": avg_loss,
-                        "train/grad_norm": float(grad_norm),
-                        "train/lr": lr,
-                        "train/tokens_per_second": tps,
-                        "train/tokens_seen": self.state.tokens_seen,
-                    },
-                    self.state.step,
-                )
+                metrics: dict[str, float] = {
+                    "train/loss": avg_loss,
+                    "train/grad_norm": float(grad_norm),
+                    "train/lr": lr,
+                    "train/tokens_per_second": tps,
+                    "train/tokens_seen": self.state.tokens_seen,
+                    "train/data_frac": window_data_time / max(elapsed, 1e-9),
+                    "train/compute_frac": window_compute_time / max(elapsed, 1e-9),
+                }
+                if self.device.type == "cuda":
+                    metrics["train/vram_alloc_gb"] = torch.cuda.memory_allocated() / 1e9
+                    metrics["train/vram_reserved_gb"] = torch.cuda.memory_reserved() / 1e9
+                    metrics["train/vram_peak_gb"] = torch.cuda.max_memory_allocated() / 1e9
+                self.log(metrics, self.state.step)
+                extra = ""
+                if self.device.type == "cuda":
+                    extra = f" | vram {metrics['train/vram_alloc_gb']:.1f}/{metrics['train/vram_peak_gb']:.1f}GB"
                 print(
                     f"step {self.state.step:6d} | loss {avg_loss:6.4f} | "
                     f"lr {lr:.2e} | grad_norm {float(grad_norm):5.2f} | "
-                    f"tok/s {tps/1e3:6.1f}k",
+                    f"tok/s {tps/1e3:6.1f}k | "
+                    f"data {metrics['train/data_frac']*100:4.1f}%"
+                    f"{extra}",
                     flush=True,
                 )
                 window_loss_sum = 0.0
                 window_t0 = time.time()
+                window_data_time = 0.0
+                window_compute_time = 0.0
 
             if self.val_dataloader is not None and self.state.step % self._eval_every == 0:
                 val_loss = self._evaluate()
@@ -180,21 +302,61 @@ class PretrainTrainer:
     # ------------------------------------------------------------------
     @torch.no_grad()
     def _evaluate(self) -> float:
+        """Compute val_loss overall + per-language (pretrain-mix diagnostic).
+
+        Per-language slices are drawn via ``val_dataloader.sample_language``
+        if that method exists (our MixedDataLoader). Falls back to only the
+        mixed loss for generic iterables.
+        """
         self.model.eval()
         assert self.val_dataloader is not None
-        max_batches = int(self.config.get("evaluation", {}).get("max_val_batches", 50))
+        eval_cfg = self.config.get("evaluation", {})
+        max_batches = int(eval_cfg.get("max_val_batches", 50))
+        per_lang_batches = int(eval_cfg.get("per_language_batches", 8))
+
+        metrics: dict[str, float] = {}
+
+        # Overall mixed-batch val loss
         losses: list[float] = []
         it = iter(self.val_dataloader)
         for _ in range(max_batches):
-            batch = next(it)
+            try:
+                batch = next(it)
+            except StopIteration:
+                break
             batch = {k: v.to(self.device, non_blocking=True) for k, v in batch.items()}
             with self._autocast():
                 out = self.model(input_ids=batch["input_ids"], labels=batch["labels"])
             losses.append(out["loss"].item())
-        self.model.train()
         val = sum(losses) / max(1, len(losses))
-        self.log({"eval/val_loss": val}, self.state.step)
-        print(f"  val_loss @ step {self.state.step}: {val:.4f}", flush=True)
+        metrics["eval/val_loss"] = val
+
+        # Per-language slices
+        sample_lang = getattr(self.val_dataloader, "sample_language", None)
+        batch_size = int(self.config.get("training", {}).get("batch_size_per_device", 4))
+        if callable(sample_lang) and per_lang_batches > 0:
+            lang_losses: dict[str, list[float]] = {}
+            for lang in getattr(self.val_dataloader, "mix_ratios", {}):
+                if self.val_dataloader.mix_ratios.get(lang, 0) <= 0:
+                    continue  # skip languages that are weighted out
+                lang_losses[lang] = []
+                for _ in range(per_lang_batches):
+                    try:
+                        batch = sample_lang(lang, batch_size)
+                    except (KeyError, ValueError):
+                        break
+                    batch = {k: v.to(self.device, non_blocking=True) for k, v in batch.items()}
+                    with self._autocast():
+                        out = self.model(input_ids=batch["input_ids"], labels=batch["labels"])
+                    lang_losses[lang].append(out["loss"].item())
+            for lang, ls in lang_losses.items():
+                if ls:
+                    metrics[f"eval/val_loss/{lang}"] = sum(ls) / len(ls)
+
+        self.model.train()
+        self.log(metrics, self.state.step)
+        pretty = " ".join(f"{k.split('/')[-1]}={v:.3f}" for k, v in metrics.items())
+        print(f"  eval @ step {self.state.step}: {pretty}", flush=True)
         return val
 
     def _track_val(self, val_loss: float) -> None:
@@ -221,16 +383,27 @@ class PretrainTrainer:
             "optimizer": self.optimizer.state_dict(),
             "scheduler": self.scheduler.state_dict(),
             "state": asdict(self.state),
+            "metadata": asdict(self.metadata),
+            "scaler": self._scaler.state_dict() if self._scaler is not None else None,
         }
+        t_write_0 = time.time()
         torch.save(payload, tmp)
         tmp.replace(path)
+        write_seconds = time.time() - t_write_0
 
         # Sidecar JSON for quick introspection without loading the tensors.
         sidecar = path.with_suffix(".json")
-        sidecar.write_text(json.dumps(asdict(self.state), indent=2), encoding="utf-8")
+        sidecar.write_text(
+            json.dumps(
+                {"state": asdict(self.state), "metadata": asdict(self.metadata)},
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
 
         # External backup (e.g. NAS) every N steps.
         backup_cfg = self._external_backup
+        backup_ran = False
         if backup_cfg.get("enabled"):
             interval = int(backup_cfg.get("interval_steps", 0))
             if interval > 0 and self.state.step % interval == 0:
@@ -239,9 +412,27 @@ class PretrainTrainer:
                     backup_root.mkdir(parents=True, exist_ok=True)
                     shutil.copy2(path, backup_root / path.name)
                     shutil.copy2(sidecar, backup_root / sidecar.name)
+                    self.state.external_backups_ok += 1
+                    backup_ran = True
                 except OSError as e:
                     # Non-fatal: a failed backup should not interrupt training.
+                    self.state.external_backups_failed += 1
                     self.state.alerts.append(f"backup to {backup_root} failed: {e}")
+
+        self.log(
+            {
+                "ckpt/write_seconds": float(write_seconds),
+                "ckpt/bytes": float(path.stat().st_size),
+                "ckpt/external_backups_ok": float(self.state.external_backups_ok),
+                "ckpt/external_backups_failed": float(self.state.external_backups_failed),
+            },
+            self.state.step,
+        )
+        note = f"  ckpt {name} written in {write_seconds:.1f}s" \
+               f" ({path.stat().st_size/1e9:.2f} GB)"
+        if backup_ran:
+            note += " + backup OK"
+        print(note, flush=True)
 
         self._rotate_checkpoints()
         return path
@@ -257,12 +448,31 @@ class PretrainTrainer:
             p.with_suffix(".json").unlink(missing_ok=True)
 
     def load_checkpoint(self, path: str | Path) -> None:
-        """Restore full training state (use for resume)."""
+        """Restore full training state (use for resume).
+
+        Warns if the checkpoint's git_sha or config_sha16 don't match the
+        current run — that's usually what you want, but silent drift is
+        what turns "resume" into "Frankenrun".
+        """
         payload = torch.load(path, map_location="cpu", weights_only=False)
         self.model.load_state_dict(payload["model"])
         self.optimizer.load_state_dict(payload["optimizer"])
         self.scheduler.load_state_dict(payload["scheduler"])
         self.state = TrainerState(**payload["state"])
+        if self._scaler is not None and payload.get("scaler") is not None:
+            self._scaler.load_state_dict(payload["scaler"])
+
+        old_meta = payload.get("metadata") or {}
+        mismatches = []
+        for key in ("git_sha", "config_sha16", "tokenizer_sha16"):
+            old = old_meta.get(key)
+            new = getattr(self.metadata, key, None)
+            if old and new and old != new:
+                mismatches.append(f"{key}: {old[:16]} → {new[:16]}")
+        if mismatches:
+            msg = "resume provenance mismatch — " + "; ".join(mismatches)
+            self.state.alerts.append(msg)
+            print(f"  warn: {msg}", flush=True)
 
 
 __all__ = ["PretrainTrainer", "TrainerState"]

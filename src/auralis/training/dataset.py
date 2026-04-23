@@ -112,6 +112,10 @@ class MixedDataLoader:
         # uint32 = 4 bytes per token
         val_split_tokens = int(val_split_bytes) // 4
 
+        # Dedicated RNG for batch-row shuffling inside __next__, so
+        # reproducibility is independent of global torch state.
+        self._shuffle_rng = np.random.default_rng(seed ^ 0xC0FFEE)
+
         # Per-language RNGs (distinct seeds so draws do not correlate).
         # Val gets its own offset in the seed so train and val do not align.
         self.datasets: dict[str, PretrainDataset] = {}
@@ -121,13 +125,30 @@ class MixedDataLoader:
                 raise FileNotFoundError(bin_path)
             n_tokens_total = bin_path.stat().st_size // 4
 
+            # --- Hard split validation (fail loudly, never silently repair) ---
+            if val_split_tokens < 0:
+                raise ValueError(f"val_split_bytes must be >= 0, got {val_split_bytes}")
+            if val_split_tokens >= n_tokens_total:
+                raise ValueError(
+                    f"val_split_bytes ({val_split_bytes}) >= {lang}.bin size "
+                    f"({n_tokens_total*4}). Would leave zero or negative tokens "
+                    f"for training."
+                )
+            train_window = n_tokens_total - val_split_tokens
+            if train_window <= seq_length + 1:
+                raise ValueError(
+                    f"val_split_bytes={val_split_bytes} leaves only "
+                    f"{train_window} train tokens for {lang}.bin, need > "
+                    f"seq_length+1 ({seq_length + 1}). Reduce val_split_bytes."
+                )
+            # Val must also have room for at least one seq+1 block (checked below).
+
             if split == "train":
                 train_start = 0
-                train_end = max(seq_length + 2, n_tokens_total - val_split_tokens)
+                train_end = train_window
                 rng = np.random.default_rng(seed + i * 7919)
             else:
-                # Val window: last val_split_tokens of the file. Must be > seq_length+1.
-                train_start = max(0, n_tokens_total - val_split_tokens)
+                train_start = train_window
                 train_end = n_tokens_total
                 if train_end - train_start <= seq_length + 1:
                     raise ValueError(
@@ -136,6 +157,9 @@ class MixedDataLoader:
                     )
                 rng = np.random.default_rng(seed + i * 7919 + 1_000_003)
 
+            # Invariant: train/val windows must be disjoint. With train_end ==
+            # train_window == val_start this is exactly adjacency, no overlap.
+            assert train_start < train_end, (train_start, train_end)
             self.datasets[lang] = PretrainDataset(
                 bin_path=bin_path, seq_length=seq_length, rng=rng,
                 train_start=train_start, train_end=train_end,
@@ -160,6 +184,20 @@ class MixedDataLoader:
     def rows_per_language(self) -> dict[str, int]:
         return dict(self._rows_per_lang)
 
+    def sample_language(self, lang: str, batch_size: int) -> dict[str, torch.Tensor]:
+        """Draw a pure-single-language batch (used for per-language val_loss).
+
+        Bypasses mix_ratios — caller picks the language, the sampler still
+        uses the language's own RNG so repeated calls do not collide.
+        """
+        if lang not in self.datasets:
+            raise KeyError(f"unknown language {lang!r}; have {list(self.datasets)}")
+        ds = self.datasets[lang]
+        rows = [ds.sample() for _ in range(batch_size)]
+        batch = torch.stack(rows, dim=0)
+        input_ids = batch[:, :-1].contiguous()
+        return {"input_ids": input_ids, "labels": input_ids.clone()}
+
     def __iter__(self):
         return self
 
@@ -169,8 +207,11 @@ class MixedDataLoader:
             ds = self.datasets[lang]
             for _ in range(n):
                 rows.append(ds.sample())
-        # Shuffle so a batch does not begin with all of one language.
-        np.random.default_rng(int(torch.randint(0, 1 << 30, (1,)).item())).shuffle(rows)
+        # Shuffle so a batch does not begin with all of one language. Uses the
+        # loader-owned RNG (seeded at construction) so a rerun with the same
+        # seed produces byte-identical batches — independent of the global
+        # torch RNG state.
+        self._shuffle_rng.shuffle(rows)
         batch = torch.stack(rows, dim=0)
         # Drop the extra sampled token — HelixModel._shift_loss shifts labels
         # internally, so both tensors are the same length and the same content.

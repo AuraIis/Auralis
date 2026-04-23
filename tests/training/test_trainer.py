@@ -192,6 +192,59 @@ def test_trainer_bf16_autocast_selected_on_config(trainer_env):
     assert y.shape == (2, 2)
 
 
+def test_trainer_fp16_without_cuda_rejected(trainer_env):
+    """fp16 is only numerically safe with a GradScaler; GradScaler requires CUDA.
+    Trying to configure fp16 on CPU must fail at construction, not silently
+    produce NaNs later."""
+    from auralis.training.trainer import PretrainTrainer
+    trainer, _ = trainer_env
+    cfg = {**trainer.config, "training": {**trainer.config["training"], "dtype": "fp16"}}
+    with pytest.raises(ValueError, match="fp16 training requires a CUDA device"):
+        PretrainTrainer(
+            model=trainer.model, optimizer=trainer.optimizer,
+            scheduler=trainer.scheduler, dataloader=trainer.dataloader,
+            config=cfg, device="cpu",
+        )
+
+
+def test_trainer_records_run_metadata(trainer_env):
+    trainer, _ = trainer_env
+    md = trainer.metadata
+    # Non-empty values from the environment
+    assert md.torch_version
+    assert md.hostname
+    # config_sha16 is deterministic — 16 hex chars
+    assert len(md.config_sha16) == 16
+
+
+def test_safe_log_swallows_exceptions(trainer_env):
+    """A crashing metrics logger must NOT kill training."""
+    trainer, _ = trainer_env
+    def boom(_m, _s):
+        raise RuntimeError("pretend wandb died")
+    trainer.log = trainer.log.__class__ if False else None  # satisfy type-checker
+    # Re-wrap via the same helper the Trainer uses
+    from auralis.training.trainer import _safe_log
+    trainer.log = _safe_log(boom)
+    # This must not raise
+    trainer.train()
+
+
+def test_trainer_saves_metadata_in_checkpoint(trainer_env, tmp_path: Path):
+    trainer, _ = trainer_env
+    trainer.train()
+    ckpts = list(Path(trainer.config["checkpointing"]["output_dir"]).glob("step_*.pt"))
+    assert ckpts
+    payload = torch.load(ckpts[0], map_location="cpu", weights_only=False)
+    assert "metadata" in payload
+    assert payload["metadata"]["torch_version"]
+    # Sidecar JSON mirrors metadata
+    sidecar = ckpts[0].with_suffix(".json")
+    import json
+    obj = json.loads(sidecar.read_text(encoding="utf-8"))
+    assert "metadata" in obj and "state" in obj
+
+
 def test_trainer_raises_on_nan_loss(trainer_env, monkeypatch):
     trainer, _ = trainer_env
 

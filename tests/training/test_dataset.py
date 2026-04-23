@@ -147,3 +147,50 @@ def test_mixed_dataloader_split_name_validated(three_bins: Path):
             mix_ratios={"english": 1.0, "german": 0.0, "code": 0.0},
             batch_size=2, seq_length=16, split="holdout",
         )
+
+
+def test_mixed_dataloader_val_split_too_big_raises(three_bins: Path):
+    """val_split_bytes that would leave 0 train tokens must HARD fail."""
+    # english.bin has 20k tokens = 80_000 bytes; asking for 80k reserves all of it.
+    with pytest.raises(ValueError, match="val_split_bytes"):
+        MixedDataLoader(
+            data_dir=three_bins,
+            mix_ratios={"english": 1.0, "german": 0.0, "code": 0.0},
+            batch_size=2, seq_length=16, split="train",
+            val_split_bytes=80_000,
+        )
+
+
+def test_mixed_dataloader_val_split_bytes_negative_rejected(three_bins: Path):
+    with pytest.raises(ValueError, match=">= 0"):
+        MixedDataLoader(
+            data_dir=three_bins,
+            mix_ratios={"english": 1.0, "german": 0.0, "code": 0.0},
+            batch_size=2, seq_length=16, split="train",
+            val_split_bytes=-4,
+        )
+
+
+def test_mixed_dataloader_shuffle_is_deterministic(three_bins: Path):
+    """Same seed ⇒ byte-identical first batch. Proves we do not depend on
+    torch's global RNG for row-shuffling."""
+    kw = dict(
+        data_dir=three_bins,
+        mix_ratios={"english": 0.5, "german": 0.5, "code": 0.0},
+        batch_size=6, seq_length=16, seed=1234,
+    )
+    a = MixedDataLoader(**kw)
+    b = MixedDataLoader(**kw)
+    assert torch.equal(next(a)["input_ids"], next(b)["input_ids"])
+
+
+def test_sample_language_bypasses_mix_ratios(three_bins: Path):
+    loader = MixedDataLoader(
+        data_dir=three_bins,
+        mix_ratios={"english": 0.5, "german": 0.5, "code": 0.0},
+        batch_size=4, seq_length=16, seed=0,
+    )
+    en_batch = loader.sample_language("english", batch_size=2)
+    assert en_batch["input_ids"].shape == (2, 16)
+    with pytest.raises(KeyError):
+        loader.sample_language("klingon", batch_size=1)
