@@ -44,9 +44,9 @@ git clone <repo-url> auralis-v2 && cd auralis-v2
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[train]"
 # Zusätzlich auf GPU: optimierte Kernel (große Speedups, Interface bleibt gleich)
-pip install mamba-ssm flash-attn
-# Optional: flash-linear-attention (GLA CUDA-Kernel, ~20x Speedup ggü. pure-torch)
-pip install flash-linear-attention
+pip install mamba-ssm flash-attn flash-linear-attention
+# Triton ≥ 3.6 ist nötig für mamba-ssm / fla auf cu128:
+pip install --upgrade triton
 
 # 3. HF + WandB Login
 huggingface-cli login
@@ -55,6 +55,19 @@ wandb login
 # 4. NAS-Daten prüfen
 ls -la /mnt/nas/Auralis/AuralisV2/tokenized/phase1/
 # Erwartet: english.bin, german.bin, code.bin + *.idx + *.manifest.json
+```
+
+### 3a. Kernel aktivieren (wichtig für Speed)
+
+```bash
+# H100 / H200 (Hopper): alle Kernels direkt an
+export AURALIS_USE_CUDA_KERNELS=1
+
+# RTX PRO 5000 / 6000 Blackwell: Triton kennt sm_120 noch nicht vollständig,
+# Workaround ist die Emulation als sm89 (Ada). Sauberer Speedup, keine
+# Genauigkeitsverluste (Loss byte-identisch zu native verifiziert).
+export TRITON_OVERRIDE_ARCH=sm89
+export AURALIS_USE_CUDA_KERNELS=1
 ```
 
 ## 4. Preflight

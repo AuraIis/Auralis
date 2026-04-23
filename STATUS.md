@@ -126,11 +126,21 @@ RTX PRO 5000 Blackwell 47 GB.
 **Key Takeaways:**
 - Native Backend läuft stabil auf Blackwell (≈1.6× schneller als 3090 bei gleichem Shape).
 - Kernel-Swap numerisch korrekt — Loss-Werte byte-identisch mit native.
-- **Haupt-Win ist VRAM-Ersparnis (-14 %)** durch fla chunk-wise state, nicht tok/s.
-  Bei seq=2048 (Phase-1-Config) steigt der Speedup.
-- **Mamba-Kernel aktuell auf Blackwell problematisch** — Triton-Compile-Fehler in mamba_ssm trotz
-  Triton 3.6 Upgrade. Auf H100/H200 geht er. Für Blackwell-Runs: `AURALIS_USE_GLA_KERNEL=1
-  AURALIS_USE_FLASH_ATTN=1` (Mamba bleibt native).
+- **Blackwell-Fix: `TRITON_OVERRIDE_ARCH=sm89`** lässt mamba-ssm + fla + flash-attn auf
+  sm_120 laufen (Triton kennt Blackwell noch nicht voll). Kein Genauigkeitsverlust.
+
+**Mit allen drei Kernels aktiv (`TRITON_OVERRIDE_ARCH=sm89 AURALIS_USE_CUDA_KERNELS=1`):**
+
+| Config | seq × batch | tok/s | VRAM | Ersparnis vs native |
+|---|---|--:|--:|---|
+| small | 256 × 4 | 220 | 6.68 GB | +50 % tok/s, -49 % VRAM |
+| Phase-1-like | 512 × 8 | **1 928** | 16.36 GB | 23× vs 3090 baseline |
+| Phase-1-like | 1024 × 4 | **3 628** | 16.84 GB | |
+| Phase-1-config | 2048 × 2 | **2 713** | 17.74 GB | Loss Δ +1.52 in 15 steps |
+
+**Extrapolation für Phase-1-Produktionsconfig** (seq=2048, effective-batch 128 mit
+grad_accum 16): ~4 000-6 000 tok/s auf Blackwell bei ~30-35 GB VRAM.
+21 B-Token-Pretraining → ~49 Tage Blackwell oder ~16 Tage H100 → matched den Brief.
 
 ## Offene Blocker vor GPU-Launch
 

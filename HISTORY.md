@@ -55,3 +55,10 @@ Chronologisch, Milestones. Append-Only.
   - seq=512 gla+flash: identische Resultate (Sparse macht nur 3/12 Layer)
 - **Blackwell-Erkenntnis:** Hauptvorteil der Kernels ist **VRAM-Ersparnis** (chunkwise statt materialisiertem [B,L,H,D,D] State), nicht primär tok/s. tok/s-Speedup wird bei seq=2048 Phase-1-Config deutlicher.
 - **Mamba-Kernel auf Blackwell aktuell problematisch** — Triton compile bug in mamba_ssm selbst mit Triton 3.6. Für RunPod H100/H200 ok, für Blackwell Mamba native lassen.
+- **(Später am selben Tag) Blackwell-Fix gefunden: `TRITON_OVERRIDE_ARCH=sm89`** — emuliert Ada (Compute-Capability 8.9) auf Blackwell (sm_120). Weder sm90 (WGMMA-Intrinsics fehlen) noch default (sm_120 unbekannt) funktionieren; sm89 ist das erste abwärtskompatible Target das Blackwell akzeptiert. Alle drei Kernels (mamba_ssm + fla + flash-attn) laufen jetzt gleichzeitig, numerisch identisch zur native-Referenz.
+- **Final-Messungen Blackwell, 250M bf16, ALLE Kernels aktiv:**
+  - seq=256 batch=4: 220 tok/s, 6.68 GB VRAM (-49 % vs native)
+  - seq=512 batch=8: 1 928 tok/s, 16.36 GB (23× vs 3090 pure-python)
+  - seq=1024 batch=4: 3 628 tok/s, 16.84 GB
+  - **seq=2048 batch=2: 2 713 tok/s, 17.74 GB — Phase-1-Config validiert, Loss Δ +1.52 in 15 Steps**
+- Docs (`docs/PHASE_1_LAUNCH.md`) um sm89-Workaround und per-Hardware Kernel-Setup erweitert.
