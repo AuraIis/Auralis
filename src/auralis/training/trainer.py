@@ -1,0 +1,225 @@
+"""PretrainTrainer: minimal but complete pretraining loop.
+
+Scope: gradient accumulation, cosine LR schedule, grad clipping, checkpoints
+with rotation, NaN detection, periodic eval. No distributed-training logic —
+that is layered on via FSDP / DeepSpeed in ``scripts/pretrain/train_phase1.py``
+which is what actually runs on RunPod.
+
+All stateful configuration passes through a plain dict (from YAML) rather than
+a dataclass, so future additions (e.g. MoE loss aux, MTP loss) don't need
+signature changes here — only dict-key lookups.
+"""
+
+from __future__ import annotations
+
+import json
+import shutil
+import time
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+from typing import Any, Callable, Iterator
+
+import torch
+import torch.nn as nn
+from torch.optim import Optimizer
+from torch.optim.lr_scheduler import LambdaLR
+
+
+@dataclass
+class TrainerState:
+    """Pure-data training state — persisted in every checkpoint."""
+
+    step: int = 0
+    best_val_loss: float = float("inf")
+    consecutive_val_increases: int = 0
+    tokens_seen: int = 0
+    wall_clock_seconds: float = 0.0
+    alerts: list[str] = field(default_factory=list)
+
+
+class PretrainTrainer:
+    def __init__(
+        self,
+        *,
+        model: nn.Module,
+        optimizer: Optimizer,
+        scheduler: LambdaLR,
+        dataloader: Iterator[dict[str, torch.Tensor]],
+        config: dict[str, Any],
+        state: TrainerState | None = None,
+        device: str | torch.device = "cpu",
+        val_dataloader: Iterator[dict[str, torch.Tensor]] | None = None,
+        wandb_logger: Callable[[dict[str, float], int], None] | None = None,
+    ):
+        self.model = model
+        self.optimizer = optimizer
+        self.scheduler = scheduler
+        self.dataloader = dataloader
+        self.val_dataloader = val_dataloader
+        self.config = config
+        self.state = state or TrainerState()
+        self.device = torch.device(device)
+        self.log = wandb_logger or (lambda _metrics, _step: None)
+
+        # Unpack knobs that get hit every step.
+        tcfg = config["training"]
+        self._total_steps = int(tcfg["total_steps"])
+        self._grad_accum = int(tcfg.get("gradient_accumulation", 1))
+        self._clip_norm = float(tcfg.get("gradient_clip_norm", 1.0))
+        self._batch_tokens = int(
+            tcfg["batch_size_per_device"] * self._grad_accum * config["data"]["seq_length"]
+        )
+
+        lcfg = config["logging"]
+        self._log_every = int(lcfg.get("log_every", 10))
+        self._eval_every = int(lcfg.get("eval_every", 1000))
+        self._save_every = int(lcfg.get("save_every", 2500))
+
+        ccfg = config["checkpointing"]
+        self._ckpt_dir = Path(ccfg["output_dir"])
+        self._ckpt_dir.mkdir(parents=True, exist_ok=True)
+        self._keep_last = int(ccfg.get("save_last_n", 3))
+
+    # ------------------------------------------------------------------
+    def train(self) -> TrainerState:
+        self.model.train()
+        data_iter = iter(self.dataloader)
+        window_loss_sum = 0.0
+        window_t0 = time.time()
+
+        while self.state.step < self._total_steps:
+            loss_acc = 0.0
+            self.optimizer.zero_grad(set_to_none=True)
+
+            for _ in range(self._grad_accum):
+                batch = next(data_iter)
+                batch = {k: v.to(self.device, non_blocking=True) for k, v in batch.items()}
+                out = self.model(input_ids=batch["input_ids"], labels=batch["labels"])
+                loss = out["loss"] / self._grad_accum
+                if not torch.isfinite(loss):
+                    msg = f"non-finite loss at step {self.state.step}: {loss.item()}"
+                    self.state.alerts.append(msg)
+                    raise RuntimeError(msg)
+                loss.backward()
+                loss_acc += loss.item()
+
+            grad_norm = torch.nn.utils.clip_grad_norm_(
+                self.model.parameters(), max_norm=self._clip_norm
+            )
+            self.optimizer.step()
+            self.scheduler.step()
+
+            self.state.step += 1
+            self.state.tokens_seen += self._batch_tokens
+            window_loss_sum += loss_acc
+
+            if self.state.step % self._log_every == 0:
+                elapsed = time.time() - window_t0
+                self.state.wall_clock_seconds += elapsed
+                avg_loss = window_loss_sum / self._log_every
+                tps = (self._batch_tokens * self._log_every) / max(elapsed, 1e-9)
+                lr = self.scheduler.get_last_lr()[0]
+                self.log(
+                    {
+                        "train/loss": avg_loss,
+                        "train/grad_norm": float(grad_norm),
+                        "train/lr": lr,
+                        "train/tokens_per_second": tps,
+                        "train/tokens_seen": self.state.tokens_seen,
+                    },
+                    self.state.step,
+                )
+                print(
+                    f"step {self.state.step:6d} | loss {avg_loss:6.4f} | "
+                    f"lr {lr:.2e} | grad_norm {float(grad_norm):5.2f} | "
+                    f"tok/s {tps/1e3:6.1f}k",
+                    flush=True,
+                )
+                window_loss_sum = 0.0
+                window_t0 = time.time()
+
+            if self.val_dataloader is not None and self.state.step % self._eval_every == 0:
+                val_loss = self._evaluate()
+                self._track_val(val_loss)
+
+            if self.state.step % self._save_every == 0:
+                self.save_checkpoint(f"step_{self.state.step}")
+
+        # Final checkpoint
+        self.save_checkpoint(f"step_{self.state.step}")
+        return self.state
+
+    # ------------------------------------------------------------------
+    @torch.no_grad()
+    def _evaluate(self) -> float:
+        self.model.eval()
+        assert self.val_dataloader is not None
+        max_batches = int(self.config.get("evaluation", {}).get("max_val_batches", 50))
+        losses: list[float] = []
+        it = iter(self.val_dataloader)
+        for _ in range(max_batches):
+            batch = next(it)
+            batch = {k: v.to(self.device, non_blocking=True) for k, v in batch.items()}
+            out = self.model(input_ids=batch["input_ids"], labels=batch["labels"])
+            losses.append(out["loss"].item())
+        self.model.train()
+        val = sum(losses) / max(1, len(losses))
+        self.log({"eval/val_loss": val}, self.state.step)
+        print(f"  val_loss @ step {self.state.step}: {val:.4f}", flush=True)
+        return val
+
+    def _track_val(self, val_loss: float) -> None:
+        if val_loss < self.state.best_val_loss:
+            self.state.best_val_loss = val_loss
+            self.state.consecutive_val_increases = 0
+            self.save_checkpoint("best")
+        else:
+            self.state.consecutive_val_increases += 1
+            if self.state.consecutive_val_increases >= 3:
+                msg = (
+                    f"val_loss rose {self.state.consecutive_val_increases} evals in a row; "
+                    f"best={self.state.best_val_loss:.4f} now={val_loss:.4f}"
+                )
+                self.state.alerts.append(msg)
+                print(f"  ALERT: {msg}", flush=True)
+
+    # ------------------------------------------------------------------
+    def save_checkpoint(self, name: str) -> Path:
+        path = self._ckpt_dir / f"{name}.pt"
+        tmp = path.with_suffix(".pt.tmp")
+        payload = {
+            "model": self.model.state_dict(),
+            "optimizer": self.optimizer.state_dict(),
+            "scheduler": self.scheduler.state_dict(),
+            "state": asdict(self.state),
+        }
+        torch.save(payload, tmp)
+        tmp.replace(path)
+
+        # Sidecar JSON for quick introspection without loading the tensors.
+        sidecar = path.with_suffix(".json")
+        sidecar.write_text(json.dumps(asdict(self.state), indent=2), encoding="utf-8")
+
+        self._rotate_checkpoints()
+        return path
+
+    def _rotate_checkpoints(self) -> None:
+        step_ckpts = sorted(
+            (p for p in self._ckpt_dir.glob("step_*.pt") if not p.name.endswith(".tmp")),
+            key=lambda p: int(p.stem.split("_", 1)[1]),
+            reverse=True,
+        )
+        for p in step_ckpts[self._keep_last :]:
+            p.unlink(missing_ok=True)
+            p.with_suffix(".json").unlink(missing_ok=True)
+
+    def load_checkpoint(self, path: str | Path) -> None:
+        """Restore full training state (use for resume)."""
+        payload = torch.load(path, map_location="cpu", weights_only=False)
+        self.model.load_state_dict(payload["model"])
+        self.optimizer.load_state_dict(payload["optimizer"])
+        self.scheduler.load_state_dict(payload["scheduler"])
+        self.state = TrainerState(**payload["state"])
+
+
+__all__ = ["PretrainTrainer", "TrainerState"]

@@ -1,0 +1,88 @@
+# Phase 1 pretraining configuration.
+#
+# This is THE authoritative config for the English-heavy pretraining run.
+# Changing a value here *is* the experiment change — do not override on the
+# command line ad-hoc; fork the file and record both in MANIFEST.yaml.
+
+experiment:
+  name: helix_v2_phase1_pretrain
+  version: "1.0"
+  description: "EN-heavy pretraining, ~21B tokens (target 25B, 84% coverage)."
+
+model:
+  config_path: "configs/model/helix_v2_1b.yaml"
+
+data:
+  data_dir: "//BITBASTION/Auralis/AuralisV2/tokenized/phase1"
+  mix_ratios:
+    english: 0.75
+    german:  0.20
+    code:    0.05
+  seq_length: 2048
+  val_split_bytes: 50_000_000   # hold-out at the tail of each bin for val
+  dataloader_seed: 42
+
+training:
+  device: "cuda"                  # overridden by --device on CPU smoke tests
+  dtype: "bfloat16"
+
+  optimizer:
+    name: adamw
+    lr: 3.0e-4
+    betas: [0.9, 0.95]
+    weight_decay: 0.1
+    eps: 1.0e-8
+
+  scheduler:
+    type: cosine
+    warmup_steps: 2000
+    min_lr_ratio: 0.1
+
+  batch_size_per_device: 8
+  gradient_accumulation: 16
+  gradient_clip_norm: 1.0
+
+  # 80k steps * 8 * 16 * 2048 ≈ 21 B tokens (our actual coverage).
+  total_steps: 80_000
+
+  gradient_checkpointing: true
+  torch_compile: true
+
+logging:
+  log_every: 10
+  eval_every: 1000
+  save_every: 2500
+  wandb:
+    enabled: true
+    project: "auralis-v2"
+    tags: ["phase1", "pretrain", "helix-v2"]
+
+checkpointing:
+  output_dir: "checkpoints/phase1_pretrain"
+  save_last_n: 3
+  save_best: true
+  external_backup:
+    enabled: true
+    path: "//BITBASTION/Auralis/AuralisV2/checkpoints/phase1"
+    interval_steps: 10000
+
+evaluation:
+  max_val_batches: 100
+  benchmarks:
+    - {name: baseline_50,     path: "eval/baseline_questions.yaml", frequency: 5000}
+
+monitoring:
+  alert_on:
+    val_loss_increase: 3
+    grad_norm_explosion: 100.0
+    nan_in_loss: true
+
+# Knobs used only by the CPU smoke test (see scripts/pretrain/smoke_test.py).
+# Picked so one full cycle runs in < 2 minutes on the repo's default Python.
+smoke_test:
+  model_config: "configs/model/helix_v2_100m.yaml"
+  batch_size: 2
+  gradient_accumulation: 1
+  seq_length: 64
+  total_steps: 20
+  log_every: 5

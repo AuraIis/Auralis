@@ -1,7 +1,7 @@
 # STATUS — Auralis v2
 
 **Letzte Aktualisierung:** 2026-04-23
-**Aktive Phase:** Phase 0.5 **abgeschlossen** → bereit für Phase 1 (Pretraining)
+**Aktive Phase:** Phase 1 **Code + Infrastruktur fertig**, Tokenization läuft, GPU-Launch ausstehend
 **Modellgröße:** 1B (final, Konfig ~954 M Params)
 **Phase-1-Token-Budget:** 25B geplant → **21B tatsächlich** bereitgestellt (84 % Deckung; Lücke in Phase 2 schließbar)
 
@@ -81,18 +81,40 @@ Nicht eingeflossen: SlimPajama (entfernt), Dolma (script-basiert), Proof-Pile-2 
 
 **Forward-Loss** auf frisch-initialisiertem 100M-Modell: **12.37 ≈ ln(200 000) = 12.20** → uniformer Prior über Vocab, genau wie erwartet. Keine NaN/Inf in Logits oder Gradienten.
 
-## Nächster Schritt
+## Phase 1 — Pretraining-Pipeline ✓ (Code-ready, Launch ausstehend)
 
-**Phase 1 — EN-Heavy Pretraining.** Siehe [Doc/SPECs/SPEC_PHASE_1_PRETRAINING.md](Doc/SPECs/SPEC_PHASE_1_PRETRAINING.md). Wichtige Bausteine vor dem ersten Run:
+**Scripts**:
+- [scripts/data/tokenize_for_pretraining.py](scripts/data/tokenize_for_pretraining.py) — batched SP-Encode auf NAS, atomare Writes, Resume-safe
+- [scripts/pretrain/train_phase1.py](scripts/pretrain/train_phase1.py) — CLI mit Preflight, Resume, Device-Override
+- [scripts/pretrain/smoke_test.py](scripts/pretrain/smoke_test.py) — 30 s End-to-End-Validation
 
-1. **Tokenizer-Integration in die Datenpipeline** — `scripts/data/tokenize_for_pretraining.py` konvertiert `cleaned/*.txt` → `tokenized/phase1/*.bin` (uint32 memmap-ready)
-2. **Data-Loader** mit Streaming aus den `.bin`-Files + Mix-Ratios (75 EN / 20 DE / 5 Code)
-3. **Training-Loop** (Torch + FSDP/DeepSpeed auf RunPod) mit Sanity-Check vor dem ersten Step
-4. **Monitoring** (WandB) + 50-Baseline-Fragen pro Checkpoint
+**Training-Module** (`src/auralis/training/`):
+- [dataset.py](src/auralis/training/dataset.py) — `PretrainDataset` (memmap uint32) + `MixedDataLoader` mit largest-remainder Partitionierung
+- [optimizer.py](src/auralis/training/optimizer.py) — `build_optimizer` (AdamW + decay-Split für Normen/Biases) + `build_scheduler` (cosine / constant_with_warmup)
+- [trainer.py](src/auralis/training/trainer.py) — `PretrainTrainer` mit Grad-Accum, Clip, Checkpoint-Rotation, NaN-Detection, Val-Alarm nach 3 Regressions
+- [utils.py](src/auralis/training/utils.py) — `load_yaml`, `set_seed`, `preflight_check`
+
+**Configs**:
+- [configs/training/phase1_pretrain.yaml](configs/training/phase1_pretrain.yaml) — 80 k Steps, cosine, bf16, 75/20/5 Mix
+
+**Tests: 64/64 grün in 4 s** (+14 neue: 7 dataset, 4 optimizer, 3 trainer-smoke inkl. NaN-Guard + Checkpoint-Roundtrip).
+
+**CPU-Smoke-Test** (`scripts/pretrain/smoke_test.py`): 20 Steps auf 100M-Modell mit synthetischen Tokens, **PASS in 30 s** — Loss stabil bei 12.28, Checkpoint geschrieben + neu geladen. End-to-End-Wiring bestätigt.
+
+**Launch-Guide**: [docs/PHASE_1_LAUNCH.md](docs/PHASE_1_LAUNCH.md) — alle RunPod-Setup-Schritte + Preflight + Monitoring + Rollback.
+
+## Offene Blocker vor GPU-Launch
+
+1. **Tokenization läuft** (88 GB → ~40-50 GB binär, ca. 4 h auf SMB). Kann ich nicht beschleunigen — ist Disk-I/O-bound.
+2. **RunPod-Pod-Setup** (Guthaben, SSH, NAS-Mount, `pip install mamba-ssm flash-attn flash-linear-attention`). User-Aufgabe.
+3. **Entscheidung 1 × H200 vs. 4 × A40** — siehe Launch-Guide §2.
+
+## Nächster Schritt nach Phase 1
+
+Phase 2 — Bilingual Continued Pretraining mit KL-Distillation ([SPEC_PHASE_2_CONTINUED_BILINGUAL.md](Doc/SPECs/SPEC_PHASE_2_CONTINUED_BILINGUAL.md)). Grobplan: Teacher-Phase-1-Checkpoint frieren, Student weitertrainieren auf 60/30/10 DE/EN/Code mit `lambda_kd = 0.5`.
 
 ## Offene Entscheidungen
 
-- Multi-GPU-Setup für Phase 1 (`1×H200` vs. `4×A40`) — siehe [SPEC_MULTI_GPU_TRAINING.md](Doc/SPECs/SPEC_MULTI_GPU_TRAINING.md).
-- Phase-1 Backends: Pure-Python-Mamba/GLA reicht für CPU-Tests. Für echtes GPU-Pretraining **zusätzlich** `mamba_ssm` und `flash-linear-attention` installieren und per Config-Flag aktivieren.
-- Phase-2-Ergänzung: Ersatz für Dolma/SlimPajama/Proof-Pile-2 suchen (Cosmopedia? RedPajama-V2?) oder synthetisch auffüllen.
+- Multi-GPU-Setup für Phase 1 (`1×H200` einfacher, `4×A40` günstiger — siehe [SPEC_MULTI_GPU_TRAINING.md](Doc/SPECs/SPEC_MULTI_GPU_TRAINING.md)).
+- Phase-2-Daten-Ergänzung: Ersatz für Dolma/SlimPajama (Cosmopedia, RedPajama-V2?) oder synthetisch auffüllen.
 - Open-Weights vs. proprietär für Release (Brief §10.4).
