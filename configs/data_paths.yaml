@@ -58,6 +58,7 @@ phase1_targets:
     oscar_de:       1_000_000_000
   code:
     starcoder:      1_000_000_000
+    the_stack_v2:     900_000_000    # preferred; bigger, license-clean. Pod download only.
     open_web_math:    250_000_000    # replaced Proof-Pile-2 (script-based, unsupported)
 
 # Filter-Defaults (override per Quelle falls nötig).

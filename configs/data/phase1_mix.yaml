@@ -1,0 +1,128 @@
+# Phase-1 pretraining data mixture — LOCKED target for the 1B run.
+#
+# User-approved (2026-04-23). Quality-before-quantity; the sources listed
+# here are the full Phase-1 authority. Anything not on this list does NOT
+# go into Phase-1 without a documented change-of-mix run in Phase-1.5.
+#
+# All numbers assume 21B actual Phase-1 tokens (our measured coverage from
+# scripts/data/tokenize_for_pretraining.py manifests). Percentages are the
+# TARGET for the MixedDataLoader inside each batch; absolute token budgets
+# below are what tokenize + streaming must deliver.
+
+totals:
+  target_tokens: 21_000_000_000
+  locked_at: "2026-04-23"
+  source_principle: "Quality over quantity. Fewer, cleaner sources."
+
+# ---------- Per-language split (matches training config mix_ratios) ----------
+split:
+  english: 0.75
+  german:  0.20
+  code:    0.05
+
+# ---------- English: 15.75B tokens -----------------------------------------
+english:
+  target_tokens: 15_750_000_000
+  sources:
+    # FineWeb-Edu is the English backbone. We already have the full
+    # sample-10BT on NAS (12.6B tokens measured).
+    - name: fineweb_edu
+      target_tokens: 9_500_000_000
+      hf_dataset: "HuggingFaceFW/fineweb-edu"
+      hf_config:  "sample-10BT"
+      local_path: "raw/english/fineweb_edu.txt"     # already downloaded
+      notes: "Canary mix uses a slice of these."
+
+    # FineWeb2 (NOT FineWeb-Edu) for modern-web top-up. NOT YET DOWNLOADED.
+    # Pulls on the RunPod pod via scripts/data/download_english.py when the
+    # 'fineweb2_en' source is added (TODO — see docs/TRAINING_WAVES.md).
+    - name: fineweb2_en
+      target_tokens: 3_000_000_000
+      hf_dataset: "HuggingFaceFW/fineweb-2"
+      hf_config:  "eng_Latn"
+      local_path: "raw/english/fineweb2_en.txt"
+      notes: "To be downloaded on pod; ~10 GB text."
+
+    # Wikipedia EN — we have it.
+    - name: wikipedia_en
+      target_tokens: 2_250_000_000
+      hf_dataset: "wikimedia/wikipedia"
+      hf_config:  "20231101.en"
+      local_path: "raw/english/wikipedia_en.txt"    # already downloaded
+
+    # OpenMathInstruct-2 — sparsely, ~6% of EN. We have 2B; downsample at
+    # read-time so only 1B effective tokens enter Phase-1.
+    - name: openmath
+      target_tokens: 1_000_000_000
+      hf_dataset: "nvidia/OpenMathInstruct-2"
+      local_path: "raw/english/openmath.txt"        # already downloaded (2B)
+      notes: "Downsample 2B->1B in tokenizer loader; full 2B reserved for later."
+
+  fallback_plan:
+    # If FineWeb2 EN is not reachable on pod: cut it to 1.5B and lift
+    # Wikipedia EN to 2.75B + FineWeb-Edu to 10.5B. Still 15.75B EN.
+    fineweb_edu: 10_500_000_000
+    fineweb2_en:  1_500_000_000
+    wikipedia_en: 2_750_000_000
+    openmath:     1_000_000_000
+
+# ---------- German: 4.20B tokens -------------------------------------------
+german:
+  target_tokens: 4_200_000_000
+  sources:
+    # German Commons is the DE backbone. Our v1-reused all_deduped.jsonl
+    # *already* merges a big chunk of German Commons (plus Wiki + News).
+    - name: german_commons
+      target_tokens: 3_000_000_000
+      hf_dataset: "coral-nlp/german-commons"
+      local_path: "cleaned/german.txt"              # v1-reused; also holds FW2
+      notes: "Shares the file with fineweb2_de in cleaned/german.txt."
+
+    # FineWeb2 deu_Latn — modern web DE. We have 15.4B in cleaned/german.txt
+    # (v1 brought it). The MixedDataLoader samples proportionally, so the
+    # 0.80B quota is automatic once val_split_bytes keeps train honest.
+    - name: fineweb2_de
+      target_tokens: 800_000_000
+      hf_dataset: "HuggingFaceFW/fineweb-2"
+      hf_config:  "deu_Latn"
+      local_path: "cleaned/german.txt"              # merged
+      notes: "Already in cleaned/german.txt (v1 reuse)."
+
+    # Wikipedia DE — already in the deduped mass. Quota kept explicit so
+    # future re-tokenisation can weight it up if needed.
+    - name: wikipedia_de
+      target_tokens: 400_000_000
+      hf_dataset: "wikimedia/wikipedia"
+      hf_config:  "20231101.de"
+      local_path: "cleaned/german.txt"              # merged
+
+# ---------- Code: 1.05B tokens ---------------------------------------------
+code:
+  target_tokens: 1_050_000_000
+  sources:
+    # The Stack v2 is the preferred code source; StarCoderData (v1 code
+    # data we currently have) is the older predecessor.
+    - name: the_stack_v2
+      target_tokens: 900_000_000
+      hf_dataset: "bigcode/the-stack-v2"
+      local_path: "raw/code/the_stack_v2.txt"       # TODO: download on pod
+      notes: >-
+        Replaces StarCoderData from the current raw/code/starcoderdata.txt.
+        Download via scripts/data/download_code.py on the pod. License-safe
+        filtered subset only; follow SPEC_DATASETS.md §2.3 per-language
+        ratios.
+
+    # Small structured / math-code top-up — we have open-web-math already.
+    - name: open_web_math
+      target_tokens: 150_000_000
+      hf_dataset: "open-web-math/open-web-math"
+      local_path: "raw/code/open_web_math.txt"      # already downloaded
+
+# ---------- Conservative fallback (if OpenMath too disruptive) --------------
+conservative_alternative:
+  notes: "Swap in if canary shows OpenMath dominating EN gradients."
+  english:
+    fineweb_edu:   9_500_000_000
+    fineweb2_en:   3_500_000_000
+    wikipedia_en:  2_750_000_000
+    openmath:        500_000_000     # halved

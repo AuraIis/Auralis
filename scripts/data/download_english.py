@@ -161,11 +161,32 @@ def _stream_openmath(_filters: dict[str, Any]) -> Iterator[tuple[str, dict[str, 
         yield clean_text(combined), {}
 
 
+def _stream_fineweb2_en(filters: dict[str, Any]) -> Iterator[tuple[str, dict[str, int]]]:
+    """FineWeb-2 eng_Latn subset — modern web EN top-up over FineWeb-Edu.
+
+    Parquet format (no script loader), works on HF datasets v4+. Intended
+    to be run ON THE POD (Gigabit HF connection) — too slow over SMB.
+    """
+    ds = _open_dataset_streaming("HuggingFaceFW/fineweb-2", name="eng_Latn")
+    min_len = filters["min_length"]
+    max_len = filters["max_length"]
+    for ex in ds:
+        text = ex.get("text", "") or ""
+        if len(text) < min_len:
+            yield None, {"too_short": 1}
+            continue
+        if len(text) > max_len:
+            yield None, {"too_long": 1}
+            continue
+        yield clean_text(text), {}
+
+
 SOURCES: dict[str, Any] = {
     "fineweb_edu":    {"stream": _stream_fineweb_edu,   "filename": "fineweb_edu.txt"},
     "wikipedia_en":   {"stream": _stream_wikipedia_en,  "filename": "wikipedia_en.txt"},
     "dolma":          {"stream": _stream_dolma,         "filename": "dolma.txt"},
     "openmath":       {"stream": _stream_openmath,      "filename": "openmath.txt"},
+    "fineweb2_en":    {"stream": _stream_fineweb2_en,   "filename": "fineweb2_en.txt"},
 }
 
 

@@ -1,0 +1,73 @@
+# 250M Runde-2 Datenmix-Ablationen (user-approved 2026-04-23).
+#
+# Exactly three variants — we intentionally do NOT sweep more at this stage.
+# Each variant runs ~0.75B to 1.0B tokens on the 250M (or mid_500m) canary;
+# the winner goes to Runde 3 (1.5-2.0B tokens) and then to the 1B main run.
+#
+# Not-in-this-round (explicit):
+#   - no exotic sources
+#   - no massive OpenMath increase
+#   - no Phase-2-style DE-heavy mixes
+#   - no seq-length sweeps
+#
+# Consumed by scripts/pretrain/mix_ablation.py.
+
+variants:
+
+  - name: baseline_75_20_5
+    description: "Reference — matches the locked Phase-1 mix. The 'known good'."
+    mix_ratios:
+      english: 0.75
+      german:  0.20
+      code:    0.05
+    tokens_per_run: 1_000_000_000        # 1.0B total across the canary
+    rationale: "Zero-change control. Any other variant must beat this."
+
+  - name: de_heavy_70_25_5
+    description: "More modern German — does broader DE help bilingual signal?"
+    mix_ratios:
+      english: 0.70
+      german:  0.25
+      code:    0.05
+    tokens_per_run: 1_000_000_000
+    de_internal_target_tokens:
+      # Within the 250M tokens of the DE slice:
+      german_commons: 140_000_000       # 0.56 of DE
+      fineweb2_de:     80_000_000       # 0.32 of DE
+      wikipedia_de:    30_000_000       # 0.12 of DE
+    rationale: >-
+      Sees if modern-web-DE (not just news + Wiki) lifts DE perplexity
+      without damaging EN retention. If DE drops ≥3 pts without EN cost,
+      adopt it for the 1B.
+
+  - name: code_heavy_72_20_8
+    description: "Nudge up code — benefit or cost to general language?"
+    mix_ratios:
+      english: 0.72
+      german:  0.20
+      code:    0.08
+    tokens_per_run: 1_000_000_000
+    code_internal_target_tokens:
+      the_stack_v2:  72_000_000          # 0.90 of Code
+      open_web_math:  8_000_000          # 0.10
+    rationale: >-
+      Checks whether Auralis gains more from structured/formal data or
+      just loses general fluency. Strong gate: EN val_loss must stay
+      within +0.02 of baseline.
+
+decision_gates:
+  primary_metric: eval/val_loss_total
+  secondary_metrics:
+    - eval/val_loss/english
+    - eval/val_loss/german
+    - eval/val_loss/code
+  acceptance:
+    "winner must beat baseline on eval/val_loss_total AND not regress
+     any per-language val_loss by more than 0.05 vs baseline."
+  tiebreak:
+    "If two variants within ±0.02, prefer the one with better
+     eval/val_loss/german (Auralis's explicit bilingual goal)."
+
+post_ablation:
+  proceed_to: "Runde 3 — 1.5-2.0B tokens on the winning mix, 250M model."
+  then: "1B main run with the Runde-3-validated setup."

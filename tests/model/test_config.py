@@ -90,6 +90,20 @@ def test_param_estimate_1b_range():
     assert 800_000_000 <= total <= 1_300_000_000
 
 
+def test_mid_500m_config_loads_and_sizes():
+    from pathlib import Path
+    p = Path(__file__).resolve().parents[2] / "configs" / "model" / "helix_v2_mid_500m.yaml"
+    c = AuralisConfig.from_yaml(p)
+    assert c.n_layers == 20
+    assert c.d_model == 1024
+    assert c.n_heads == 16 and c.d_head == 64
+    # With 200k vocab + tied embeddings, this spec lands ~517M, not 250M —
+    # documented in docs/TRAINING_WAVES.md. The range guards against silent
+    # architecture drift, not the exact number.
+    total = c.estimate_parameters()["total"]
+    assert 450_000_000 <= total <= 600_000_000
+
+
 def test_layer_repeat_sugar_works():
     """Sanity: the compact `repeat:` sugar expands to identical LayerConfigs."""
     c = AuralisConfig.from_yaml(CFG_100M)

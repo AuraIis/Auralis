@@ -118,6 +118,81 @@ def _download_starcoder(
     return stats
 
 
+def _stream_the_stack_v2(filters: dict[str, Any]) -> Iterator[tuple[str, dict[str, int]]]:
+    """bigcode/the-stack-v2 — successor to StarCoderData, license-clean.
+
+    Note: this is the full v2 release; for Phase 1 we only want the
+    language-filtered subset. The per-language proportions in LANG_SHARES
+    above are honoured at the caller level (_download_the_stack_v2).
+    """
+    for lang in LANG_SHARES:
+        # The Stack v2 uses data_dir per-language e.g. "python", "javascript"
+        ds = _open_streaming("bigcode/the-stack-v2", data_dir=lang)
+        min_len = filters["min_length"]
+        max_len = filters["max_length"]
+        min_stars = filters["min_stars"]
+        for ex in ds:
+            stars = ex.get("star_count", 0) or ex.get("max_stars_count", 0) or 0
+            if stars < min_stars:
+                yield None, {f"{lang}:low_stars": 1}
+                continue
+            content = ex.get("content", "") or ""
+            if len(content) < min_len:
+                yield None, {f"{lang}:too_short": 1}
+                continue
+            if len(content) > max_len:
+                yield None, {f"{lang}:too_long": 1}
+                continue
+            wrapped = f"<|code|>[{lang}]\n{content}\n<|endcode|>"
+            yield wrapped.replace("\r\n", "\n"), {}
+
+
+def _download_the_stack_v2(
+    out_dir: Path,
+    target_tokens: int,
+    filters: dict[str, Any],
+) -> DownloadStats:
+    """Wrapper that splits the token budget proportionally across LANG_SHARES
+    via the same per-language streaming used in _download_starcoder."""
+    output_path = out_dir / "the_stack_v2.txt"
+    stats = DownloadStats(
+        source="the_stack_v2",
+        output_file=str(output_path),
+        target_tokens=target_tokens,
+        estimated_bytes_per_token=CODE_BYTES_PER_TOKEN,
+        started_at=now_iso(),
+        filters_applied={**filters, "lang_shares": LANG_SHARES},
+    )
+    total_target_bytes = stats.target_bytes()
+    with atomic_text_writer(output_path) as fh:
+        for lang, share in LANG_SHARES.items():
+            lang_target_bytes = int(total_target_bytes * share)
+            lang_bytes = 0
+            ds = _open_streaming("bigcode/the-stack-v2", data_dir=lang)
+            for ex in tqdm(ds, desc=f"the_stack_v2:{lang}", unit="file"):
+                stars = ex.get("star_count", 0) or ex.get("max_stars_count", 0) or 0
+                if stars < filters["min_stars"]:
+                    stats.filtered_reasons[f"{lang}:low_stars"] = stats.filtered_reasons.get(f"{lang}:low_stars", 0) + 1
+                    stats.filtered_total += 1
+                    continue
+                content = ex.get("content", "") or ""
+                if len(content) < filters["min_length"] or len(content) > filters["max_length"]:
+                    stats.filtered_reasons[f"{lang}:length"] = stats.filtered_reasons.get(f"{lang}:length", 0) + 1
+                    stats.filtered_total += 1
+                    continue
+                wrapped = f"<|code|>[{lang}]\n{content}\n<|endcode|>"
+                fh.write(wrapped + "\n")
+                sz = len(wrapped.encode("utf-8")) + 1
+                stats.final_bytes += sz
+                stats.final_docs += 1
+                lang_bytes += sz
+                if lang_bytes >= lang_target_bytes:
+                    break
+    stats.finished_at = now_iso()
+    stats.write_manifest(output_path.with_suffix(".txt.manifest.json"))
+    return stats
+
+
 def _stream_open_web_math(_filters: dict[str, Any]) -> Iterator[tuple[str, dict[str, int]]]:
     """Replaces Proof-Pile-2 (script-based, unsupported by datasets v4+).
 
@@ -165,7 +240,8 @@ def _download_open_web_math(out_dir: Path, target_tokens: int, filters: dict[str
 def main() -> None:
     parser = argparse.ArgumentParser(description="Download Phase 1 Code pretraining data.")
     parser.add_argument("--config", type=Path, default=None)
-    parser.add_argument("--sources", nargs="+", choices=["starcoder", "open_web_math"],
+    parser.add_argument("--sources", nargs="+",
+                        choices=["starcoder", "the_stack_v2", "open_web_math"],
                         default=["starcoder", "open_web_math"])
     parser.add_argument("--required-free-gb", type=float, default=8.0)
     args = parser.parse_args()
@@ -181,6 +257,10 @@ def main() -> None:
     summaries: list[DownloadStats] = []
     if "starcoder" in args.sources:
         summaries.append(_download_starcoder(out_dir, int(targets["starcoder"]), filters))
+    if "the_stack_v2" in args.sources:
+        # Reuse the starcoder budget unless a dedicated target is set in config.
+        tgt = int(targets.get("the_stack_v2", targets.get("starcoder", 1_000_000_000)))
+        summaries.append(_download_the_stack_v2(out_dir, tgt, filters))
     if "open_web_math" in args.sources:
         summaries.append(_download_open_web_math(out_dir, int(targets["open_web_math"]), filters))
 
