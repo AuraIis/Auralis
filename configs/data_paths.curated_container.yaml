@@ -1,0 +1,51 @@
+# Container-side data-paths config for the CURATED-40B pipeline.
+#
+# Unlike configs/data_paths.yaml (UNC Windows paths, //BITBASTION/…), this
+# variant points at the container's bind-mount '/workspace/v2data' AND
+# redirects cleaned.* to the mixer's output instead of the raw/v1-reuse
+# files. Used by:
+#   - tokenize_for_pretraining.py --data-config … --output-subdir curated_40b
+#   - train_phase1.py (canary_runde2.yaml) which then reads tokenized/curated_40b/
+#
+# The existing tokenized/phase1/ bins stay untouched as a rollback anchor.
+
+data_root: "/workspace/v2data"
+
+raw:
+  english: "raw/english"
+  german:  "raw/german"
+  code:    "raw/code"
+  sft:     "raw/sft"
+  orpo:    "raw/orpo"
+
+# After mix_corpora.py finishes, these three files hold the curated corpus.
+# Same single-file shape that tokenize_for_pretraining.py already consumes.
+cleaned:
+  english:
+    - "training/curated_40b/english.txt"
+  german:
+    - "training/curated_40b/german.txt"
+  code:
+    - "training/curated_40b/code.txt"
+
+tokenized:
+  phase1_english: "tokenized/phase1/english.bin"
+  phase1_german:  "tokenized/phase1/german.bin"
+  phase1_code:    "tokenized/phase1/code.bin"
+  curated_english: "tokenized/curated_40b/english.bin"
+  curated_german:  "tokenized/curated_40b/german.bin"
+  curated_code:    "tokenized/curated_40b/code.bin"
+
+v1_data_root: "/workspace/v2data/_no_v1_inside_container"   # unused here
+
+# Not referenced by tokenize/train — only kept for schema-compat with the
+# original data_paths.yaml. Real targets live in configs/data/curated_40b_mix.yaml.
+phase1_targets:
+  english: {}
+  german:  {}
+  code:    {}
+
+filters:
+  english: {min_length: 200, max_length: 100000, fineweb_min_score: 2.5}
+  german:  {min_length: 300, max_length: 100000, max_perplexity: 500, cultural_keep_ratio: 0.05, excluded_subsets: []}
+  code:    {min_length: 50, max_length: 30000, min_stars: 5}

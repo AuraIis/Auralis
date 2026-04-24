@@ -1,0 +1,73 @@
+# Canary Runde 2 — Baseline-Mix auf curated 40B (1 von 3 Mix-Varianten).
+#
+# Einziger Unterschied zu canary_runde1.yaml: liest aus
+# tokenized/curated_40b/ statt tokenized/phase1/.
+# Damit wird Kuration vs. Roh-Daten direkt vergleichbar:
+#   Canary Runde 1: val_loss 2.682 auf rohen 18B Tokens
+#   Canary Runde 2 Baseline: val_loss ??? auf curated 30B Tokens
+# Delta zeigt uns direkt, wie viel Quality-Filter + neue Quellen bringen.
+
+experiment:
+  name: canary_runde2_baseline
+  version: "2.0"
+  description: "Baseline 75/20/5 mix on curated-40B tokenized data."
+
+model:
+  config_path: "configs/model/helix_v2_250m.yaml"
+
+data:
+  data_dir: "/workspace/v2data/tokenized/curated_40b"
+  mix_ratios:
+    english: 0.75
+    german:  0.20
+    code:    0.05
+  seq_length: 2048
+  val_split_bytes: 50_000_000
+  dataloader_seed: 42
+
+training:
+  device: "cuda"
+  dtype: "bf16"
+  optimizer: {name: adamw, lr: 3.0e-4, betas: [0.9, 0.95], weight_decay: 0.1, eps: 1.0e-8}
+  scheduler: {type: cosine, warmup_steps: 200, min_lr_ratio: 0.1}
+  batch_size_per_device: 4
+  gradient_accumulation: 4
+  gradient_clip_norm: 1.0
+  total_steps: 5000                          # same budget as Runde 1 for fair A/B
+  gradient_checkpointing: true
+  torch_compile: false
+
+logging:
+  log_every: 25
+  eval_every: 500
+  save_every: 1000
+  wandb: {enabled: false, project: "auralis-v2", tags: ["canary", "runde2", "baseline", "curated_40b"]}
+
+checkpointing:
+  output_dir: "/workspace/v2data/checkpoints/canary_runde2_baseline"
+  save_last_n: 3
+  save_best: true
+  external_backup: {enabled: false}
+
+evaluation:
+  max_val_batches: 16
+  per_language_batches: 4
+
+monitoring:
+  health:
+    grad_explosion_threshold: 50.0
+    grad_explosion_k: 3
+    grad_collapse_threshold: 1.0e-5
+    grad_collapse_k: 10
+    loss_spike_factor: 3.0
+    loss_spike_avg_window: 20
+    tps_min_ratio: 0.30
+    tps_warmup_logs: 5
+    tps_k: 3
+    val_regression_stop_k: 5
+    vram_frac_warn: 0.95
+    vram_frac_stop: 0.98
+    ckpt_time_factor: 3.0
+    ckpt_time_median_window: 5
+
+cost: {gpu_hourly_usd: 0.0, budget_usd: 0.0}

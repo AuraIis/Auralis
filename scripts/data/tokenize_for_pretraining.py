@@ -174,6 +174,10 @@ def main() -> None:
     parser.add_argument("--required-free-gb", type=float, default=100.0)
     parser.add_argument("--force", action="store_true",
                         help="Re-tokenize even if output already exists.")
+    parser.add_argument("--output-subdir", default="phase1",
+                        help="Subdirectory under <data_root>/tokenized/ to write the "
+                             ".bin/.idx/.manifest files into. Default 'phase1'. Use e.g. "
+                             "'curated_40b' to keep a phase-1 rollback anchor intact.")
     args = parser.parse_args()
 
     cfg = load_paths(args.data_config) if args.data_config else load_paths()
@@ -186,9 +190,10 @@ def main() -> None:
     print(f"tokenizer : {args.tokenizer} (sha={tokenizer_hash[:12]}…)")
     print(f"vocab     : {sp.GetPieceSize():,}")
 
-    out_dir = data_root / "tokenized" / "phase1"
+    out_dir = data_root / "tokenized" / args.output_subdir
     out_dir.mkdir(parents=True, exist_ok=True)
     check_free_space(out_dir, args.required_free_gb)
+    print(f"output dir: {out_dir}")
 
     all_stats: list[TokenizeStats] = []
     for lang in args.languages:
