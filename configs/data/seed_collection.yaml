@@ -1,0 +1,96 @@
+# Seed-Collection-Plan für die spätere Teacher-Generation (Qwen 3.6 35B Apex).
+#
+# Läuft AUF den bereits gefilterten Quellen aus scripts/data/filter_quality.py.
+# Ergebnis: topik-kohärente Seed-Passagen, kategorisiert, bereit für
+#   OSS-Instruct (ein Seed → 3-5 User-Aufgaben)
+#   Evol-Instruct (Aufgabe → iterativ komplexer)
+#
+# Die Zielanzahl pro Quelle ist bewusst moderat (≤ 50 000 pro Source).
+# Rationale: Qwen-Generation kostet Zeit und VRAM; wir wollen Vielfalt,
+# nicht Masse. Jede Seed-Passage erzeugt später 3-6 SFT-Samples, also
+# 300 000 Seeds → ~1-2 Mio SFT-Samples nach QC-Gates.
+#
+# Paths sind relativ zu data_paths.yaml:data_root.
+
+name: seed_collection_v1
+version: "1.0"
+
+defaults:
+  min_chars: 400            # unter 400 chars = zu wenig Kontext für OSS-Instruct
+  max_chars: 4000           # über 4000 = zu viel für ein einzelnes SFT-Sample
+
+sources:
+  # ---------- Englisch ----------
+  - name: fineweb_edu
+    path: "cleaned/fineweb_edu.filtered.txt"
+    language: english
+    target_count: 50_000
+    notes: "Breites Weltwissen + Reasoning"
+
+  - name: wikipedia_en
+    path: "cleaned/wikipedia_en.filtered.txt"
+    language: english
+    target_count: 30_000
+    notes: "Faktual stabil, guter Anker für Struktur-SFT"
+
+  - name: openmath
+    path: "cleaned/openmath.filtered.txt"
+    language: english
+    target_count: 15_000
+    min_chars: 300
+    notes: "Schritt-für-Schritt Reasoning — Gold für Evol-Instruct."
+
+  - name: dolma
+    path: "cleaned/dolma.filtered.txt"
+    language: english
+    target_count: 20_000
+    notes: "Diversität (Web, Arxiv-Abstracts, StackExchange via C4-Subset)"
+
+  # ---------- Deutsch ----------
+  - name: german_commons
+    path: "cleaned/german_commons.filtered.txt"
+    language: german
+    target_count: 40_000
+    notes: "Haupt-DE-Quelle. News + Bücher + Web modern."
+
+  - name: fineweb2_de
+    path: "cleaned/fineweb2_de.filtered.txt"
+    language: german
+    target_count: 25_000
+    notes: "Moderne deutsche Web-Diversität."
+
+  - name: wikipedia_de
+    path: "cleaned/wikipedia_de.filtered.txt"
+    language: german
+    target_count: 20_000
+    notes: "Faktual-DE, oft gut strukturiert → Struktur-SFT-Stream."
+
+  # ---------- Code ----------
+  - name: starcoderdata
+    path: "cleaned/starcoderdata.filtered.txt"
+    language: code
+    target_count: 15_000
+    min_chars: 200
+    max_chars: 4000
+    notes: "Code-Samples für technische SFT-Paare."
+
+  - name: open_web_math
+    path: "cleaned/open_web_math.filtered.txt"
+    language: english             # Formel-Text ist meist EN
+    target_count: 5_000
+    notes: "Math-heavy, für Reasoning-SFT."
+
+# Wie die Output-Kategorien (von _classify in seed_collector.py) später von
+# Qwen verwertet werden sollen — dient als Spec für das Teacher-Prompt-Routing.
+category_routing:
+  technical:   "OSS-Instruct: Code-Erklärung, API-Nutzung, Debug-Szenarien."
+  procedural:  "Evol-Instruct: einfache Anleitung → komplexe Anleitung mit Constraints."
+  factual:     "OSS-Instruct: 3-5 QA-Paare mit Quellenverweis. + Struktur-SFT (Zerlegung)."
+  opinion:     "Nur Struktur-SFT (sauberer Zusammenfassungs-Task). KEIN direktes SFT-Samplen."
+  narrative:   "Lese-/Verständnisfragen. Zusammenfassung. Perspektivwechsel."
+  general:     "Langsam & vorsichtig — Qwen muss erst einsortieren bevor SFT erzeugt wird."
+
+# Post-collection gates (enforced by qwen_synth_sft.py, not by this script):
+#   - contamination_check gegen eval/baseline_questions.yaml
+#   - near-dup MinHash zwischen Seeds
+#   - für Kategorie 'factual': Ground-Truth-Anker Pflicht (siehe Modus-B-Regel)

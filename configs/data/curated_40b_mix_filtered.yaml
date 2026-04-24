@@ -1,0 +1,78 @@
+# Curated 40B mix — Variante die auf den gefilterten Files operiert.
+#
+# Identisch zu curated_40b_mix.yaml, nur mit local_path-Verweisen auf
+# cleaned/<source>.filtered.txt (Output von filter_quality.py).
+#
+# Sources ohne gefilterte Version werden mit --allow-shortfall übersprungen.
+
+name: curated_40b_filtered
+version: "1.0"
+locked_at: "2026-04-24"
+
+totals:
+  target_tokens: 40_000_000_000
+  source_principle: "Post-filter, cleaned corpora only."
+
+split:
+  english: 0.75
+  german: 0.20
+  code: 0.05
+
+english:
+  target_tokens: 30_000_000_000
+  estimated_bytes_per_token: 4.0
+  sources:
+    - name: fineweb_edu
+      status: keep
+      target_tokens: 14_000_000_000
+      local_path: "cleaned/fineweb_edu.filtered.txt"
+    - name: fineweb2_en
+      status: acquire
+      target_tokens: 8_000_000_000
+      local_path: "cleaned/fineweb2_en.filtered.txt"     # noch nicht da — skip via allow-shortfall
+    - name: wikipedia_en
+      status: keep
+      target_tokens: 3_000_000_000
+      local_path: "cleaned/wikipedia_en.filtered.txt"
+    - name: dolma
+      status: acquire
+      target_tokens: 3_500_000_000
+      local_path: "cleaned/dolma.filtered.txt"
+    - name: openmath
+      status: keep
+      target_tokens: 1_500_000_000
+      local_path: "cleaned/openmath.filtered.txt"
+
+german:
+  target_tokens: 8_000_000_000
+  estimated_bytes_per_token: 5.0
+  sources:
+    - name: german_commons
+      status: acquire
+      target_tokens: 4_500_000_000
+      local_path: "cleaned/german_commons.filtered.txt"
+    - name: fineweb2_de
+      status: acquire
+      target_tokens: 2_500_000_000
+      local_path: "cleaned/fineweb2_de.filtered.txt"
+    - name: wikipedia_de
+      status: acquire
+      target_tokens: 1_000_000_000
+      local_path: "cleaned/wikipedia_de.filtered.txt"
+
+code:
+  target_tokens: 2_000_000_000
+  estimated_bytes_per_token: 3.5
+  sources:
+    - name: the_stack_v2
+      status: acquire
+      target_tokens: 1_700_000_000
+      local_path: "cleaned/the_stack_v2.filtered.txt"    # noch nicht da — skip via allow-shortfall
+    - name: starcoderdata_fallback
+      status: keep
+      target_tokens: 1_700_000_000                        # same budget als stack_v2 fallback
+      local_path: "cleaned/starcoderdata.filtered.txt"
+    - name: open_web_math
+      status: keep_small
+      target_tokens: 300_000_000
+      local_path: "cleaned/open_web_math.filtered.txt"

@@ -98,8 +98,6 @@ def _mix_language(
     with atomic_text_writer(output_path) as out_fh:
         for source in section["sources"]:
             local_path = data_root / source["local_path"]
-            if not local_path.is_file():
-                raise FileNotFoundError(local_path)
             source_target_tokens = int(source["target_tokens"])
             source_target_bytes = int(source_target_tokens * bytes_per_token)
             contribution = SourceContribution(
@@ -108,6 +106,19 @@ def _mix_language(
                 target_tokens=source_target_tokens,
                 target_bytes=source_target_bytes,
             )
+
+            if not local_path.is_file():
+                # Under --allow-shortfall we treat a missing source as a
+                # zero-contribution entry and keep going. Without it, this
+                # is a hard error (the strict default).
+                if allow_shortfall:
+                    contribution.lines_written = 0
+                    contribution.bytes_written = 0
+                    manifest.contributions.append(contribution)
+                    print(f"  warn: missing source {local_path} — skipping (allow-shortfall)")
+                    continue
+                raise FileNotFoundError(local_path)
+
             lines_written, bytes_written = _copy_budget(local_path, out_fh, source_target_bytes)
             contribution.lines_written = lines_written
             contribution.bytes_written = bytes_written
