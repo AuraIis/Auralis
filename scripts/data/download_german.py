@@ -36,6 +36,20 @@ from scripts.data._common import (
 DE_BYTES_PER_TOKEN = 5.0
 
 
+def _parse_target_overrides(values: list[str] | None) -> dict[str, int]:
+    """Parse CLI overrides of the form ``source=123456``."""
+    overrides: dict[str, int] = {}
+    for raw in values or []:
+        if "=" not in raw:
+            raise ValueError(f"Invalid target override {raw!r}; expected source=tokens.")
+        name, value = raw.split("=", 1)
+        name = name.strip()
+        if not name:
+            raise ValueError(f"Invalid target override {raw!r}; empty source name.")
+        overrides[name] = int(value.replace("_", "").strip())
+    return overrides
+
+
 def _open_streaming(path: str, **kwargs: Any):
     from datasets import load_dataset
     return load_dataset(path, split="train", streaming=True, **kwargs)
@@ -151,6 +165,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Download Phase 1 German pretraining data.")
     parser.add_argument("--config", type=Path, default=None)
     parser.add_argument("--sources", nargs="+", choices=list(SOURCES), default=list(SOURCES))
+    parser.add_argument(
+        "--target-tokens-override",
+        nargs="*",
+        default=None,
+        help="Per-source token override(s), e.g. german_commons=4500000000 fineweb2_de=2500000000",
+    )
     parser.add_argument("--required-free-gb", type=float, default=25.0)
     args = parser.parse_args()
 
@@ -159,7 +179,8 @@ def main() -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     check_free_space(out_dir, args.required_free_gb)
 
-    targets = cfg["phase1_targets"]["german"]
+    targets = dict(cfg["phase1_targets"]["german"])
+    targets.update(_parse_target_overrides(args.target_tokens_override))
     filters = cfg["filters"]["german"]
 
     summaries: list[DownloadStats] = []

@@ -1,0 +1,146 @@
+# Curated 40B pretraining corpus plan.
+#
+# Purpose:
+#   - build a cleaner, explicit source-budgeted corpus than the current
+#     21B "whatever is already on NAS" setup
+#   - make keep / drop / acquire decisions machine-readable
+#   - drive both download orchestration and final corpus mixing
+#
+# The target is 40B post-filter tokens:
+#   EN 30B / DE 8B / Code 2B
+#
+# Every source below is either:
+#   - keep: use as part of the final corpus
+#   - replace: current placeholder, only use until the preferred source lands
+#   - drop: explicitly exclude from the final corpus
+#
+# Paths are relative to configs/data_paths.yaml:data_root.
+
+name: curated_40b
+version: "1.0"
+locked_at: "2026-04-23"
+
+totals:
+  target_tokens: 40_000_000_000
+  source_principle: "Quality over quantity; explicit sources only."
+
+split:
+  english: 0.75
+  german: 0.20
+  code: 0.05
+
+english:
+  target_tokens: 30_000_000_000
+  estimated_bytes_per_token: 4.0
+  sources:
+    - name: fineweb_edu
+      status: keep
+      target_tokens: 14_000_000_000
+      hf_dataset: "HuggingFaceFW/fineweb-edu"
+      hf_config: "sample-10BT"
+      local_path: "raw/english/fineweb_edu.txt"
+      notes: "English backbone."
+    - name: fineweb2_en
+      status: acquire
+      target_tokens: 8_000_000_000
+      hf_dataset: "HuggingFaceFW/fineweb-2"
+      hf_config: "eng_Latn"
+      local_path: "raw/english/fineweb2_en.txt"
+      notes: "Modern web EN top-up."
+    - name: wikipedia_en
+      status: keep
+      target_tokens: 3_000_000_000
+      hf_dataset: "wikimedia/wikipedia"
+      hf_config: "20231101.en"
+      local_path: "raw/english/wikipedia_en.txt"
+      notes: "Stable factual anchor."
+    - name: dolma
+      status: acquire
+      target_tokens: 3_500_000_000
+      hf_dataset: "allenai/dolma"
+      local_path: "raw/english/dolma.txt"
+      notes: "Diversity top-up; use the script-filtered subset only."
+    - name: openmath
+      status: keep
+      target_tokens: 1_500_000_000
+      hf_dataset: "nvidia/OpenMathInstruct-2"
+      local_path: "raw/english/openmath.txt"
+      notes: "Useful, but deliberately capped."
+
+german:
+  target_tokens: 8_000_000_000
+  estimated_bytes_per_token: 5.0
+  sources:
+    - name: german_commons
+      status: acquire
+      target_tokens: 4_500_000_000
+      hf_dataset: "coral-nlp/german-commons"
+      local_path: "raw/german/german_commons.txt"
+      notes: "Primary curated German source; do not hide it inside a merged blob."
+    - name: fineweb2_de
+      status: acquire
+      target_tokens: 2_500_000_000
+      hf_dataset: "HuggingFaceFW/fineweb-2"
+      hf_config: "deu_Latn"
+      local_path: "raw/german/fineweb2_de.txt"
+      notes: "Modern web German."
+    - name: wikipedia_de
+      status: acquire
+      target_tokens: 1_000_000_000
+      hf_dataset: "wikimedia/wikipedia"
+      hf_config: "20231101.de"
+      local_path: "raw/german/wikipedia_de.txt"
+      notes: "Factual German anchor."
+  current_reuse_blob:
+    name: german_blob_current
+    status: replace
+    local_path: "cleaned/german.txt"
+    notes: >-
+      Useful as temporary fallback / comparison source, but not transparent
+      enough to remain the final German truth for the curated 40B build.
+
+code:
+  target_tokens: 2_000_000_000
+  estimated_bytes_per_token: 3.5
+  sources:
+    - name: the_stack_v2
+      status: acquire
+      target_tokens: 1_700_000_000
+      hf_dataset: "bigcode/the-stack-v2"
+      local_path: "raw/code/the_stack_v2.txt"
+      notes: "Preferred final code backbone."
+    - name: open_web_math
+      status: keep_small
+      target_tokens: 300_000_000
+      hf_dataset: "open-web-math/open-web-math"
+      local_path: "raw/code/open_web_math.txt"
+      notes: "Small structured reasoning top-up only."
+  current_reuse_blob:
+    name: starcoderdata
+    status: replace
+    local_path: "raw/code/starcoderdata.txt"
+    notes: "Acceptable temporary fallback, but superseded by The Stack v2."
+
+drop_policy:
+  - name: open_web_math_as_code_main
+    reason: "Do not let math web text dominate the code bucket."
+  - name: hidden_merged_german_only
+    reason: "Do not rely solely on cleaned/german.txt for the final 40B corpus."
+  - name: unlisted_sources
+    reason: "Anything not explicitly listed above is out by default."
+
+quality_policy:
+  min_length:
+    english: 200
+    german: 300
+    code: 50
+  max_length:
+    english: 100_000
+    german: 100_000
+    code: 30_000
+  filters_required:
+    - "encoding normalization"
+    - "language filtering"
+    - "quality filtering"
+    - "deduplication"
+    - "contamination check"

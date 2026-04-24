@@ -1,0 +1,102 @@
+[
+  {
+    "language": "english",
+    "name": "fineweb_edu",
+    "status": "keep",
+    "target_tokens": 14000000000,
+    "local_path": "\\\\BITBASTION\\Auralis\\AuralisV2\\raw\\english\\fineweb_edu.txt",
+    "exists": true,
+    "size_bytes": 40000001919,
+    "notes": "English backbone."
+  },
+  {
+    "language": "english",
+    "name": "fineweb2_en",
+    "status": "acquire",
+    "target_tokens": 8000000000,
+    "local_path": "\\\\BITBASTION\\Auralis\\AuralisV2\\raw\\english\\fineweb2_en.txt",
+    "exists": false,
+    "size_bytes": 0,
+    "notes": "Modern web EN top-up."
+  },
+  {
+    "language": "english",
+    "name": "wikipedia_en",
+    "status": "keep",
+    "target_tokens": 3000000000,
+    "local_path": "\\\\BITBASTION\\Auralis\\AuralisV2\\raw\\english\\wikipedia_en.txt",
+    "exists": true,
+    "size_bytes": 12000001571,
+    "notes": "Stable factual anchor."
+  },
+  {
+    "language": "english",
+    "name": "dolma",
+    "status": "acquire",
+    "target_tokens": 3500000000,
+    "local_path": "\\\\BITBASTION\\Auralis\\AuralisV2\\raw\\english\\dolma.txt",
+    "exists": false,
+    "size_bytes": 0,
+    "notes": "Diversity top-up; use the script-filtered subset only."
+  },
+  {
+    "language": "english",
+    "name": "openmath",
+    "status": "keep",
+    "target_tokens": 1500000000,
+    "local_path": "\\\\BITBASTION\\Auralis\\AuralisV2\\raw\\english\\openmath.txt",
+    "exists": true,
+    "size_bytes": 8000000417,
+    "notes": "Useful, but deliberately capped."
+  },
+  {
+    "language": "german",
+    "name": "german_commons",
+    "status": "acquire",
+    "target_tokens": 4500000000,
+    "local_path": "\\\\BITBASTION\\Auralis\\AuralisV2\\raw\\german\\german_commons.txt",
+    "exists": false,
+    "size_bytes": 0,
+    "notes": "Primary curated German source; do not hide it inside a merged blob."
+  },
+  {
+    "language": "german",
+    "name": "fineweb2_de",
+    "status": "acquire",
+    "target_tokens": 2500000000,
+    "local_path": "\\\\BITBASTION\\Auralis\\AuralisV2\\raw\\german\\fineweb2_de.txt",
+    "exists": false,
+    "size_bytes": 0,
+    "notes": "Modern web German."
+  },
+  {
+    "language": "german",
+    "name": "wikipedia_de",
+    "status": "acquire",
+    "target_tokens": 1000000000,
+    "local_path": "\\\\BITBASTION\\Auralis\\AuralisV2\\raw\\german\\wikipedia_de.txt",
+    "exists": false,
+    "size_bytes": 0,
+    "notes": "Factual German anchor."
+  },
+  {
+    "language": "code",
+    "name": "the_stack_v2",
+    "status": "acquire",
+    "target_tokens": 1700000000,
+    "local_path": "\\\\BITBASTION\\Auralis\\AuralisV2\\raw\\code\\the_stack_v2.txt",
+    "exists": false,
+    "size_bytes": 0,
+    "notes": "Preferred final code backbone."
+  },
+  {
+    "language": "code",
+    "name": "open_web_math",
+    "status": "keep_small",
+    "target_tokens": 300000000,
+    "local_path": "\\\\BITBASTION\\Auralis\\AuralisV2\\raw\\code\\open_web_math.txt",
+    "exists": true,
+    "size_bytes": 875006289,
+    "notes": "Small structured reasoning top-up only."
+  }
+]
