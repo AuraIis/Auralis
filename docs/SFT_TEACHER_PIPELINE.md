@@ -129,3 +129,96 @@ Nach Phase 1 Pretraining:
 - [ ] Erste volle SFT-Generation-Runde auf ~300k Seeds
 - [ ] QC-Statistiken, Sample-Review, Judge-Kalibrierung
 - [ ] Phase 3 SFT-Training mit TRL auf den kuratierten Samples
+
+## §7. Creative Writing — Songs / Texte (vier Säulen, keine Lyrics-Reproduktion)
+
+Ziel: Modell kann eigenständig Texte schreiben (Songs, Gedichte, Prosa) und
+versteht **warum** bestimmte Texte Menschen berühren. Das letzte Stück ist
+das wichtigere — Struktur allein macht keinen Song funktionieren, die
+**emotionale Resonanz** tut es.
+
+Vier Säulen, die parallel gespeist werden:
+
+| Säule | Datenquelle | Was gelernt wird |
+|---|---|---|
+| **A — Theorie** | Songwriting-Bücher, Blogs, Music-Theory-Papers (S2ORC-Subset) | Handwerk: Form, Reim, Metrik, Hook-Prinzipien |
+| **B — Public-Domain-Texte** | Gutenberg-Volkslieder, Kirchenlieder vor 1925, klass. Gedichte (Goethe, Heine, Shakespeare) | Wie konkrete Texte in der Form aussehen |
+| **C — Qwen-Generation** | Teacher erzeugt originale Texte nach expliziten Struktur-Vorgaben | Anwendung + Variation |
+| **D — Reception-Discourse** | Music-Reviews, Genius-Annotations (Analyse-Text, NICHT Lyrics), Songwriter-Interviews, Music-Psychology-Papers, Reddit r/Music-Diskussionen | **Warum** Menschen Songs mögen |
+
+**Urheberrechts-Regel, nicht verhandelbar**: Kein Training auf urheberrechtlich
+geschützten Songtexten, auch nicht als KI-Paraphrase. Paraphrase ist
+rechtlich eine Bearbeitung (UrhG § 23) und benötigt Zustimmung. Säule C
+(Qwen generiert komplett neu) liefert die "hat-einen-Text"-Fähigkeit; Säule
+D (Diskurs über Songs) liefert die "weiß-was-berührt"-Fähigkeit. Zusammen
+erreichen sie das Ziel ohne Lizenzrisiko.
+
+**Emotional-Resonance-Patterns** (Unterkategorie von Säule D):
+- Spezifität → Universalität ("deine schwarze Katze schlief auf dem
+  Kissen" statt abstrakt "Trauer") — konkrete Bilder triggern geteilte
+  Erinnerungen
+- Anker an den großen Sechs: Liebe, Verlust, Verlangen, Trotz, Verachtung,
+  Verbundenheit
+- Wahrheit > Konformität — warum Cash' "Hurt"-Cover härter trifft als
+  das Original
+- Kontext-Sensitivität: welcher Stil zu welcher Emotion passt
+  (Battle-Rap ≠ Wiegenlied, beide gültig in ihrem Kontext)
+
+Reception-Lizenzmatrix (Säule D):
+
+| Quelle | Lizenz | Status |
+|---|---|:-:|
+| Genius-Annotations (via API) | CC-BY-SA (analytischer Text) | ✓ |
+| Music-Psychology-Papers via OpenAlex | Open Access / CC-Varianten | ✓ |
+| Pitchfork / Rolling Stone / laut.de Reviews | Pressezitatrecht, Einzelzitate OK, Massen-Crawl ToS-heikel | ⚠ manuell kuratieren |
+| Reddit r/Music, r/hiphopheads etc. | ältere Pushshift-Dumps auf HF, neue API dicht | ⚠ Snapshot-basiert |
+| Songwriter-Interviews (NPR Tiny Desk, Song Exploder) | Pressezitat, Transcripts teils frei | ✓ einzelne Folgen |
+| Songfacts / SongMeanings | User-Content, Einzelzitat OK | ⚠ |
+
+Download-Pfad in der Pipeline: W1.3+W1.4 heute (Theorie + Public Domain),
+W1.5 erst nach Einzel-Lizenz-Check (Reception-Quellen).
+
+## §8. Troubleshooting / Problem-Solving (Windows, Hardware, Handy, Netzwerk)
+
+Ziel: Modell kann strukturiert diagnostizieren. Das gleiche Meta-Pattern wie
+code-write+test aus §1 — nur auf System-/Hardware-Ebene.
+
+**Training-Pattern** (jedes SFT-Sample hat diese Struktur):
+
+```
+1. Problem-Beschreibung (oft vage / emotional: "mein pc ist langsam")
+2. Clarification-Runde (OS-Version? Was wurde schon versucht? Seit wann?)
+3. Diagnose-Chain (systematisch: Kabel → Treiber → Config → Software → Hardware)
+4. Lösung (konkrete Schritte, einer nach dem anderen)
+5. Verifikation (woran erkennst du dass es jetzt geht?)
+6. Escalation (wenn nicht: was als nächstes? Wer kann noch helfen?)
+```
+
+Das Modell lernt: **erst klären, dann lösen**. Wichtiger Unterschied zu
+"Google-Suchergebnis wiedergeben" — echte User beschreiben Probleme ungenau;
+die KI muss gezielt nachfragen bevor sie vermutet.
+
+**Datenquellen (W1.6, läuft gerade):**
+
+- `HuggingFaceH4/stack-exchange-preferences` — Q&A mit Upvote-basierten
+  Präferenzen. Enthält Stack Overflow + superuser + serverfault +
+  askubuntu + apple + android + electronics + networkengineering.
+  CC-BY-SA. Perfekt für Phase 4 ORPO-Preference-Paare zusätzlich.
+
+**Später (W2):**
+- Vollständige per-Site-Dumps pro Stack-Exchange-Subdomain, wo wir nach
+  "superuser", "serverfault", "askubuntu" zielgenau filtern können
+- Arch Wiki, Ubuntu Wiki, Gentoo Wiki als Linux-Troubleshooting-Kern
+- Subset aus `bigcode/the-stack-github-issues` für Bug-Report → Fix-PR-Paare
+
+**Später (W3, Qwen-Stage nach Phase 1):**
+- **Deutsche Übersetzung + Adaption** der englischen Stack-Exchange-Seeds
+  durch Qwen. 90 % der Troubleshooting-Welt ist englisch, aber ein
+  deutscher User sucht deutsch — wir schließen die Lücke synthetisch.
+- Evol-Instruct auf Problem-Beschreibungen: einfach ("Maus geht nicht")
+  → komplex ("Maus macht komische Dinge bei USB-Hub mit Drucker + anderen
+  Geräten auf Win11 24H2 nach letztem Update")
+- **Emotions-Kalibrierung**: viele Troubleshooting-Anfragen kommen genervt
+  ("seit 3 Stunden versuch ich..."). Modell soll: kurz acknowledgen
+  (nicht übertrieben), dann strukturiert helfen. Stack-Exchange-Ton ist
+  die Referenz: knapp, empathisch, sachlich.
