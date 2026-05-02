@@ -95,8 +95,10 @@ def dl_bundestag_mdb():
     try:
         raw = _fetch(url, decode=None)
     except Exception as e:
-        print(f"  FATAL: cannot fetch MdB stammdaten: {e}", flush=True)
-        return
+        # Codex P3: surface fatal fetch errors to the chain script via a
+        # non-zero exit. Returning silently let chain_politik_de.sh mark
+        # this stage "successful" and proceed to clean stage on no data.
+        sys.exit(f"FATAL: cannot fetch MdB stammdaten: {e}")
     out_zip.write_bytes(raw)
     print(f"  zip: {len(raw)/1e6:.1f} MB", flush=True)
 
@@ -209,6 +211,11 @@ def dl_bundestag_protokolle():
         if offset > 1000:  # safety cap
             break
     print(f"  found {len(unique)} unique XML protocols", flush=True)
+    if not unique:
+        # Codex P3: empty index = the upstream changed format or is offline.
+        # We must not silently produce a 0-protocol manifest; the chain
+        # script needs a non-zero exit to skip this stage.
+        sys.exit("FATAL: no protokolle XML hrefs found via filterlist — upstream format may have changed")
 
     import xml.etree.ElementTree as ET
     n_proto = 0
@@ -427,8 +434,7 @@ def dl_europarl_meps():
     try:
         xml_text = _fetch(url, timeout=120)
     except Exception as e:
-        print(f"  FATAL: {e}", flush=True)
-        return
+        sys.exit(f"FATAL: cannot fetch EuroParl MEPs: {e}")
 
     import xml.etree.ElementTree as ET
     root = ET.fromstring(xml_text)
@@ -495,7 +501,12 @@ def _ris_paginate(list_url_base: str):
             body = _fetch(url, timeout=60)
             data = json.loads(body)
         except Exception as e:
-            print(f"  page {page} fail: {e}", flush=True)
+            # Codex P3: page-0 failure must propagate as a fatal exit so the
+            # chain script knows. A failure on a later page is recoverable
+            # (we have records already) — log + stop yielding.
+            if page == 0 and seen == 0:
+                sys.exit(f"FATAL: RIS first-page fetch failed: {e}")
+            print(f"  page {page} fail: {e} — yielding what we have ({seen} records)", flush=True)
             return
         members = data.get("member") or []
         total = data.get("totalItems") or None

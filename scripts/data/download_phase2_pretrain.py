@@ -28,26 +28,17 @@ import sys
 import time
 from pathlib import Path
 
-# HuggingFace Cache auf disk7 — sonst füllt sich der NVMe
-DISK7_CACHE = "/mnt/disk7/Auralis/phase2_corpus/.hf_cache"
-os.environ["HF_HOME"] = DISK7_CACHE
-os.environ["HF_DATASETS_CACHE"] = f"{DISK7_CACHE}/datasets"
-os.environ["HF_HUB_CACHE"] = f"{DISK7_CACHE}/hub"
-os.makedirs(DISK7_CACHE, exist_ok=True)
 
-from datasets import load_dataset
-
-# ROOT: prefer ENV (container uses /staging/raw via volume mount; host uses /mnt/disk7/...).
-# This MUST resolve to a real bind-mount on disk7 — never write to a path that only exists in the container overlay.
+# --- ROOT: where the downloads land. -----------------------------------------
+# The container runs with /staging mounted to disk7, the host sees /mnt/disk7
+# directly. Either way we MUST resolve to a real bind-mount — never to a path
+# that only exists in the container overlay-fs (Codex P2c, P2 2nd-pass).
 #
-# Rule:
-#   1. If PHASE2_RAW_ROOT is set explicitly, trust it (the operator knows).
-#   2. Otherwise auto-pick /staging/raw ONLY if /staging is a real mount-point.
-#      The previous heuristic also accepted "any path that happens to exist",
-#      which let an overlay-fs leftover from a botched container restart
-#      silently route 60+ GB of downloads into the container layer (Codex P2c).
-#   3. Otherwise fall back to the host path (only meaningful when running
-#      directly on the unraid host, which the script does not normally do).
+# Resolution order:
+#   1. Explicit PHASE2_RAW_ROOT env wins (operator knows).
+#   2. Auto-pick /staging/raw only when /staging is an actual mount-point.
+#   3. Fall back to /mnt/disk7/Auralis/phase2_corpus/raw — only meaningful on
+#      the host, not inside the container.
 _explicit = os.environ.get("PHASE2_RAW_ROOT")
 if _explicit:
     ROOT = Path(_explicit)
@@ -61,7 +52,34 @@ if not ROOT.parent.exists():
         f"a path that may resolve into the container overlay. Set PHASE2_RAW_ROOT "
         f"or ensure /staging is volume-mounted."
     )
+
+# --- HF-Cache: derived from ROOT, never hard-coded. --------------------------
+# Previous version pinned the cache to /mnt/disk7/... and called os.makedirs()
+# at import time. Inside the container that path is typically not a mount,
+# so the cache silently materialised in the overlay-fs and ate container disk
+# (Codex P2 2nd-pass). Fix: derive cache path from the validated ROOT (which
+# IS guaranteed to live on a real mount), or honour PHASE2_CACHE_ROOT if set.
+_cache_root_env = os.environ.get("PHASE2_CACHE_ROOT")
+if _cache_root_env:
+    CACHE_ROOT = Path(_cache_root_env)
+else:
+    CACHE_ROOT = ROOT.parent / ".hf_cache"
+if not CACHE_ROOT.parent.exists():
+    raise SystemExit(
+        f"FATAL: CACHE_ROOT.parent does not exist: {CACHE_ROOT.parent}. "
+        f"Refusing to materialise HF cache in a path that may resolve into "
+        f"the container overlay-fs."
+    )
+CACHE_ROOT.mkdir(parents=True, exist_ok=True)
+os.environ["HF_HOME"] = str(CACHE_ROOT)
+os.environ["HF_DATASETS_CACHE"] = str(CACHE_ROOT / "datasets")
+os.environ["HF_HUB_CACHE"] = str(CACHE_ROOT / "hub")
+
+# Import datasets AFTER the env vars are set — datasets reads them at import.
+from datasets import load_dataset  # noqa: E402
+
 print(f"PHASE2_RAW_ROOT = {ROOT}", flush=True)
+print(f"PHASE2_CACHE_ROOT = {CACHE_ROOT}", flush=True)
 
 
 def write_jsonl_to_text(out_file: Path, ds_iter, content_field: str, max_bytes: int | None = None):

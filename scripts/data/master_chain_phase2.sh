@@ -32,12 +32,37 @@ start_dl() {
     export HF_TOKEN="$(cat /root/.hf_token)"
     export HUGGING_FACE_HUB_TOKEN="$HF_TOKEN"
     export PHASE2_RAW_ROOT=/staging/raw
+    # Codex P4: capture the PID and wait on it directly so we can read the
+    # actual exit-code instead of just relying on pgrep going quiet.
     nohup python /staging/scripts/data/download_phase2_pretrain.py --source "${src}" \
         > /staging/logs/dl_${src}.log 2>&1 &
     local pid=$!
     echo "    PID ${pid}"
-    wait_for_dl "${src}"
+    wait "$pid"
+    local rc=$?
+    if [ $rc -ne 0 ]; then
+        echo "--- DL ${src} FAILED (rc=${rc}): $(ts) ---"
+        return $rc
+    fi
     echo "--- DL ${src} END: $(ts) ---"
+}
+
+# Verify a download produced non-empty output. Returns 0 only if the
+# raw .txt exists, has size > 0, and the manifest exists. Used to gate
+# the clean step (Codex P4).
+verify_dl_output() {
+    local src="$1"
+    local raw="/staging/raw/${src}/${src}.txt"
+    local manifest="/staging/raw/${src}/manifest.json"
+    if [ ! -s "$raw" ]; then
+        echo "--- DL ${src} VERIFY FAILED: ${raw} missing or empty ---"
+        return 2
+    fi
+    if [ ! -f "$manifest" ]; then
+        echo "--- DL ${src} VERIFY FAILED: ${manifest} missing ---"
+        return 3
+    fi
+    return 0
 }
 
 clean_one() {
@@ -46,6 +71,11 @@ clean_one() {
     if [ -f "${out}.manifest.json" ] && [ -s "$out" ]; then
         echo "--- CLEAN ${src} SKIP (already done): $(ts) ---"
         return 0
+    fi
+    # Codex P4: don't clean if the upstream DL didn't actually produce data.
+    if ! verify_dl_output "$src"; then
+        echo "--- CLEAN ${src} SKIP (upstream DL output incomplete) ---"
+        return 1
     fi
     echo "--- CLEAN ${src} START: $(ts) ---"
     if bash /staging/scripts/clean_phase2_source.sh "${src}"; then

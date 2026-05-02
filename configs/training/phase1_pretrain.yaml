@@ -83,6 +83,13 @@ checkpointing:
 
 evaluation:
   max_val_batches: 100
+  # NOTE: the trainer currently only honours `max_val_batches` (and
+  # `per_language_batches` if present). The `benchmarks:` block below is a
+  # forward-looking config — Codex 2nd-pass P6 — for an automated benchmark
+  # runner to be wired up in a follow-up PR. Until that runner exists, the
+  # `baseline_50` questions are run manually via scripts/eval/run_benchmark.py.
+  # Leaving the schema declared so the eventual implementation has a
+  # documented target; keep frequency a multiple of save_every (2500).
   benchmarks:
     - {name: baseline_50,     path: "eval/baseline_questions.yaml", frequency: 5000}
 

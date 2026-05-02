@@ -32,17 +32,21 @@ htmlcov/
 # Codex P1 audit: previously only data/* was guarded, leaving root paths
 # vulnerable to a stray `git add -A`.
 #
-# Root-level data directories (Phase-1 + Phase-2 pipelines write here):
-raw/
-cleaned/
-tokenized/
-training/
-seeds/
-tokenizer_corpus/
-phase2_raw/
-phase3_sft_raw/
-phase4_dpo_raw/
-eval_redpajama_v2/
+# Root-level data directories (Phase-1 + Phase-2 pipelines write here).
+# NOTE: leading `/` anchors each pattern to the repo root. Without it,
+# git matches *recursively*, which silently swallows e.g.
+# `tests/training/`, `src/auralis/training/`, `configs/training/`
+# (Codex 2nd-pass P1).
+/raw/
+/cleaned/
+/tokenized/
+/training/
+/seeds/
+/tokenizer_corpus/
+/phase2_raw/
+/phase3_sft_raw/
+/phase4_dpo_raw/
+/eval_redpajama_v2/
 
 # Canonical /data layout (preserve folder structure via .gitkeep):
 data/raw/*

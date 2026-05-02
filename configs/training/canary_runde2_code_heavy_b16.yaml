@@ -1,0 +1,78 @@
+# Canary Runde 2 — code_heavy_b16: batch=16 mit echtem Mix-Effekt.
+#
+# Ablauf der vorherigen Runde 2 zeigte: bei batch=4 runden alle drei Mix-Varianten
+# auf die gleiche Row-Komposition (3 EN / 1 DE / 0 Code), so dass Mix-Anteile
+# keinen messbaren Effekt haben.
+#
+# Lösung: batch_size_per_device=16 (statt 4), grad_accum=1 (statt 4) — gleiche
+# effective batch size, aber echte Row-Auflösung pro Mix-Variante:
+#   baseline   75/20/5  -> 12 EN / 3 DE / 1 Code
+#   de_heavy   65/30/5  -> 10 EN / 5 DE / 1 Code
+#   code_heavy 60/20/20 -> 10 EN / 3 DE / 3 Code
+#
+# Effective batch: 16 * 1 = 16 (gleich wie 4 * 4 vorher).
+
+experiment:
+  name: canary_runde2_code_heavy_b16
+  version: '2.1'
+  description: 'Code-heavy 60/20/20 — rows 10/3/3 at batch=16'
+
+model:
+  config_path: 'configs/model/helix_v2_250m.yaml'
+
+data:
+  data_dir: '/workspace/v2data/tokenized/curated_40b'
+  mix_ratios:
+    english: 0.60
+    german:  0.20
+    code:    0.20
+  seq_length: 1024
+  val_split_bytes: 50000000
+  dataloader_seed: 42
+
+training:
+  device: 'cuda'
+  dtype: 'bf16'
+  optimizer: {name: adamw, lr: 3.0e-4, betas: [0.9, 0.95], weight_decay: 0.1, eps: 1.0e-8}
+  scheduler: {type: cosine, warmup_steps: 200, min_lr_ratio: 0.1}
+  batch_size_per_device: 12
+  gradient_accumulation: 1
+  gradient_clip_norm: 1.0
+  total_steps: 5000
+  gradient_checkpointing: true
+  torch_compile: false
+
+logging:
+  log_every: 25
+  eval_every: 500
+  save_every: 1000
+  wandb: {enabled: false, project: 'auralis-v2', tags: ['canary', 'runde2', 'code_heavy_b16', 'curated_40b']}
+
+checkpointing:
+  output_dir: '/workspace/v2data/checkpoints/canary_runde2_code_heavy_b16'
+  save_last_n: 3
+  save_best: true
+  external_backup: {enabled: false}
+
+evaluation:
+  max_val_batches: 16
+  per_language_batches: 4
+
+monitoring:
+  health:
+    grad_explosion_threshold: 50.0
+    grad_explosion_k: 3
+    grad_collapse_threshold: 1.0e-5
+    grad_collapse_k: 10
+    loss_spike_factor: 3.0
+    loss_spike_avg_window: 20
+    tps_min_ratio: 0.30
+    tps_warmup_logs: 5
+    tps_k: 3
+    val_regression_stop_k: 5
+    vram_frac_warn: 0.95
+    vram_frac_stop: 0.98
+    ckpt_time_factor: 3.0
+    ckpt_time_median_window: 5
+
+cost: {gpu_hourly_usd: 0.0, budget_usd: 0.0}

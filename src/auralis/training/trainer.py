@@ -178,6 +178,11 @@ class PretrainTrainer:
         self._ckpt_dir = Path(ccfg["output_dir"])
         self._ckpt_dir.mkdir(parents=True, exist_ok=True)
         self._keep_last = int(ccfg.get("save_last_n", 3))
+        # Codex P5: respect the save_best flag. Smoke / ablation configs that
+        # set save_best=false were silently overridden because the trainer
+        # always wrote best.pt on val improvement. Default true preserves
+        # the existing Phase-1 behaviour.
+        self._save_best = bool(ccfg.get("save_best", True))
         self._external_backup = ccfg.get("external_backup") or {}
 
         # ---- Health monitor (auto-stop guards) ----
@@ -436,7 +441,9 @@ class PretrainTrainer:
         if val_loss < self.state.best_val_loss:
             self.state.best_val_loss = val_loss
             self.state.consecutive_val_increases = 0
-            self.save_checkpoint("best")
+            # Codex P5: only write best.pt if the config asks for it.
+            if self._save_best:
+                self.save_checkpoint("best")
         else:
             self.state.consecutive_val_increases += 1
             if self.state.consecutive_val_increases >= 3:
