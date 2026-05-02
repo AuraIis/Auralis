@@ -19,12 +19,8 @@ echo "============================================================"
 echo "=== chain_de start: $(ts) ==="
 echo "============================================================"
 
-wait_for_dl() {
-    local src="$1"
-    while pgrep -f "[d]ownload_phase2_pretrain.py --source ${src}" > /dev/null; do
-        sleep 60
-    done
-}
+# Codex 3rd-pass P2-2: PID-aware helper instead of pgrep-only wait.
+declare -A DL_PIDS=()
 
 start_dl_bg() {
     local src="$1"
@@ -34,7 +30,42 @@ start_dl_bg() {
     export PHASE2_RAW_ROOT=/staging/raw
     nohup python /staging/scripts/data/download_phase2_pretrain.py --source "${src}" \
         > /staging/logs/dl_${src}.log 2>&1 &
-    echo "    PID $!"
+    local pid=$!
+    DL_PIDS[$src]=$pid
+    echo "    ${src} PID ${pid}"
+}
+
+wait_dl_bg() {
+    local src="$1"
+    local pid="${DL_PIDS[$src]}"
+    if [ -z "$pid" ]; then
+        echo "--- DL ${src} WAIT FAILED: no PID recorded ---"
+        return 99
+    fi
+    wait "$pid"
+    local rc=$?
+    unset 'DL_PIDS[$src]'
+    if [ $rc -ne 0 ]; then
+        echo "--- DL ${src} FAILED (rc=${rc}): $(ts) ---"
+        return $rc
+    fi
+    echo "--- DL ${src} END: $(ts) ---"
+    return 0
+}
+
+verify_dl_output() {
+    local src="$1"
+    local raw="/staging/raw/${src}/${src}.txt"
+    local manifest="/staging/raw/${src}/manifest.json"
+    if [ ! -s "$raw" ]; then
+        echo "--- DL ${src} VERIFY FAILED: ${raw} missing or empty ---"
+        return 2
+    fi
+    if [ ! -f "$manifest" ]; then
+        echo "--- DL ${src} VERIFY FAILED: ${manifest} missing ---"
+        return 3
+    fi
+    return 0
 }
 
 clean_one() {
@@ -43,6 +74,10 @@ clean_one() {
     if [ -f "${out}.manifest.json" ] && [ -s "$out" ]; then
         echo "--- CLEAN ${src} SKIP (already done): $(ts) ---"
         return 0
+    fi
+    if ! verify_dl_output "$src"; then
+        echo "--- CLEAN ${src} SKIP (upstream DL output incomplete) ---"
+        return 1
     fi
     echo "--- CLEAN ${src} START: $(ts) ---"
     if bash /staging/scripts/clean_phase2_source.sh "${src}"; then
@@ -57,7 +92,7 @@ clean_one() {
 echo ">> step 1: fineweb2_de DL"
 mkdir -p /staging/raw/fineweb2_de
 start_dl_bg fineweb2_de
-wait_for_dl fineweb2_de
+wait_dl_bg fineweb2_de || { echo "FATAL: fineweb2_de DL failed, aborting chain"; exit 1; }
 echo ">> fineweb2_de DL finished at $(ts)"
 
 # Step 2: parallel — clean fineweb2_de + DL wikipedia_de
@@ -69,7 +104,7 @@ echo ">> step 2b: clean fineweb2_de (parallel)"
 clean_one fineweb2_de || echo "WARN: clean fineweb2_de failed"
 
 echo ">> step 3: wait wikipedia_de"
-wait_for_dl wikipedia_de
+wait_dl_bg wikipedia_de || echo "WARN: wikipedia_de DL exited non-zero, downstream clean will be skipped"
 echo ">> wikipedia_de DL finished at $(ts)"
 
 # Step 4: clean wikipedia_de

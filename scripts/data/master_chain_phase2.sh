@@ -26,25 +26,49 @@ wait_for_dl() {
     done
 }
 
-start_dl() {
+# --- DL helpers (Codex P4 + 3rd-pass P2-2) ----------------------------------
+# Two flavours, both PID-aware:
+#   start_dl_bg   — fork, store PID in DL_PIDS[$src], return immediately so
+#                   the caller can run cleaning in parallel.
+#   wait_dl_bg    — `wait` on the previously stored PID and surface its exit
+#                   code. Pairs with start_dl_bg.
+#   start_dl      — convenience: start_dl_bg + wait_dl_bg in one call.
+declare -A DL_PIDS=()
+
+start_dl_bg() {
     local src="$1"
     echo "--- DL ${src} START: $(ts) ---"
     export HF_TOKEN="$(cat /root/.hf_token)"
     export HUGGING_FACE_HUB_TOKEN="$HF_TOKEN"
     export PHASE2_RAW_ROOT=/staging/raw
-    # Codex P4: capture the PID and wait on it directly so we can read the
-    # actual exit-code instead of just relying on pgrep going quiet.
     nohup python /staging/scripts/data/download_phase2_pretrain.py --source "${src}" \
         > /staging/logs/dl_${src}.log 2>&1 &
     local pid=$!
-    echo "    PID ${pid}"
+    DL_PIDS[$src]=$pid
+    echo "    ${src} PID ${pid}"
+}
+
+wait_dl_bg() {
+    local src="$1"
+    local pid="${DL_PIDS[$src]}"
+    if [ -z "$pid" ]; then
+        echo "--- DL ${src} WAIT FAILED: no PID recorded ---"
+        return 99
+    fi
     wait "$pid"
     local rc=$?
+    unset 'DL_PIDS[$src]'
     if [ $rc -ne 0 ]; then
         echo "--- DL ${src} FAILED (rc=${rc}): $(ts) ---"
         return $rc
     fi
     echo "--- DL ${src} END: $(ts) ---"
+    return 0
+}
+
+start_dl() {
+    start_dl_bg "$1" || return $?
+    wait_dl_bg "$1"
 }
 
 # Verify a download produced non-empty output. Returns 0 only if the
@@ -86,39 +110,32 @@ clean_one() {
     fi
 }
 
-# Step 1: wait for the in-flight fineweb_10bt
+# Step 1: wait for the in-flight fineweb_10bt (already started outside the
+# chain, so we use pgrep — no PID to wait on. Verify_dl_output below catches
+# any incomplete output before we clean.)
 echo ">> step 1: wait fineweb_10bt"
 wait_for_dl fineweb_10bt
 echo ">> fineweb_10bt finished at $(ts)"
 
 # Step 2: clean fineweb (in parallel with starting smollm DL)
 echo ">> step 2a: start smollm DL (background)"
-export HF_TOKEN="$(cat /root/.hf_token)"
-export HUGGING_FACE_HUB_TOKEN="$HF_TOKEN"
-export PHASE2_RAW_ROOT=/staging/raw
-nohup python /staging/scripts/data/download_phase2_pretrain.py --source smollm_python_edu \
-    > /staging/logs/dl_smollm_python_edu.log 2>&1 &
-echo "    smollm DL PID $!"
+start_dl_bg smollm_python_edu
 
 echo ">> step 2b: clean fineweb_10bt (parallel to smollm DL)"
 clean_one fineweb_10bt || echo "WARN: clean fineweb_10bt failed, continuing"
 
 echo ">> step 3: wait smollm_python_edu"
-wait_for_dl smollm_python_edu
-echo ">> smollm_python_edu finished at $(ts)"
+wait_dl_bg smollm_python_edu || echo "WARN: smollm DL exited non-zero, downstream clean will be skipped"
 
 # Step 4: clean smollm in parallel with stack_v2 DL
 echo ">> step 4a: start the_stack_v2_python DL (background)"
-nohup python /staging/scripts/data/download_phase2_pretrain.py --source the_stack_v2_python \
-    > /staging/logs/dl_the_stack_v2_python.log 2>&1 &
-echo "    stack_v2 DL PID $!"
+start_dl_bg the_stack_v2_python
 
 echo ">> step 4b: clean smollm_python_edu (parallel to stack_v2 DL)"
 clean_one smollm_python_edu || echo "WARN: clean smollm_python_edu failed, continuing"
 
 echo ">> step 5: wait the_stack_v2_python"
-wait_for_dl the_stack_v2_python
-echo ">> the_stack_v2_python finished at $(ts)"
+wait_dl_bg the_stack_v2_python || echo "WARN: stack_v2 DL exited non-zero, downstream clean will be skipped"
 
 echo ">> step 6: clean the_stack_v2_python"
 clean_one the_stack_v2_python || echo "WARN: clean the_stack_v2_python failed, continuing"

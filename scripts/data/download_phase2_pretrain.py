@@ -32,13 +32,12 @@ from pathlib import Path
 # --- ROOT: where the downloads land. -----------------------------------------
 # The container runs with /staging mounted to disk7, the host sees /mnt/disk7
 # directly. Either way we MUST resolve to a real bind-mount — never to a path
-# that only exists in the container overlay-fs (Codex P2c, P2 2nd-pass).
+# that only exists in the container overlay-fs.
 #
-# Resolution order:
-#   1. Explicit PHASE2_RAW_ROOT env wins (operator knows).
-#   2. Auto-pick /staging/raw only when /staging is an actual mount-point.
-#   3. Fall back to /mnt/disk7/Auralis/phase2_corpus/raw — only meaningful on
-#      the host, not inside the container.
+# Codex 3rd-pass P2-1: the chain scripts set PHASE2_RAW_ROOT=/staging/raw
+# themselves, which previously bypassed the auto-detect mount-check. Fix:
+# the mount-check applies regardless of how the path was chosen — any path
+# under /staging requires /staging to be a real mount.
 _explicit = os.environ.get("PHASE2_RAW_ROOT")
 if _explicit:
     ROOT = Path(_explicit)
@@ -46,11 +45,37 @@ elif Path("/staging").is_mount():
     ROOT = Path("/staging/raw")
 else:
     ROOT = Path("/mnt/disk7/Auralis/phase2_corpus/raw")
+
+
+def _must_be_mounted(p: Path, anchor_dir: str) -> None:
+    """Ensure that ``anchor_dir`` is a real mount-point if ``p`` lives under
+    it. Empty anchor_dir or a path that does not match means: nothing to
+    enforce here (other guards apply).
+    """
+    if not anchor_dir:
+        return
+    anchor = Path(anchor_dir)
+    try:
+        p.resolve().relative_to(anchor.resolve())
+    except ValueError:
+        return  # path is not under anchor_dir
+    if not anchor.is_mount():
+        raise SystemExit(
+            f"FATAL: refusing to use {p} because {anchor_dir} is not a real "
+            f"mount-point. The path may resolve into the container overlay-fs "
+            f"and silently consume container disk. Either bind-mount disk7 "
+            f"to {anchor_dir}, or set PHASE2_RAW_ROOT to a path on a real mount."
+        )
+
+
+# Always enforce the /staging mount-check, even when the operator passed the
+# path explicitly via PHASE2_RAW_ROOT — explicit doesn't mean "ignore safety".
+_must_be_mounted(ROOT, "/staging")
 if not ROOT.parent.exists():
     raise SystemExit(
         f"FATAL: ROOT.parent does not exist: {ROOT.parent} — refusing to write to "
         f"a path that may resolve into the container overlay. Set PHASE2_RAW_ROOT "
-        f"or ensure /staging is volume-mounted."
+        f"to a path on a real mount, or bind-mount disk7 to /staging."
     )
 
 # --- HF-Cache: derived from ROOT, never hard-coded. --------------------------
@@ -64,6 +89,9 @@ if _cache_root_env:
     CACHE_ROOT = Path(_cache_root_env)
 else:
     CACHE_ROOT = ROOT.parent / ".hf_cache"
+# Same mount-guard as for ROOT — applies whether the path was explicit or
+# auto-derived (Codex 3rd-pass P2-1).
+_must_be_mounted(CACHE_ROOT, "/staging")
 if not CACHE_ROOT.parent.exists():
     raise SystemExit(
         f"FATAL: CACHE_ROOT.parent does not exist: {CACHE_ROOT.parent}. "
