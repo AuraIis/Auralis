@@ -69,11 +69,14 @@ def main() -> int:
     p.add_argument("--threshold", type=int, default=3,
                    help="keep docs with score >= threshold (default 3)")
     p.add_argument("--head-chars", type=int, default=1500)
-    p.add_argument("--model", default="meta-llama/llama-3.3-70b-instruct",
-                   help="OpenRouter model id. Default: llama-3.3-70b-instruct — "
-                        "deepseek/deepseek-chat-v3.1 was the original choice but "
-                        "exhibits a degenerate token-loop ('棣棣棣') at short "
-                        "completion lengths regardless of provider routing.")
+    p.add_argument("--model", default="qwen/qwen3.6-35b-a3b",
+                   help="OpenRouter model id. Default: qwen/qwen3.6-35b-a3b — "
+                        "matches the model the user runs locally on bitbastion "
+                        "for self-consistency between corpus-filtering and "
+                        "downstream judging. Reasoning is auto-disabled via "
+                        "extra_body. deepseek/deepseek-chat-v3.1 is NOT "
+                        "recommended — exhibits a 18%% degenerate-token bug "
+                        "('棣棣棣') at short completion lengths.")
     p.add_argument("--batch-size", type=int, default=8,
                    help="distilabel parallelism per LLM call")
     args = p.parse_args()
@@ -103,21 +106,25 @@ def main() -> int:
     print(f"  {len(docs)} docs prepared", flush=True)
 
     # NOTE on the prompt + decoding:
-    # The 5000-doc v1 run (T=0, max=4, "respond with EXACTLY one digit")
-    # fell into a degenerate-token loop on ~18% of inputs ("棣棣棣棣").
-    # Bumping T to 0.05 didn't help; the issue is OpenRouter routing some
-    # requests to a deepseek-chat-v3.1 deployment that mistokenises the
-    # 1-digit-only constraint. Fix is structural:
-    #   * prompt now asks for "Score: X" (forces a diverse token prefix)
-    #   * max_new_tokens raised to 16 (room for "Score: 4")
-    #   * temperature 0.05 (effectively deterministic for digits, but
-    #     enough non-zero noise to avoid the trapped state)
-    # The parser still picks the first digit found — robust to any prefix.
+    # The 5000-doc v1 run on deepseek/deepseek-chat-v3.1 (T=0, max=4,
+    # "respond with EXACTLY one digit") hit a degenerate-token loop on
+    # ~18% of inputs ("棣棣棣棣"); the bug is in deepseek-chat-v3.1
+    # itself, not the prompt. Switched default to llama-3.3-70b/qwen3.x.
+    #
+    # For reasoning models (qwen3.6-*, qwen3-thinking, etc.) we MUST
+    # disable thinking — otherwise max_new_tokens=16 is consumed by the
+    # reasoning trace and content comes back empty. OpenRouter's
+    # extra_body={"reasoning": {"enabled": false}} works for all models
+    # that support it; non-reasoning models silently ignore it.
     llm = OpenAILLM(
         api_key=api_key,
         base_url="https://openrouter.ai/api/v1",
         model=args.model,
-        generation_kwargs={"temperature": 0.05, "max_new_tokens": 16},
+        generation_kwargs={
+            "temperature": 0.05,
+            "max_new_tokens": 16,
+            "extra_body": {"reasoning": {"enabled": False}},
+        },
     )
 
     with Pipeline(name="ask-llm-deepseek") as pipeline:
@@ -132,7 +139,11 @@ def main() -> int:
     distiset = pipeline.run(
         parameters={
             score_step.name: {
-                "llm": {"generation_kwargs": {"temperature": 0.05, "max_new_tokens": 16}},
+                "llm": {"generation_kwargs": {
+                    "temperature": 0.05,
+                    "max_new_tokens": 16,
+                    "extra_body": {"reasoning": {"enabled": False}},
+                }},
             },
         },
         use_cache=False,
