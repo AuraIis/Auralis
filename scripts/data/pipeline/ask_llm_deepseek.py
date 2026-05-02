@@ -127,31 +127,37 @@ def main() -> int:
     n_kept = 0
     n_total = 0
     histogram = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0, "?": 0}
+
+    # distiset structure: { leaf_step_name -> { split_name -> HF Dataset } }
+    # We have one leaf (score_step) and the default 'train' split.
+    def _iter_rows(distiset):
+        for leaf_name, leaf in distiset.items():
+            for split_name, ds in leaf.items():
+                for row in ds:
+                    yield row
+
     with args.output.open("w", encoding="utf-8") as out_f:
-        # distiset is a Distiset object containing one or more datasets.
-        # Take the default split.
-        for split_name, ds in distiset.items():
-            for row in ds:
-                n_total += 1
-                generation = (row.get("generation") or "").strip()
-                # Parse first digit
-                score = None
-                for ch in generation:
-                    if ch in "12345":
-                        score = int(ch)
-                        break
-                histogram[score if score in histogram else "?"] += 1
-                rec = {
-                    "doc_id": row.get("doc_id"),
-                    "score": score,
-                    "raw_response": generation,
-                    "head": row.get("head"),
-                    "length_chars": row.get("length_chars"),
-                    "kept": score is not None and score >= args.threshold,
-                }
-                if rec["kept"]:
-                    n_kept += 1
-                out_f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+        for row in _iter_rows(distiset):
+            n_total += 1
+            generation = (row.get("generation") or "").strip()
+            # Parse first digit
+            score = None
+            for ch in generation:
+                if ch in "12345":
+                    score = int(ch)
+                    break
+            histogram[score if score in histogram else "?"] += 1
+            rec = {
+                "doc_id": row.get("doc_id"),
+                "score": score,
+                "raw_response": generation,
+                "head": row.get("head"),
+                "length_chars": row.get("length_chars"),
+                "kept": score is not None and score >= args.threshold,
+            }
+            if rec["kept"]:
+                n_kept += 1
+            out_f.write(json.dumps(rec, ensure_ascii=False) + "\n")
 
     print()
     print(f"=== Ask-LLM (DeepSeek) results ===")

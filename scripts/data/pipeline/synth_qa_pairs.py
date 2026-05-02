@@ -190,42 +190,49 @@ def main() -> int:
     n_total = 0
     n_pairs = 0
     n_parse_fail = 0
+
+    # distiset structure: { leaf_step_name -> { split_name -> HF Dataset } }
+    def _iter_rows(distiset):
+        for leaf_name, leaf in distiset.items():
+            for split_name, ds in leaf.items():
+                for row in ds:
+                    yield row
+
     with args.output.open("w", encoding="utf-8") as out_f:
-        for split_name, ds in distiset.items():
-            for row in ds:
-                n_total += 1
-                generation = (row.get("generation") or "").strip()
-                # Try to parse JSON array from the response
-                pairs = None
-                try:
-                    # Strip code fences if present
-                    if generation.startswith("```"):
-                        first_nl = generation.find("\n")
-                        last_fence = generation.rfind("```")
-                        generation = generation[first_nl + 1: last_fence].strip()
-                    pairs = json.loads(generation)
-                    if not isinstance(pairs, list):
-                        pairs = None
-                except json.JSONDecodeError:
+        for row in _iter_rows(distiset):
+            n_total += 1
+            generation = (row.get("generation") or "").strip()
+            # Try to parse JSON array from the response
+            pairs = None
+            try:
+                # Strip code fences if present
+                if generation.startswith("```"):
+                    first_nl = generation.find("\n")
+                    last_fence = generation.rfind("```")
+                    generation = generation[first_nl + 1: last_fence].strip()
+                pairs = json.loads(generation)
+                if not isinstance(pairs, list):
                     pairs = None
-                if pairs is None:
-                    n_parse_fail += 1
+            except json.JSONDecodeError:
+                pairs = None
+            if pairs is None:
+                n_parse_fail += 1
+                continue
+            for pair in pairs:
+                if not isinstance(pair, dict):
                     continue
-                for pair in pairs:
-                    if not isinstance(pair, dict):
-                        continue
-                    q, a = pair.get("question"), pair.get("answer")
-                    if not q or not a:
-                        continue
-                    out_f.write(json.dumps({
-                        "source_id": row.get("raw_id"),
-                        "schema": args.schema,
-                        "messages": [
-                            {"role": "user", "content": q},
-                            {"role": "assistant", "content": a},
-                        ],
-                    }, ensure_ascii=False) + "\n")
-                    n_pairs += 1
+                q, a = pair.get("question"), pair.get("answer")
+                if not q or not a:
+                    continue
+                out_f.write(json.dumps({
+                    "source_id": row.get("raw_id"),
+                    "schema": args.schema,
+                    "messages": [
+                        {"role": "user", "content": q},
+                        {"role": "assistant", "content": a},
+                    ],
+                }, ensure_ascii=False) + "\n")
+                n_pairs += 1
 
     print()
     print(f"=== Synth Q&A results ===")
