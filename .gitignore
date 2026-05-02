@@ -27,48 +27,12 @@ htmlcov/
 .claude/
 
 # --- Auralis: grosse Artefakte NIE committen ---
-# Rohdaten und bearbeitete Korpora (Ordnerstruktur via .gitkeep erhalten)
-data/raw/*
-!data/raw/.gitkeep
-data/cleaned/*
-!data/cleaned/.gitkeep
-data/training/*
-!data/training/.gitkeep
-# Eval-Ergebnisse (werden pro Run frisch erzeugt)
-eval/results/*
-!eval/results/.gitkeep
-# Checkpoints
-checkpoints/*
-!checkpoints/.gitkeep
-# Tokenizer-Artefakte: das trainierte Helix-v2-SP-Modell ist der
-# kanonische Artefakt und MUSS versioniert sein (~4 MB). Nur Nebenläufer
-# ignorieren wir (z.B. .tmp während Training).
-tokenizer/*.model.tmp
-tokenizer/*.vocab.tmp
-# WandB lokale Logs
-wandb/
-# Large file markers
-*.safetensors
-*.bin
-*.pt
-*.pth
-*.ckpt
-*.gguf
-
-# --- Environment / Secrets ---
-.env
-.env.*
-!.env.example
-*.key
-credentials.json
-
-# --- Laufzeit ---
-*.log
-logs/
-tmp/
-.cache/
-
-# --- Auralis: Phase-2+ data dirs (huge, never commit) ---
+# We block both the canonical /data/* layout AND root-level data dirs that
+# accumulate from in-place pipelines (raw/, cleaned/, tokenized/, …).
+# Codex P1 audit: previously only data/* was guarded, leaving root paths
+# vulnerable to a stray `git add -A`.
+#
+# Root-level data directories (Phase-1 + Phase-2 pipelines write here):
 raw/
 cleaned/
 tokenized/
@@ -80,23 +44,59 @@ phase3_sft_raw/
 phase4_dpo_raw/
 eval_redpajama_v2/
 
-# --- Phase-1 specific large outputs ---
-checkpoints/
-logs/
+# Canonical /data layout (preserve folder structure via .gitkeep):
+data/raw/*
+!data/raw/.gitkeep
+data/cleaned/*
+!data/cleaned/.gitkeep
+data/training/*
+!data/training/.gitkeep
+
+# Eval-Ergebnisse (werden pro Run frisch erzeugt)
+eval/results/*
+!eval/results/.gitkeep
+
+# Checkpoints
+checkpoints/*
+!checkpoints/.gitkeep
+
+# Tokenizer-Artefakte: das trainierte Helix-v2-SP-Modell ist der
+# kanonische Artefakt und MUSS versioniert sein (~4 MB). Nur Nebenläufer
+# ignorieren wir (z.B. .tmp während Training).
+tokenizer/*.model.tmp
+tokenizer/*.vocab.tmp
+
+# WandB lokale Logs
+wandb/
+
+# --- Large model artefacts (binary, never commit) ---
+*.safetensors
 *.bin
 *.idx
 *.pt
-*.tmp
+*.pth
+*.ckpt
+*.gguf
 *.tar
 *.tar.gz
+*.tmp
 
 # --- HF cache, in case ever materialized inside repo ---
 .hf_cache/
 .huggingface/
 
-# --- Local config that shouldn't leak ---
+# --- Environment / Secrets ---
 .env
-.env.local
+.env.*
+!.env.example
+*.key
 *.token
 .hf_token
+credentials.json
+
+# --- Laufzeit ---
+*.log
+logs/
+tmp/
+.cache/
 

@@ -39,11 +39,28 @@ from datasets import load_dataset
 
 # ROOT: prefer ENV (container uses /staging/raw via volume mount; host uses /mnt/disk7/...).
 # This MUST resolve to a real bind-mount on disk7 — never write to a path that only exists in the container overlay.
-_default_root = "/staging/raw" if Path("/staging").is_mount() or Path("/staging/raw").exists() else "/mnt/disk7/Auralis/phase2_corpus/raw"
-ROOT = Path(os.environ.get("PHASE2_RAW_ROOT", _default_root))
+#
+# Rule:
+#   1. If PHASE2_RAW_ROOT is set explicitly, trust it (the operator knows).
+#   2. Otherwise auto-pick /staging/raw ONLY if /staging is a real mount-point.
+#      The previous heuristic also accepted "any path that happens to exist",
+#      which let an overlay-fs leftover from a botched container restart
+#      silently route 60+ GB of downloads into the container layer (Codex P2c).
+#   3. Otherwise fall back to the host path (only meaningful when running
+#      directly on the unraid host, which the script does not normally do).
+_explicit = os.environ.get("PHASE2_RAW_ROOT")
+if _explicit:
+    ROOT = Path(_explicit)
+elif Path("/staging").is_mount():
+    ROOT = Path("/staging/raw")
+else:
+    ROOT = Path("/mnt/disk7/Auralis/phase2_corpus/raw")
 if not ROOT.parent.exists():
-    raise SystemExit(f"FATAL: ROOT.parent does not exist: {ROOT.parent} — refusing to write to overlay-fs. "
-                     f"Set PHASE2_RAW_ROOT or ensure /staging is volume-mounted.")
+    raise SystemExit(
+        f"FATAL: ROOT.parent does not exist: {ROOT.parent} — refusing to write to "
+        f"a path that may resolve into the container overlay. Set PHASE2_RAW_ROOT "
+        f"or ensure /staging is volume-mounted."
+    )
 print(f"PHASE2_RAW_ROOT = {ROOT}", flush=True)
 
 

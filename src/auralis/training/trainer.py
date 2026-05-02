@@ -92,6 +92,9 @@ class TrainerState:
     # Cheap counters for post-hoc analysis of backups + logging reliability
     external_backups_ok: int = 0
     external_backups_failed: int = 0
+    # Consecutive failures (resets on success). Used by the health monitor
+    # to stop training before the checkpoint graveyard fills with bogus runs.
+    external_backups_consecutive_failed: int = 0
 
 
 @dataclass
@@ -361,8 +364,12 @@ class PretrainTrainer:
                 self.save_checkpoint(f"step_{self.state.step}_emergency")
                 raise HealthStop(reason)
 
-        # Final checkpoint
-        self.save_checkpoint(f"step_{self.state.step}")
+        # Final checkpoint — skip if the last in-loop save already wrote
+        # step_{N}.pt (happens when total_steps % save_every == 0; e.g. for
+        # 80000 % 2500). Avoids overwriting the freshly written file with
+        # identical content and triggering a redundant external backup.
+        if self.state.step % self._save_every != 0:
+            self.save_checkpoint(f"step_{self.state.step}")
         return self.state
 
     # ------------------------------------------------------------------
@@ -474,16 +481,29 @@ class PretrainTrainer:
             interval = int(backup_cfg.get("interval_steps", 0))
             if interval > 0 and self.state.step % interval == 0:
                 backup_root = Path(backup_cfg["path"])
+                ok = False
                 try:
                     backup_root.mkdir(parents=True, exist_ok=True)
                     shutil.copy2(path, backup_root / path.name)
                     shutil.copy2(sidecar, backup_root / sidecar.name)
                     self.state.external_backups_ok += 1
+                    self.state.external_backups_consecutive_failed = 0
+                    ok = True
                     backup_ran = True
                 except OSError as e:
-                    # Non-fatal: a failed backup should not interrupt training.
+                    # Non-fatal at the per-call level — but the health monitor
+                    # below decides whether the *cumulative pattern* is fatal.
                     self.state.external_backups_failed += 1
+                    self.state.external_backups_consecutive_failed += 1
                     self.state.alerts.append(f"backup to {backup_root} failed: {e}")
+                # Tell the health monitor whether this attempt succeeded.
+                # Three consecutive failures trip stop_requested and the next
+                # main-loop tick will save an emergency checkpoint and exit.
+                for level, msg in self.health.observe_backup(
+                    ok=ok,
+                    fail_count=self.state.external_backups_consecutive_failed,
+                ):
+                    print(f"  health[{level.value}]: {msg}", flush=True)
 
         self.log(
             {

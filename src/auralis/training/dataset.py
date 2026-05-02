@@ -57,10 +57,14 @@ class PretrainDataset:
         self._n_tokens = self._mmap.shape[0]
         if self.train_end is None:
             self.train_end = self._n_tokens
-        if self.train_end - self.train_start <= self.seq_length + 1:
+        # A window of exactly seq_length+1 tokens is the smallest valid one:
+        # sample() picks start ∈ [train_start, train_end - seq_length) which
+        # then has exactly one legal offset. Strict `<` keeps the validation
+        # consistent with sample()'s upper bound (Codex P3).
+        if self.train_end - self.train_start < self.seq_length + 1:
             raise ValueError(
                 f"{self.bin_path} window [{self.train_start}, {self.train_end}) has "
-                f"{self.train_end - self.train_start} tokens, need > seq_length+1"
+                f"{self.train_end - self.train_start} tokens, need >= seq_length+1"
             )
 
     @property
