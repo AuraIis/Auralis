@@ -1,159 +1,231 @@
-# STATUS — Auralis v2
+# STATUS - Auralis v2
 
-**Letzte Aktualisierung:** 2026-04-23
-**Aktive Phase:** Phase 1 **Code + Infrastruktur fertig**, Tokenization läuft, **Blackwell-GPU-Validation PASS** — RunPod-Launch-ready
-**Modellgröße:** 1B (final, Konfig ~954 M Params)
-**Phase-1-Token-Budget:** 25B geplant → **21B tatsächlich** bereitgestellt (84 % Deckung; Lücke in Phase 2 schließbar)
+Stand: 2026-04-26
 
-## Phase 0 — Tokenizer ✓
+Aktive Phase: Phase 1 ist code-seitig fertig, review-validiert und per canary + 1B sweep abgesichert.
+Modellgroesse: 1B final (`helix_v2_1b.yaml`, ~954M Params).
+Phase-1-Token-Budget: 25B geplant, ~21B aktuell bereitgestellt (84% Deckung; Rest kann in Phase 2 geschlossen werden).
 
-**Artefakte** (in `tokenizer/`, versioniert):
-- `helix_v2_tokenizer.model` (3.8 MB, 200 k Unigram)
-- `helix_v2_tokenizer.vocab` (4.0 MB)
+## Kurzstatus
+
+- Tokenizer fertig und byte-exakt validiert.
+- Modell-Architektur fertig.
+- Pretraining-Pipeline fertig.
+- Blackwell-GPU-Validation PASS.
+- Canary-Runden abgeschlossen.
+- Code-Review-Findings vom 2026-04-26 komplett behoben.
+- Server-Status: **105/105 Tests gruen**.
+- 1B batch-size sweep abgeschlossen.
+- Empfohlene Hauptlauf-Config: **seq=2048, batch=4, gradient_checkpointing=on**.
+- **🚀 1B Phase-1 Hauptlauf läuft seit 2026-04-26 ~18:18 lokal** (PID 225, ETA ~12-19 Tage). Logs: `logs/phase1_pretrain.log`. Mix 70/25/5, --no-wandb, Token-Reads von NVMe-cache, Checkpoints auf disk6.
+
+## Phase 0 - Tokenizer
+
+Artefakte in `tokenizer/`:
+- `helix_v2_tokenizer.model`
+- `helix_v2_tokenizer.vocab`
 - `training_manifest.yaml`
-- `quality_report.md` (alle Gates ✓, Status: PASS)
+- `quality_report.md`
 
-**Qualitätsprofil** (2 000 Samples pro Sprache):
+Qualitaetsprofil:
 
-| Sprache | Tokens/100 Wörter | Tokens/KB | Unknown-Rate | Target |
-|---|--:|--:|--:|:-:|
-| EN  | 123.0  | 203.4  | 0 % | ≤135 ✓ |
-| DE  | 133.8  | 188.7  | 0 % | ≤150 ✓ (v1 GPT-2: ~220) |
-| Code | 272.2  | 313.6  | 0 % | ≤350 tok/KB ✓ |
+| Sprache | Tokens/100 Woerter | Tokens/KB | Unknown-Rate | Ziel |
+|---|--:|--:|--:|---|
+| EN | 123.0 | 203.4 | 0% | <=135 |
+| DE | 133.8 | 188.7 | 0% | <=150 |
+| Code | 272.2 | 313.6 | 0% | <=350 tok/KB |
 
-**Chat-Template-Roundtrip:** byte-exakt ✓ — v1-L-001-Bug (Prompt-Format-Konsistenz) architektonisch verhindert.
+Chat-template roundtrip: byte-exakt PASS.
 
-## Phase-1-Datenlage (auf `//BITBASTION/Auralis/AuralisV2/`)
+## Phase-1 Datenlage
 
-| Datei | Größe | Tokens est. | Quelle |
+Root: `//BITBASTION/Auralis/AuralisV2/`
+
+| Datei | Groesse | Tokens est. | Quelle |
 |---|--:|--:|---|
-| `cleaned/german.txt` | 23.70 GB | ~4.7 B | v1-Reuse (`all_deduped` + `fineweb2_de`) |
-| `raw/english/fineweb_edu.txt` | 40.00 GB | ~10.0 B | FineWeb-Edu sample-10BT |
-| `raw/english/wikipedia_en.txt` | 12.00 GB | ~3.0 B | wikimedia/wikipedia 20231101.en |
-| `raw/english/openmath.txt` | 8.00 GB | ~2.0 B | NVIDIA OpenMathInstruct-2 |
-| `raw/code/starcoderdata.txt` | 3.50 GB | ~1.0 B | BigCode StarCoderData (9 Sprachen) |
-| `raw/code/open_web_math.txt` | 0.88 GB | ~0.25 B | open-web-math/open-web-math |
-| **Total** | **88.08 GB** | **~21 B** | |
+| `cleaned/german.txt` | 23.70 GB | ~4.7B | v1 reuse |
+| `raw/english/fineweb_edu.txt` | 40.00 GB | ~10.0B | FineWeb-Edu |
+| `raw/english/wikipedia_en.txt` | 12.00 GB | ~3.0B | Wikipedia EN |
+| `raw/english/openmath.txt` | 8.00 GB | ~2.0B | OpenMathInstruct-2 |
+| `raw/code/starcoderdata.txt` | 3.50 GB | ~1.0B | StarCoderData |
+| `raw/code/open_web_math.txt` | 0.88 GB | ~0.25B | open-web-math |
+| **Total** | **88.08 GB** | **~21B** | |
 
-Nicht eingeflossen: SlimPajama (entfernt), Dolma (script-basiert), Proof-Pile-2 (script-basiert). Lücke ~4 B EN-Tokens → Phase 2.
+Nicht eingeflossen:
+- SlimPajama
+- Dolma
+- Proof-Pile-2
 
-**Tokenizer-Korpus** (`tokenizer_corpus/corpus_clean.txt`): 15.5 GB (NUL-bereinigt), Mix 50/40/10 EN/DE/Code.
+Tokenizer-Korpus: `tokenizer_corpus/corpus_clean.txt` mit 15.5 GB im Mix 50/40/10 EN/DE/Code.
 
-## Baseline-Eval ✓
+## Phase 0.5 - Modell
 
-- [eval/baseline_questions.yaml](eval/baseline_questions.yaml) — 50 Fragen, 8 Kategorien, EN+DE
-- [scripts/eval/run_baseline.py](scripts/eval/run_baseline.py) — läuft gegen jede beliebige `Callable[[str], str]`
-- Dry-Run-Smoke-Test grün (6 % Zufalls-Score mit Dummy-Generator)
+Implementiert in `src/auralis/model/`:
+- Config + layer stack
+- RMSNorm
+- SwiGLU FFN
+- Mamba-2 Referenz
+- GLA Referenz
+- Sparse Attention
+- RoPE
+- Scaled-normal init
+- KV cache dataclass
+- `HelixModel` + `build_model()`
 
-## Erledigt insgesamt
+Model configs:
+- `configs/model/helix_v2_100m.yaml`
+- `configs/model/helix_v2_100m_ref.yaml`
+- `configs/model/helix_v2_250m.yaml`
+- `configs/model/helix_v2_mid_500m.yaml`
+- `configs/model/helix_v2_1b.yaml`
 
-- Projekt-Skelett, `pyproject.toml`, `.gitignore`, Verzeichnisbaum
-- Git-Repo, aktuell ~15 Commits auf `main`
-- Byte-exakter Chat-Template-Builder + 12/12 Unit-Tests
-- Data-Pipeline: `configs/data_paths.yaml`, atomare Writes, Manifests
-- Download-Scripts (englisch/deutsch/code) + v1-Reuse-Script + Inventory
-- Tokenizer-Pipeline (`prepare_corpus` → `train_tokenizer` → `report_quality`)
-- `LESSONS.md` erweitert um L-007..L-012 (SP-Fallstricke aus Phase 0)
+Frueher CPU-Referenzstand:
+- 100M forward-loss bei frischer Initialisierung: ~12.37, nahe `ln(200000)=12.20`
+- Keine NaN/Inf in Logits oder Gradienten
 
-## Phase 0.5 — Modell-Architektur ✓
+## Phase 1 - Pretraining-Pipeline
 
-**Module** (in `src/auralis/model/`):
-- `config.py` — `AuralisConfig` + Sub-Configs (Layer/FFN/MoE/MTP/RoPE/Init/Dropout/Advanced)
-- `layers/norm.py` — `RMSNorm`
-- `layers/ffn.py` — `DenseFFN` (SwiGLU) + `MoEFFN`-Placeholder + `build_ffn` Factory
-- `layers/mamba_layer.py` — Mamba-2 Pure-PyTorch Referenz (selective scan)
-- `layers/gla_layer.py` — Gated Linear Attention Pure-PyTorch Referenz
-- `layers/sparse_attn_layer.py` — Sliding-Window + Global-Tokens Attention
-- `utils/rotary.py` — RoPE mit Cache
-- `utils/init.py` — Scaled-Normal Init mit Output-Scale-Trick
-- `utils/kv_cache.py` — KVCache Dataclass (für Inference später)
-- `helix_model.py` — `HelixBlock` + `HelixModel` + `build_model(yaml_path)` Factory
+Wichtige Scripts:
+- [scripts/data/tokenize_for_pretraining.py](/BITBASTION/Auralis/AuralisV2/scripts/data/tokenize_for_pretraining.py)
+- [scripts/pretrain/train_phase1.py](/BITBASTION/Auralis/AuralisV2/scripts/pretrain/train_phase1.py)
+- [scripts/pretrain/smoke_test.py](/BITBASTION/Auralis/AuralisV2/scripts/pretrain/smoke_test.py)
+- [scripts/utils/batch_size_sweep.py](/BITBASTION/Auralis/AuralisV2/scripts/utils/batch_size_sweep.py)
 
-**Configs** (`configs/model/`):
-- `helix_v2_100m.yaml` — 8-Layer Test-Modell (2 Mamba + 4 GLA + 2 Sparse, d=512)
-- `helix_v2_1b.yaml` — 28-Layer Production (6 Mamba + 16 GLA + 6 Sparse, d=1280, ~954 M Params)
+Wichtige Training-Module:
+- [dataset.py](/BITBASTION/Auralis/AuralisV2/src/auralis/training/dataset.py)
+- [optimizer.py](/BITBASTION/Auralis/AuralisV2/src/auralis/training/optimizer.py)
+- [trainer.py](/BITBASTION/Auralis/AuralisV2/src/auralis/training/trainer.py)
+- [utils.py](/BITBASTION/Auralis/AuralisV2/src/auralis/training/utils.py)
 
-**Tests** (50/50 grün, ~3 s):
-- `tests/model/test_config.py` — YAML-Load, Validation, Param-Estimates (10 Tests)
-- `tests/model/test_layers.py` — RMSNorm, SwiGLU, RoPE-Roundtrip, Mamba/GLA Forward+Backward, Sparse-Attention Causal-/Window-/Global-Masking (14 Tests)
-- `tests/model/test_helix_model.py` — Build, Forward, Backward, Loss, Layer-Reihenfolge, Tied-Embeddings (10 Tests)
-- Plus 16 Tests aus Phase 0 (Tokenizer + Baseline + Atomic-Writer)
+Validation:
+- CPU smoke test PASS
+- Blackwell validation PASS
+- Canary Runde 2 und Runde 3 abgeschlossen
+- Review-Fixes regressionsicher abgesichert
+- Server: **105/105 Tests gruen**
 
-**Forward-Loss** auf frisch-initialisiertem 100M-Modell: **12.37 ≈ ln(200 000) = 12.20** → uniformer Prior über Vocab, genau wie erwartet. Keine NaN/Inf in Logits oder Gradienten.
+Neue Regressionen decken jetzt ab:
+- emergency checkpoint rotation
+- plain-attention RoPE build
+- sampler last-valid-window
+- gradient-checkpointing override
+- explizites disable im sweep
 
-## Phase 1 — Pretraining-Pipeline ✓ (Code-ready, Launch ausstehend)
+## Blackwell Status
 
-**Scripts**:
-- [scripts/data/tokenize_for_pretraining.py](scripts/data/tokenize_for_pretraining.py) — batched SP-Encode auf NAS, atomare Writes, Resume-safe
-- [scripts/pretrain/train_phase1.py](scripts/pretrain/train_phase1.py) — CLI mit Preflight, Resume, Device-Override
-- [scripts/pretrain/smoke_test.py](scripts/pretrain/smoke_test.py) — 30 s End-to-End-Validation
+GPU: RTX PRO 5000 Blackwell, 47 GB VRAM.
 
-**Training-Module** (`src/auralis/training/`):
-- [dataset.py](src/auralis/training/dataset.py) — `PretrainDataset` (memmap uint32) + `MixedDataLoader` mit largest-remainder Partitionierung
-- [optimizer.py](src/auralis/training/optimizer.py) — `build_optimizer` (AdamW + decay-Split für Normen/Biases) + `build_scheduler` (cosine / constant_with_warmup)
-- [trainer.py](src/auralis/training/trainer.py) — `PretrainTrainer` mit Grad-Accum, Clip, Checkpoint-Rotation, NaN-Detection, Val-Alarm nach 3 Regressions
-- [utils.py](src/auralis/training/utils.py) — `load_yaml`, `set_seed`, `preflight_check`
+Validiert:
+- native backend stabil
+- kernel swap numerisch korrekt
+- `TRITON_OVERRIDE_ARCH=sm89` als funktionierender Workaround
 
-**Configs**:
-- [configs/training/phase1_pretrain.yaml](configs/training/phase1_pretrain.yaml) — 80 k Steps, cosine, bf16, 75/20/5 Mix
+Fruehere Messpunkte mit allen Kernels aktiv:
+- seq=256, batch=4 -> 220 tok/s, 6.68 GB
+- seq=512, batch=8 -> 1928 tok/s, 16.36 GB
+- seq=1024, batch=4 -> 3628 tok/s, 16.84 GB
+- seq=2048, batch=2 -> 2713 tok/s, 17.74 GB
 
-**Tests: 64/64 grün in 4 s** (+14 neue: 7 dataset, 4 optimizer, 3 trainer-smoke inkl. NaN-Guard + Checkpoint-Roundtrip).
+## Canary und 1B Sweep
 
-**CPU-Smoke-Test** (`scripts/pretrain/smoke_test.py`): 20 Steps auf 100M-Modell mit synthetischen Tokens, **PASS in 30 s** — Loss stabil bei 12.28, Checkpoint geschrieben + neu geladen. End-to-End-Wiring bestätigt.
+Canary:
+- Baseline-Mix bleibt overall der beste Kandidat fuer den 1B-Hauptlauf.
+- DE-heavy verbessert DE etwas, verliert aber overall.
+- `de_medium_b16` brachte keinen zusaetzlichen Gewinn gegenueber DE-heavy.
 
-**Launch-Guide**: [docs/PHASE_1_LAUNCH.md](docs/PHASE_1_LAUNCH.md) — alle RunPod-Setup-Schritte + Preflight + Monitoring + Rollback.
+1B batch sweep:
+- seq=1024: batch bis 12 OK
+- seq=2048: batch bis 8 OK, batch 12 OOM
+- top throughput: **seq=2048, batch=4 -> ~11.3k tok/s bei 23.3 GB peak**
+- batch=8 liefert nur kleinen tok/s-Gewinn bei stark hoeherem VRAM-Verbrauch
 
-## GPU-Validation auf RTX PRO 5000 Blackwell (2026-04-23)
+Empfehlung fuer den 1B Phase-1-Hauptlauf:
+- `seq=2048`
+- `batch=4`
+- `gradient_checkpointing=on`
 
-Testumgebung: Unraid-Docker `auralis-training`, CUDA 12.8, torch 2.7.0, Triton 3.6,
-RTX PRO 5000 Blackwell 47 GB.
+Siehe auch:
+- [HISTORY.md](/BITBASTION/Auralis/AuralisV2/HISTORY.md)
+- [docs/PHASE_1_LAUNCH.md](/BITBASTION/Auralis/AuralisV2/docs/PHASE_1_LAUNCH.md)
 
-**Installierte Libraries (alle cu128-kompatibel):**
-- `flash-linear-attention` (GLA chunk kernels, Triton)
-- `mamba-ssm 2.3.1` + `causal-conv1d 1.6.1` (Triton; funktioniert mit Triton 3.6, nicht 3.3)
-- `flash-attn 2.8.3` (eigene CUDA-Kernels, kein Triton)
+## Offene Blocker vor Hauptlauf
 
-**Ergebnisse 250M-Modell, bf16, batch=4:**
+1. RunPod- oder Zielhost-Setup final ausfuehren.
+2. Go/No-Go fuer den 1B-Phase-1-Hauptlauf treffen.
+3. Zielhardware final festlegen: `1xH200`, `4xA40` oder lokaler Blackwell-Run.
 
-| Config | seq | Backend | tok/s | VRAM | Loss-Korrektheit |
-|---|--:|---|--:|--:|:-:|
-| Baseline 3090 | 256 | native | 97 | 13.0 GB | ✓ |
-| Blackwell | 256 | native | 147-151 | 13.0 GB | ✓ |
-| Blackwell | 512 | native | 82 | **24.85 GB** | ✓ |
-| Blackwell | 512 | gla-kernel | 88 | **21.27 GB** (-14 %) | ✓ identisch |
-| Blackwell | 512 | gla + flash-attn | 88 | 21.27 GB | ✓ identisch |
+## Naechster Schritt nach Phase 1
 
-**Key Takeaways:**
-- Native Backend läuft stabil auf Blackwell (≈1.6× schneller als 3090 bei gleichem Shape).
-- Kernel-Swap numerisch korrekt — Loss-Werte byte-identisch mit native.
-- **Blackwell-Fix: `TRITON_OVERRIDE_ARCH=sm89`** lässt mamba-ssm + fla + flash-attn auf
-  sm_120 laufen (Triton kennt Blackwell noch nicht voll). Kein Genauigkeitsverlust.
+Phase 2:
+- bilingual continued pretraining
+- KL distillation
+- Teacher Phase-1-Checkpoint einfrieren
+- Student auf 60/30/10 DE/EN/Code weitertrainieren
 
-**Mit allen drei Kernels aktiv (`TRITON_OVERRIDE_ARCH=sm89 AURALIS_USE_CUDA_KERNELS=1`):**
-
-| Config | seq × batch | tok/s | VRAM | Ersparnis vs native |
-|---|---|--:|--:|---|
-| small | 256 × 4 | 220 | 6.68 GB | +50 % tok/s, -49 % VRAM |
-| Phase-1-like | 512 × 8 | **1 928** | 16.36 GB | 23× vs 3090 baseline |
-| Phase-1-like | 1024 × 4 | **3 628** | 16.84 GB | |
-| Phase-1-config | 2048 × 2 | **2 713** | 17.74 GB | Loss Δ +1.52 in 15 steps |
-
-**Extrapolation für Phase-1-Produktionsconfig** (seq=2048, effective-batch 128 mit
-grad_accum 16): ~4 000-6 000 tok/s auf Blackwell bei ~30-35 GB VRAM.
-21 B-Token-Pretraining → ~49 Tage Blackwell oder ~16 Tage H100 → matched den Brief.
-
-## Offene Blocker vor GPU-Launch
-
-1. **Tokenization läuft** (88 GB → ~40-50 GB binär, Fortschritt: english.bin + german.bin fertig, code.bin läuft noch). Kann ich nicht beschleunigen — ist Disk-I/O-bound.
-2. **RunPod-Pod-Setup** (Guthaben, SSH, NAS-Mount, `pip install mamba-ssm flash-attn flash-linear-attention`). User-Aufgabe.
-3. **Entscheidung 1 × H200 vs. 4 × A40** — siehe Launch-Guide §2.
-
-## Nächster Schritt nach Phase 1
-
-Phase 2 — Bilingual Continued Pretraining mit KL-Distillation ([SPEC_PHASE_2_CONTINUED_BILINGUAL.md](Doc/SPECs/SPEC_PHASE_2_CONTINUED_BILINGUAL.md)). Grobplan: Teacher-Phase-1-Checkpoint frieren, Student weitertrainieren auf 60/30/10 DE/EN/Code mit `lambda_kd = 0.5`.
+Siehe:
+- [SPEC_PHASE_2_CONTINUED_BILINGUAL.md](/BITBASTION/Auralis/AuralisV2/Doc/SPECs/SPEC_PHASE_2_CONTINUED_BILINGUAL.md)
 
 ## Offene Entscheidungen
 
-- Multi-GPU-Setup für Phase 1 (`1×H200` einfacher, `4×A40` günstiger — siehe [SPEC_MULTI_GPU_TRAINING.md](Doc/SPECs/SPEC_MULTI_GPU_TRAINING.md)).
-- Phase-2-Daten-Ergänzung: Ersatz für Dolma/SlimPajama (Cosmopedia, RedPajama-V2?) oder synthetisch auffüllen.
-- Open-Weights vs. proprietär für Release (Brief §10.4).
+- Multi-GPU Setup fuer Phase 1
+- Phase-2-Daten-Ergaenzung fuer die fehlenden EN-Tokens
+- Open-weights vs. proprietaerer Release
+
+## Technische Schulden
+
+Aus dem Review-Pass vom 2026-04-26 sind aktuell keine offenen Findings mehr uebrig.
+Die geschlossenen P1/P2/P3-Punkte sind in [HISTORY.md](/BITBASTION/Auralis/AuralisV2/HISTORY.md) dokumentiert.
+
+## Daten-Qualitaet — Phase-2-Vorbereitung
+
+Stichproben-Audit der aktiven Trainings-Daten (`tokenized/curated_40b/`, 2026-04-26):
+
+- **EN: gruen.** Mix sauber (fineweb_edu 53%, dolma 20%, wikipedia 17%, openmath 10%). Web-/Wissens-/Tutorial-Text, kein Alarmierendes.
+- **DE: gruen.** Mix sauber (german_commons 46%, fineweb2_de 39%, wikipedia 15%). Sauberes allgemeines Deutsch.
+- **Code: gelb.** Effektiv StarCoder + OpenWebMath als Fallback. Mittlere Doc-Laenge 85 Bytes/Zeile (vs EN/DE 2.4 KB) deutet auf snippets/fragments statt File-Korpus.
+
+Zwei silent-Drops im aktiven Snapshot (siehe `training/curated_40b/mix_manifest.json`):
+
+- **`fineweb2_en` = 0 Bytes** — sollte Teil des EN-Mixes sein, hat aber 0 beigetragen.
+- **`the_stack_v2` = 0 Bytes** — der primaere Code-Korpus, komplett gedroppt → Code-Schwaeche.
+
+Fuer **Phase 1** kein Blocker (1B-Hauptlauf laeuft mit gegebener Datenbasis, Code wird "leicht familiarisiert"). Fuer **Phase 2 (60/30/10 DE/EN/Code, doppelter Code-Anteil)** muss vorher geklaert werden:
+
+1. **Root-cause-Analyse warum `fineweb2_en` und `the_stack_v2` auf 0 gelandet sind.** Vermutlich filter_quality.py-Threshold oder download/tokenize-Pipeline-Issue.
+2. **Code-Korpus haerten:** mehr echte Multi-Line-Dateien, weniger Kommentare/Strings/Docs-Fragmente.
+3. **Optional Code-Filter:** extrem kurze oder offensichtlich nicht-codeartige Zeilen rausfiltern.
+
+Bewertung passt zu Smoke-Eval-Loss-Trajektorien (Code-Eval-Loss konvergiert deutlich schlechter als EN/DE).
+
+## Phase-2-Backlog (Architektur + Optimizer)
+
+### Muon Optimizer Evaluation für Phase 2 (TODO 2026-04-29)
+
+**Hintergrund:** DeepSeek V4 (Apr 2026) nutzt Muon-Optimizer fuer 25-40% Wallclock-Speedup vs AdamW. Architektur-orthogonal — kein Modell-Aenderung notwendig.
+
+**Was ist Muon:** "MomentUm Orthogonalized by Newton-schulz" (Keller Jordan et al., 2024). Standard-Pattern: Muon fuer 2D-Matrix-Parameter (Linear, Attention), AdamW als Fallback fuer 1D-Parameter (biases, norms, embeddings). Newton-Schulz orthogonalisiert die Momentum-Update-Matrix → alle Update-Richtungen werden gleichgewichtet, schnellere Konvergenz.
+
+**Empfohlener Adoption-Slot:** Phase 2 (Continued Pretraining) — Phase 2 startet mit frischem Optimizer-State von Phase-1-best.pt, also kein State-Inkompatibilitaets-Issue. Mid-Phase-1-switch ist NICHT empfohlen.
+
+**Action-Items:**
+1. Vor Phase-2-Start: kleine Ablation (250M-Canary, ~5k steps Muon vs AdamW) um Konvergenz auf der Helix-Hybrid-Architektur (Mamba+GLA+Sparse) zu verifizieren — die meisten Muon-Validierungen sind auf Standard-Transformern, nicht Hybrid-Stacks.
+2. Falls Ablation positiv: Muon in `scripts/pretrain/train_phase1.py` als Optional-Backend hinter env-flag (`AURALIS_USE_MUON=1`) einbauen.
+3. Hyperparameter-Tuning: Muon LR ~5-10x hoeher als AdamW-LR (z.B. 0.02 statt 3e-4 fuer Matrix-Params, AdamW-Default fuer Rest).
+4. Implementation-Referenz: [github.com/KellerJordan/Muon](https://github.com/KellerJordan/Muon).
+5. Memory-Vorteil: Muon braucht nur `m` (momentum), kein `v` (variance) — ~33% weniger Optimizer-State pro Matrix-Parameter. Bei 1B-Modell relevant.
+
+**Erwarteter Gain bei Phase 2:** falls Ablation +30% Wallclock confirms, sparen wir bei Phase-2 (10-15B Tokens auf RTX PRO 5000) ca. 2-4 Tage.
+
+### CSA / HCA / mHC — Architektur-Innovationen aus DeepSeek V4 (Backlog v3)
+
+**Nicht fuer Auralis v2.** Architektur-Wechsel mid-version waere Run-zerstoerend.
+
+- **CSA (Compressed Sparse Attention):** KV-Cache-Kompression entlang Sequenz-Dimension + DeepSeek Sparse Attention. Macht lange Kontexte (>32k) effizient.
+- **HCA (Heavily Compressed Attention):** aggressivere KV-Cache-Kompression als CSA, fuer extrem lange Kontexte (>128k).
+- **mHC (Manifold-Constrained Hyper-Connections):** Replacement fuer klassische residual connections.
+
+**Auralis-spezifischer Reality-Check:** Auralis v2 hat bereits 22 von 28 Layern in linear-time Formaten (6 Mamba + 16 GLA), die O(1)-Speicher pro Token haben. CSA/HCA loesen das Problem von Standard-Transformern, Auralis loest es schon ueber andere Theorie. CSA/HCA waeren nur relevant wenn:
+- echte 1M+ Token-Kontexte Use-Case-Priority werden
+- Skalierung > 10B Params (dann sind die 6 Sparse-Attention-Layer teurer)
+
+**Action fuer v3-Planning:** evaluieren ob v3 Architektur-Refresh komplett-V4-style (CSA/HCA/mHC) machen sollte ODER bei Hybrid-Stack mit eigenem Long-Context-Approach bleiben. Entscheidung NACH Phase-1/2/3 Auralis-v2 Abschluss, basierend auf konkreten Long-Context-Anforderungen.

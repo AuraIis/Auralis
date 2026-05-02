@@ -1,0 +1,86 @@
+# Auto-Sync configuration — local repo → remote training host.
+#
+# This file is consumed by scripts/dev/auto_sync.py. Adjust the values for
+# your machine; the script is intentionally a no-op until ssh_host is set.
+#
+# Two-mode setup:
+#   - container.mode: "docker_cp"  → after each rsync, push changed files into
+#                                    the running container with `docker cp`.
+#                                    Zero server-side setup, works immediately.
+#   - container.mode: "bind_mount" → assume the container already has the
+#                                    remote_path bind-mounted; skip docker cp.
+#                                    Cleaner long-term but requires a one-time
+#                                    container restart with the right -v flags.
+#   - container.mode: "off"        → only sync to host filesystem, ignore the
+#                                    container entirely.
+
+ssh:
+  host: "192.168.178.5"
+  user: "root"            # adjust if you ssh as a non-root user
+  port: 22
+  # Path on the remote host where the repo lives. Will be created if missing.
+  remote_path: "/srv/auralis"
+
+# Source directories to watch (relative to repo root). Whitelist only —
+# nothing outside this list is ever transferred. Keeps data dirs (data/,
+# checkpoints/, runs/, cleaned/, seeds/, tokenized/) safe from accidental push.
+sync_paths:
+  - "configs"
+  - "scripts"
+  - "src"
+  - "docs"
+
+# Individual root-level files to keep mirrored (small metadata).
+sync_files:
+  - "pyproject.toml"
+  - "README.md"
+
+# Patterns excluded inside the whitelisted dirs.
+excludes:
+  - "__pycache__/"
+  - "*.pyc"
+  - "*.pyo"
+  - ".pytest_cache/"
+  - ".ruff_cache/"
+  - ".mypy_cache/"
+  - "*.egg-info/"
+  - ".git/"
+  - ".venv/"
+  - "*.tmp"
+  - "*.swp"
+
+# Dirs that MUST NEVER be pushed even if accidentally added to sync_paths.
+# The script aborts hard if it sees one of these in the sync set.
+forbidden:
+  - "data"
+  - "checkpoints"
+  - "runs"
+  - "cleaned"
+  - "seeds"
+  - "tokenized"
+  - "logs"
+
+container:
+  # "docker_cp" | "bind_mount" | "off"
+  mode: "docker_cp"
+  name: "auralis-train"
+  # Where the repo lives inside the container. Used by docker_cp to compute
+  # the destination path. For bind_mount this is informational only.
+  workdir: "/workspace/auralis"
+
+watcher:
+  # Polling interval in seconds. With ~few-thousand files in configs/scripts/
+  # /src/docs/ this is well under 100 ms per scan, so 2 s is responsive
+  # without burning CPU.
+  poll_interval_sec: 2.0
+  # Sammelt mehrere Änderungen kurz, bevor ein rsync ausgelöst wird.
+  # Verhindert Sync-Sturm bei Bulk-Saves (z. B. ruff --fix über mehrere Files).
+  debounce_ms: 500
+
+logging:
+  log_file: "logs/auto_sync.log"
+  # Rotate when log exceeds this many MB; keep N backups.
+  max_mb: 10
+  backups: 3
+  # console_level: "INFO" or "DEBUG" — DEBUG prints every detected change.
+  console_level: "INFO"

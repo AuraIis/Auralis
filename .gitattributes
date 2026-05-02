@@ -1,0 +1,52 @@
+# Cross-OS line-ending policy.
+#
+# The repo lives on a SMB share (BITBASTION) accessed from both Windows
+# and Linux (training host + container). Without this file, Git on Windows
+# checks out CRLF, Git on Linux checks out LF, and you get spurious diffs
+# every commit, plus broken shebangs on Linux for any script edited from
+# Windows.
+#
+# Policy: text files always stored as LF in the repo and on disk.
+# Binary files marked explicitly so Git never tries to convert them.
+
+# Default: detect text vs. binary, force LF for text.
+* text=auto eol=lf
+
+# Explicit text files (defensive — covers files Git's autodetect may miss).
+*.py        text eol=lf
+*.pyi       text eol=lf
+*.yaml      text eol=lf
+*.yml       text eol=lf
+*.json      text eol=lf
+*.toml      text eol=lf
+*.md        text eol=lf
+*.txt       text eol=lf
+*.sh        text eol=lf
+*.cfg       text eol=lf
+*.ini       text eol=lf
+.gitignore  text eol=lf
+.gitattributes text eol=lf
+
+# Windows-only scripts keep CRLF (cmd.exe needs it).
+*.bat       text eol=crlf
+*.cmd       text eol=crlf
+*.ps1       text eol=crlf
+
+# Binary blobs — never convert.
+*.bin       binary
+*.pt        binary
+*.pth       binary
+*.safetensors binary
+*.npz       binary
+*.npy       binary
+*.gz        binary
+*.zip       binary
+*.tar       binary
+*.parquet   binary
+*.arrow     binary
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.pdf       binary
+*.model     binary
+*.spm       binary

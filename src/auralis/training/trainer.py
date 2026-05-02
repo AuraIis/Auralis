@@ -16,6 +16,7 @@ import hashlib
 import json
 import os
 import platform
+import re
 import shutil
 import socket
 import subprocess
@@ -506,9 +507,20 @@ class PretrainTrainer:
         return path
 
     def _rotate_checkpoints(self) -> None:
+        # Emergency snapshots (step_<n>_emergency.pt) are exempt from rotation:
+        # they mark a health-stop event and must survive for forensics, even
+        # when a regular save at the same step would otherwise evict them.
+        def _step_sort_key(path: Path) -> int | None:
+            match = re.match(r"step_(\d+)$", path.stem)
+            return int(match.group(1)) if match else None
+
         step_ckpts = sorted(
-            (p for p in self._ckpt_dir.glob("step_*.pt") if not p.name.endswith(".tmp")),
-            key=lambda p: int(p.stem.split("_", 1)[1]),
+            (
+                p
+                for p in self._ckpt_dir.glob("step_*.pt")
+                if not p.name.endswith(".tmp") and _step_sort_key(p) is not None
+            ),
+            key=lambda p: _step_sort_key(p) or -1,
             reverse=True,
         )
         for p in step_ckpts[self._keep_last :]:

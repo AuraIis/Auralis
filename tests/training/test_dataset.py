@@ -42,18 +42,56 @@ def test_pretrain_dataset_raises_on_short_bin(tmp_path: Path):
         PretrainDataset(bin_path=p, seq_length=64, rng=np.random.default_rng(0))
 
 
-def test_mixed_dataloader_partitions_rows_correctly(three_bins: Path):
+def test_pretrain_dataset_can_sample_last_valid_window(tmp_path: Path):
+    p = tmp_path / "ordered.bin"
+    np.arange(10, dtype=np.uint32).tofile(p)
+    ds = PretrainDataset(bin_path=p, seq_length=3, rng=np.random.default_rng(123))
+
+    seen_starts: set[int] = set()
+    for _ in range(512):
+        sample = ds.sample()
+        seen_starts.add(int(sample[0].item()))
+
+    assert seen_starts == set(range(7))
+
+
+def test_mixed_dataloader_reports_expected_rows_per_language(three_bins: Path):
     loader = MixedDataLoader(
         data_dir=three_bins,
-        mix_ratios={"english": 0.75, "german": 0.20, "code": 0.05},
+        mix_ratios={"english": 0.70, "german": 0.25, "code": 0.05},
         batch_size=16,
         seq_length=64,
     )
     rows = loader.rows_per_language
-    assert sum(rows.values()) == 16
-    assert rows["english"] == 12  # 16 * 0.75
-    assert rows["german"] == 3    # 16 * 0.20 = 3.2 → 3
-    assert rows["code"] == 1      # 16 * 0.05 = 0.8 → 1 (largest-remainder)
+    assert sum(rows.values()) == pytest.approx(16.0)
+    assert rows["english"] == pytest.approx(11.2)
+    assert rows["german"] == pytest.approx(4.0)
+    assert rows["code"] == pytest.approx(0.8)
+
+
+def test_mixed_dataloader_small_batch_mix_is_preserved_over_time(three_bins: Path):
+    loader = MixedDataLoader(
+        data_dir=three_bins,
+        mix_ratios={"english": 0.70, "german": 0.25, "code": 0.05},
+        batch_size=4,
+        seq_length=64,
+        seed=123,
+    )
+
+    sample_counts = {lang: 0 for lang in loader.datasets}
+    for lang, ds in loader.datasets.items():
+        original_sample = ds.sample
+
+        def counted_sample(lang: str = lang, original_sample=original_sample):
+            sample_counts[lang] += 1
+            return original_sample()
+
+        ds.sample = counted_sample  # type: ignore[method-assign]
+
+    for _ in range(20):
+        next(loader)
+
+    assert sample_counts == {"code": 4, "english": 56, "german": 20}
 
 
 def test_mixed_dataloader_batch_shape_and_types(three_bins: Path):
@@ -85,7 +123,7 @@ def test_mixed_dataloader_mix_ratios_must_sum_to_one(three_bins: Path):
     with pytest.raises(ValueError):
         MixedDataLoader(
             data_dir=three_bins,
-            mix_ratios={"english": 0.5, "german": 0.2, "code": 0.1},  # = 0.8
+            mix_ratios={"english": 0.5, "german": 0.2, "code": 0.1},
             batch_size=4,
             seq_length=16,
         )
@@ -103,28 +141,29 @@ def test_mixed_dataloader_missing_bin_raises(tmp_path: Path):
 
 def test_mixed_dataloader_train_val_split_disjoint(three_bins: Path):
     """Train and val should sample from disjoint regions of the same .bin."""
-    # val_split_bytes: reserve last 4000 tokens (=16000 bytes, uint32) per lang.
-    # english.bin has 20k tokens → train window [0, 16000), val [16000, 20000).
     val_bytes = 16_000
     train = MixedDataLoader(
         data_dir=three_bins,
         mix_ratios={"english": 0.5, "german": 0.5, "code": 0.0},
-        batch_size=8, seq_length=32, seed=0,
-        split="train", val_split_bytes=val_bytes,
+        batch_size=8,
+        seq_length=32,
+        seed=0,
+        split="train",
+        val_split_bytes=val_bytes,
     )
     val = MixedDataLoader(
         data_dir=three_bins,
         mix_ratios={"english": 0.5, "german": 0.5, "code": 0.0},
-        batch_size=8, seq_length=32, seed=0,
-        split="val", val_split_bytes=val_bytes,
+        batch_size=8,
+        seq_length=32,
+        seed=0,
+        split="val",
+        val_split_bytes=val_bytes,
     )
     en_train = train.datasets["english"]
     en_val = val.datasets["english"]
-    # Val starts where train ends (approximately — train_end is clamped down
-    # so there's always room for one seq+1 even if val is huge).
     assert en_train.train_end <= en_val.train_start
     assert en_val.train_end > en_val.train_start
-    # Train and val have different RNG streams → first samples must differ.
     a = train.datasets["english"].sample()
     b = val.datasets["english"].sample()
     assert not torch.equal(a, b)
@@ -135,8 +174,11 @@ def test_mixed_dataloader_val_too_small_raises(three_bins: Path):
         MixedDataLoader(
             data_dir=three_bins,
             mix_ratios={"english": 1.0, "german": 0.0, "code": 0.0},
-            batch_size=2, seq_length=64, seed=0,
-            split="val", val_split_bytes=100,    # far too small
+            batch_size=2,
+            seq_length=64,
+            seed=0,
+            split="val",
+            val_split_bytes=100,
         )
 
 
@@ -145,18 +187,21 @@ def test_mixed_dataloader_split_name_validated(three_bins: Path):
         MixedDataLoader(
             data_dir=three_bins,
             mix_ratios={"english": 1.0, "german": 0.0, "code": 0.0},
-            batch_size=2, seq_length=16, split="holdout",
+            batch_size=2,
+            seq_length=16,
+            split="holdout",
         )
 
 
 def test_mixed_dataloader_val_split_too_big_raises(three_bins: Path):
-    """val_split_bytes that would leave 0 train tokens must HARD fail."""
-    # english.bin has 20k tokens = 80_000 bytes; asking for 80k reserves all of it.
+    """val_split_bytes that would leave 0 train tokens must hard fail."""
     with pytest.raises(ValueError, match="val_split_bytes"):
         MixedDataLoader(
             data_dir=three_bins,
             mix_ratios={"english": 1.0, "german": 0.0, "code": 0.0},
-            batch_size=2, seq_length=16, split="train",
+            batch_size=2,
+            seq_length=16,
+            split="train",
             val_split_bytes=80_000,
         )
 
@@ -166,18 +211,21 @@ def test_mixed_dataloader_val_split_bytes_negative_rejected(three_bins: Path):
         MixedDataLoader(
             data_dir=three_bins,
             mix_ratios={"english": 1.0, "german": 0.0, "code": 0.0},
-            batch_size=2, seq_length=16, split="train",
+            batch_size=2,
+            seq_length=16,
+            split="train",
             val_split_bytes=-4,
         )
 
 
 def test_mixed_dataloader_shuffle_is_deterministic(three_bins: Path):
-    """Same seed ⇒ byte-identical first batch. Proves we do not depend on
-    torch's global RNG for row-shuffling."""
+    """Same seed means byte-identical first batch."""
     kw = dict(
         data_dir=three_bins,
         mix_ratios={"english": 0.5, "german": 0.5, "code": 0.0},
-        batch_size=6, seq_length=16, seed=1234,
+        batch_size=6,
+        seq_length=16,
+        seed=1234,
     )
     a = MixedDataLoader(**kw)
     b = MixedDataLoader(**kw)
@@ -188,7 +236,9 @@ def test_sample_language_bypasses_mix_ratios(three_bins: Path):
     loader = MixedDataLoader(
         data_dir=three_bins,
         mix_ratios={"english": 0.5, "german": 0.5, "code": 0.0},
-        batch_size=4, seq_length=16, seed=0,
+        batch_size=4,
+        seq_length=16,
+        seed=0,
     )
     en_batch = loader.sample_language("english", batch_size=2)
     assert en_batch["input_ids"].shape == (2, 16)

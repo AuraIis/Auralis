@@ -105,9 +105,13 @@ class HelixModel(nn.Module):
 
         self.embedding = nn.Embedding(config.vocab_size, config.d_model)
 
-        # RoPE cache (shared across all sparse-attention layers)
-        self._has_sparse = any(lc.type == "sparse_attention" for lc in config.layers)
-        if self._has_sparse and config.position_encoding.type == "rope":
+        # RoPE cache is shared by any attention layer that opts into RoPE.
+        self._uses_rope = any(
+            lc.type in {"sparse_attention", "plain_attention"}
+            and (lc.use_rope if lc.use_rope is not None else True)
+            for lc in config.layers
+        )
+        if self._uses_rope and config.position_encoding.type == "rope":
             self.rope = RotaryEmbedding(
                 dim=config.d_head,
                 max_seq_len=config.position_encoding.max_seq_length,

@@ -17,6 +17,29 @@ import torch
 import yaml
 
 
+def resolve_gradient_checkpointing(model: Any, training_cfg: dict[str, Any]) -> bool:
+    """Resolve the effective gradient-checkpointing flag for a run.
+
+    ``training.gradient_checkpointing`` is treated as an explicit override
+    when present, including ``false``. If the training config omits the key,
+    we fall back to the model config default.
+    """
+    if "gradient_checkpointing" in training_cfg:
+        return bool(training_cfg["gradient_checkpointing"])
+    advanced = getattr(getattr(model, "config", None), "advanced", None)
+    return bool(getattr(advanced, "gradient_checkpointing", False))
+
+
+def apply_gradient_checkpointing(model: Any, enabled: bool) -> None:
+    """Apply the resolved checkpointing mode to the model explicitly."""
+    if enabled:
+        if hasattr(model, "gradient_checkpointing_enable"):
+            model.gradient_checkpointing_enable()
+        return
+    if hasattr(model, "gradient_checkpointing_disable"):
+        model.gradient_checkpointing_disable()
+
+
 def load_yaml(path: str | Path) -> dict[str, Any]:
     return yaml.safe_load(Path(path).read_text(encoding="utf-8"))
 
@@ -67,4 +90,10 @@ def preflight_check(
         raise SystemExit(1)
 
 
-__all__ = ["load_yaml", "preflight_check", "set_seed"]
+__all__ = [
+    "apply_gradient_checkpointing",
+    "load_yaml",
+    "preflight_check",
+    "resolve_gradient_checkpointing",
+    "set_seed",
+]

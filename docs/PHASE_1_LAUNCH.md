@@ -42,9 +42,9 @@ git clone <repo-url> auralis-v2 && cd auralis-v2
 
 # 2. venv + deps
 python -m venv .venv && source .venv/bin/activate
-pip install -e ".[train]"
-# Zusätzlich auf GPU: optimierte Kernel (große Speedups, Interface bleibt gleich)
-pip install mamba-ssm flash-attn flash-linear-attention
+# all-linux zieht pretrain + posttrain + lora + inference + dev mit allen
+# CUDA-Kernels (mamba-ssm, flash-attn, flash-linear-attention via pretrain-extra).
+pip install -e ".[all-linux]"
 # Triton ≥ 3.6 ist nötig für mamba-ssm / fla auf cu128:
 pip install --upgrade triton
 
@@ -147,7 +147,10 @@ torchrun --nproc_per_node=4 scripts/pretrain/train_phase1.py \
 
 ---
 
-**Pipeline-Status heute:** alle Code-Pfade implementiert, 64/64 Unit-Tests grün,
-end-to-end Smoke-Test auf CPU validiert. Einziger offener Blocker vor dem
-Launch-Button ist die Tokenization (läuft aktuell im Hintergrund) und der
-RunPod-Setup.
+**Pipeline-Status (Stand 2026-04-26):** alle Code-Pfade implementiert + review-validiert,
+**105/105 Unit-Tests grün** auf BITBASTION-Server, end-to-end Smoke-Test (CPU)
+und Blackwell-GPU-Validation PASS, Tokenization fertig (~21B Tokens in
+`tokenized/curated_40b/`), Canary-Runden 2 + 3 abgeschlossen, 1B Batch-Sweep
+liefert finale Hauptlauf-Config (seq=2048, batch=4, gradient_checkpointing=on).
+Einziger offener Blocker: Zielhost-Setup (lokaler Blackwell-Run vs. RunPod
+H200/A40) + Go/No-Go-Entscheidung. Siehe [STATUS.md](../STATUS.md).

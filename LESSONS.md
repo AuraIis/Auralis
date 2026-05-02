@@ -61,3 +61,45 @@ SlimPajama (`cerebras/SlimPajama-627B`), Dolma (`allenai/dolma`), Proof-Pile-2 (
 ### L-012 — „Tokens pro 100 Wörter" ist für Code-Pretraining keine gute Metrik
 Code-Zeilen bestehen oft aus 2-3 „Wörtern" (`return x;`), aber aus vielen Tokens. Das /100-Words-Ziel trieb nach oben, obwohl die Kompression gut war.
 **Regel v2:** Code-Gate auf `tokens_per_kb` umgestellt (Target ≤350 tokens/KB ≈ ≥2.9 bytes/token). EN/DE bleiben auf /100-Words (dort ist die Metrik stabil).
+
+### L-013 - shuf auf grossen Trainings-Files killt Disk-IO des Trainers
+Beim v1-Lessons-Audit am 2026-04-26 wurde \`shuf -n 5 english.txt\` (56 GB) waehrend eines aktiven Trainings ausgefuehrt.
+\`shuf\` muss die gesamte Datei lesen fuer die Reservoir-Sampling-Garantie - mehrere parallele shuf-Prozesse
+haben den Disk-Channel blockiert, Trainer-tok/s stuerzte von 33k auf 2.4k, data_wait stieg auf 93%.
+
+Plus: parent-bash-Loops haben shuf-Aufrufe nach SIGKILL respawned. Erst nach Killen des parent-bash war Schluss.
+
+**Regel v2:**
+- NIE \`shuf\` auf grossen Trainings-Files waehrend Training laeuft
+- Fuer Sample-Review: \`head -n 5\` (deterministisch, sub-second), oder \`sed -n 12345,12349p\` fuer mid-file
+- Fuer echtes Random-Sampling: vorher einmal offline mit \`shuf > sample.txt\` machen, dann nur diesen kleinen sample lesen
+- Generell: jeder Bash-Befehl auf Files > 1 GB sollte vor dem Ausfuehren geprueft werden auf Disk-Last (\`iostat -xz 1 2\`)
+
+### L-014 — Checkpoint-Rotation muss Nicht-Step-Suffixe tolerieren
+Health-Guards können Notfall-Checkpoints `step_<n>_emergency.pt` schreiben. Die Rotation in `trainer.py` matchte `step_*.pt` und parste den Namen positions-basiert (`int(name.split("_")[1])`) → `ValueError: invalid literal for int() with base 10: '10_emergency'`. Crash genau im Auto-Stop-Pfad direkt nachdem der Emergency-Ckpt geschrieben war — der zu rettende Run starb am Aufräumen.
+**Regel v2:** Step-Extraktion aus Checkpoint-Filenames immer regex-basiert (`r"step_(\d+)"`), nie positions-basiert spalten. Auto-Stop-Pfad muss idempotent sein und darf nicht an Sekundärfehlern aus dem eigenen Cleanup sterben.
+
+### L-015 — Cross-Cutting Module müssen ALLE Trigger-Layer enumerieren
+Shared `RotaryEmbedding` wurde in `helix_model.py` nur instanziiert wenn mindestens eine `sparse_attention`-Layer im Stack war. Architekturen rein aus `plain_attention` mit `use_rope=true` bekamen `rope=None` durchgereicht — Position-Encoding stumm fehlend, da PlainAttentionLayer mit `rope=None` einfach ohne Rotation rechnete. Die existierenden Tests prüften nur Shape und Causality, der Bug wäre erst beim Eval (Long-Context-Regression) aufgefallen.
+**Regel v2:** Wenn ein geteiltes Modul von ≥2 Layer-Typen benötigt werden kann, muss die Build-Condition ALLE relevanten Layer-Configs prüfen (`any(needs_rope(l) for l in layers)`), nicht nur einen Trigger-Typ. Plus: für jede Sub-Architektur einen Smoke-Test mit numerisch-sensitiver Assertion (z.B. dass Permutation der Position-IDs das Ergebnis ändert) — nicht nur shape/causality.
+
+### L-016 — `pgrep -f` in Wait-Wrapper matcht den Wrapper selbst
+Ein chained Trainings-Wrapper `bash -c 'while pgrep -f "train_phase.*runde3"; do sleep 30; done; python sweep.py ...'` hat den Trainer überlebt aber den Sweep nie gestartet. Grund: das python-Argument im wrapper-bash enthielt beide Strings, also matchte `pgrep -f` die wrapper-bash selbst → wait-Loop nie terminierbar.
+**Regel v2:** In Wait-Wrappern entweder
+- Pattern unmatchable für die eigene command-line machen — Trick: erste Buchstaben in Char-Class verstecken, z.B. `pgrep -f "[t]rain_phase.*runde3"` (matcht den Original-Prozess, nicht das pgrep-Argument selbst weil `[t]` als regex-class ≠ literales `[t]`).
+- Oder PID-basiert warten: vor dem `wait`-Loop Trainer-PID festhalten und `kill -0 $PID` als Liveness-Check nutzen — kein String-Matching.
+- Generell: Wrapper-Skripte vor detached-Start mit `bash -n` syntax-checken UND mit kurzem dummy-Trainer trockenlauf.
+
+### L-017 — Helpful-Elaboration-Trap bei honest_refusal-SFT-Generierung
+Bei Phase-3-SFT-Daten-Generierung mit DeepSeek-V4-Flash via OpenRouter: ein generisches "Du bist ehrlich, halluziniere nicht"-System-Prompt erreichte trotzdem ~3% Halluzinations-Rate auf historische false-premise-Prompts. Konkretes Beispiel: bei "Wer entwarf den Bürostuhl in Goethes Arbeitszimmer?" produzierte das Modell in 2 von 9 Samples konfidente Fabrikationen — einmal "Johann Friedrich Funk (1706-1775)", einmal "Friedrich Justin Bertuch ließ 1794...". Beide klangen plausibel, beide waren erfunden.
+
+Root cause: das Modell versucht aus Höflichkeit Kontext zu liefern und konfabuliert dabei spezifische Details (Namen, Daten, Jahre). Reines Verbot reicht nicht — das Modell weiß nicht *welche* Details es nicht sagen darf.
+
+**Regel v2 — Anti-Halluzinations-System-Prompt für SFT-Generation:**
+- ❌ NICHT ausreichend: *"Niemals halluzinieren. Sag offen wenn du nicht weißt."*
+- ✅ AUSREICHEND mit drei Komponenten:
+  1. **Explizit verbotene Spekulations-Marker** ("vermutlich", "wahrscheinlich", "soll", "angeblich", "wohl", "vielleicht war")
+  2. **Few-Shot-Beispiele für GUTE vs SCHLECHTE Refusals** (zeig dem Modell konkret was du willst)
+  3. **Erlaubt: verifizierbarer Kontext-Debunk** (z.B. "Goethe besuchte kein klassisches Gymnasium..." — verifizierbar, hilft Frage einzuordnen) vs verboten: alternative spezifische Details ("Bürostuhl entwarf vermutlich X im Jahr Y...")
+- A/B-Test: 0% Halluzinations-Rate auf 310 Test-Records (vs ~3% Baseline), avg out-tokens 143 statt 241 (konziser durch verbotenes Filler-Geschwafel).
+- Zusätzlich: Refusal-Auto-Detection-Regex muss BREIT sein — "Ich weiß **es** nicht" matchet nicht "weiß nicht" (nicht-zusammenhängende Wörter), Regex auf einzelne Schlüsselwörter ("weiß", "unbekannt", "nicht überliefert") robuster.

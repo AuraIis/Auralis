@@ -8,6 +8,8 @@ import torch
 
 from auralis.model import build_model
 from auralis.model.backend_info import describe_model_backends
+from auralis.model.config import AuralisConfig, LayerConfig
+from auralis.model.helix_model import HelixModel
 from auralis.model.layers.plain_attn_layer import PlainAttentionLayer
 from auralis.model.utils.rotary import RotaryEmbedding
 
@@ -33,6 +35,7 @@ def test_100m_ref_config_builds_and_forwards():
     x = torch.randint(0, model.config.vocab_size, (1, 16))
     out = model(input_ids=x)
     assert out["logits"].shape == (1, 16, model.config.vocab_size)
+    assert model.rope is not None
 
 
 def test_backend_info_describes_plain_attention():
@@ -40,5 +43,23 @@ def test_backend_info_describes_plain_attention():
     model = build_model(repo / "configs" / "model" / "helix_v2_100m_ref.yaml")
     desc = describe_model_backends(model)
     summary = desc["summary"]
-    # All 8 layers are plain_attention → exactly one bucket, count 8.
     assert summary.get("plain_attention:native", 0) == 8
+
+
+def test_plain_attention_only_model_builds_shared_rope():
+    cfg = AuralisConfig(
+        name="plain-only",
+        version="1.0",
+        vocab_size=512,
+        d_model=32,
+        n_layers=2,
+        n_heads=4,
+        d_head=8,
+        d_ffn=64,
+        layers=[
+            LayerConfig(type="plain_attention", use_rope=True),
+            LayerConfig(type="plain_attention", use_rope=True),
+        ],
+    )
+    model = HelixModel(cfg)
+    assert model.rope is not None

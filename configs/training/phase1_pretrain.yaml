@@ -13,10 +13,14 @@ model:
   config_path: "configs/model/helix_v2_1b.yaml"
 
 data:
-  data_dir: "//BITBASTION/Auralis/AuralisV2/tokenized/phase1"
+  # Container-Pfad. Host-side bind-mount (2026-04-26) routed dies auf
+  # /mnt/cache/auralis_tokens_local/curated_40b → NVMe (siehe HISTORY).
+  data_dir: "/workspace/v2data/tokenized/curated_40b"
+  # Sieger-Mix aus 4-Wege-Canary-Ablation 2026-04-26 (Baseline-Mix lag overall
+  # vorn, aber DE-Lücke 6.5 → 6.28 begründet den 25%-DE-Anteil hier).
   mix_ratios:
-    english: 0.75
-    german:  0.20
+    english: 0.70
+    german:  0.25
     code:    0.05
   seq_length: 2048
   val_split_bytes: 50_000_000   # hold-out at the tail of each bin for val
@@ -38,11 +42,14 @@ training:
     warmup_steps: 2000
     min_lr_ratio: 0.1
 
-  batch_size_per_device: 8
-  gradient_accumulation: 16
+  # Microbatch-Größe aus 1B-Sweep (2026-04-26): seq=2048 batch=4 ist Sweet Spot
+  # (~11.3k tok/s, 23.3 GB peak). batch=8 holt nur +6% tok/s bei +84% VRAM.
+  # Effective batch bleibt 128 = 4 × 32.
+  batch_size_per_device: 4
+  gradient_accumulation: 32
   gradient_clip_norm: 1.0
 
-  # 80k steps * 8 * 16 * 2048 ≈ 21 B tokens (our actual coverage).
+  # 80k steps * 4 * 32 * 2048 ≈ 21 B tokens (our actual coverage).
   total_steps: 80_000
 
   gradient_checkpointing: true
@@ -58,12 +65,20 @@ logging:
     tags: ["phase1", "pretrain", "helix-v2"]
 
 checkpointing:
+  # Primary: relativ zum Working-Dir /workspace/v2data → SHFS routed auf disk6
+  # (Auralis-share, HDD array). Bewusst auf HDD statt NVMe-cache: cache wird
+  # für die Token-Bins (input data, gebunden via 2026-04-26-bind) reserviert.
+  # ~10.8 GB pro Ckpt × (save_last_n=3 + save_best=1) = 43 GB. Write-overhead
+  # ~50-90s pro Save (HDD vs ~23s auf NVMe) bei save_every=2500 vernachlässigbar.
   output_dir: "checkpoints/phase1_pretrain"
   save_last_n: 3
   save_best: true
+  # Backup: separater Container-mount /checkpoints → /mnt/user/Auralis/checkpoints,
+  # physisch ebenfalls disk6. Funktional verifiziert 2026-04-26 per write-test.
+  # Alle 10k Steps = 8 Backups über den 80k-Run.
   external_backup:
     enabled: true
-    path: "//BITBASTION/Auralis/AuralisV2/checkpoints/phase1"
+    path: "/checkpoints/phase1_pretrain_backup"
     interval_steps: 10000
 
 evaluation:
@@ -72,10 +87,13 @@ evaluation:
     - {name: baseline_50,     path: "eval/baseline_questions.yaml", frequency: 5000}
 
 monitoring:
-  alert_on:
-    val_loss_increase: 3
-    grad_norm_explosion: 100.0
-    nan_in_loss: true
+  # Schema = HealthConfig dataclass in src/auralis/training/health.py.
+  # Trainer liest monitoring.health.<feld>; alle nicht gesetzten Felder behalten
+  # die Defaults aus HealthConfig. NaN-in-loss wird hardcoded vom Trainer
+  # gefangen (siehe test_trainer_raises_on_nan_loss), kein Config-Feld nötig.
+  health:
+    grad_explosion_threshold: 100.0   # Default 50 — wir tolerieren bis 100
+    val_regression_stop_k: 3          # Default 5 — wir stoppen früher
 
 # Knobs used only by the CPU smoke test (see scripts/pretrain/smoke_test.py).
 # Picked so one full cycle runs in < 2 minutes on the repo's default Python.

@@ -260,3 +260,45 @@ def test_trainer_raises_on_nan_loss(trainer_env, monkeypatch):
     trainer.model = NaNModel(trainer.model)
     with pytest.raises(RuntimeError, match="non-finite loss"):
         trainer.train()
+
+
+def test_emergency_checkpoint_does_not_break_rotation(trainer_env):
+    trainer, ckpt_dir = trainer_env
+    trainer._keep_last = 1
+
+    trainer.save_checkpoint("step_1")
+    trainer.save_checkpoint("step_2")
+    trainer.save_checkpoint("step_2_emergency")
+
+    ckpts = {p.name for p in ckpt_dir.glob("step_*.pt")}
+    assert "step_2.pt" in ckpts
+    assert "step_1.pt" not in ckpts
+
+
+def test_emergency_checkpoint_survives_same_step_rotation(trainer_env):
+    """Emergency snapshot must survive even when a regular save shares the step.
+
+    Regression: rotation previously matched both ``step_<n>.pt`` and
+    ``step_<n>_emergency.pt`` under the same numeric sort key, so on collision
+    one of the two was silently unlinked depending on glob order — defeating
+    the purpose of the emergency save in the auto-stop recovery path.
+    """
+    trainer, ckpt_dir = trainer_env
+    trainer._keep_last = 1
+
+    # Order A: regular first, then emergency at the same step.
+    trainer.save_checkpoint("step_5")
+    trainer.save_checkpoint("step_5_emergency")
+    names = {p.name for p in ckpt_dir.glob("step_*.pt")}
+    assert "step_5.pt" in names
+    assert "step_5_emergency.pt" in names
+
+    # Order B: emergency first, then a later regular save that triggers rotation.
+    trainer.save_checkpoint("step_10_emergency")
+    trainer.save_checkpoint("step_11")
+    names = {p.name for p in ckpt_dir.glob("step_*.pt")}
+    assert "step_11.pt" in names, "latest regular ckpt must be kept"
+    assert "step_10_emergency.pt" in names, "emergency must never be rotated away"
+    assert "step_5.pt" not in names, "older regular ckpt must be rotated"
+    # The earlier emergency from step_5 also survives — emergencies are exempt.
+    assert "step_5_emergency.pt" in names

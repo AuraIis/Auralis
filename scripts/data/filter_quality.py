@@ -88,6 +88,17 @@ def _normalise(line: str, preserve_newlines: bool) -> str:
     return line.rstrip("\n") if preserve_newlines else clean_text(line)
 
 
+# Markers we never drop, regardless of length — they are file/code boundaries
+# that the tokenizer/model needs to keep intact. Adding to this list is cheap.
+PROTECTED_PREFIXES = (
+    "<|code|>",
+    "<|endcode|>",
+    "<filename>",
+    "<file_sep>",
+    "<|file|>",
+)
+
+
 def _passes(
     line: str,
     *,
@@ -95,8 +106,16 @@ def _passes(
     max_length: int,
     preserve_newlines: bool,
     allow_mojibake: bool,
+    max_repetition: float = 0.60,
 ) -> str | None:
     normalized = _normalise(line, preserve_newlines=preserve_newlines)
+
+    # Boundary markers: only check too_long, otherwise let through.
+    if any(normalized.startswith(p) for p in PROTECTED_PREFIXES):
+        if len(normalized) > max_length:
+            return "too_long"
+        return None
+
     if len(normalized) < min_length:
         return "too_short"
     if len(normalized) > max_length:
@@ -108,7 +127,7 @@ def _passes(
         return "url_dense"
     if _symbol_density(normalized) > 0.35:
         return "symbol_dense"
-    if _repetition_score(normalized) > 0.60:
+    if _repetition_score(normalized) > max_repetition:
         return "repetitive"
     if not allow_mojibake and _looks_mojibake(normalized):
         return "mojibake"
@@ -123,12 +142,20 @@ def main() -> None:
     parser.add_argument("--min-length", type=int, default=None)
     parser.add_argument("--max-length", type=int, default=None)
     parser.add_argument("--allow-mojibake", action="store_true")
+    parser.add_argument("--max-repetition", type=float, default=0.60,
+                        help="Reject lines where this fraction of tokens are duplicates. "
+                             "Default 0.60 (strict). Math/code with formal-repetitive content "
+                             "benefits from 0.80-0.85.")
     args = parser.parse_args()
 
+    # Per-language length defaults: (min, max, preserve_newlines).
+    # Code: lowered min from 50 to 10 so imports / short statements / closing
+    # braces stay in. Pre-fix the filter wiped 78.8 percent of starcoderdata
+    # because a typical code line is much shorter than 50 chars.
     defaults = {
         "english": (200, 100_000, False),
         "german": (300, 100_000, False),
-        "code": (50, 30_000, True),
+        "code": (10, 30_000, True),
     }
     min_length, max_length, preserve_newlines = defaults[args.language]
     if args.min_length is not None:
@@ -155,6 +182,7 @@ def main() -> None:
                 max_length=max_length,
                 preserve_newlines=preserve_newlines,
                 allow_mojibake=args.allow_mojibake,
+                max_repetition=args.max_repetition,
             )
             if reason is not None:
                 _drop(manifest, reason)

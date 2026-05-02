@@ -69,7 +69,7 @@ class PretrainDataset:
 
     def sample(self) -> torch.Tensor:
         lo = self.train_start
-        hi = self.train_end - self.seq_length - 1
+        hi = self.train_end - self.seq_length
         start = int(self.rng.integers(lo, hi))
         block = self._mmap[start : start + self.seq_length + 1].astype(np.int64, copy=True)
         return torch.from_numpy(block)
@@ -83,8 +83,10 @@ class MixedDataLoader:
     inside the model's own loss computation, so we simply emit the same
     sequence for both.
 
-    The number of rows per language per batch is proportional to
-    ``mix_ratios[lang]``, rounded so totals match ``batch_size``.
+    The expected number of rows per language per batch is proportional to
+    ``mix_ratios[lang]``. Actual per-batch counts are apportioned across time,
+    so low-share languages (for example 5% code with batch size 4) still
+    appear regularly instead of being rounded down to zero forever.
     """
 
     def __init__(
@@ -108,6 +110,7 @@ class MixedDataLoader:
         total = sum(self.mix_ratios.values())
         if not 0.99 <= total <= 1.01:
             raise ValueError(f"mix_ratios must sum to 1, got {total}")
+        self.mix_ratios = {lang: p / total for lang, p in self.mix_ratios.items()}
 
         # uint32 = 4 bytes per token
         val_split_tokens = int(val_split_bytes) // 4
@@ -165,24 +168,44 @@ class MixedDataLoader:
                 train_start=train_start, train_end=train_end,
             )
 
-        # Rows-per-batch per language.
-        self._rows_per_lang = self._partition_rows()
+        # Expected rows-per-batch plus a carried deficit/surplus so small
+        # ratios are scheduled fairly across batches rather than rounded away.
+        self._lang_order = list(sorted(self.mix_ratios))
+        self._expected_rows_per_lang = {
+            lang: self.batch_size * self.mix_ratios[lang] for lang in self._lang_order
+        }
+        self._row_credit = {lang: 0.0 for lang in self._lang_order}
 
-    def _partition_rows(self) -> dict[str, int]:
-        """Largest-remainder allocation: each lang gets floor(B*p); remainder
-        goes to the largest fractional parts."""
-        exact = {lang: self.batch_size * p for lang, p in self.mix_ratios.items()}
-        floor = {lang: int(v) for lang, v in exact.items()}
-        remaining = self.batch_size - sum(floor.values())
+    def _allocate_rows_for_batch(self) -> dict[str, int]:
+        """Allocate concrete row counts for the next batch.
+
+        Each batch adds the language's expected row budget into a running
+        credit balance. We then emit all whole rows that are available and
+        distribute any remainder to the languages with the largest residual
+        credit. This preserves the target mix over time while ensuring that
+        positive-weight languages are not starved by small micro-batches.
+        """
+        for lang in self._lang_order:
+            self._row_credit[lang] += self._expected_rows_per_lang[lang]
+
+        rows = {lang: max(0, int(self._row_credit[lang])) for lang in self._lang_order}
+        remaining = self.batch_size - sum(rows.values())
         if remaining:
-            frac = sorted(exact.items(), key=lambda kv: -(kv[1] - floor[kv[0]]))
-            for lang, _ in frac[:remaining]:
-                floor[lang] += 1
-        return floor
+            frac = sorted(
+                self._lang_order,
+                key=lambda lang: (-(self._row_credit[lang] - rows[lang]), lang),
+            )
+            for lang in frac[:remaining]:
+                rows[lang] += 1
+
+        for lang in self._lang_order:
+            self._row_credit[lang] -= rows[lang]
+        return rows
 
     @property
-    def rows_per_language(self) -> dict[str, int]:
-        return dict(self._rows_per_lang)
+    def rows_per_language(self) -> dict[str, float]:
+        """Expected rows per batch, not the concrete count of a single batch."""
+        return dict(self._expected_rows_per_lang)
 
     def sample_language(self, lang: str, batch_size: int) -> dict[str, torch.Tensor]:
         """Draw a pure-single-language batch (used for per-language val_loss).
@@ -203,7 +226,8 @@ class MixedDataLoader:
 
     def __next__(self) -> dict[str, torch.Tensor]:
         rows: list[torch.Tensor] = []
-        for lang, n in self._rows_per_lang.items():
+        batch_rows = self._allocate_rows_for_batch()
+        for lang, n in batch_rows.items():
             ds = self.datasets[lang]
             for _ in range(n):
                 rows.append(ds.sample())

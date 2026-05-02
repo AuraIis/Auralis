@@ -67,3 +67,36 @@ credentials.json
 logs/
 tmp/
 .cache/
+
+# --- Auralis: Phase-2+ data dirs (huge, never commit) ---
+raw/
+cleaned/
+tokenized/
+training/
+seeds/
+tokenizer_corpus/
+phase2_raw/
+phase3_sft_raw/
+phase4_dpo_raw/
+eval_redpajama_v2/
+
+# --- Phase-1 specific large outputs ---
+checkpoints/
+logs/
+*.bin
+*.idx
+*.pt
+*.tmp
+*.tar
+*.tar.gz
+
+# --- HF cache, in case ever materialized inside repo ---
+.hf_cache/
+.huggingface/
+
+# --- Local config that shouldn't leak ---
+.env
+.env.local
+*.token
+.hf_token
+

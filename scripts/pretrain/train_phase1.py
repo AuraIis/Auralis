@@ -48,7 +48,13 @@ from auralis.training.health import HealthStop
 from auralis.training.optimizer import build_optimizer, build_scheduler
 from auralis.training.run_report import write_end_manifest, write_start_manifest
 from auralis.training.trainer import PretrainTrainer
-from auralis.training.utils import load_yaml, preflight_check, set_seed
+from auralis.training.utils import (
+    apply_gradient_checkpointing,
+    load_yaml,
+    preflight_check,
+    resolve_gradient_checkpointing,
+    set_seed,
+)
 
 
 def _resolve_device(cfg_device: str, override: str | None) -> torch.device:
@@ -113,15 +119,11 @@ def main() -> None:
     n_params = sum(p.numel() for p in model.parameters())
     print(f"  parameters: {n_params/1e9:.2f} B ({n_params/1e6:.1f} M)")
 
-    # Gradient checkpointing — takes the flag from config.advanced already;
-    # also honour training.gradient_checkpointing as an override.
-    gc_flag = bool(
-        config.get("training", {}).get("gradient_checkpointing")
-        or getattr(getattr(model, "config", None), "advanced", None)
-        and model.config.advanced.gradient_checkpointing
-    )
+    # Gradient checkpointing defaults to the model config, but an explicit
+    # training.gradient_checkpointing true/false must override it either way.
+    gc_flag = resolve_gradient_checkpointing(model, config.get("training", {}) or {})
+    apply_gradient_checkpointing(model, gc_flag)
     if gc_flag:
-        model.gradient_checkpointing_enable()
         print("  gradient_checkpointing: ENABLED")
     else:
         print("  gradient_checkpointing: disabled")
@@ -147,7 +149,7 @@ def main() -> None:
         split="train",
         val_split_bytes=val_split_bytes,
     )
-    print(f"  train rows/batch per language: {train_loader.rows_per_language}")
+    print(f"  train expected rows/batch per language: {train_loader.rows_per_language}")
 
     val_loader = None
     if val_split_bytes > 0:
