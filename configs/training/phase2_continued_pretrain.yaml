@@ -1,0 +1,117 @@
+# Phase 2 continued-pretrain configuration.
+#
+# Forked from phase1_pretrain.yaml. Differences:
+#   * 60% DE / 30% EN / 10% Code mix-flip (DE-spezialisierung)
+#   * resume_from: Phase-1 final best.pt (set when launching)
+#   * Boosts default-on: fused AdamW, TF32, smaller eval/save windows
+#     (Codex review reported expected ~10-15% speedup on Blackwell)
+#   * Total steps reduced — continued-pretrain doesn't need full 80k.
+#
+# Status: TEMPLATE — only valid once Phase-1 hits 80k. Don't run mid-Phase-1.
+
+experiment:
+  name: helix_v2_phase2_continued_pretrain
+  version: "0.1"
+  description: "DE-heavy continued pretrain on Phase-1 base, ~10B tokens."
+
+model:
+  config_path: "configs/model/helix_v2_1b.yaml"
+
+data:
+  data_dir: "/workspace/v2data/tokenized/curated_phase2"
+  # Phase 2 mix-flip: DE gets the lion's share, EN keeps the reasoning anchor,
+  # Code holds at 10% — enough to keep code skill, not enough to dilute DE.
+  mix_ratios:
+    german:  0.60
+    english: 0.30
+    code:    0.10
+  seq_length: 2048
+  val_split_bytes: 50_000_000
+  dataloader_seed: 42
+
+training:
+  device: "cuda"
+  dtype: "bfloat16"
+
+  # Codex 4th-pass: opt into the high-precision matmul path for the few fp32
+  # ops that survive autocast (logits cast, norm scales). Cost-free on bf16,
+  # ~1-3% boost when present.
+  matmul_precision: "high"
+
+  optimizer:
+    name: adamw
+    # Phase-2 is continued — start at the LR Phase-1 ended on (3e-4 × 0.1)
+    lr: 3.0e-5
+    betas: [0.9, 0.95]
+    weight_decay: 0.1
+    eps: 1.0e-8
+    # Codex 4th-pass: fused CUDA kernel for the AdamW step. Numerically
+    # equivalent to non-fused, ~3-5% faster on Ampere/Blackwell at our
+    # gradient_accumulation=32. Auto-disables if torch is too old.
+    fused: true
+
+  scheduler:
+    type: constant_with_warmup
+    warmup_steps: 500
+    min_lr_ratio: 1.0    # not used by constant_with_warmup, kept for parity
+
+  batch_size_per_device: 4
+  gradient_accumulation: 32
+  gradient_clip_norm: 1.0
+
+  # ~10B tokens at the same effective batch as Phase 1 (= 4 × 32 × 2048).
+  # Estimated by Auralis-Plan §Phase-2 corpus-budget.
+  total_steps: 38_000
+
+  # Codex review: keep gradient_checkpointing on by default (Phase-1 evidence
+  # shows we hit 17.7/24.8 GB peak at batch=4 with GC on; turning GC off
+  # would push us close to OOM under spike). If a future run drops to
+  # batch=2 it can flip this to false safely.
+  gradient_checkpointing: true
+  torch_compile: true
+
+logging:
+  log_every: 10
+  eval_every: 1000
+  save_every: 2500
+
+  wandb:
+    enabled: true
+    project: "auralis-v2"
+    tags: ["phase2", "continued-pretrain", "helix-v2", "de-heavy"]
+
+checkpointing:
+  output_dir: "checkpoints/phase2_continued_pretrain"
+  save_last_n: 3
+  save_best: true
+  external_backup:
+    enabled: true
+    path: "/checkpoints/phase2_continued_pretrain_backup"
+    interval_steps: 5000
+
+evaluation:
+  max_val_batches: 100
+  # Per-language val-batches: gives EN/DE/Code separate val numbers, same
+  # mechanism Phase 1 uses.
+  per_language_batches: 30
+
+monitoring:
+  health:
+    grad_explosion_threshold: 50.0
+    val_regression_stop_k: 5
+
+# Phase-2 must be launched with --resume-from=/path/to/phase1/best.pt
+# Picking up Optimizer-State + LR-schedule-state from Phase 1 is REQUIRED
+# for stable continued-pretrain — a fresh optim init would re-warm-up
+# and the LR-schedule would over-run because total_steps is shorter here.
+resume:
+  required: true
+  hint: "/workspace/v2data/checkpoints/phase1_pretrain/best.pt"
+
+smoke_test:
+  model_config: "configs/model/helix_v2_100m.yaml"
+  batch_size: 2
+  gradient_accumulation: 1
+  seq_length: 64
+  total_steps: 20
+  log_every: 5

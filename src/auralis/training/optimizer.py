@@ -49,16 +49,36 @@ def build_optimizer(model: torch.nn.Module, cfg: dict[str, Any]) -> Optimizer:
         betas: [0.9, 0.95]
         weight_decay: 0.1
         eps: 1.0e-8
+        fused: true            # opt-in CUDA fused kernel (numerically equivalent)
+
+    The ``fused`` flag triggers torch's fused AdamW implementation — single
+    CUDA kernel for the whole step. Numerically identical (modulo floating
+    point ordering); resume-from-checkpoint between fused and non-fused
+    works seamlessly. Skipped silently if not on CUDA or if torch is too
+    old to support the kwarg.
     """
     name = cfg.get("name", "adamw").lower()
     lr = float(cfg["lr"])
     betas = tuple(cfg.get("betas", (0.9, 0.95)))
     eps = float(cfg.get("eps", 1e-8))
     weight_decay = float(cfg.get("weight_decay", 0.0))
+    fused_requested = bool(cfg.get("fused", False))
     groups = _decay_param_groups(model, weight_decay)
 
     if name == "adamw":
-        return AdamW(groups, lr=lr, betas=betas, eps=eps)
+        # Detect whether torch supports `fused=` and CUDA is available.
+        fused_kwargs: dict[str, Any] = {}
+        if fused_requested and torch.cuda.is_available():
+            try:
+                # Probe: cheap construction to verify the kwarg is accepted.
+                _probe = AdamW([torch.zeros(1, requires_grad=True, device="cuda")],
+                               lr=1e-3, fused=True)
+                del _probe
+                fused_kwargs["fused"] = True
+            except (TypeError, RuntimeError):
+                # torch too old, or fused not available for this dtype/device.
+                pass
+        return AdamW(groups, lr=lr, betas=betas, eps=eps, **fused_kwargs)
     raise ValueError(f"Unsupported optimizer: {name}")
 
 

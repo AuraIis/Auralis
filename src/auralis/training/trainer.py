@@ -160,6 +160,18 @@ class PretrainTrainer:
             raise ValueError(f"unknown dtype {dtype_str!r}; one of {sorted(_AMP_DTYPES)}")
         self._amp_dtype = _AMP_DTYPES[dtype_str]
 
+        # Matmul precision: "high" enables TF32 on Ampere+ GPUs for any fp32
+        # matmuls that survive the bf16/fp16 autocast (e.g. the cross-entropy
+        # logits cast or fp32 norm scales). Cost-free on bf16-dominant runs,
+        # ~3% boost when the model has fp32 hot-spots. Off by default — opt
+        # in via config.training.matmul_precision: "high" (or "highest" /
+        # "medium"). See torch.set_float32_matmul_precision docs.
+        matmul_prec = tcfg.get("matmul_precision")
+        if matmul_prec and torch.cuda.is_available():
+            torch.set_float32_matmul_precision(str(matmul_prec).lower())
+            torch.backends.cuda.matmul.allow_tf32 = True
+            torch.backends.cudnn.allow_tf32 = True
+
         # fp16 requires a GradScaler to stay numerically stable; bf16 and fp32
         # do not. Create the scaler only when fp16 on CUDA is actually active.
         self._use_amp = self._amp_dtype != torch.float32
