@@ -35,7 +35,8 @@ Rate the document on a 1-5 scale:
 Document head (first 1500 chars):
 {doc_head}
 
-Respond with EXACTLY one digit (1, 2, 3, 4, or 5) and nothing else."""
+Reply with this exact format on a single line:
+Score: <digit from 1 to 5>"""
 
 
 def read_blank_separated_docs(path: Path) -> Iterable[tuple[int, str]]:
@@ -68,8 +69,11 @@ def main() -> int:
     p.add_argument("--threshold", type=int, default=3,
                    help="keep docs with score >= threshold (default 3)")
     p.add_argument("--head-chars", type=int, default=1500)
-    p.add_argument("--model", default="deepseek/deepseek-chat-v3.1",
-                   help="OpenRouter model id; deepseek/deepseek-chat-v3.1 is the v4-flash equivalent")
+    p.add_argument("--model", default="meta-llama/llama-3.3-70b-instruct",
+                   help="OpenRouter model id. Default: llama-3.3-70b-instruct — "
+                        "deepseek/deepseek-chat-v3.1 was the original choice but "
+                        "exhibits a degenerate token-loop ('棣棣棣') at short "
+                        "completion lengths regardless of provider routing.")
     p.add_argument("--batch-size", type=int, default=8,
                    help="distilabel parallelism per LLM call")
     args = p.parse_args()
@@ -98,15 +102,22 @@ def main() -> int:
         })
     print(f"  {len(docs)} docs prepared", flush=True)
 
-    # NOTE: temperature must be > 0 — at T=0 + max_new_tokens=4, DeepSeek
-    # falls into a degenerate token loop and returns "棣棣棣棣" for ~18%
-    # of inputs (verified empirically on a 5000-doc fineweb sample).
-    # T=0.05 + max_new_tokens=8 fixes it without compromising determinism.
+    # NOTE on the prompt + decoding:
+    # The 5000-doc v1 run (T=0, max=4, "respond with EXACTLY one digit")
+    # fell into a degenerate-token loop on ~18% of inputs ("棣棣棣棣").
+    # Bumping T to 0.05 didn't help; the issue is OpenRouter routing some
+    # requests to a deepseek-chat-v3.1 deployment that mistokenises the
+    # 1-digit-only constraint. Fix is structural:
+    #   * prompt now asks for "Score: X" (forces a diverse token prefix)
+    #   * max_new_tokens raised to 16 (room for "Score: 4")
+    #   * temperature 0.05 (effectively deterministic for digits, but
+    #     enough non-zero noise to avoid the trapped state)
+    # The parser still picks the first digit found — robust to any prefix.
     llm = OpenAILLM(
         api_key=api_key,
         base_url="https://openrouter.ai/api/v1",
         model=args.model,
-        generation_kwargs={"temperature": 0.05, "max_new_tokens": 8},
+        generation_kwargs={"temperature": 0.05, "max_new_tokens": 16},
     )
 
     with Pipeline(name="ask-llm-deepseek") as pipeline:
@@ -121,7 +132,7 @@ def main() -> int:
     distiset = pipeline.run(
         parameters={
             score_step.name: {
-                "llm": {"generation_kwargs": {"temperature": 0.05, "max_new_tokens": 8}},
+                "llm": {"generation_kwargs": {"temperature": 0.05, "max_new_tokens": 16}},
             },
         },
         use_cache=False,
