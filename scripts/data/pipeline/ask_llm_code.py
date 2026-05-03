@@ -108,6 +108,11 @@ def main() -> int:
                    help="OpenRouter model id. Default matches text scorer for "
                         "consistent calibration. Reasoning auto-disabled.")
     p.add_argument("--batch-size", type=int, default=8)
+    p.add_argument("--chunk-size", type=int, default=500,
+                   help="Process this many files per pipeline.run(). Smaller = "
+                        "better crash-resumability + more overhead. Default 500.")
+    p.add_argument("--resume", action="store_true",
+                   help="If output exists, skip doc_ids already present.")
     args = p.parse_args()
 
     api_key = os.environ.get("OPENROUTER_API_KEY")
@@ -119,13 +124,33 @@ def main() -> int:
     from distilabel.steps.tasks import TextGeneration
     from distilabel.models import OpenAILLM
 
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    done_ids: set[int] = set()
+    if args.resume and args.output.exists():
+        with args.output.open("r", encoding="utf-8") as f:
+            for line in f:
+                try:
+                    rec = json.loads(line)
+                    if rec.get("doc_id") is not None:
+                        done_ids.add(rec["doc_id"])
+                except json.JSONDecodeError:
+                    continue
+        print(f"Resume: {len(done_ids)} doc_ids already in output, will skip them.",
+              flush=True)
+    elif args.output.exists() and not args.resume:
+        args.output.write_text("")
+
     print(f"Reading {args.input} ...", flush=True)
     docs = []
     n_too_short = 0
     n_too_long = 0
+    n_resumed = 0
     for doc_id, reponame, code in read_repo_marker_docs(args.input, args.marker):
         if doc_id >= args.max_docs:
             break
+        if doc_id in done_ids:
+            n_resumed += 1
+            continue
         L = len(code)
         if args.min_chars and L < args.min_chars:
             n_too_short += 1
@@ -148,9 +173,12 @@ def main() -> int:
     if n_too_short or n_too_long:
         print(f"  pre-filtered: {n_too_short} too-short (<{args.min_chars}), "
               f"{n_too_long} too-long (>{args.max_chars})", flush=True)
+    if n_resumed:
+        print(f"  resumed: {n_resumed} doc_ids already done, skipped", flush=True)
 
     if not docs:
-        sys.exit("No files to score after pre-filter.")
+        print("  nothing to score, exiting.", flush=True)
+        return 0
 
     llm = OpenAILLM(
         api_key=api_key,
@@ -163,18 +191,9 @@ def main() -> int:
         },
     )
 
-    with Pipeline(name="ask-llm-code") as pipeline:
-        loader = LoadDataFromDicts(data=docs)
-        score_step = TextGeneration(
-            llm=llm,
-            input_batch_size=args.batch_size,
-            num_generations=1,
-        )
-        loader >> score_step
+    chunk_size = args.chunk_size if args.chunk_size > 0 else len(docs)
+    n_chunks = (len(docs) + chunk_size - 1) // chunk_size
 
-    distiset = pipeline.run(use_cache=False)
-
-    args.output.parent.mkdir(parents=True, exist_ok=True)
     n_kept = 0
     n_total = 0
     histogram = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0, "?": 0}
@@ -185,32 +204,58 @@ def main() -> int:
                 for row in ds:
                     yield row
 
-    with args.output.open("w", encoding="utf-8") as out_f:
-        for row in _iter_rows(distiset):
-            n_total += 1
-            generation = (row.get("generation") or "").strip()
-            score = None
-            for ch in generation:
-                if ch in "12345":
-                    score = int(ch)
-                    break
-            histogram[score if score in histogram else "?"] += 1
-            rec = {
-                "doc_id": row.get("doc_id"),
-                "reponame": row.get("reponame"),
-                "score": score,
-                "raw_response": generation,
-                "head": row.get("head"),
-                "length_chars": row.get("length_chars"),
-                "kept": score is not None and score >= args.threshold,
-            }
-            if rec["kept"]:
-                n_kept += 1
-            out_f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+    print(f"Processing {len(docs)} files in {n_chunks} chunk(s) of "
+          f"{chunk_size} (streaming-append, resumable).", flush=True)
+
+    with args.output.open("a", encoding="utf-8") as out_f:
+        for chunk_idx in range(n_chunks):
+            chunk_docs = docs[chunk_idx * chunk_size:(chunk_idx + 1) * chunk_size]
+            print(f"  chunk {chunk_idx + 1}/{n_chunks}: "
+                  f"{len(chunk_docs)} files ...", flush=True)
+
+            with Pipeline(name="ask-llm-code") as pipeline:
+                loader = LoadDataFromDicts(data=chunk_docs)
+                score_step = TextGeneration(
+                    llm=llm,
+                    input_batch_size=args.batch_size,
+                    num_generations=1,
+                )
+                loader >> score_step
+
+            distiset = pipeline.run(use_cache=False)
+
+            chunk_kept = 0
+            for row in _iter_rows(distiset):
+                n_total += 1
+                generation = (row.get("generation") or "").strip()
+                score = None
+                for ch in generation:
+                    if ch in "12345":
+                        score = int(ch)
+                        break
+                histogram[score if score in histogram else "?"] += 1
+                rec = {
+                    "doc_id": row.get("doc_id"),
+                    "reponame": row.get("reponame"),
+                    "score": score,
+                    "raw_response": generation,
+                    "head": row.get("head"),
+                    "length_chars": row.get("length_chars"),
+                    "kept": score is not None and score >= args.threshold,
+                }
+                if rec["kept"]:
+                    n_kept += 1
+                    chunk_kept += 1
+                out_f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+            out_f.flush()
+            print(f"    chunk {chunk_idx + 1} done: {chunk_kept} kept "
+                  f"(running total: {n_kept}/{n_total})", flush=True)
 
     print()
     print(f"=== Ask-LLM-Code (Qwen3.6) results ===")
-    print(f"  scored:  {n_total} files")
+    print(f"  scored:  {n_total} files (this run)")
+    if n_resumed:
+        print(f"  resumed: {n_resumed} previously-done files not re-scored")
     print(f"  kept:    {n_kept} (threshold ≥ {args.threshold}) — "
           f"{100*n_kept/max(n_total,1):.1f}%")
     print(f"  output:  {args.output}")
