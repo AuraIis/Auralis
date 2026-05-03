@@ -161,20 +161,51 @@ def main() -> int:
     p.add_argument("--batch-size", type=int, default=8)
     p.add_argument("--max-output-tokens", type=int, default=1024,
                    help="Max tokens for the rewrite (default 1024)")
+    p.add_argument("--chunk-size", type=int, default=200,
+                   help="Process this many docs per pipeline.run() call. "
+                        "Each rewrite is ~1024 output tokens, so chunks of 200 "
+                        "≈ 200 s of work + ~1 s overhead. Smaller = better "
+                        "crash-resumability. Set 0 to disable chunking.")
+    p.add_argument("--resume", action="store_true",
+                   help="If output exists, skip doc_ids already present and "
+                        "append new ones. Default: fresh run (truncate).")
     args = p.parse_args()
 
     api_key = os.environ.get("OPENROUTER_API_KEY")
     if not api_key:
         sys.exit("FATAL: OPENROUTER_API_KEY env var is required")
 
+    # Resume: load doc_ids already present in output.
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    done_ids: set[int] = set()
+    if args.resume and args.output.exists():
+        with args.output.open("r", encoding="utf-8") as f:
+            for line in f:
+                try:
+                    rec = json.loads(line)
+                    if rec.get("doc_id") is not None:
+                        done_ids.add(rec["doc_id"])
+                except json.JSONDecodeError:
+                    continue
+        print(f"Resume: {len(done_ids)} doc_ids already in output, will skip.",
+              flush=True)
+    elif args.output.exists() and not args.resume:
+        args.output.write_text("")
+
     print(f"Loading scored band [{args.score_min}, {args.score_max}] from "
           f"{args.scored} ...", flush=True)
     candidates = load_scored_band(args.scored, args.score_min, args.score_max,
                                    args.max_docs if args.max_docs > 0 else None)
-    print(f"  {len(candidates)} candidate doc_ids", flush=True)
+    # Drop already-done IDs from candidates so the source-walk only loads
+    # the texts we still need (saves disk I/O on big corpora).
+    n_resumed = sum(1 for did in candidates if did in done_ids)
+    candidates = {did: s for did, s in candidates.items() if did not in done_ids}
+    print(f"  {len(candidates)} candidate doc_ids "
+          f"({n_resumed} already in output, skipped)", flush=True)
 
     if not candidates:
-        sys.exit("No docs in the chosen score band. Nothing to rewrite.")
+        print("Nothing to rewrite. Exiting.", flush=True)
+        return 0
 
     # Re-load full doc text from source by doc_id, render lang-matched prompt.
     print(f"Pulling full text from {args.source} ...", flush=True)
@@ -219,18 +250,9 @@ def main() -> int:
         },
     )
 
-    with Pipeline(name=f"rewrite-{args.model.replace('/', '_')}") as pipeline:
-        loader = LoadDataFromDicts(data=docs)
-        rewrite_step = TextGeneration(
-            llm=llm,
-            input_batch_size=args.batch_size,
-            num_generations=1,
-        )
-        loader >> rewrite_step
+    chunk_size = args.chunk_size if args.chunk_size > 0 else len(docs)
+    n_chunks = (len(docs) + chunk_size - 1) // chunk_size
 
-    distiset = pipeline.run(use_cache=False)
-
-    args.output.parent.mkdir(parents=True, exist_ok=True)
     n_total = 0
     n_skip = 0
     n_rewritten = 0
@@ -242,33 +264,62 @@ def main() -> int:
                 for row in ds:
                     yield row
 
-    with args.output.open("w", encoding="utf-8") as out_f:
-        for row in _iter_rows(distiset):
-            n_total += 1
-            generation = (row.get("generation") or "").strip()
-            skipped = generation.upper().strip() == "SKIP" or generation == ""
-            if generation == "":
-                n_empty += 1
-            elif skipped:
-                n_skip += 1
-            else:
-                n_rewritten += 1
-            rec = {
-                "doc_id": row.get("doc_id"),
-                "original_score": row.get("original_score"),
-                "original_chars": row.get("original_chars"),
-                "source_lang": row.get("source_lang"),
-                "head": row.get("head"),
-                "rewrite": None if skipped else generation,
-                "rewrite_chars": 0 if skipped else len(generation),
-                "skipped": skipped,
-                "model": args.model,
-            }
-            out_f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+    print(f"Processing {len(docs)} docs in {n_chunks} chunk(s) of "
+          f"{chunk_size} (streaming-append, resumable).", flush=True)
+
+    with args.output.open("a", encoding="utf-8") as out_f:
+        for chunk_idx in range(n_chunks):
+            chunk_docs = docs[chunk_idx * chunk_size:(chunk_idx + 1) * chunk_size]
+            print(f"  chunk {chunk_idx + 1}/{n_chunks}: "
+                  f"{len(chunk_docs)} docs ...", flush=True)
+
+            with Pipeline(name=f"rewrite-{args.model.replace('/', '_')}") as pipeline:
+                loader = LoadDataFromDicts(data=chunk_docs)
+                rewrite_step = TextGeneration(
+                    llm=llm,
+                    input_batch_size=args.batch_size,
+                    num_generations=1,
+                )
+                loader >> rewrite_step
+
+            distiset = pipeline.run(use_cache=False)
+
+            chunk_rewritten = 0
+            chunk_skip = 0
+            for row in _iter_rows(distiset):
+                n_total += 1
+                generation = (row.get("generation") or "").strip()
+                skipped = generation.upper().strip() == "SKIP" or generation == ""
+                if generation == "":
+                    n_empty += 1
+                elif skipped:
+                    n_skip += 1
+                    chunk_skip += 1
+                else:
+                    n_rewritten += 1
+                    chunk_rewritten += 1
+                rec = {
+                    "doc_id": row.get("doc_id"),
+                    "original_score": row.get("original_score"),
+                    "original_chars": row.get("original_chars"),
+                    "source_lang": row.get("source_lang"),
+                    "head": row.get("head"),
+                    "rewrite": None if skipped else generation,
+                    "rewrite_chars": 0 if skipped else len(generation),
+                    "skipped": skipped,
+                    "model": args.model,
+                }
+                out_f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+            out_f.flush()
+            print(f"    chunk {chunk_idx + 1} done: {chunk_rewritten} rewritten, "
+                  f"{chunk_skip} SKIP — running total: {n_rewritten}/{n_total}",
+                  flush=True)
 
     print()
     print(f"=== Rewrite results ({args.model}) ===")
-    print(f"  candidates:  {n_total}")
+    print(f"  candidates:  {n_total} (this run)")
+    if n_resumed:
+        print(f"  resumed:     {n_resumed} previously-done docs not re-rewritten")
     print(f"  rewritten:   {n_rewritten}  ({100*n_rewritten/max(n_total,1):.1f}%)")
     print(f"  skipped:     {n_skip}")
     print(f"  empty:       {n_empty}")

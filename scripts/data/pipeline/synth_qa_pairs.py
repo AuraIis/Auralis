@@ -142,8 +142,17 @@ def main() -> int:
     p.add_argument("--schema", choices=sorted(PROMPTS.keys()), required=True)
     p.add_argument("--max-docs", type=int, default=100)
     p.add_argument("--pairs-per-doc", type=int, default=3)
-    p.add_argument("--model", default="deepseek/deepseek-chat-v3.1")
+    p.add_argument("--model", default="qwen/qwen3.6-35b-a3b",
+                   help="OpenRouter model id. Default qwen3.6-35b-a3b matches "
+                        "the local bitbastion model used for scoring/rewrite.")
     p.add_argument("--batch-size", type=int, default=4)
+    p.add_argument("--chunk-size", type=int, default=200,
+                   help="Process this many source docs per pipeline.run() call. "
+                        "Each Q&A doc generates ~3 pairs of ~500 tokens output, "
+                        "so chunks of 200 ≈ 100s of work + ~1s overhead.")
+    p.add_argument("--resume", action="store_true",
+                   help="If output exists, skip raw_ids already present and "
+                        "append new ones. Default: fresh run (truncate).")
     args = p.parse_args()
 
     api_key = os.environ.get("OPENROUTER_API_KEY")
@@ -155,10 +164,32 @@ def main() -> int:
     from distilabel.steps.tasks import TextGeneration
     from distilabel.models import OpenAILLM
 
+    # Resume: load source_ids already present in output.
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    done_ids: set[str] = set()
+    if args.resume and args.output.exists():
+        with args.output.open("r", encoding="utf-8") as f:
+            for line in f:
+                try:
+                    rec = json.loads(line)
+                    sid = rec.get("source_id")
+                    if sid is not None:
+                        done_ids.add(str(sid))
+                except json.JSONDecodeError:
+                    continue
+        print(f"Resume: {len(done_ids)} source_ids already in output, will skip.",
+              flush=True)
+    elif args.output.exists() and not args.resume:
+        args.output.write_text("")
+
     template = PROMPTS[args.schema]
     print(f"Reading {args.input} ...", flush=True)
     docs = []
+    n_resumed = 0
     for rec in load_records(args.input, args.schema, args.max_docs):
+        if str(rec["raw_id"]) in done_ids:
+            n_resumed += 1
+            continue
         rec_for_prompt = {**rec, "n_pairs": args.pairs_per_doc}
         docs.append({
             "instruction": template.format(**rec_for_prompt),
@@ -167,72 +198,97 @@ def main() -> int:
     print(f"  {len(docs)} source docs prepared, asking for "
           f"{args.pairs_per_doc} Q&A pairs each = "
           f"~{len(docs) * args.pairs_per_doc} target examples")
+    if n_resumed:
+        print(f"  resumed: {n_resumed} source_ids already done, skipped",
+              flush=True)
+    if not docs:
+        print("  nothing to generate, exiting.", flush=True)
+        return 0
 
     llm = OpenAILLM(
         api_key=api_key,
         base_url="https://openrouter.ai/api/v1",
         model=args.model,
-        generation_kwargs={"temperature": 0.5, "max_new_tokens": 1500},
+        generation_kwargs={
+            "temperature": 0.5,
+            "max_new_tokens": 1500,
+            "extra_body": {"reasoning": {"enabled": False}},
+        },
     )
 
-    with Pipeline(name=f"synth-qa-{args.schema}") as pipeline:
-        loader = LoadDataFromDicts(data=docs)
-        gen_step = TextGeneration(
-            llm=llm,
-            input_batch_size=args.batch_size,
-            num_generations=1,
-        )
-        loader >> gen_step
+    chunk_size = args.chunk_size if args.chunk_size > 0 else len(docs)
+    n_chunks = (len(docs) + chunk_size - 1) // chunk_size
 
-    distiset = pipeline.run(use_cache=False)
-
-    args.output.parent.mkdir(parents=True, exist_ok=True)
     n_total = 0
     n_pairs = 0
     n_parse_fail = 0
 
-    # distiset structure: { leaf_step_name -> { split_name -> HF Dataset } }
     def _iter_rows(distiset):
         for leaf_name, leaf in distiset.items():
             for split_name, ds in leaf.items():
                 for row in ds:
                     yield row
 
-    with args.output.open("w", encoding="utf-8") as out_f:
-        for row in _iter_rows(distiset):
-            n_total += 1
-            generation = (row.get("generation") or "").strip()
-            # Try to parse JSON array from the response
-            pairs = None
-            try:
-                # Strip code fences if present
-                if generation.startswith("```"):
-                    first_nl = generation.find("\n")
-                    last_fence = generation.rfind("```")
-                    generation = generation[first_nl + 1: last_fence].strip()
-                pairs = json.loads(generation)
-                if not isinstance(pairs, list):
-                    pairs = None
-            except json.JSONDecodeError:
+    print(f"Processing {len(docs)} docs in {n_chunks} chunk(s) of "
+          f"{chunk_size} (streaming-append, resumable).", flush=True)
+
+    with args.output.open("a", encoding="utf-8") as out_f:
+        for chunk_idx in range(n_chunks):
+            chunk_docs = docs[chunk_idx * chunk_size:(chunk_idx + 1) * chunk_size]
+            print(f"  chunk {chunk_idx + 1}/{n_chunks}: "
+                  f"{len(chunk_docs)} docs ...", flush=True)
+
+            with Pipeline(name=f"synth-qa-{args.schema}") as pipeline:
+                loader = LoadDataFromDicts(data=chunk_docs)
+                gen_step = TextGeneration(
+                    llm=llm,
+                    input_batch_size=args.batch_size,
+                    num_generations=1,
+                )
+                loader >> gen_step
+
+            distiset = pipeline.run(use_cache=False)
+
+            chunk_pairs = 0
+            chunk_fails = 0
+            for row in _iter_rows(distiset):
+                n_total += 1
+                generation = (row.get("generation") or "").strip()
                 pairs = None
-            if pairs is None:
-                n_parse_fail += 1
-                continue
-            for pair in pairs:
-                if not isinstance(pair, dict):
+                try:
+                    if generation.startswith("```"):
+                        first_nl = generation.find("\n")
+                        last_fence = generation.rfind("```")
+                        generation = generation[first_nl + 1: last_fence].strip()
+                    pairs = json.loads(generation)
+                    if not isinstance(pairs, list):
+                        pairs = None
+                except json.JSONDecodeError:
+                    pairs = None
+                if pairs is None:
+                    n_parse_fail += 1
+                    chunk_fails += 1
                     continue
-                q, a = pair.get("question"), pair.get("answer")
-                if not q or not a:
-                    continue
-                out_f.write(json.dumps({
-                    "source_id": row.get("raw_id"),
-                    "schema": args.schema,
-                    "messages": [
-                        {"role": "user", "content": q},
-                        {"role": "assistant", "content": a},
-                    ],
-                }, ensure_ascii=False) + "\n")
-                n_pairs += 1
+                for pair in pairs:
+                    if not isinstance(pair, dict):
+                        continue
+                    q, a = pair.get("question"), pair.get("answer")
+                    if not q or not a:
+                        continue
+                    out_f.write(json.dumps({
+                        "source_id": row.get("raw_id"),
+                        "schema": args.schema,
+                        "messages": [
+                            {"role": "user", "content": q},
+                            {"role": "assistant", "content": a},
+                        ],
+                    }, ensure_ascii=False) + "\n")
+                    n_pairs += 1
+                    chunk_pairs += 1
+            out_f.flush()
+            print(f"    chunk {chunk_idx + 1} done: {chunk_pairs} pairs "
+                  f"({chunk_fails} parse-fails) — running total: "
+                  f"{n_pairs} pairs / {n_total} docs", flush=True)
 
     print()
     print(f"=== Synth Q&A results ===")
