@@ -69,6 +69,19 @@ def main() -> int:
     p.add_argument("--threshold", type=int, default=3,
                    help="keep docs with score >= threshold (default 3)")
     p.add_argument("--head-chars", type=int, default=1500)
+    p.add_argument("--min-chars", type=int, default=200,
+                   help="Skip docs with fewer than this many characters before "
+                        "scoring (default 200). For Wikipedia-style corpora the "
+                        "blank-separated reader yields lots of section-header "
+                        "fragments ('Geschichte', 'Weblinks', ...) that are "
+                        "almost always score 1 — pre-filtering them saves API "
+                        "calls and avoids polluting the kept-rate stats. Set "
+                        "to 0 to disable.")
+    p.add_argument("--max-chars", type=int, default=0,
+                   help="Cap doc length BEFORE scoring (default 0 = no cap). "
+                        "Useful for skipping huge list-articles / glossaries "
+                        "(>5k chars) which the rubric rates poorly anyway. "
+                        "Try 8000 if scoring Wikipedia-style corpora.")
     p.add_argument("--model", default="qwen/qwen3.6-35b-a3b",
                    help="OpenRouter model id. Default: qwen/qwen3.6-35b-a3b — "
                         "matches the model the user runs locally on bitbastion "
@@ -94,16 +107,28 @@ def main() -> int:
 
     print(f"Reading {args.input} ...", flush=True)
     docs = []
+    n_too_short = 0
+    n_too_long = 0
     for doc_id, text in read_blank_separated_docs(args.input):
         if doc_id >= args.max_docs:
             break
+        L = len(text)
+        if args.min_chars and L < args.min_chars:
+            n_too_short += 1
+            continue
+        if args.max_chars and L > args.max_chars:
+            n_too_long += 1
+            continue
         docs.append({
             "doc_id": doc_id,
             "instruction": SCORE_PROMPT.format(doc_head=text[:args.head_chars]),
             "head": text[:200],
-            "length_chars": len(text),
+            "length_chars": L,
         })
     print(f"  {len(docs)} docs prepared", flush=True)
+    if n_too_short or n_too_long:
+        print(f"  pre-filtered: {n_too_short} too-short (<{args.min_chars} chars), "
+              f"{n_too_long} too-long (>{args.max_chars} chars)", flush=True)
 
     # NOTE on the prompt + decoding:
     # The 5000-doc v1 run on deepseek/deepseek-chat-v3.1 (T=0, max=4,
