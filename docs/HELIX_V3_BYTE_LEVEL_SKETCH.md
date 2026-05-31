@@ -72,13 +72,17 @@ Why this fits Helix specifically:
 
 | tier | what changes | params freed | compute | risk | German upside |
 | --- | --- | ---: | --- | --- | --- |
-| **A. Smaller vocab (e.g. 32k–48k)** | retrain SentencePiece smaller; same architecture | ~196M (32k) | ~same / slightly cheaper head | **low** | small — still subword |
+| **A. Smaller vocab (e.g. 48k–64k)** | retrain SentencePiece smaller; same architecture | ~215M (32k) / ~195M (48k) / ~175M (64k) | ~neutral (cheaper head vs ~15–25% longer seqs) | **low** | small — still subword |
 | **B. Naive byte/char (vocab 256)** | tokenizer-free, raw bytes | ~256M | **~3× more** (longer seq) | medium | high (no OOV/compounds) but pays compute |
 | **C. Patched byte (BLT/MambaByte-style)** | byte encoder + entropy patcher + backbone on patches | ~256M | ~comparable to tokens | **high** (new components, harder to train) | high, *and* compute-neutral |
 
-- **Tier A** is the safe, boring win: a 32k vocab frees ~196M params and is a tiny,
-  well-understood change. Likely the best risk-adjusted move if we just want the
-  param/compute back. (Downside: still a tokenizer, still fragments German.)
+- **Tier A** is the safe, boring win: a smaller vocab frees ~175–215M params
+  (64k→32k) and is a tiny, well-understood change. NOTE: 200k is sized for 50–100+
+  languages; for just de+en it is almost certainly oversized, so **48k–64k** is the
+  sweet spot (GPT-2: 50k, Llama: 32k) — shrinking likely costs little quality and
+  may even gain via reallocation. 32k risks more German-compound fragmentation.
+  (Downside: still a tokenizer, still fragments German; and a new vocab = full
+  retrain, no warm-start from the current run.)
 - **Tier C** is the "krasse" version that matches the original intuition and could
   genuinely help German — but it is a real research build (entropy patcher, byte
   encoder/decoder, training stability), i.e. a from-scratch Helix v3, not a tweak.
@@ -115,8 +119,9 @@ This is days of small-model work, fully isolated from the production run.
   clearly-dominant recipe; training stability and the patcher are non-trivial.
 - **Compute reality:** only Tier A (and Tier C *if* the patcher works) are
   compute-sane; naive bytes (B) costs ~3× and is only a research probe.
-- **Best risk-adjusted first step:** Tier A (32k vocab) for the param/compute win,
-  *or* the Tier-B tiny-model bpb probe to decide whether Tier C is worth it.
+- **Best risk-adjusted first step:** Tier A (48k–64k vocab) for the param win — and
+  it doubles as evidence that 200k was oversized for de+en — *or* the Tier-B
+  tiny-model bpb probe to decide whether Tier C is worth it.
 
 **Verdict:** Real, on-theme, and the bpb metric makes it cleanly testable — but it is
 a **Helix v3 experiment for after** the current run and the German-data scale-up, not
