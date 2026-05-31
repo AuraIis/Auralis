@@ -1,0 +1,957 @@
+#!/usr/bin/env python3
+"""Human-in-the-loop data game for Auralis corpora.
+
+This standalone server serves a small browser UI for rating, correcting,
+ranking, and turning raw corpus snippets into supervised data. It avoids any
+third-party web framework and writes append-only JSONL feedback records.
+
+Usage:
+    python scripts/monitor/data_game_app.py --host 127.0.0.1 --port 8777
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import html
+import json
+import random
+import re
+import threading
+import time
+from dataclasses import asdict, dataclass
+from http import HTTPStatus
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from typing import Any
+from urllib.parse import parse_qs, urlparse
+
+
+WHITESPACE_RE = re.compile(r"\s+")
+
+
+def repo_root_from_here() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
+def normalize_text(text: str) -> str:
+    return WHITESPACE_RE.sub(" ", text).strip()
+
+
+def doc_hash(text: str) -> str:
+    return hashlib.blake2b(normalize_text(text).encode("utf-8"), digest_size=12).hexdigest()
+
+
+def safe_relative(root: Path, path: Path) -> str:
+    try:
+        return str(path.resolve().relative_to(root.resolve())).replace("\\", "/")
+    except Exception:
+        return str(path)
+
+
+@dataclass
+class DataTask:
+    task_id: str
+    source_path: str
+    source_line: int
+    doc_hash: str
+    text: str
+    char_count: int
+    word_count: int
+    model_score: float | None = None   # edu classifier's predicted 0-5 (when reviewing a scored pool)
+
+
+class TaskStore:
+    def __init__(
+        self,
+        root: Path,
+        sources: list[Path],
+        output: Path,
+        queue_size: int,
+        scan_lines: int,
+        min_chars: int,
+        max_chars: int,
+        seed: int,
+        pool: Path | None = None,
+        boundary: float = 2.0,
+    ) -> None:
+        self.root = root
+        self.sources = sources
+        self.output = output
+        self.queue_size = queue_size
+        self.scan_lines = scan_lines
+        self.min_chars = min_chars
+        self.max_chars = max_chars
+        self.seed = seed
+        self.pool = pool
+        self.boundary = boundary
+        self.lock = threading.Lock()
+        self.tasks: list[DataTask] = []
+        self.cursor = 0
+        self.saved_count = 0
+        self.skipped_count = 0
+        self.reviewed_hashes = self._load_reviewed_hashes()
+        self.last_saved: dict[str, Any] | None = None
+        self.reload()
+
+    def _load_reviewed_hashes(self) -> set[str]:
+        seen: set[str] = set()
+        if not self.output.exists():
+            return seen
+        try:
+            with self.output.open("r", encoding="utf-8") as f:
+                for line in f:
+                    try:
+                        row = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    h = row.get("doc_hash")
+                    if isinstance(h, str) and h:
+                        seen.add(h)
+                        self.saved_count += 1
+        except OSError:
+            pass
+        return seen
+
+    def _reload_from_pool(self) -> None:
+        """Build the queue from a pre-scored JSONL pool (rows: text, model_score,
+        source, source_line), sorted most-uncertain-first (closest to the
+        classifier decision boundary). This is active learning: human time goes to
+        the docs the model is least sure about, not random re-rating of raw text."""
+        rows: list[DataTask] = []
+        try:
+            with self.pool.open("r", encoding="utf-8", errors="replace") as f:
+                for i, line in enumerate(f, start=1):
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        r = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    text = normalize_text(str(r.get("text", "")))
+                    if not (self.min_chars <= len(text) <= self.max_chars):
+                        continue
+                    h = doc_hash(text)
+                    if h in self.reviewed_hashes:
+                        continue
+                    ms = r.get("model_score")
+                    src = str(r.get("source") or r.get("source_path") or self.pool.name)
+                    ln = int(r.get("source_line", i))
+                    tid = hashlib.blake2b(f"{src}:{ln}:{h}".encode("utf-8"), digest_size=10).hexdigest()
+                    rows.append(
+                        DataTask(
+                            task_id=tid, source_path=src, source_line=ln, doc_hash=h,
+                            text=text, char_count=len(text), word_count=len(text.split()),
+                            model_score=(float(ms) if ms is not None else None),
+                        )
+                    )
+        except OSError:
+            rows = []
+        rows.sort(key=lambda t: abs((t.model_score if t.model_score is not None else self.boundary) - self.boundary))
+        with self.lock:
+            self.tasks = rows[: self.queue_size]
+            self.cursor = 0
+
+    def reload(self) -> None:
+        if self.pool is not None and self.pool.exists():
+            self._reload_from_pool()
+            return
+        rng = random.Random(self.seed + int(time.time() // 3600))
+        candidates: list[DataTask] = []
+        for source in self.sources:
+            if len(candidates) >= self.queue_size * 3:
+                break
+            if not source.exists():
+                continue
+            rel_source = safe_relative(self.root, source)
+            try:
+                with source.open("r", encoding="utf-8", errors="replace") as f:
+                    for line_no, raw in enumerate(f, start=1):
+                        if line_no > self.scan_lines:
+                            break
+                        text = normalize_text(raw)
+                        if not (self.min_chars <= len(text) <= self.max_chars):
+                            continue
+                        h = doc_hash(text)
+                        if h in self.reviewed_hashes:
+                            continue
+                        task_id = hashlib.blake2b(
+                            f"{rel_source}:{line_no}:{h}".encode("utf-8"),
+                            digest_size=10,
+                        ).hexdigest()
+                        candidates.append(
+                            DataTask(
+                                task_id=task_id,
+                                source_path=rel_source,
+                                source_line=line_no,
+                                doc_hash=h,
+                                text=text,
+                                char_count=len(text),
+                                word_count=len(text.split()),
+                            )
+                        )
+            except OSError:
+                continue
+        rng.shuffle(candidates)
+        with self.lock:
+            self.tasks = candidates[: self.queue_size]
+            self.cursor = 0
+
+    def status(self) -> dict[str, Any]:
+        with self.lock:
+            remaining = max(0, len(self.tasks) - self.cursor)
+            return {
+                "queue_size": len(self.tasks),
+                "remaining": remaining,
+                "cursor": self.cursor,
+                "saved_count": self.saved_count,
+                "skipped_count": self.skipped_count,
+                "reviewed_unique_docs": len(self.reviewed_hashes),
+                "output": safe_relative(self.root, self.output),
+                "sources": [safe_relative(self.root, p) for p in self.sources],
+                "scan_lines": self.scan_lines,
+                "pool": safe_relative(self.root, self.pool) if self.pool else None,
+                "boundary": self.boundary,
+                "last_saved": self.last_saved,
+            }
+
+    def next_task(self, mode: str) -> dict[str, Any]:
+        with self.lock:
+            if self.cursor >= len(self.tasks):
+                return {"empty": True}
+            task = self.tasks[self.cursor]
+            payload = asdict(task)
+            payload["mode"] = mode
+            payload["empty"] = False
+            if mode == "rank":
+                other_idx = min(self.cursor + 1, len(self.tasks) - 1)
+                if other_idx != self.cursor:
+                    payload["other"] = asdict(self.tasks[other_idx])
+            return payload
+
+    def skip(self, task_id: str | None) -> None:
+        with self.lock:
+            if self.cursor < len(self.tasks):
+                current = self.tasks[self.cursor]
+                if task_id in (None, current.task_id):
+                    self.cursor += 1
+                    self.skipped_count += 1
+
+    def submit(self, payload: dict[str, Any]) -> dict[str, Any]:
+        with self.lock:
+            current = self.tasks[self.cursor] if self.cursor < len(self.tasks) else None
+            if current is None:
+                raise ValueError("No task is available")
+            if payload.get("task_id") != current.task_id:
+                raise ValueError("Task id no longer matches the queue head")
+            row = {
+                "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                "task_id": current.task_id,
+                "mode": payload.get("mode", "quality"),
+                "source_path": current.source_path,
+                "source_line": current.source_line,
+                "doc_hash": current.doc_hash,
+                "text": current.text[:2400],
+                "doc_excerpt": current.text[:1400],
+                "model_score": current.model_score,
+                "char_count": current.char_count,
+                "word_count": current.word_count,
+                "label": payload.get("label"),
+                "score": payload.get("score"),
+                "tags": payload.get("tags", []),
+                "question": payload.get("question", ""),
+                "answer": payload.get("answer", ""),
+                "wrong_answer": payload.get("wrong_answer", ""),
+                "correction": payload.get("correction", ""),
+                "notes": payload.get("notes", ""),
+                "rank_choice": payload.get("rank_choice"),
+                "other_doc_hash": payload.get("other_doc_hash"),
+            }
+            self.output.parent.mkdir(parents=True, exist_ok=True)
+            with self.output.open("a", encoding="utf-8", newline="\n") as f:
+                f.write(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n")
+            self.reviewed_hashes.add(current.doc_hash)
+            self.saved_count += 1
+            self.last_saved = row
+            self.cursor += 2 if row["mode"] == "rank" and row.get("other_doc_hash") else 1
+            return row
+
+
+INDEX_HTML = r"""<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Auralis Datenwerkstatt</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1014;
+      --panel: #101920;
+      --panel-2: #15232b;
+      --line: rgba(255,255,255,.1);
+      --text: #eef6f4;
+      --muted: #91a5a8;
+      --cyan: #50d7d0;
+      --green: #74df8b;
+      --amber: #f0b75f;
+      --red: #ff6b6b;
+      --blue: #7eb7ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        linear-gradient(180deg, rgba(80,215,208,.08), transparent 340px),
+        radial-gradient(circle at 100% 0%, rgba(126,183,255,.12), transparent 430px),
+        var(--bg);
+      color: var(--text);
+      letter-spacing: 0;
+    }
+    button, textarea, input {
+      font: inherit;
+    }
+    .app {
+      display: grid;
+      grid-template-columns: 260px minmax(720px, 1fr) 310px;
+      gap: 14px;
+      width: min(1720px, calc(100vw - 28px));
+      margin: 0 auto;
+      padding: 14px 0 28px;
+      min-height: 100vh;
+      align-items: start;
+    }
+    aside, main, .right {
+      min-width: 0;
+    }
+    aside, .right {
+      position: sticky;
+      top: 14px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .mark {
+      width: 38px;
+      height: 38px;
+      border: 1px solid rgba(80,215,208,.42);
+      background: linear-gradient(145deg, rgba(80,215,208,.22), rgba(126,183,255,.12));
+      border-radius: 7px;
+      display: grid;
+      place-items: center;
+      color: var(--cyan);
+      font-weight: 800;
+    }
+    h1, h2, h3, p { margin: 0; }
+    h1 { font-size: 18px; line-height: 1.1; }
+    .sub { color: var(--muted); font-size: 12px; margin-top: 4px; }
+    .panel {
+      border: 1px solid var(--line);
+      background: rgba(16,25,32,.88);
+      border-radius: 8px;
+      padding: 12px;
+      box-shadow: 0 14px 46px rgba(0,0,0,.2);
+    }
+    .stack { display: grid; gap: 12px; }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .metric {
+      display: flex;
+      min-width: 0;
+      min-height: 78px;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 10px;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 8px;
+      background: rgba(7,12,16,.42);
+    }
+    .metric.wide { grid-column: 1 / -1; min-height: 62px; }
+    .metric span {
+      color: var(--muted);
+      font-size: 11px;
+      overflow-wrap: anywhere;
+    }
+    .metric strong { font-size: 23px; line-height: 1; }
+    .modebar {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .modebar button, .score button, .pill, .primary, .ghost {
+      border: 1px solid var(--line);
+      background: rgba(21,35,43,.82);
+      color: var(--text);
+      border-radius: 7px;
+      padding: 10px 12px;
+      cursor: pointer;
+      transition: border-color .15s, background .15s, transform .15s;
+    }
+    button:hover { border-color: rgba(80,215,208,.42); background: rgba(31,51,61,.92); }
+    button:active { transform: translateY(1px); }
+    .modebar button.active {
+      border-color: rgba(80,215,208,.65);
+      background: rgba(80,215,208,.18);
+      color: #dffffb;
+    }
+    .doc-head {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    #meta, #hash {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .doc {
+      white-space: pre-wrap;
+      line-height: 1.55;
+      font-size: 15px;
+      min-height: 165px;
+      max-height: 34vh;
+      overflow: auto;
+      padding: 16px;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 8px;
+      background: rgba(7,12,16,.62);
+      scrollbar-color: rgba(80,215,208,.35) transparent;
+    }
+    .doc.two {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      max-height: none;
+      background: transparent;
+      border: 0;
+      padding: 0;
+    }
+    .snippet {
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 8px;
+      background: rgba(7,12,16,.62);
+      padding: 16px;
+      max-height: 45vh;
+      overflow: auto;
+      line-height: 1.58;
+    }
+    .rubric {
+      color: var(--muted);
+      font-size: 11.5px;
+      line-height: 1.5;
+      margin-top: 12px;
+      padding: 8px 10px;
+      border: 1px dashed rgba(255,255,255,.14);
+      border-radius: 7px;
+      background: rgba(7,12,16,.42);
+    }
+    .rubric b { color: var(--text); }
+    .score {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 7px;
+      margin-top: 10px;
+    }
+    .score button { min-height: 46px; padding: 7px 8px; }
+    .score small { display: block; color: var(--muted); font-size: 10px; margin-top: 4px; }
+    .score button.good { border-color: rgba(116,223,139,.4); }
+    .score button.bad { border-color: rgba(255,107,107,.4); }
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin: 10px 0;
+    }
+    .pill.active {
+      border-color: rgba(126,183,255,.58);
+      background: rgba(126,183,255,.18);
+    }
+    label {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    textarea, input {
+      width: 100%;
+      min-height: 64px;
+      resize: vertical;
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 8px;
+      background: rgba(6,10,14,.74);
+      color: var(--text);
+      padding: 11px 12px;
+      outline: none;
+    }
+    input { min-height: 42px; }
+    textarea:focus, input:focus { border-color: rgba(80,215,208,.58); }
+    .actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 10px;
+    }
+    .primary {
+      background: linear-gradient(135deg, rgba(80,215,208,.25), rgba(116,223,139,.18));
+      border-color: rgba(80,215,208,.6);
+      font-weight: 700;
+    }
+    .ghost { color: var(--muted); }
+    .last {
+      font-size: 12px;
+      color: var(--muted);
+      white-space: pre-wrap;
+      max-height: 36vh;
+      overflow: auto;
+      padding: 12px;
+      background: rgba(7,12,16,.62);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 8px;
+    }
+    .status {
+      min-height: 22px;
+      color: var(--cyan);
+      font-size: 13px;
+      margin-top: 10px;
+    }
+    .hidden { display: none !important; }
+    .hotkeys {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .hotkeys span {
+      padding: 7px 8px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: rgba(7,12,16,.42);
+    }
+    @media (max-width: 1100px) {
+      .app {
+        width: calc(100vw - 20px);
+        grid-template-columns: 1fr;
+        padding: 10px 0 24px;
+      }
+      aside, .right { position: static; }
+      .doc.two { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside>
+      <div class="brand">
+        <div class="mark">A</div>
+        <div>
+          <h1>Auralis Datenwerkstatt</h1>
+          <div class="sub">Human feedback fuer bessere Trainingsdaten</div>
+        </div>
+      </div>
+      <div class="panel stack">
+        <div class="stats">
+          <div class="metric"><span>Queue</span><strong id="remaining">-</strong></div>
+          <div class="metric"><span>Gespeichert</span><strong id="saved">-</strong></div>
+          <div class="metric"><span>Unique Docs</span><strong id="unique">-</strong></div>
+          <div class="metric"><span>Modus</span><strong id="activeMode">-</strong></div>
+          <div class="metric wide"><span>Output</span><span id="output">-</span></div>
+        </div>
+      </div>
+      <div style="height:12px"></div>
+      <div class="panel">
+        <h3 style="font-size:14px;margin-bottom:10px">Hotkeys</h3>
+        <div class="hotkeys">
+          <span>1-6 Rating</span><span>Ctrl+Enter Save</span>
+          <span>N Skip</span><span>R Reload</span>
+        </div>
+      </div>
+    </aside>
+
+    <main>
+      <div class="modebar">
+        <button data-mode="quality" class="active">Qualitaet</button>
+        <button data-mode="qa">QA bauen</button>
+        <button data-mode="fix">Korrigieren</button>
+        <button data-mode="rank">A/B Rank</button>
+      </div>
+
+      <section class="panel">
+        <div class="doc-head">
+          <span id="meta">lade...</span>
+          <span id="hash"></span>
+        </div>
+        <div id="doc" class="doc"></div>
+        <div id="rankDoc" class="doc two hidden"></div>
+
+        <div id="qualityControls">
+          <div class="rubric">Edu-Rubrik (gleiche Skala wie der Klassifikator): <b>0</b> Muell · <b>1</b> fast nur Boilerplate/Werbung · <b>2</b> etwas konkrete Info · <b>3</b> klar &amp; sachlich, brauchbar · <b>4</b> lehrbuch-/lexikonartig · <b>5</b> herausragend lehrreich. Bei „Modell-Tipp" nur bestaetigen oder korrigieren.</div>
+          <div class="score">
+            <button class="bad" data-score="0" data-label="trash">0<small>Muellsatz</small></button>
+            <button class="bad" data-score="1" data-label="weak">1<small>schwach</small></button>
+            <button data-score="2" data-label="thin">2<small>duenn</small></button>
+            <button data-score="3" data-label="usable">3<small>brauchbar</small></button>
+            <button class="good" data-score="4" data-label="good">4<small>gut</small></button>
+            <button class="good" data-score="5" data-label="excellent">5<small>lehrreich</small></button>
+          </div>
+          <div class="tags" id="tags"></div>
+        </div>
+
+        <div id="qaControls" class="stack hidden" style="margin-top:14px">
+          <label>Frage aus dem Text<input id="question" placeholder="Was sollte Auralis hier lernen?" /></label>
+          <label>Ideale Antwort<textarea id="answer" placeholder="Kurze, korrekte Antwort in natuerlicher Sprache"></textarea></label>
+        </div>
+
+        <div id="fixControls" class="stack hidden" style="margin-top:14px">
+          <label>Typische falsche Antwort<textarea id="wrongAnswer" placeholder="Was wuerde ein schwaches Modell hier falsch sagen?"></textarea></label>
+          <label>Korrekte Antwort / Reparatur<textarea id="correction" placeholder="Was soll es stattdessen sicher lernen?"></textarea></label>
+        </div>
+
+        <div id="rankControls" class="hidden" style="margin-top:14px">
+          <div class="actions" style="justify-content:center">
+            <button class="primary" id="rankA">A ist besser</button>
+            <button class="primary" id="rankB">B ist besser</button>
+          </div>
+        </div>
+
+        <label style="margin-top:14px">Notiz<textarea id="notes" placeholder="Optional: Warum behalten, droppen oder umschreiben?"></textarea></label>
+        <div class="actions">
+          <button class="ghost" id="reload">Queue neu laden</button>
+          <button class="ghost" id="skip">Skip</button>
+          <button class="primary" id="save">Speichern</button>
+        </div>
+        <div class="status" id="status"></div>
+      </section>
+    </main>
+
+    <aside class="right">
+      <div class="panel stack">
+        <h3 style="font-size:14px">Letzter Save</h3>
+        <div id="last" class="last">Noch nichts gespeichert.</div>
+      </div>
+      <div style="height:12px"></div>
+      <div class="panel stack">
+        <h3 style="font-size:14px">Quellen</h3>
+        <div id="sources" class="last"></div>
+      </div>
+    </aside>
+  </div>
+
+<script>
+const tagNames = ["keep", "edu", "fact", "german", "style", "boilerplate", "duplicate", "needs_rewrite", "unsafe", "too_shallow"];
+let mode = "quality";
+let current = null;
+let selectedScore = null;
+let selectedLabel = null;
+let tags = new Set();
+
+function $(id) { return document.getElementById(id); }
+
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, ch => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[ch]));
+}
+
+function setStatus(msg, bad=false) {
+  $("status").textContent = msg;
+  $("status").style.color = bad ? "var(--red)" : "var(--cyan)";
+}
+
+function renderTags() {
+  const wrap = $("tags");
+  wrap.innerHTML = "";
+  for (const t of tagNames) {
+    const b = document.createElement("button");
+    b.className = "pill" + (tags.has(t) ? " active" : "");
+    b.textContent = t;
+    b.onclick = () => { tags.has(t) ? tags.delete(t) : tags.add(t); renderTags(); };
+    wrap.appendChild(b);
+  }
+}
+
+function resetInputs() {
+  selectedScore = null;
+  selectedLabel = null;
+  tags = new Set();
+  for (const el of document.querySelectorAll(".score button")) el.classList.remove("active");
+  $("question").value = "";
+  $("answer").value = "";
+  $("wrongAnswer").value = "";
+  $("correction").value = "";
+  $("notes").value = "";
+  renderTags();
+}
+
+function showModeControls() {
+  $("activeMode").textContent = ({quality: "Rating", qa: "QA", fix: "Fix", rank: "A/B"}[mode] || mode);
+  $("qualityControls").classList.toggle("hidden", mode !== "quality");
+  $("qaControls").classList.toggle("hidden", mode !== "qa");
+  $("fixControls").classList.toggle("hidden", mode !== "fix");
+  $("rankControls").classList.toggle("hidden", mode !== "rank");
+  $("doc").classList.toggle("hidden", mode === "rank");
+  $("rankDoc").classList.toggle("hidden", mode !== "rank");
+}
+
+async function refreshStatus() {
+  const res = await fetch("/api/status");
+  const st = await res.json();
+  $("remaining").textContent = st.remaining;
+  $("saved").textContent = st.saved_count;
+  $("unique").textContent = st.reviewed_unique_docs;
+  $("output").textContent = st.output;
+  $("sources").textContent = st.sources.join("\n");
+  if (st.last_saved) $("last").textContent = JSON.stringify(st.last_saved, null, 2);
+}
+
+function renderTask(t) {
+  current = t;
+  resetInputs();
+  showModeControls();
+  if (t.empty) {
+    $("doc").textContent = "Queue leer. Lade neu oder erhoehe --scan-lines.";
+    $("rankDoc").innerHTML = "";
+    $("meta").textContent = "keine Aufgabe";
+    $("hash").textContent = "";
+    return;
+  }
+  $("meta").textContent = `${t.source_path}:${t.source_line} · ${t.word_count} Woerter · ${t.char_count} Zeichen`
+    + (t.model_score != null ? ` · Modell-Tipp: ${Number(t.model_score).toFixed(1)}` : "");
+  $("hash").textContent = t.doc_hash;
+  $("doc").textContent = t.text;
+  if (mode === "rank") {
+    const other = t.other;
+    $("rankDoc").innerHTML = `
+      <div class="snippet"><b>A</b><br><br>${esc(t.text)}</div>
+      <div class="snippet"><b>B</b><br><br>${esc(other ? other.text : "Keine zweite Probe in der Queue.")}</div>`;
+  }
+}
+
+async function nextTask() {
+  const res = await fetch(`/api/next?mode=${encodeURIComponent(mode)}`);
+  renderTask(await res.json());
+  await refreshStatus();
+  setStatus("");
+}
+
+async function submit(extra={}) {
+  if (!current || current.empty) return;
+  const payload = {
+    task_id: current.task_id,
+    mode,
+    score: selectedScore,
+    label: selectedLabel,
+    tags: Array.from(tags),
+    question: $("question").value.trim(),
+    answer: $("answer").value.trim(),
+    wrong_answer: $("wrongAnswer").value.trim(),
+    correction: $("correction").value.trim(),
+    notes: $("notes").value.trim(),
+    ...extra
+  };
+  const res = await fetch("/api/submit", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(payload)
+  });
+  const body = await res.json();
+  if (!res.ok) {
+    setStatus(body.error || "Speichern fehlgeschlagen", true);
+    return;
+  }
+  $("last").textContent = JSON.stringify(body.saved, null, 2);
+  setStatus("Gespeichert.");
+  await nextTask();
+}
+
+async function skip() {
+  if (!current || current.empty) return;
+  await fetch("/api/skip", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ task_id: current.task_id })
+  });
+  await nextTask();
+}
+
+async function reloadQueue() {
+  setStatus("Queue wird neu geladen...");
+  await fetch("/api/reload", { method: "POST" });
+  await nextTask();
+}
+
+document.querySelectorAll(".modebar button").forEach(btn => {
+  btn.onclick = async () => {
+    mode = btn.dataset.mode;
+    document.querySelectorAll(".modebar button").forEach(b => b.classList.toggle("active", b === btn));
+    await nextTask();
+  };
+});
+
+document.querySelectorAll(".score button").forEach(btn => {
+  btn.onclick = async () => {
+    selectedScore = Number(btn.dataset.score);
+    selectedLabel = btn.dataset.label;
+    document.querySelectorAll(".score button").forEach(b => b.classList.toggle("active", b === btn));
+    if (selectedScore <= 1) tags.add("drop");
+    if (selectedScore >= 4) tags.add("keep");
+    renderTags();
+    await submit();
+  };
+});
+
+$("save").onclick = () => submit();
+$("skip").onclick = skip;
+$("reload").onclick = reloadQueue;
+$("rankA").onclick = () => submit({ rank_choice: "A", other_doc_hash: current?.other?.doc_hash || null });
+$("rankB").onclick = () => submit({ rank_choice: "B", other_doc_hash: current?.other?.doc_hash || null });
+
+document.addEventListener("keydown", (e) => {
+  if (e.ctrlKey && e.key === "Enter") { e.preventDefault(); submit(); return; }
+  if (e.target && ["TEXTAREA", "INPUT"].includes(e.target.tagName)) return;
+  if (e.key.toLowerCase() === "n") skip();
+  if (e.key.toLowerCase() === "r") reloadQueue();
+  const n = Number(e.key);
+  if (mode === "quality" && n >= 1 && n <= 6) {
+    const btn = document.querySelector(`.score button[data-score="${n - 1}"]`);
+    if (btn) btn.click();
+  }
+});
+
+renderTags();
+nextTask().catch(err => setStatus(String(err), true));
+</script>
+</body>
+</html>
+"""
+
+
+class DataGameHandler(BaseHTTPRequestHandler):
+    server_version = "AuralisDataGame/0.1"
+
+    @property
+    def store(self) -> TaskStore:
+        return self.server.store  # type: ignore[attr-defined]
+
+    def log_message(self, fmt: str, *args: object) -> None:
+        return
+
+    def _send(self, status: int, body: bytes, content_type: str) -> None:
+        self.send_response(status)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _json(self, status: int, payload: dict[str, Any]) -> None:
+        self._send(status, json.dumps(payload, ensure_ascii=False).encode("utf-8"), "application/json; charset=utf-8")
+
+    def _read_json(self) -> dict[str, Any]:
+        length = int(self.headers.get("Content-Length", "0"))
+        raw = self.rfile.read(length) if length > 0 else b"{}"
+        return json.loads(raw.decode("utf-8") or "{}")
+
+    def do_GET(self) -> None:  # noqa: N802
+        parsed = urlparse(self.path)
+        if parsed.path == "/":
+            self._send(HTTPStatus.OK, INDEX_HTML.encode("utf-8"), "text/html; charset=utf-8")
+            return
+        if parsed.path == "/api/status":
+            self._json(HTTPStatus.OK, self.store.status())
+            return
+        if parsed.path == "/api/next":
+            mode = parse_qs(parsed.query).get("mode", ["quality"])[0]
+            self._json(HTTPStatus.OK, self.store.next_task(mode))
+            return
+        self._json(HTTPStatus.NOT_FOUND, {"error": "not found"})
+
+    def do_POST(self) -> None:  # noqa: N802
+        parsed = urlparse(self.path)
+        try:
+            if parsed.path == "/api/submit":
+                row = self.store.submit(self._read_json())
+                self._json(HTTPStatus.OK, {"saved": row, "status": self.store.status()})
+                return
+            if parsed.path == "/api/skip":
+                payload = self._read_json()
+                self.store.skip(payload.get("task_id"))
+                self._json(HTTPStatus.OK, {"ok": True, "status": self.store.status()})
+                return
+            if parsed.path == "/api/reload":
+                self.store.reload()
+                self._json(HTTPStatus.OK, {"ok": True, "status": self.store.status()})
+                return
+        except Exception as exc:
+            self._json(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
+            return
+        self._json(HTTPStatus.NOT_FOUND, {"error": "not found"})
+
+
+def parse_args() -> argparse.Namespace:
+    root = repo_root_from_here()
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument("--host", default="127.0.0.1")
+    p.add_argument("--port", type=int, default=8777)
+    p.add_argument("--root", type=Path, default=root)
+    p.add_argument("--source", type=Path, action="append", default=None)
+    p.add_argument("--output", type=Path, default=root / "data" / "human_feedback" / "auralis_data_game_v1.jsonl")
+    p.add_argument("--queue-size", type=int, default=300)
+    p.add_argument("--scan-lines", type=int, default=20000)
+    p.add_argument("--min-chars", type=int, default=320)
+    p.add_argument("--max-chars", type=int, default=3600)
+    p.add_argument("--seed", type=int, default=1337)
+    p.add_argument("--pool", type=Path, default=None,
+                   help="Pre-scored JSONL (rows: text, model_score, source) from "
+                        "score_corpus_edu.py --review-pool. When set, the queue is built from this "
+                        "and sorted most-uncertain-first (active learning), and the classifier's "
+                        "score is shown next to each doc.")
+    p.add_argument("--boundary", type=float, default=2.0,
+                   help="Classifier decision boundary used to rank pool uncertainty (default 2.0).")
+    return p.parse_args()
+
+
+def main() -> None:
+    args = parse_args()
+    root = args.root.resolve()
+    sources = args.source or [root / "data" / "training" / "curated_40b" / "german.txt"]
+    sources = [(root / s).resolve() if not s.is_absolute() else s.resolve() for s in sources]
+    output = (root / args.output).resolve() if not args.output.is_absolute() else args.output.resolve()
+    pool = None
+    if args.pool is not None:
+        pool = (root / args.pool).resolve() if not args.pool.is_absolute() else args.pool.resolve()
+    store = TaskStore(
+        root=root,
+        sources=sources,
+        output=output,
+        queue_size=args.queue_size,
+        scan_lines=args.scan_lines,
+        min_chars=args.min_chars,
+        max_chars=args.max_chars,
+        seed=args.seed,
+        pool=pool,
+        boundary=args.boundary,
+    )
+    server = ThreadingHTTPServer((args.host, args.port), DataGameHandler)
+    server.store = store  # type: ignore[attr-defined]
+    print(f"Auralis Datenwerkstatt listening on http://{args.host}:{args.port}")
+    print(f"Output: {output}")
+    server.serve_forever()
+
+
+if __name__ == "__main__":
+    main()

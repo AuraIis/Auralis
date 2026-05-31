@@ -50,6 +50,12 @@ def main() -> int:
                     help="skip the first N raw lines (probe a deeper, less position-biased slice)")
     ap.add_argument("--scores-jsonl", type=Path, default=None,
                     help="optional: write {len, score} per scored doc for inspection")
+    ap.add_argument("--review-pool", type=Path, default=None,
+                    help="optional: write borderline docs {text, model_score, source} for human "
+                         "review in the data-game app (active learning on the decision boundary)")
+    ap.add_argument("--review-band", type=float, nargs=2, default=(1.5, 3.0), metavar=("LO", "HI"),
+                    help="predicted-score band counted as 'borderline' for the review pool")
+    ap.add_argument("--review-max", type=int, default=3000, help="cap on review-pool docs")
     args = ap.parse_args()
 
     art = torch.load(args.artifact, map_location="cpu", weights_only=False)
@@ -67,12 +73,18 @@ def main() -> int:
     args.output.parent.mkdir(parents=True, exist_ok=True)
     out_fh = args.output.open("w", encoding="utf-8")
     sc_fh = args.scores_jsonl.open("w", encoding="utf-8") if args.scores_jsonl else None
+    review_fh = None
+    if args.review_pool:
+        args.review_pool.parent.mkdir(parents=True, exist_ok=True)
+        review_fh = args.review_pool.open("w", encoding="utf-8")
+    r_lo, r_hi = args.review_band
+    review_written = 0
 
     buf_orig: list[str] = []   # original lines (written verbatim if kept)
     buf_text: list[str] = []   # truncated text fed to the embedder
 
     def flush() -> None:
-        nonlocal kept, scored, score_sum
+        nonlocal kept, scored, score_sum, review_written
         if not buf_text:
             return
         X = emb.embed(buf_text, batch_size=args.batch_size)
@@ -83,6 +95,13 @@ def main() -> int:
             hist[int(round(pr))] = hist.get(int(round(pr)), 0) + 1
             if sc_fh:
                 sc_fh.write(json.dumps({"len": len(orig), "score": round(pr, 3)}) + "\n")
+            if (review_fh is not None and review_written < args.review_max
+                    and r_lo <= pr <= r_hi):
+                review_fh.write(json.dumps(
+                    {"text": orig[: args.max_chars], "model_score": round(pr, 3),
+                     "source": args.input.name, "source_line": scored},
+                    ensure_ascii=False) + "\n")
+                review_written += 1
             if pr >= threshold:
                 out_fh.write(orig + "\n")
                 kept += 1
@@ -115,6 +134,8 @@ def main() -> int:
         out_fh.close()
         if sc_fh:
             sc_fh.close()
+        if review_fh:
+            review_fh.close()
 
     keep_rate = kept / max(1, scored)
     mean_score = score_sum / max(1, scored)
@@ -123,6 +144,7 @@ def main() -> int:
         "artifact": str(args.artifact), "threshold": threshold,
         "lines_in": lines_in, "scored": scored, "kept": kept,
         "keep_rate": round(keep_rate, 4), "mean_score": round(mean_score, 4),
+        "review_pool_written": review_written,
         "score_hist": hist, "elapsed_s": round(time.monotonic() - t0, 1),
     }
     man_path = args.output.with_suffix(args.output.suffix + ".manifest.json")
