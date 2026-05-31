@@ -525,6 +525,10 @@ INDEX_HTML = r"""<!doctype html>
       background: rgba(80,215,208,.28) !important;
       color: #eafffb;
     }
+    .needhi {
+      border-color: var(--amber) !important;
+      box-shadow: 0 0 0 1px rgba(240,183,95,.5);
+    }
     label {
       display: grid;
       gap: 6px;
@@ -617,6 +621,7 @@ INDEX_HTML = r"""<!doctype html>
           <div class="metric"><span>Unique Docs</span><strong id="unique">-</strong></div>
           <div class="metric"><span>Modus</span><strong id="activeMode">-</strong></div>
           <div class="metric wide"><span>Output</span><span id="output">-</span></div>
+          <div class="metric wide"><span>Diese Session</span><span id="session">0 gespeichert</span></div>
         </div>
       </div>
       <div style="height:12px"></div>
@@ -666,14 +671,14 @@ INDEX_HTML = r"""<!doctype html>
         <div id="rankDoc" class="doc two hidden"></div>
 
         <div id="qualityControls">
-          <div class="rubric">Edu-Rubrik (gleiche Skala wie der Klassifikator): <b>0</b> Muell · <b>1</b> fast nur Boilerplate/Werbung · <b>2</b> etwas konkrete Info · <b>3</b> klar &amp; sachlich, brauchbar · <b>4</b> lehrbuch-/lexikonartig · <b>5</b> herausragend lehrreich. Bei „Modell-Tipp" nur bestaetigen oder korrigieren.</div>
+          <div class="rubric">Edu-Rubrik: <b>0</b> Müll/kaputt · <b>1</b> fast nur Boilerplate/Werbung · <b>2</b> berührt ein Thema, aber dünn/unvollständig · <b>3</b> vermittelt nachvollziehbares Wissen, sachlich (lohnt sich) · <b>4</b> lehrbuch-/lexikonartig · <b>5</b> herausragend lehrreich.<br><b>Grenze 2↔3:</b> Würde ein Lernender hier etwas Konkretes mitnehmen? Ja → mind. 3. Bei „Modell-Tipp" nur bestätigen/korrigieren.</div>
           <div class="score">
-            <button class="bad" data-score="0" data-label="trash">0<small>Muellsatz</small></button>
-            <button class="bad" data-score="1" data-label="weak">1<small>schwach</small></button>
-            <button data-score="2" data-label="thin">2<small>duenn</small></button>
-            <button data-score="3" data-label="usable">3<small>brauchbar</small></button>
-            <button class="good" data-score="4" data-label="good">4<small>gut</small></button>
-            <button class="good" data-score="5" data-label="excellent">5<small>lehrreich</small></button>
+            <button class="bad" data-score="0" data-label="trash" title="Kaputt/sinnlos: Zeichensalat, abgeschnitten, reiner Unsinn.">0<small>Muellsatz</small></button>
+            <button class="bad" data-score="1" data-label="weak" title="Fast nur Werbung/Navigation/Floskeln; kaum Inhalt.">1<small>schwach</small></button>
+            <button data-score="2" data-label="thin" title="Berührt ein Thema, bleibt aber dünn/unvollständig — Lernender nimmt wenig mit.">2<small>duenn</small></button>
+            <button data-score="3" data-label="usable" title="Vermittelt nachvollziehbares Wissen, sachlich — lohnt sich (Behalten-Grenze).">3<small>brauchbar</small></button>
+            <button class="good" data-score="4" data-label="good" title="Lehrbuch-/lexikonartig: klar strukturiert, gehaltvoll.">4<small>gut</small></button>
+            <button class="good" data-score="5" data-label="excellent" title="Herausragend lehrreich: tief, präzise, frei von Boilerplate.">5<small>lehrreich</small></button>
           </div>
           <div class="tagshead">Eigenschaften &amp; Maengel markieren (gespeichert wird der englische Schluessel)</div>
           <div class="tags" id="tags"></div>
@@ -723,12 +728,13 @@ INDEX_HTML = r"""<!doctype html>
   </div>
 
 <script>
-const tagNames = ["keep", "edu", "fact", "german", "style", "boilerplate", "duplicate", "needs_rewrite", "unsafe", "too_shallow"];
+const tagNames = ["keep", "edu", "fact", "german", "style", "boilerplate", "duplicate", "needs_rewrite", "too_shallow", "unsafe", "legal", "medical", "financial", "claims_need_verification"];
 // German display labels only — the stored/exported tag value stays the English canonical key.
 const tagLabels = {
   keep: "behalten", edu: "Bildungswert", fact: "Faktenwissen", german: "gutes Deutsch",
   style: "guter Stil", boilerplate: "Boilerplate/Werbung", duplicate: "Dublette",
-  needs_rewrite: "umschreiben", unsafe: "unsicher", too_shallow: "oberflächlich",
+  needs_rewrite: "umschreiben", too_shallow: "oberflächlich", unsafe: "unsicher",
+  legal: "Recht", medical: "Medizin", financial: "Finanzen", claims_need_verification: "Claim prüfen",
 };
 let mode = "quality";
 let current = null;
@@ -736,6 +742,7 @@ let selectedScore = null;
 let selectedLabel = null;
 let tags = new Set();
 let selectedRank = null;
+let session = { saves: 0, score: {}, tag: {} };
 
 function $(id) { return document.getElementById(id); }
 
@@ -759,6 +766,15 @@ function renderTags() {
     b.onclick = () => { tags.has(t) ? tags.delete(t) : tags.add(t); renderTags(); };
     wrap.appendChild(b);
   }
+  // Highlight "Bessere Version" when a rewrite is flagged (#4).
+  $("rewrite").classList.toggle("needhi", tags.has("needs_rewrite"));
+}
+
+function renderSession() {
+  const parts = [];
+  for (const s of [0,1,2,3,4,5]) if (session.score[s]) parts.push(`${s}:${session.score[s]}`);
+  const rw = session.tag["needs_rewrite"] ? ` · ${session.tag["needs_rewrite"]}× rewrite` : "";
+  $("session").textContent = `${session.saves} gespeichert` + (parts.length ? ` (${parts.join(" ")})` : "") + rw;
 }
 
 function resetInputs() {
@@ -849,6 +865,11 @@ async function submit(extra={}) {
         ...extra,
       };
     }
+    if (tags.has("needs_rewrite") && !$("rewrite").value.trim()) {
+      if (!confirm("'umschreiben' ist markiert, aber 'Bessere Version' ist leer. Trotzdem speichern?")) {
+        return;
+      }
+    }
     const payload = {
       task_id: current.task_id,
       mode,
@@ -874,7 +895,13 @@ async function submit(extra={}) {
       return;
     }
     $("last").textContent = JSON.stringify(body.saved, null, 2);
-    setStatus("Gespeichert.");
+    session.saves += 1;
+    if (selectedScore !== null) session.score[selectedScore] = (session.score[selectedScore] || 0) + 1;
+    for (const t of tags) session.tag[t] = (session.tag[t] || 0) + 1;
+    renderSession();
+    const tagStr = Array.from(tags).join(", ") || "–";
+    const rwStr = $("rewrite").value.trim() ? " · +Bessere Version" : "";
+    setStatus(`Gespeichert: score=${selectedScore ?? "–"} · tags=${tagStr}${rwStr}`);
     await nextTask();
   } finally {
     submitting = false;
@@ -944,6 +971,7 @@ document.addEventListener("keydown", (e) => {
 });
 
 renderTags();
+renderSession();
 nextTask().catch(err => setStatus(String(err), true));
 </script>
 </body>
