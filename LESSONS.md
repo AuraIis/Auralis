@@ -103,3 +103,27 @@ Root cause: das Modell versucht aus Höflichkeit Kontext zu liefern und konfabul
   3. **Erlaubt: verifizierbarer Kontext-Debunk** (z.B. "Goethe besuchte kein klassisches Gymnasium..." — verifizierbar, hilft Frage einzuordnen) vs verboten: alternative spezifische Details ("Bürostuhl entwarf vermutlich X im Jahr Y...")
 - A/B-Test: 0% Halluzinations-Rate auf 310 Test-Records (vs ~3% Baseline), avg out-tokens 143 statt 241 (konziser durch verbotenes Filler-Geschwafel).
 - Zusätzlich: Refusal-Auto-Detection-Regex muss BREIT sein — "Ich weiß **es** nicht" matchet nicht "weiß nicht" (nicht-zusammenhängende Wörter), Regex auf einzelne Schlüsselwörter ("weiß", "unbekannt", "nicht überliefert") robuster.
+
+---
+
+## Neue Lessons aus dem Edu-Filter + Multi-GPU (2026-05-31)
+
+### L-018 — Thinking-Modelle: `max_tokens` deckt Reasoning UND Antwort (Kostenfalle)
+gemini-3.5-flash als 0-5-Edu-Judge: bei `max_tokens=200` kamen nur ~6 sichtbare Tokens an — die ~190 Thinking-Tokens fressen dasselbe Budget, die `Bewertung:`-Zeile wird abgeschnitten (25/25 unparsed). Schlimmer: Thinking-Tokens werden als **teurer Output** abgerechnet → ein vermeintlich "billiger Flash" kostete **€24** für ~12k Annotationen.
+**Regel v2:** Bei Thinking-Modellen `max_tokens` großzügig (≥512) **und** `reasoning_effort` drosseln. Für reine Klassifikations-/Rating-Tasks (0-5) ein **non-thinking**-Modell wählen — schneller, vorhersagbar, ~10-50× billiger. Token-Budget VOR dem Vollauf an einem 25-Doc-Smoke prüfen (succeeded vs parsed getrennt zählen).
+
+### L-019 — Judge-Wahl für Daten-Filterung: billig ≠ schlechter, streng ≠ falsch
+Umstieg gemini-3.5-flash → `qwen3-235b-a22b-2507` (non-thinking, OpenRouter): ~40× billiger UND der **bessere** Judge. Qwen bewertete Web-Spam/Reviews/EuroParl-Fragmente korrekt mit 0-1, wo Gemini großzügig 3 gab — genau diese Laschheit erzeugte den Over-Keep des Gemini-trainierten Klassifikators auf german_commons (64 % statt 45 %). FineWeb-Edu selbst nutzte Llama-3-70B (non-thinking), kein Frontier-Thinking-Modell.
+**Regel v2:** Für Edu-/Quality-Rating ein solides dichtes/MoE-Instruct-Modell (Gemma-3-27B, Qwen3-235B-2507, Llama-3.x-70B) statt teurem Frontier-Thinking. EINEN Judge konsistent halten (kein Judge-Mix im Trainingsset). Judge an konkreten Roh-Begründungen validieren, nicht nur an der Score-Verteilung.
+
+### L-020 — german-commons ist OCR-historisch-dominiert (verstärkt L-004)
+Beim Versuch, german-commons als Skalierungsquelle neu zu ziehen: der HF-Stream ist **front-loaded mit digitalisierten historischen Büchern** (Quellen `BLBooks`, `DiBiLit`, `DiBiPhil`, `GermanPD`; Perplexity 500-1000+; `subset`-Feld nutzlos = `'0'`). In 8000 gestreamten Docs **kein einziges** modernes (<200 ppl). Die "72B News / 54B Cultural" der Dataset-Karte sind großteils OCR-Archive (falsches Register, Fraktur-Fehler). Unser alter `max_perplexity=500` + `cultural_keep_ratio=0.05`-Filter hat das (richtig) rausgehalten — wir landeten bei der sauberen, aber edukativ dünnen Parlaments-Schicht.
+**Regel v2:** german-commons ist **kein** Modern-Deutsch-Skalierungsgewinn. Für mehr hochwertiges modernes Deutsch: RedPajama-V2-de (3T, mit Quality-Signals) + mehr fineweb2_de, beide edu-gefiltert. Bei jeder neuen Streaming-Quelle erst die Subset-/ppl-Verteilung der ersten N Docs proben, bevor man auf Token-Budget streamt.
+
+### L-021 — Ridge-Regressor schrumpft zum Mittel → Entscheidungsschwelle kalibrieren
+Der Edu-Klassifikator (Ridge auf e5-Embeddings) sagt Scores Richtung Mittelwert geschrumpft vorher. Eine harte Schwelle bei 3.0 ergab Precision 0.99 / **Recall 0.66** (warf ~1/3 echter ≥3-Docs weg). Die auf dem Train-Split max-F1-kalibrierte Schwelle (~2.4) brachte F1 0.79→0.89 und traf die echte Keep-Rate.
+**Regel v2:** Bei Regressions-Filtern nie die nominale Label-Marke als Entscheidungsschwelle nehmen — Schwelle auf Train kalibrieren (max-F1 oder Ziel-Keep-Rate) und im Artefakt speichern. Per-Source-Keep-Raten aus einem billigen 400er-Verteilungs-Sweep liefern die Kalibrierungs-Anker.
+
+### L-022 — DDP additiv + gated einbauen, Checkpoints DDP-agnostisch
+Multi-GPU (DistributedDataParallel) in den Single-Process-Trainer eingebaut: streng `WORLD_SIZE>1`-gated, damit der Single-GPU-Pfad bit-identisch bleibt (der laufende Foundation-Run darf nicht brechen). Zwei Fallen: (a) `DDP(model).state_dict()` hängt jedem Key `module.` an → ein Multi-GPU-Checkpoint lädt nicht mehr single-GPU; Lösung: immer `model.module` (das unwrapped Core-Modell) speichern/laden. (b) Eval/Stop/Logging müssen rang-koordiniert sein, sonst hängt ein DDP-Collective: Rank-0-Eval (forward-only, kein Collective) + Barrier, globaler Stop via `all_reduce(MAX)`.
+**Regel v2:** Distributed-Code additiv und gated einbauen; Single-GPU-Pfad per py_compile + dry-run verifizieren. Checkpoints immer ohne `module.`-Prefix schreiben. Multi-GPU-Korrektheit braucht echte 2-GPU-Validierung (RunPod) — eine Single-GPU-Box beweist sie nicht.
