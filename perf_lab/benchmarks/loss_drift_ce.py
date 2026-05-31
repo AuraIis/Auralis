@@ -31,6 +31,7 @@ sys.path.insert(0, str(REPO / "src"))
 
 from perf_lab.auralis_perf_kernels import (  # noqa: E402
     chunked_linear_cross_entropy,
+    liger_linear_cross_entropy,
     triton_forward_linear_cross_entropy,
     triton_fused_linear_cross_entropy,
 )
@@ -150,6 +151,13 @@ def make_candidate_loss(args: argparse.Namespace) -> Callable[[torch.Tensor, tor
             backward_mode=args.triton_backward_mode,
             row_group_blocks=args.row_group_blocks,
         )
+    if args.impl == "liger":
+        # Liger FLCE: exact gradients by construction (grad_weight via GEMM, not
+        # atomics). accum_dtype=fp32 forces fp32 gradient accumulation for bf16.
+        accum = torch.float32 if args.accum_dtype == "fp32" else None
+        return lambda hidden, weight, labels: liger_linear_cross_entropy(
+            hidden, weight, labels, accum_dtype=accum,
+        )
     raise ValueError(f"unknown impl: {args.impl}")
 
 
@@ -198,7 +206,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--weight-scale", type=float, default=0.05)
     parser.add_argument("--ignore-frac", type=float, default=0.0)
     parser.add_argument("--fixed-batch", action="store_true")
-    parser.add_argument("--impl", choices=["pytorch", "auto", "cpp", "python", "triton", "triton_fused"], default="triton_fused")
+    parser.add_argument("--impl", choices=["pytorch", "auto", "cpp", "python", "triton", "triton_fused", "liger"], default="triton_fused")
+    parser.add_argument("--accum-dtype", choices=["none", "fp32"], default="fp32",
+                        help="Liger gradient accumulation dtype (--impl liger only). "
+                             "fp32 forces fp32 accumulation for bf16 inputs (recommended).")
     parser.add_argument("--chunk-size", type=int, default=8192)
     parser.add_argument("--block-m", type=int, default=32)
     parser.add_argument("--block-v", type=int, default=32)
@@ -372,6 +383,7 @@ def main() -> None:
         "block_d": max(args.block_d, 16) if args.impl == "triton_fused" else args.block_d,
         "triton_backward_mode": args.triton_backward_mode if args.impl == "triton_fused" else None,
         "row_group_blocks": args.row_group_blocks if args.impl == "triton_fused" else None,
+        "accum_dtype": args.accum_dtype if args.impl == "liger" else None,
         "fixed_batch": bool(args.fixed_batch),
         "ignore_frac": args.ignore_frac,
         "max_metrics": max_metrics,

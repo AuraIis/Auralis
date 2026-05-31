@@ -23,6 +23,7 @@ sys.path.insert(0, str(REPO / "src"))
 
 from perf_lab.auralis_perf_kernels import (
     chunked_linear_cross_entropy,
+    liger_linear_cross_entropy,
     triton_forward_linear_cross_entropy,
     triton_fused_linear_cross_entropy,
 )
@@ -66,6 +67,8 @@ def chunked_step(
             backward_mode=triton_backward_mode,
             row_group_blocks=row_group_blocks,
         )
+    if impl == "liger":
+        return liger_linear_cross_entropy(hidden, weight, labels, accum_dtype=torch.float32)
     return chunked_linear_cross_entropy(hidden, weight, labels, chunk_size=chunk_size, impl=impl)
 
 
@@ -115,7 +118,7 @@ def main() -> None:
     parser.add_argument("--hidden-scale", type=float, default=1.0)
     parser.add_argument("--weight-scale", type=float, default=1.0)
     parser.add_argument("--chunk-size", type=int, default=8192)
-    parser.add_argument("--chunked-impl", choices=["auto", "cpp", "python", "triton", "triton_fused"], default="auto")
+    parser.add_argument("--chunked-impl", choices=["auto", "cpp", "python", "triton", "triton_fused", "liger"], default="auto")
     parser.add_argument("--block-m", type=int, default=8)
     parser.add_argument("--block-v", type=int, default=256)
     parser.add_argument("--block-d", type=int, default=64)
