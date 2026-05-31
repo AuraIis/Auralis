@@ -264,6 +264,7 @@ class TaskStore:
                 "answer": payload.get("answer", ""),
                 "wrong_answer": payload.get("wrong_answer", ""),
                 "correction": payload.get("correction", ""),
+                "rewrite": payload.get("rewrite", ""),
                 "notes": payload.get("notes", ""),
                 "rank_choice": payload.get("rank_choice"),
                 "other_doc_hash": payload.get("other_doc_hash"),
@@ -462,6 +463,43 @@ INDEX_HTML = r"""<!doctype html>
       background: rgba(7,12,16,.42);
     }
     .rubric b { color: var(--text); }
+    .help {
+      border: 1px solid rgba(80,215,208,.3);
+      background: rgba(16,25,32,.7);
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 12px;
+      font-size: 13px;
+    }
+    .help summary {
+      cursor: pointer;
+      font-weight: 700;
+      color: var(--cyan);
+      list-style: none;
+    }
+    .help summary::-webkit-details-marker { display: none; }
+    .helpbody { color: var(--muted); line-height: 1.55; margin-top: 8px; }
+    .helpbody b { color: var(--text); }
+    .helpbody ol { margin: 6px 0 6px 18px; padding: 0; }
+    .helpbody li { margin: 3px 0; }
+    .example {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin: 8px 0;
+    }
+    .example > div {
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 7px;
+      padding: 9px 10px;
+      background: rgba(7,12,16,.5);
+      font-size: 12.5px;
+      line-height: 1.5;
+    }
+    .example span { color: var(--cyan); font-size: 11px; font-weight: 700; }
+    .hint { color: var(--muted); font-size: 12px; margin-top: 6px; }
+    .tagshead { color: var(--muted); font-size: 12px; margin: 12px 0 -2px; }
+    @media (max-width: 760px) { .example { grid-template-columns: 1fr; } }
     .score {
       display: grid;
       grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -585,6 +623,25 @@ INDEX_HTML = r"""<!doctype html>
     </aside>
 
     <main>
+      <details class="help" open>
+        <summary>Anleitung lesen — was tue ich hier?</summary>
+        <div class="helpbody">
+          <p><b>Ziel:</b> Trainingsdaten besser machen. Du siehst je ein deutsches Textstueck mit „Modell-Tipp" (dem 0–5-Score des Edu-Klassifikators) und hilfst auf zwei Arten: bewerten, ob es gutes Lernmaterial ist — und wo es sich lohnt, eine bessere Version schreiben.</p>
+          <p><b>So gehst du vor (Modus „Qualitaet"):</b></p>
+          <ol>
+            <li><b>Bewerten 0–5</b> (Tasten 1–6) nach der Rubrik unten. Steht ein „Modell-Tipp" da, nur bestaetigen oder korrigieren.</li>
+            <li><b>Maengel markieren:</b> was ist faul? z.B. <i>boilerplate</i> (Werbung/Navigation), <i>too_shallow</i> (zu seicht), <i>needs_rewrite</i> (gesprochen/holprig), <i>unsafe</i>, <i>duplicate</i>.</li>
+            <li><b>Optional umschreiben:</b> Inhalt ok, aber Stil holprig (typisch fuer Reden/Transkripte)? Dann schreib eine saubere Version ins Feld „Bessere Version".</li>
+            <li><b>Speichern</b> mit Ctrl+Enter. Unklar? „Skip" (Taste N).</li>
+          </ol>
+          <p><b>Vorlage — so soll eine Umschreibung aussehen:</b></p>
+          <div class="example">
+            <div><span>VORHER (holprig, gesprochen)</span><br>„…Werbung von Online-Glücksspielen verbieten sollte, die junge Menschen als Zielgruppe haben. In der Tschechischen Republik hängt man da leider hinten an. Man hängt da zurück, was die EU betrifft. Denn hier gibt es gar keine Beschränkungen für solche Werbung…"</div>
+            <div><span>NACHHER (klar, geschrieben)</span><br>„Werbung für Online-Glücksspiele, die sich an junge Menschen als Zielgruppe richtet, sollte verboten werden. Die Tschechische Republik hinkt hier im EU-Vergleich leider hinterher, da es dort keinerlei Beschränkungen für solche Werbung gibt…"</div>
+          </div>
+          <p class="hint">Modi oben: <b>Qualitaet</b> = bewerten + maengeln + umschreiben (das Wichtigste fuer die Datenqualitaet). „QA bauen" / „Korrigieren" / „A/B Rank" sind fuer die spaetere Instruction-Phase.</p>
+        </div>
+      </details>
       <div class="modebar">
         <button data-mode="quality" class="active">Qualitaet</button>
         <button data-mode="qa">QA bauen</button>
@@ -610,7 +667,11 @@ INDEX_HTML = r"""<!doctype html>
             <button class="good" data-score="4" data-label="good">4<small>gut</small></button>
             <button class="good" data-score="5" data-label="excellent">5<small>lehrreich</small></button>
           </div>
+          <div class="tagshead">Maengel markieren (was ist faul am Text?)</div>
           <div class="tags" id="tags"></div>
+          <label style="margin-top:10px">Bessere Version (optional)
+            <textarea id="rewrite" placeholder="Nur wenn der Inhalt ok ist, aber der Stil holprig/gesprochen: schreib den Text sauber & gut lesbar um (siehe Vorlage in der Anleitung). Sonst leer lassen."></textarea>
+          </label>
         </div>
 
         <div id="qaControls" class="stack hidden" style="margin-top:14px">
@@ -693,6 +754,7 @@ function resetInputs() {
   $("answer").value = "";
   $("wrongAnswer").value = "";
   $("correction").value = "";
+  $("rewrite").value = "";
   $("notes").value = "";
   renderTags();
 }
@@ -760,6 +822,7 @@ async function submit(extra={}) {
     answer: $("answer").value.trim(),
     wrong_answer: $("wrongAnswer").value.trim(),
     correction: $("correction").value.trim(),
+    rewrite: $("rewrite").value.trim(),
     notes: $("notes").value.trim(),
     ...extra
   };
