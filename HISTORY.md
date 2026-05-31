@@ -110,6 +110,40 @@ Chronologisch, Milestones. Append-Only.
 - **Cost-Bilanz Phase-3-Daten heute:** $2.37 von ~$11 OpenRouter-Budget, 7188 SFT-Examples in Pipeline (980 + 5598 + 300 v1 + 310 v2 honest_refusal), production-quality validiert.
 - **Doku-Updates:** [LESSONS.md](LESSONS.md) L-017 (Helpful-Elaboration-Trap), [STATUS.md](STATUS.md) Phase-3-Daten-Status pending.
 
+## 2026-04-30 → 2026-05-30 — Zwischenstand (rekonstruiert aus git-Log + `reports/`)
+
+> Diese ~29 Tage waren nicht im HISTORY erfasst. **Rekonstruiert** aus dem git-Commit-Log (bis HEAD `0cfe26f`, 2026-05-04 — danach wurde nichts mehr committet) und den datierten Dateien in `reports/` und `docs/` (05-24 .. 05-30). Keine Erfindung — wo Lauf-Metriken fehlen, steht nur das, was die Artefakte belegen.
+
+**~04-24 → 05-04 — Phase-2-Prep + industrielle Daten-Pipeline (git-belegt):**
+- `feat: Phase-2 prep, DE-Chain, Politik-Korpus, infra hardening` + drei Codex-Review-Pässe (P1-P3, 6 Findings, 2 Edge-Cases).
+- **Industry-standard Daten- + Eval-Pipeline** verdrahtet, **Track-2-Benchmark-Suite** (`feat(eval)`), opt-in Speed-Knobs für Phase-2+ (`feat(perf)`).
+- Referenz-Docs: Attention-Varianten + Positional Encoding, MoRA-Integrationsplan, Daten-Pipeline/Framework-Evaluation (Tier-1 getestet), `data_pipeline_v1.md`.
+- **Ask-LLM-Quality-Scorer** (Nemotron-CC-Stil): `rewrite_low_quality.py`, `ask_llm_code.py`, `ask_llm_local.py` (direct-HTTP für LocalAI/vLLM), chunked streaming + `--resume`, `--min/--max-chars`-Prefilter.
+- **Scorer-Modell-Debugging:** DeepSeek-Garbage-Loop → temperature 0→0.05 → Default `llama-3.3-70b` → später `qwen3.6-35b-a3b` (lokales bitbastion-Modell). Deckt sich mit der späteren Judge-Lektion **L-019**.
+- **RunPod:** phase1-resume-Config + Pod-Setup-Script.
+
+**~05-24 → 05-26 — 500M-v5-Forensik + v6-Datenplan:**
+- `500m_step6000_sft_gate` (05-24); `pretrain_v5_500m_a100_root_cause` (05-26) — Ursachenanalyse des schwachen v5-500M.
+- `pretrain_v6_data_eval_plan`, `candidates_audit` / `manifest_combined`, `canary_500m_bitbastion` (05-26): neuer v6-Datenkandidaten-Pool definiert + auditiert.
+
+**~05-27 — v6-Daten-Mixes gebaut + kontaminationsgeprüft:**
+- Gutenberg-Books clean_v2/v1 (contamination + manifests + tokenized manifests), `books_augmented` / `books_lowratio` / `expanded_test`-500M-Mixes, `strict_mix`, `instruction_pool` / `instruction_de_strict`, extra candidates.
+- Erste `sft_response_fix_de` v1/v2 (microfit, curriculum-mixed, diag eos/weighted, guard/core-only, stabilize-from-core).
+
+**~05-28 — großer SFT-Reparatur-Sweep (500M):**
+- `sft_response_fix_de` **v3 → v9** mit dutzenden Varianten (anchor, balance/guard-patch, family-from-v4best, bridge, bonn_photo, stable-from-v6/v8) gegen die Interferenz-Achsen (Bonn/Berlin, Photosynthese, Faust/Goethe).
+- Semantic-Gate-Sweeps (a2, v3..v9, contrastive/balanced/strong-probe-tune) über die `sft_response_fix_chat_gate`-v2..v6-Holdouts.
+
+**~05-29 — Pivot auf 1B-Readiness + Frozen/Live-Gates:**
+- `1b_readiness_plan`, `staged_training_plan`, `codex_handoff_1b_readiness_v2`; **1B-Preflight** (v2 + curated_40b_v2) → `ready_to_launch: False`.
+- **Frozen-Response-Gate v2** über die 500M-Checkpoints (v8_safe, hybrid_v1_40, hybrid_v12_bridge_60, hybrid_v12_repair_v2_80) + Leak-Checks → **kein Checkpoint promotable** (Target schwach, Retention bricht).
+- **Adaptive Live-Bridge** (Frozen-Gate live im Training), `learning_neuro_map` + `learning_trace_system`, v10 (source-disjoint) / v11 (contrastive) SFT.
+- STATUS-Snapshot 05-29: 500M nicht produktionsnah; Diagnose = **Interferenz**, Weg = sauber gewichteter 1B-Mix statt weiterer 500M-Mini-Patches.
+
+**~05-30 — curated_40b-Canary / 1B-Mix-A/B (Übergang zu dieser Session):**
+- `1b_language_tree_plan`, `1b_lr2e4_mix_ab_smoke`, `1b_readiness_preflight_curated_40b_canary`, `frozen_response_gate sft_response_v2 curated_40b_canary`.
+- Übergang in den bilingualen **1B-Ramp (de55/en45)**, der in dieser Session bei Step ~3400 analysiert wurde (siehe nächster Eintrag).
+
 ## 2026-05-30/31 — Deutsch-Edu-Filter (FineWeb-Edu-Methodik) + Multi-GPU/DDP
 
 - **Ausgangslage:** Bilingualer 1B-Ramp (de55/en45) bis Step ~3400 (best.pt), Lernverhalten enttäuschend. **Saubere Diagnose:** nicht die Eval (Qwen-2.5 auf den Probes 37/50 = sinnvoll, nicht kaputt), nicht die Architektur (All-Plain-Attention-Kontrolle ~ gleichauf mit Helix bis Step 300), sondern **Under-Training** (~3.4B Tok ~16% Chinchilla) **+ qualitäts-invertierter DE-Mix** (schwächste Quelle = größtes Budget).
