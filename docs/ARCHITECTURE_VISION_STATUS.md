@@ -73,6 +73,41 @@ data quantity/quality**, which is exactly what the active data pipeline addresse
 
 ---
 
+## Continual learning & self-knowledge (Phase 5+ design guardrails)
+
+Target: a system that keeps acquiring skills/knowledge, **recognizes what it already
+knows**, spends learning on the gaps, and does not forget. What is real vs not:
+
+**Real & buildable — "does the model already know X?" is measurable (functionally).**
+- Probe the model with candidate knowledge and read its **loss / margin / confidence**:
+  low surprise = already known → skip; high-but-learnable = a real gap → train on it;
+  high-and-chaotic = noise → ignore. (Principle: reducible-loss / RHO-LOSS data
+  selection, Mindermann 2022; "LMs Mostly Know What They Know", Kadavath 2022.)
+- After learning, **re-measure the known set** to catch forgetting (a cheap
+  catastrophic-forgetting guard).
+- We already have the measurement substrate: `src/auralis/adaptive/` (**margin
+  probes + bpb + frozen_gate + stages**) is exactly a "do-I-know-this?" meter and a
+  signal-gated trainer. The missing piece is the knowledge-inventory + gap-driven
+  selection loop on top.
+
+**Verifier-gated self-improvement — real where correctness is checkable.**
+- Code (run tests), math (checkers), games (win/loss): generate → verify → train on
+  the verified-correct. This is the only domain where a *self*-improvement loop
+  reliably climbs. The planned **Logik-LoRA** (self-verification) lives here.
+
+**Honest limits (do NOT design around these being solved):**
+- You **cannot read the weights** to enumerate known facts — knowledge is
+  distributed/superposed (localization research like ROME/MEMIT finds rough regions,
+  not a lookup table). Measure knowledge *functionally* (loss/probe), not by
+  inspecting weights.
+- **Low loss ≠ true.** Models are confidently wrong; familiarity ≠ correctness. Use
+  loss for "is this familiar", but require an **external verifier / source** for "is
+  this correct" — else the system skips fixing things it wrongly "knows".
+- **Self-data-only loops collapse** (Shumailov 2024). Genuine improvement needs
+  external grounding: verifiers, fresh real data, tool/world feedback.
+
+Placement: Phase 5+, on the aligned base; `src/auralis/adaptive/` is the natural home.
+
 ## Honest bottom line
 
 - The vision is **coherent and largely scaffolded** — the tokenizer reserves slots for
