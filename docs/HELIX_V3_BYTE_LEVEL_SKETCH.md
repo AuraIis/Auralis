@@ -6,9 +6,32 @@ are unaffected by this. This note exists so the idea is captured concretely and 
 be judged on cost/benefit later, not built on impulse.
 
 The seed: "build an AI that understands text closer to the machine level, or finds
-a denser pattern/language (DNA analogy)." Translated into a real, testable design:
-**drop the 200k tokenizer and operate at (or near) the byte level.** Below is what
-that buys, what it costs, and the honest verdict.
+a denser pattern/language." Translated into a real, testable design for the
+**representation layer**: drop the 200k tokenizer and operate at (or near) the byte
+level. Below is what that buys, what it costs, and the honest verdict.
+
+> Terminology note: in this repo, **"knowledge DNA" already means something specific**
+> — the `knowledge_dna_v2` / `knowledge_kernel` track (dense *knowledge* blocks), NOT
+> byte-level representation. This doc is only about representation. See §0.
+
+## 0. Relation to the existing Auralis vision
+
+Auralis is designed as three layers, and the tokenizer special-token spec already
+scaffolds all three:
+
+1. **Representation** — text → vectors. Today: 200k SentencePiece (en 50 / de 40 /
+   code 10, `byte_fallback`). This sketch's byte-level idea lives HERE.
+2. **Knowledge** — `knowledge_dna_v2` / `knowledge_kernel`: dense curated fact/
+   definition blocks via `<memory>`/`<recall>`. **THIS is the repo's "DNA."** Status:
+   prototyped (corpus builder + ablation harness run) but **UNPROVEN** — the only fair
+   ablation had `plain` ≥ `kernel` on models too tiny to answer; explicitly NO-GO /
+   experimental. Next real test: a 100M+ fair ablation (the 3090 can run it).
+3. **Skills** — LoRA/DoRA adapters + routing (`<lora>`/`<route>`) to load
+   code/languages/domains onto the frozen base.
+
+Byte-level (this doc) and knowledge-DNA are **complementary layers, not the same
+idea.** And the 200k vocab is a **deliberate universal-base choice** for the adapter
+ecosystem (broad en/de/code + Unicode coverage) — not an oversight.
 
 ---
 
@@ -76,13 +99,14 @@ Why this fits Helix specifically:
 | **B. Naive byte/char (vocab 256)** | tokenizer-free, raw bytes | ~256M | **~3× more** (longer seq) | medium | high (no OOV/compounds) but pays compute |
 | **C. Patched byte (BLT/MambaByte-style)** | byte encoder + entropy patcher + backbone on patches | ~256M | ~comparable to tokens | **high** (new components, harder to train) | high, *and* compute-neutral |
 
-- **Tier A** is the safe, boring win: a smaller vocab frees ~175–215M params
-  (64k→32k) and is a tiny, well-understood change. NOTE: 200k is sized for 50–100+
-  languages; for just de+en it is almost certainly oversized, so **48k–64k** is the
-  sweet spot (GPT-2: 50k, Llama: 32k) — shrinking likely costs little quality and
-  may even gain via reallocation. 32k risks more German-compound fragmentation.
-  (Downside: still a tokenizer, still fragments German; and a new vocab = full
-  retrain, no warm-start from the current run.)
+- **Tier A** frees ~175–215M params BUT **conflicts with the universal-base/adapter
+  goal**: a smaller vocab means less efficient coverage of code + non-de/en text, and
+  **LoRA cannot add vocab back later**. The 200k was chosen deliberately (en/de/code +
+  adapter/route/memory tokens) to be a broad base — shrinking it trades exactly that
+  flexibility away. So Tier A only makes sense if abandoning the universal ambition.
+  For the adapter ecosystem, **byte-level (Tier C) is the aligned path**: it is the
+  *most* universal coverage (any script/code) AND frees the params, with no
+  "can't add tokens" wall. (Any vocab change = full retrain regardless.)
 - **Tier C** is the "krasse" version that matches the original intuition and could
   genuinely help German — but it is a real research build (entropy patcher, byte
   encoder/decoder, training stability), i.e. a from-scratch Helix v3, not a tweak.
@@ -119,9 +143,11 @@ This is days of small-model work, fully isolated from the production run.
   clearly-dominant recipe; training stability and the patcher are non-trivial.
 - **Compute reality:** only Tier A (and Tier C *if* the patcher works) are
   compute-sane; naive bytes (B) costs ~3× and is only a research probe.
-- **Best risk-adjusted first step:** Tier A (48k–64k vocab) for the param win — and
-  it doubles as evidence that 200k was oversized for de+en — *or* the Tier-B
-  tiny-model bpb probe to decide whether Tier C is worth it.
+- **Best first step (given the universal-base goal):** the **Tier-B tiny-model bpb
+  probe** — cheap, decides whether byte-level beats tokens on German. If yes, **Tier C
+  (patched byte)** is the path that *fits* the universal-base/adapter vision (universal
+  coverage + frees params). Tier A is off-goal here and only worth it if dropping the
+  multilingual/code ambition.
 
 **Verdict:** Real, on-theme, and the bpb metric makes it cleanly testable — but it is
 a **Helix v3 experiment for after** the current run and the German-data scale-up, not
