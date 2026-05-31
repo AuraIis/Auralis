@@ -24,6 +24,22 @@ def torch_rmsnorm(x: torch.Tensor, weight: torch.Tensor, eps: float) -> torch.Te
     return x * torch.rsqrt(variance + eps).to(x.dtype) * weight.to(dtype=x.dtype)
 
 
+def liger_rmsnorm(x: torch.Tensor, weight: torch.Tensor, eps: float) -> torch.Tensor:
+    """Liger Triton RMSNorm in 'llama' casting mode (fp32 compute, weight applied
+    directly) to match `torch_rmsnorm`. Liger's op references DTensor, so the
+    submodule must be imported or `torch.distributed.tensor` raises AttributeError
+    on this torch build."""
+    import torch.distributed.tensor  # noqa: F401
+    from liger_kernel.transformers.functional import liger_rms_norm
+    return liger_rms_norm(x, weight, eps, offset=0.0, casting_mode="llama", in_place=False)
+
+
+def get_candidate(impl: str):
+    if impl == "liger":
+        return liger_rmsnorm
+    return rmsnorm
+
+
 def timed(fn, *, warmup: int, iters: int) -> tuple[float, list[float]]:
     for _ in range(warmup):
         y = fn()
@@ -53,6 +69,9 @@ def main() -> None:
     parser.add_argument("--eps", type=float, default=1e-6)
     parser.add_argument("--warmup", type=int, default=5)
     parser.add_argument("--iters", type=int, default=20)
+    parser.add_argument("--impl", choices=["custom", "liger"], default="custom",
+                        help="Candidate kernel compared against the PyTorch reference: "
+                             "'custom' = hand-rolled CUDA kernel, 'liger' = Liger Triton RMSNorm.")
     args = parser.parse_args()
 
     if not torch.cuda.is_available():
@@ -69,12 +88,14 @@ def main() -> None:
             weight_base.detach().clone().requires_grad_(True),
         )
 
+    candidate = get_candidate(args.impl)
+
     x_ref, w_ref = make_inputs()
     y_ref = torch_rmsnorm(x_ref, w_ref, args.eps)
     y_ref.sum().backward()
 
     x_new, w_new = make_inputs()
-    y_new = rmsnorm(x_new, w_new, args.eps)
+    y_new = candidate(x_new, w_new, args.eps)
     y_new.sum().backward()
     torch.cuda.synchronize()
 
@@ -88,13 +109,14 @@ def main() -> None:
 
     def run_custom():
         x, w = make_inputs()
-        return rmsnorm(x, w, args.eps)
+        return candidate(x, w, args.eps)
 
     torch_avg, torch_times = timed(run_torch, warmup=args.warmup, iters=args.iters)
     custom_avg, custom_times = timed(run_custom, warmup=args.warmup, iters=args.iters)
 
     result = {
         "gpu": torch.cuda.get_device_name(0),
+        "impl": args.impl,
         "rows": args.rows,
         "dim": args.dim,
         "dtype": args.dtype,
