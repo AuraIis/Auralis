@@ -31,6 +31,7 @@ import torch.nn as nn
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LambdaLR
 
+from auralis.adaptive.bpb import bits_per_byte, bpb_gap
 from auralis.training.health import (
     AlertLevel,
     HealthConfig,
@@ -119,6 +120,20 @@ class RunMetadata:
     dtype: str = "fp32"
 
 
+def _align_model_state_for_load(
+    model: nn.Module,
+    state: dict[str, torch.Tensor],
+) -> dict[str, torch.Tensor]:
+    """Align torch.compile ``_orig_mod.`` prefixes before loading weights."""
+    model_prefixed = any(k.startswith("_orig_mod.") for k in model.state_dict())
+    ckpt_prefixed = any(k.startswith("_orig_mod.") for k in state)
+    if model_prefixed and not ckpt_prefixed:
+        return {f"_orig_mod.{k}": v for k, v in state.items()}
+    if ckpt_prefixed and not model_prefixed:
+        return {k.removeprefix("_orig_mod."): v for k, v in state.items()}
+    return state
+
+
 class PretrainTrainer:
     def __init__(
         self,
@@ -132,6 +147,8 @@ class PretrainTrainer:
         device: str | torch.device = "cpu",
         val_dataloader: Iterator[dict[str, torch.Tensor]] | None = None,
         wandb_logger: Callable[[dict[str, float], int], None] | None = None,
+        world_size: int = 1,
+        rank: int = 0,
     ):
         self.model = model
         self.optimizer = optimizer
@@ -142,6 +159,19 @@ class PretrainTrainer:
         self.state = state or TrainerState()
         self.device = torch.device(device)
         self.log = _safe_log(wandb_logger or (lambda _metrics, _step: None))
+
+        # ---- Distributed (DDP) awareness; single-process when world_size == 1 ----
+        self._world_size = max(1, int(world_size))
+        self._rank = int(rank)
+        self._is_distributed = self._world_size > 1
+        self._is_main = self._rank == 0
+        # Checkpoints stay DDP-agnostic: save/load the underlying module so a
+        # multi-GPU checkpoint reloads single-GPU (no "module." key prefix).
+        self._core_model = (
+            model.module
+            if isinstance(model, nn.parallel.DistributedDataParallel)
+            else model
+        )
 
         # Unpack knobs that get hit every step.
         tcfg = config["training"]
@@ -175,11 +205,11 @@ class PretrainTrainer:
         # fp16 requires a GradScaler to stay numerically stable; bf16 and fp32
         # do not. Create the scaler only when fp16 on CUDA is actually active.
         self._use_amp = self._amp_dtype != torch.float32
-        self._scaler: torch.cuda.amp.GradScaler | None = None
+        self._scaler: torch.amp.GradScaler | None = None
         if self._amp_dtype == torch.float16:
             if self.device.type != "cuda":
                 raise ValueError("fp16 training requires a CUDA device.")
-            self._scaler = torch.cuda.amp.GradScaler()
+            self._scaler = torch.amp.GradScaler("cuda")
 
         lcfg = config["logging"]
         self._log_every = int(lcfg.get("log_every", 10))
@@ -195,6 +225,11 @@ class PretrainTrainer:
         # always wrote best.pt on val improvement. Default true preserves
         # the existing Phase-1 behaviour.
         self._save_best = bool(ccfg.get("save_best", True))
+        self._skip_step_save_if_checkpoint_written = bool(
+            ccfg.get("skip_step_save_if_checkpoint_written", False)
+        )
+        self._last_checkpoint_step: int | None = None
+        self._last_checkpoint_name: str | None = None
         self._external_backup = ccfg.get("external_backup") or {}
 
         # ---- Health monitor (auto-stop guards) ----
@@ -242,6 +277,10 @@ class PretrainTrainer:
         self.model.train()
         data_iter = iter(self.dataloader)
         window_loss_sum = 0.0
+        window_loss_main_sum = 0.0
+        window_loss_mtp_sum = 0.0
+        window_loss_main_count = 0
+        window_loss_mtp_count = 0
         window_t0 = time.time()
         window_data_time = 0.0
         window_compute_time = 0.0
@@ -250,7 +289,7 @@ class PretrainTrainer:
             loss_acc = 0.0
             self.optimizer.zero_grad(set_to_none=True)
 
-            for _ in range(self._grad_accum):
+            for micro in range(self._grad_accum):
                 t_data_0 = time.time()
                 batch = next(data_iter)
                 batch = {k: v.to(self.device, non_blocking=True) for k, v in batch.items()}
@@ -259,18 +298,35 @@ class PretrainTrainer:
                 window_data_time += time.time() - t_data_0
 
                 t_compute_0 = time.time()
-                with self._autocast():
-                    out = self.model(input_ids=batch["input_ids"], labels=batch["labels"])
-                    loss = out["loss"] / self._grad_accum
-                if not torch.isfinite(loss):
-                    msg = f"non-finite loss at step {self.state.step}: {loss.item()}"
-                    self.state.alerts.append(msg)
-                    raise RuntimeError(msg)
-                if self._scaler is not None:
-                    self._scaler.scale(loss).backward()
-                else:
-                    loss.backward()
+                # DDP: defer the gradient all-reduce to the LAST micro-step so it
+                # fires once per optimizer step, not once per accumulation micro-step.
+                is_last_micro = micro == self._grad_accum - 1
+                sync_ctx = (
+                    self.model.no_sync()
+                    if (self._is_distributed and not is_last_micro)
+                    else nullcontext()
+                )
+                with sync_ctx:
+                    with self._autocast():
+                        out = self.model(input_ids=batch["input_ids"], labels=batch["labels"])
+                        loss = out["loss"] / self._grad_accum
+                    if not torch.isfinite(loss):
+                        msg = f"non-finite loss at step {self.state.step}: {loss.item()}"
+                        self.state.alerts.append(msg)
+                        raise RuntimeError(msg)
+                    if self._scaler is not None:
+                        self._scaler.scale(loss).backward()
+                    else:
+                        loss.backward()
                 loss_acc += loss.item()
+                loss_main = out.get("loss_main")
+                if loss_main is not None:
+                    window_loss_main_sum += float(loss_main.detach().item())
+                    window_loss_main_count += 1
+                loss_mtp = out.get("loss_mtp")
+                if loss_mtp is not None:
+                    window_loss_mtp_sum += float(loss_mtp.detach().item())
+                    window_loss_mtp_count += 1
                 if self.device.type == "cuda":
                     torch.cuda.synchronize()
                 window_compute_time += time.time() - t_compute_0
@@ -289,14 +345,14 @@ class PretrainTrainer:
             self.scheduler.step()
 
             self.state.step += 1
-            self.state.tokens_seen += self._batch_tokens
+            self.state.tokens_seen += self._batch_tokens * self._world_size
             window_loss_sum += loss_acc
 
             if self.state.step % self._log_every == 0:
                 elapsed = time.time() - window_t0
                 self.state.wall_clock_seconds += elapsed
                 avg_loss = window_loss_sum / self._log_every
-                tps = (self._batch_tokens * self._log_every) / max(elapsed, 1e-9)
+                tps = (self._batch_tokens * self._world_size * self._log_every) / max(elapsed, 1e-9)
                 lr = self.scheduler.get_last_lr()[0]
                 metrics: dict[str, float] = {
                     "train/loss": avg_loss,
@@ -307,6 +363,10 @@ class PretrainTrainer:
                     "train/data_frac": window_data_time / max(elapsed, 1e-9),
                     "train/compute_frac": window_compute_time / max(elapsed, 1e-9),
                 }
+                if window_loss_main_count:
+                    metrics["train/loss_main"] = window_loss_main_sum / window_loss_main_count
+                if window_loss_mtp_count:
+                    metrics["train/loss_mtp"] = window_loss_mtp_sum / window_loss_mtp_count
                 metrics["system/step_time_ms"] = (elapsed / max(self._log_every, 1)) * 1000.0
                 if self.device.type == "cuda":
                     metrics["train/vram_alloc_gb"] = torch.cuda.memory_allocated() / 1e9
@@ -339,46 +399,71 @@ class PretrainTrainer:
                             f"> budget ${self._cost_budget:.0f}"
                         )
 
-                self.log(metrics, self.state.step)
+                if self._is_main:
+                    self.log(metrics, self.state.step)
 
-                # Health check — may set self.health.stop_requested
+                # Health check — runs on every rank so per-rank grad/VRAM
+                # anomalies are caught; only rank 0 prints to avoid N-way noise.
                 for level, msg in self.health.observe(metrics, self.state.step):
-                    print(f"  health[{level.value}]: {msg}", flush=True)
-                extra = ""
-                if self.device.type == "cuda":
-                    extra = f" | vram {metrics['train/vram_alloc_gb']:.1f}/{metrics['train/vram_peak_gb']:.1f}GB"
-                print(
-                    f"step {self.state.step:6d} | loss {avg_loss:6.4f} | "
-                    f"lr {lr:.2e} | grad_norm {float(grad_norm):5.2f} | "
-                    f"tok/s {tps/1e3:6.1f}k | "
-                    f"data {metrics['train/data_frac']*100:4.1f}%"
-                    f"{extra}",
-                    flush=True,
-                )
+                    if self._is_main:
+                        print(f"  health[{level.value}]: {msg}", flush=True)
+                if self._is_main:
+                    extra = ""
+                    if self.device.type == "cuda":
+                        extra = f" | vram {metrics['train/vram_alloc_gb']:.1f}/{metrics['train/vram_peak_gb']:.1f}GB"
+                    print(
+                        f"step {self.state.step:6d} | loss {avg_loss:6.4f} | "
+                        f"lr {lr:.2e} | grad_norm {float(grad_norm):5.2f} | "
+                        f"tok/s {tps/1e3:6.1f}k | "
+                        f"data {metrics['train/data_frac']*100:4.1f}%"
+                        f"{extra}",
+                        flush=True,
+                    )
                 window_loss_sum = 0.0
+                window_loss_main_sum = 0.0
+                window_loss_mtp_sum = 0.0
+                window_loss_main_count = 0
+                window_loss_mtp_count = 0
                 window_t0 = time.time()
                 window_data_time = 0.0
                 window_compute_time = 0.0
 
             if self.val_dataloader is not None and self.state.step % self._eval_every == 0:
-                val_loss = self._evaluate()
-                self._track_val(val_loss)
-                # Health may also STOP on sustained val regression.
-                for level, msg in self.health.observe_val(
-                    val_loss,
-                    self.state.best_val_loss,
-                    self.state.consecutive_val_increases,
-                    self.state.step,
-                ):
-                    print(f"  health[{level.value}]: {msg}", flush=True)
+                # Eval is forward-only (no gradient all-reduce), so rank 0 runs it
+                # alone while the others wait at the barrier below — no DDP desync.
+                if self._is_main:
+                    val_loss = self._evaluate()
+                    self._track_val(val_loss)
+                    # Health may also STOP on sustained val regression.
+                    for level, msg in self.health.observe_val(
+                        val_loss,
+                        self.state.best_val_loss,
+                        self.state.consecutive_val_increases,
+                        self.state.step,
+                    ):
+                        print(f"  health[{level.value}]: {msg}", flush=True)
+                if self._is_distributed:
+                    torch.distributed.barrier()
 
             if self.state.step % self._save_every == 0:
-                self.save_checkpoint(f"step_{self.state.step}")
+                self._save_step_checkpoint_if_needed(f"step_{self.state.step}")
 
-            if self.health.should_stop():
-                reason = self.health.state.stop_reason
-                print(f"  AUTO-STOP: {reason}. Saving emergency ckpt and exiting.", flush=True)
-                self.save_checkpoint(f"step_{self.state.step}_emergency")
+            # Stop decision must be unanimous across ranks or DDP collectives
+            # would hang. Reduce the local flag with MAX so any rank's stop wins.
+            stop_local = self.health.should_stop()
+            if self._is_distributed:
+                flag = torch.tensor([1.0 if stop_local else 0.0], device=self.device)
+                torch.distributed.all_reduce(flag, op=torch.distributed.ReduceOp.MAX)
+                stop_global = bool(flag.item() > 0)
+            else:
+                stop_global = stop_local
+            if stop_global:
+                reason = self.health.state.stop_reason or "peer_requested_stop"
+                if self._is_main:
+                    print(f"  AUTO-STOP: {reason}. Saving emergency ckpt and exiting.", flush=True)
+                    self.save_checkpoint(f"step_{self.state.step}_emergency")
+                if self._is_distributed:
+                    torch.distributed.barrier()
                 raise HealthStop(reason)
 
         # Final checkpoint — skip if the last in-loop save already wrote
@@ -386,7 +471,7 @@ class PretrainTrainer:
         # 80000 % 2500). Avoids overwriting the freshly written file with
         # identical content and triggering a redundant external backup.
         if self.state.step % self._save_every != 0:
-            self.save_checkpoint(f"step_{self.state.step}")
+            self._save_step_checkpoint_if_needed(f"step_{self.state.step}")
         return self.state
 
     # ------------------------------------------------------------------
@@ -403,6 +488,10 @@ class PretrainTrainer:
         eval_cfg = self.config.get("evaluation", {})
         max_batches = int(eval_cfg.get("max_val_batches", 50))
         per_lang_batches = int(eval_cfg.get("per_language_batches", 8))
+        tokens_per_byte = {
+            str(k): float(v)
+            for k, v in (eval_cfg.get("tokens_per_byte") or {}).items()
+        }
 
         metrics: dict[str, float] = {}
 
@@ -441,12 +530,24 @@ class PretrainTrainer:
                     lang_losses[lang].append(out["loss"].item())
             for lang, ls in lang_losses.items():
                 if ls:
-                    metrics[f"eval/val_loss/{lang}"] = sum(ls) / len(ls)
+                    lang_val = sum(ls) / len(ls)
+                    metrics[f"eval/val_loss/{lang}"] = lang_val
+                    if lang in tokens_per_byte:
+                        metrics[f"eval/bpb/{lang}"] = bits_per_byte(lang_val, tokens_per_byte[lang])
+            bpbs = {
+                k.rsplit("/", 1)[-1]: v
+                for k, v in metrics.items()
+                if k.startswith("eval/bpb/")
+            }
+            if len(bpbs) >= 2:
+                metrics["eval/bpb_gap_max"] = bpb_gap(bpbs)
 
         self.model.train()
         self.log(metrics, self.state.step)
-        pretty = " ".join(f"{k.split('/')[-1]}={v:.3f}" for k, v in metrics.items())
+        pretty = " ".join(f"{k.removeprefix('eval/').replace('/', '_')}={v:.3f}" for k, v in metrics.items())
         print(f"  eval @ step {self.state.step}: {pretty}", flush=True)
+        for level, msg in self.health.observe_bpb(metrics, self.state.step):
+            print(f"  health[{level.value}]: {msg}", flush=True)
         return val
 
     def _track_val(self, val_loss: float) -> None:
@@ -467,16 +568,46 @@ class PretrainTrainer:
                 print(f"  ALERT: {msg}", flush=True)
 
     # ------------------------------------------------------------------
+    def _save_step_checkpoint_if_needed(self, name: str) -> Path | None:
+        if (
+            self._skip_step_save_if_checkpoint_written
+            and self._last_checkpoint_step == self.state.step
+        ):
+            print(
+                f"  ckpt {name} skipped; {self._last_checkpoint_name}.pt "
+                f"already written at step {self.state.step}",
+                flush=True,
+            )
+            return None
+        return self.save_checkpoint(name)
+
     def save_checkpoint(self, name: str) -> Path:
+        import random
+
+        import numpy as np
+
         path = self._ckpt_dir / f"{name}.pt"
+        # Only rank 0 writes checkpoints in a distributed run; the others would
+        # race on the same path (and hold identical replicated weights anyway).
+        if not self._is_main:
+            return path
         tmp = path.with_suffix(".pt.tmp")
+        # RNG state so a resume continues the same random stream.
+        rng = {
+            "torch": torch.get_rng_state(),
+            "numpy": np.random.get_state(),
+            "python": random.getstate(),
+        }
+        if torch.cuda.is_available():
+            rng["cuda"] = torch.cuda.get_rng_state_all()
         payload = {
-            "model": self.model.state_dict(),
+            "model": self._core_model.state_dict(),
             "optimizer": self.optimizer.state_dict(),
             "scheduler": self.scheduler.state_dict(),
             "state": asdict(self.state),
             "metadata": asdict(self.metadata),
             "scaler": self._scaler.state_dict() if self._scaler is not None else None,
+            "rng": rng,
         }
         t_write_0 = time.time()
         torch.save(payload, tmp)
@@ -543,6 +674,8 @@ class PretrainTrainer:
         print(note, flush=True)
 
         self._rotate_checkpoints()
+        self._last_checkpoint_step = self.state.step
+        self._last_checkpoint_name = name
         return path
 
     def _rotate_checkpoints(self) -> None:
@@ -573,13 +706,40 @@ class PretrainTrainer:
         current run — that's usually what you want, but silent drift is
         what turns "resume" into "Frankenrun".
         """
+        # weights_only=False is required: the payload holds optimizer / RNG /
+        # dataclass state, not just tensors. Only ever load self-produced ckpts.
         payload = torch.load(path, map_location="cpu", weights_only=False)
-        self.model.load_state_dict(payload["model"])
+
+        # Align torch.compile key prefixes so a checkpoint saved from a compiled
+        # model resumes into a non-compiled one (and vice versa) instead of
+        # crashing on a `_orig_mod.` key mismatch.
+        state = _align_model_state_for_load(self._core_model, payload["model"])
+        self._core_model.load_state_dict(state)
         self.optimizer.load_state_dict(payload["optimizer"])
         self.scheduler.load_state_dict(payload["scheduler"])
         self.state = TrainerState(**payload["state"])
         if self._scaler is not None and payload.get("scaler") is not None:
             self._scaler.load_state_dict(payload["scaler"])
+
+        # Restore RNG so the random stream continues (best-effort; never fatal).
+        rng = payload.get("rng") or {}
+        try:
+            import random
+
+            import numpy as np
+
+            if rng.get("torch") is not None:
+                torch.set_rng_state(rng["torch"])
+            if rng.get("numpy") is not None:
+                np.random.set_state(rng["numpy"])
+            if rng.get("python") is not None:
+                random.setstate(rng["python"])
+            cuda_rng = rng.get("cuda")
+            if (cuda_rng is not None and torch.cuda.is_available()
+                    and len(cuda_rng) == torch.cuda.device_count()):
+                torch.cuda.set_rng_state_all(cuda_rng)
+        except Exception as exc:  # RNG mismatch must not block a resume
+            print(f"  warn: could not fully restore RNG state: {exc}", flush=True)
 
         old_meta = payload.get("metadata") or {}
         mismatches = []
@@ -592,6 +752,32 @@ class PretrainTrainer:
             msg = "resume provenance mismatch — " + "; ".join(mismatches)
             self.state.alerts.append(msg)
             print(f"  warn: {msg}", flush=True)
+
+    def warm_start_from_checkpoint(self, path: str | Path, *, strict: bool = True) -> None:
+        """Load model weights only while keeping a fresh run state.
+
+        This is intentionally different from :meth:`load_checkpoint`: optimizer,
+        scheduler, scaler, RNG, and ``TrainerState.step`` are not restored. Use
+        it when a short ramp found useful weights but its LR schedule is too
+        short to resume for a longer foundation run.
+        """
+        payload = torch.load(path, map_location="cpu", weights_only=False)
+        state = _align_model_state_for_load(self._core_model, payload["model"])
+        missing, extra = self._core_model.load_state_dict(state, strict=strict)
+        if missing or extra:
+            raise RuntimeError(
+                f"warm-start checkpoint mismatch: missing={len(missing)} extra={len(extra)}; "
+                f"first_missing={missing[:3]} first_extra={extra[:3]}"
+            )
+        source_state = payload.get("state") or {}
+        source_step = source_state.get("step", "?")
+        source_best = source_state.get("best_val_loss", "?")
+        note = (
+            f"warm-started model weights from {path} "
+            f"(source step={source_step}, source best_val_loss={source_best})"
+        )
+        self.state.alerts.append(note)
+        print(f"  {note}; optimizer/scheduler/state kept fresh", flush=True)
 
 
 __all__ = ["PretrainTrainer", "TrainerState"]
