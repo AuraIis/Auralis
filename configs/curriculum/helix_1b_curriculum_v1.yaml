@@ -1,0 +1,99 @@
+# Adaptive curriculum for the Helix 1B run.
+#
+# The controller advances stages ON ITS OWN: it pushes a stage while the target
+# metric keeps climbing and moves on once it is mastered OR has plateaued
+# ("recognise how it learns best"). It STOPS the run if a retention metric
+# regresses (guard) — so we never trade a new fact for an old one unnoticed.
+#
+# Metric names below are emitted by auralis.adaptive.monitor every eval:
+#   target_pass / retention_pass            (fraction of probes with positive margin)
+#   target_margin_mean / retention_margin_mean   (mean nats margin per split)
+#   margin_<family>  (capital, photo, faust, honesty, science, ...)
+#   neg_canary_loss  (negated fixed-batch loss; higher = better)
+#
+# THRESHOLDS ARE PLACEHOLDERS — calibrate them against the 500M baseline run
+# (run this same curriculum's monitor on the 500M checkpoints first to learn what
+# "mastered" actually looks like in nats / pass-rate for this probe set).
+
+name: helix_1b_curriculum_v1
+eval_every: 500
+on_guard: stop
+default_guard:
+  metric: retention_margin_mean
+  max_drop: 0.30          # nats; a 0.30 nat retention drop stops the run
+
+stages:
+  # ---------------------------------------------------------------------
+  # Stage 1 — RAW TEXT: acquire the knowledge first. No tags, no format.
+  # Advance when the facts stop getting more confident (plateau) or are
+  # solidly learned (margin stably high).
+  # ---------------------------------------------------------------------
+  - name: s1_raw_text
+    notes: "Pure pretraining-style text so the model learns the facts themselves."
+    data:
+      kind: raw_text
+      data_dir: "/workspace/v2data/tokenized/curated_40b"
+      # First 1B canary focuses on writing/answering, not code specialization.
+      mix_ratios: {english: 0.55, german: 0.45}
+    mastery:
+      metric: target_margin_mean
+      mode: either
+      threshold: 1.50       # nats; correct clearly preferred over wrong
+      window: 4
+      patience: 6
+      min_delta: 0.02
+    guard:
+      metric: retention_margin_mean
+      max_drop: 0.30
+    min_steps: 4000
+    max_steps: 150000
+
+  # ---------------------------------------------------------------------
+  # Stage 2 — FORMAT / PROMPT: now teach the chat surface (tags, system/
+  # user/assistant, instruction following) on top of the knowledge.
+  # Assistant-only loss masking so it learns to RESPOND, not to echo prompts.
+  # ---------------------------------------------------------------------
+  - name: s2_format_prompt
+    notes: "Formatted SFT: same facts, now wrapped in the chat/tag structure."
+    data:
+      kind: sft_jsonl
+      assistant_only: true
+      paths:
+        - "/workspace/v2data/data/training/sft_clean_de_v1/train.helix.jsonl"
+        - "/workspace/v2data/data/training/sft_response_fix_de_v8_stable_mix/core_train.helix.jsonl"
+    mastery:
+      metric: target_pass
+      mode: stable_above
+      threshold: 0.90
+      window: 4
+    guard:
+      metric: retention_pass
+      max_drop: 0.05
+    lr_scale: 0.5
+    min_steps: 1000
+    max_steps: 40000
+
+  # ---------------------------------------------------------------------
+  # Stage 3 — CONTRASTIVE REPAIR (optional): only the still-fragile concepts,
+  # taught with the temporal distinction (aktuell vs. frueher) so it cannot
+  # erase the historical fact. Tight guard.
+  # ---------------------------------------------------------------------
+  - name: s3_contrastive_repair
+    notes: "Targeted contrastive corrections for whatever is still red."
+    data:
+      kind: sft_jsonl
+      assistant_only: true
+      paths:
+        - "/workspace/v2data/data/training/sft_response_fix_de_v11_contrastive_corrections/core_train.helix.jsonl"
+        - "/workspace/v2data/data/training/sft_response_fix_de_v12_photo_faust_bridge/core_train.helix.jsonl"
+    mastery:
+      metric: target_pass
+      mode: stable_above
+      threshold: 0.95
+      window: 5
+    guard:
+      metric: retention_pass
+      max_drop: 0.02
+    lr_scale: 0.25
+    min_steps: 500
+    max_steps: 8000

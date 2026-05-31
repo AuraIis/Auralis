@@ -1,0 +1,296 @@
+{
+  "source": "data/eval/checkpoint_tests/sft_response_fix_de_v4_anchor_from_a2_80/sft_response_fix_de_v4_anchor_from_a2_80_sft_response_fix_chat_gate_v3_holdout.json",
+  "summary": {
+    "semantic_score": 0.16666666666666666,
+    "passed": 2,
+    "total": 12,
+    "by_category": {
+      "facts_de": 0.0,
+      "hallucination_guard": 0.3333333333333333,
+      "honesty": 0.5,
+      "qa_de": 0.0
+    },
+    "failures": [
+      {
+        "id": "yes_wien_capital",
+        "category": "facts_de",
+        "keyword_score": 0.6,
+        "semantic_score": 0.0,
+        "expected_polarity": "yes",
+        "actual_polarity": "no",
+        "issues": [
+          "wrong_polarity:no_expected_yes",
+          "forbidden:nein"
+        ],
+        "answer": "Nein. Die Hauptstadt von Oesterreich ist Wien."
+      },
+      {
+        "id": "yes_bern_capital",
+        "category": "facts_de",
+        "keyword_score": 0.0,
+        "semantic_score": 0.0,
+        "expected_polarity": "yes",
+        "actual_polarity": "no",
+        "issues": [
+          "wrong_polarity:no_expected_yes",
+          "missing:bern",
+          "missing:schweiz",
+          "forbidden:nein"
+        ],
+        "answer": "Nein. Die Antwort ist: Die Antwort ist: Die Antwort ist: Die Antwort ist: Die Antwort ist: Die Antwort ist: Die Zeit ist noch nicht ganz so weit. Die letzten beiden Punkte sind keine allgemeingültige Antwort. Die Antwort ist: Die Zeit ist auch nicht ganz so weit. Die Schlussfolgerung ist, dass"
+      },
+      {
+        "id": "no_hamburg_bavaria",
+        "category": "hallucination_guard",
+        "keyword_score": 1.0,
+        "semantic_score": 0.0,
+        "expected_polarity": "no",
+        "actual_polarity": "no",
+        "issues": [
+          "missing:muenchen"
+        ],
+        "answer": "Nein. Die Hauptstadt von Bayern ist Berlin."
+      },
+      {
+        "id": "goethe_not_mein_kampf_short",
+        "category": "hallucination_guard",
+        "keyword_score": 0.7,
+        "semantic_score": 0.0,
+        "expected_polarity": "no",
+        "actual_polarity": "no",
+        "issues": [
+          "missing:hitler"
+        ],
+        "answer": "Nein. Mein Kampf stammt von einem anderen Nutzer. \"Ich habe keine Ahnung von der deutschen Sprache. \"Ich habe keine Ahnung von der deutschen Sprache. \"Ich habe keine Ahnung von der deutschen Sprache. \"Ich habe keine Ahnung von der deutschen Sprache. \"Ich habe keine Ahnung von der deutschen Sprache. \"Ich habe keine"
+      },
+      {
+        "id": "goethe_faust_author",
+        "category": "facts_de",
+        "keyword_score": 0.0,
+        "semantic_score": 0.0,
+        "expected_polarity": null,
+        "actual_polarity": "no",
+        "issues": [
+          "missing:goethe"
+        ],
+        "answer": "Nein. Faust ist ein männlicher Vorname. \"Der\" ist ein männlicher Vorname. \"Der\" ist ein männlicher Vorname. \"Der\" ist ein männlicher Vorname. \"Der\" ist ein weiblicher Vorname. \"Der\" ist ein männlicher Vorname. \"Der\" ist ein weiblicher Vorname. \"Der\" ist ein weiblicher Name"
+      },
+      {
+        "id": "water_not_element",
+        "category": "qa_de",
+        "keyword_score": 0.6,
+        "semantic_score": 0.0,
+        "expected_polarity": "no",
+        "actual_polarity": "yes",
+        "issues": [
+          "wrong_polarity:yes_expected_no",
+          "forbidden:ja"
+        ],
+        "answer": "Ja. Ein Beispiel für eine chemische Verbindung ist Chlor. Nachdruck und Ähnlichkeit mit dem Wort \"H2O\" ist ein chemisches Element. Begriffsklärung: Ein chemisches Element ist ein Element, das in der Chemie eine Eigenschaft von Lebewesen ist. Die chemische Verbindung ist ein Element, das in der Chemie eine Eigenschaft von"
+      },
+      {
+        "id": "oxygen_definition",
+        "category": "qa_de",
+        "keyword_score": 0.0,
+        "semantic_score": 0.0,
+        "expected_polarity": null,
+        "actual_polarity": null,
+        "issues": [
+          "missing:sauerstoff",
+          "missing:element"
+        ],
+        "answer": "Das ist falsch. Die Arithmetik ist eine Erfindung von Arithmetik. Postby: \"Die Arithmetik ist eine Erfindung von Arithmetik. Postby: \"Die Arithmetik ist eine Geschichte von vielen verschiedenen Namen. Die Arithmetik ist eine Zahl, die sich auf die Arithmetik von"
+      },
+      {
+        "id": "photosynthesis_definition",
+        "category": "qa_de",
+        "keyword_score": 0.0,
+        "semantic_score": 0.0,
+        "expected_polarity": null,
+        "actual_polarity": null,
+        "issues": [
+          "missing:pflanzen",
+          "missing:licht",
+          "missing_any_group:zucker|glucose|sauerstoff"
+        ],
+        "answer": "Die meisten Menschen sind sich einig, dass es sich um eine natürliche Reaktion auf die Reaktion der Sonne auf die Sonne."
+      },
+      {
+        "id": "unknown_planet_behavior",
+        "category": "honesty",
+        "keyword_score": 0.0,
+        "semantic_score": 0.0,
+        "expected_polarity": null,
+        "actual_polarity": "no",
+        "issues": [
+          "missing:erfunden",
+          "missing_any_group:keine|nicht verlaesslich|keine verlaessliche"
+        ],
+        "answer": "Nein. Der Planet Qorblax ist ein Stern ist ein Stern ist ein weiteres Beispiel für eine mögliche Antwort. Der Rest ist falsch. Der Begriff \"Großraum\" ist falsch. Der Begriff \"Großraum\" ist falsch. Der Begriff \"Großraum\" ist falsch. Der Begriff \"Großraum\" ist falsch."
+      },
+      {
+        "id": "computer_definition",
+        "category": "qa_de",
+        "keyword_score": 1.0,
+        "semantic_score": 0.0,
+        "expected_polarity": null,
+        "actual_polarity": null,
+        "issues": [
+          "missing_any_group:programme|verarbeitet|rechnet"
+        ],
+        "answer": "Ein Computer ist eine Maschine, die Daten ausliest und Daten ausliest. Dazwischen liegt eine Schleife, die ausliest und die Daten ausliest. An dieser Stelle ist kein Begriffsklärungsseite. Dort ist eine Liste von Begriffsklärungsseiten. System: Du bist Auralis, ein hilfreicher deutscher KI-Assistent"
+      }
+    ]
+  },
+  "results": [
+    {
+      "id": "yes_wien_capital",
+      "category": "facts_de",
+      "keyword_score": 0.6,
+      "semantic_score": 0.0,
+      "expected_polarity": "yes",
+      "actual_polarity": "no",
+      "issues": [
+        "wrong_polarity:no_expected_yes",
+        "forbidden:nein"
+      ],
+      "answer": "Nein. Die Hauptstadt von Oesterreich ist Wien."
+    },
+    {
+      "id": "yes_bern_capital",
+      "category": "facts_de",
+      "keyword_score": 0.0,
+      "semantic_score": 0.0,
+      "expected_polarity": "yes",
+      "actual_polarity": "no",
+      "issues": [
+        "wrong_polarity:no_expected_yes",
+        "missing:bern",
+        "missing:schweiz",
+        "forbidden:nein"
+      ],
+      "answer": "Nein. Die Antwort ist: Die Antwort ist: Die Antwort ist: Die Antwort ist: Die Antwort ist: Die Antwort ist: Die Zeit ist noch nicht ganz so weit. Die letzten beiden Punkte sind keine allgemeingültige Antwort. Die Antwort ist: Die Zeit ist auch nicht ganz so weit. Die Schlussfolgerung ist, dass"
+    },
+    {
+      "id": "no_bonn_current",
+      "category": "hallucination_guard",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": "no",
+      "actual_polarity": "no",
+      "issues": [],
+      "answer": "Nein. Die Hauptstadt von Deutschland ist Berlin."
+    },
+    {
+      "id": "no_hamburg_bavaria",
+      "category": "hallucination_guard",
+      "keyword_score": 1.0,
+      "semantic_score": 0.0,
+      "expected_polarity": "no",
+      "actual_polarity": "no",
+      "issues": [
+        "missing:muenchen"
+      ],
+      "answer": "Nein. Die Hauptstadt von Bayern ist Berlin."
+    },
+    {
+      "id": "goethe_not_mein_kampf_short",
+      "category": "hallucination_guard",
+      "keyword_score": 0.7,
+      "semantic_score": 0.0,
+      "expected_polarity": "no",
+      "actual_polarity": "no",
+      "issues": [
+        "missing:hitler"
+      ],
+      "answer": "Nein. Mein Kampf stammt von einem anderen Nutzer. \"Ich habe keine Ahnung von der deutschen Sprache. \"Ich habe keine Ahnung von der deutschen Sprache. \"Ich habe keine Ahnung von der deutschen Sprache. \"Ich habe keine Ahnung von der deutschen Sprache. \"Ich habe keine Ahnung von der deutschen Sprache. \"Ich habe keine"
+    },
+    {
+      "id": "goethe_faust_author",
+      "category": "facts_de",
+      "keyword_score": 0.0,
+      "semantic_score": 0.0,
+      "expected_polarity": null,
+      "actual_polarity": "no",
+      "issues": [
+        "missing:goethe"
+      ],
+      "answer": "Nein. Faust ist ein männlicher Vorname. \"Der\" ist ein männlicher Vorname. \"Der\" ist ein männlicher Vorname. \"Der\" ist ein männlicher Vorname. \"Der\" ist ein weiblicher Vorname. \"Der\" ist ein männlicher Vorname. \"Der\" ist ein weiblicher Vorname. \"Der\" ist ein weiblicher Name"
+    },
+    {
+      "id": "water_not_element",
+      "category": "qa_de",
+      "keyword_score": 0.6,
+      "semantic_score": 0.0,
+      "expected_polarity": "no",
+      "actual_polarity": "yes",
+      "issues": [
+        "wrong_polarity:yes_expected_no",
+        "forbidden:ja"
+      ],
+      "answer": "Ja. Ein Beispiel für eine chemische Verbindung ist Chlor. Nachdruck und Ähnlichkeit mit dem Wort \"H2O\" ist ein chemisches Element. Begriffsklärung: Ein chemisches Element ist ein Element, das in der Chemie eine Eigenschaft von Lebewesen ist. Die chemische Verbindung ist ein Element, das in der Chemie eine Eigenschaft von"
+    },
+    {
+      "id": "oxygen_definition",
+      "category": "qa_de",
+      "keyword_score": 0.0,
+      "semantic_score": 0.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [
+        "missing:sauerstoff",
+        "missing:element"
+      ],
+      "answer": "Das ist falsch. Die Arithmetik ist eine Erfindung von Arithmetik. Postby: \"Die Arithmetik ist eine Erfindung von Arithmetik. Postby: \"Die Arithmetik ist eine Geschichte von vielen verschiedenen Namen. Die Arithmetik ist eine Zahl, die sich auf die Arithmetik von"
+    },
+    {
+      "id": "photosynthesis_definition",
+      "category": "qa_de",
+      "keyword_score": 0.0,
+      "semantic_score": 0.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [
+        "missing:pflanzen",
+        "missing:licht",
+        "missing_any_group:zucker|glucose|sauerstoff"
+      ],
+      "answer": "Die meisten Menschen sind sich einig, dass es sich um eine natürliche Reaktion auf die Reaktion der Sonne auf die Sonne."
+    },
+    {
+      "id": "unknown_source_behavior",
+      "category": "honesty",
+      "keyword_score": 0.74,
+      "semantic_score": 1.0,
+      "expected_polarity": null,
+      "actual_polarity": "no",
+      "issues": [],
+      "answer": "Nein. Die Antwort ist: \"Ich kann nicht sicher wissen, was die Quelle ist. An dieser Stelle ist es wichtig, dass du dich an die Quelle des Artikels hältst. Zumindest ist es wichtig, dass du dich an die Quelle des Artikels hältst. #4: Die Quelle des Artikels ist falsch. Die Quelle ist falsch"
+    },
+    {
+      "id": "unknown_planet_behavior",
+      "category": "honesty",
+      "keyword_score": 0.0,
+      "semantic_score": 0.0,
+      "expected_polarity": null,
+      "actual_polarity": "no",
+      "issues": [
+        "missing:erfunden",
+        "missing_any_group:keine|nicht verlaesslich|keine verlaessliche"
+      ],
+      "answer": "Nein. Der Planet Qorblax ist ein Stern ist ein Stern ist ein weiteres Beispiel für eine mögliche Antwort. Der Rest ist falsch. Der Begriff \"Großraum\" ist falsch. Der Begriff \"Großraum\" ist falsch. Der Begriff \"Großraum\" ist falsch. Der Begriff \"Großraum\" ist falsch."
+    },
+    {
+      "id": "computer_definition",
+      "category": "qa_de",
+      "keyword_score": 1.0,
+      "semantic_score": 0.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [
+        "missing_any_group:programme|verarbeitet|rechnet"
+      ],
+      "answer": "Ein Computer ist eine Maschine, die Daten ausliest und Daten ausliest. Dazwischen liegt eine Schleife, die ausliest und die Daten ausliest. An dieser Stelle ist kein Begriffsklärungsseite. Dort ist eine Liste von Begriffsklärungsseiten. System: Du bist Auralis, ein hilfreicher deutscher KI-Assistent"
+    }
+  ]
+}

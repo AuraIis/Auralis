@@ -1,0 +1,33 @@
+data_root: "/workspace/v2data"
+
+raw:
+  english: "raw/english"
+  german: "raw/german"
+  code: "raw/code"
+  sft: "raw/sft"
+  orpo: "raw/orpo"
+
+cleaned:
+  english:
+    - "data/training/pretrain_v6_book_sources_gutenberg_v1/book_sources.txt"
+  german: []
+  code: []
+
+tokenized:
+  pretrain_v6_book_sources_gutenberg_v1: "tokenized/pretrain_v6_book_sources_gutenberg_v1/english.bin"
+
+phase1_targets:
+  english: {}
+  german: {}
+  code: {}
+
+filters:
+  english:
+    min_length: 200
+    max_length: 20_000
+  german:
+    min_length: 120
+    max_length: 20_000
+  code:
+    min_length: 50
+    max_length: 30_000

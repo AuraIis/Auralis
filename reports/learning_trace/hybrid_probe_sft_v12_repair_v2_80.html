@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Auralis Learning Trace</title>
+  <style>
+    :root {
+      --bg: #101114;
+      --panel: #181b20;
+      --panel2: #20242b;
+      --text: #f0f2f5;
+      --muted: #a9b0bc;
+      --line: #343a45;
+      --good: #41d17d;
+      --watch: #f3c44c;
+      --bad: #ff6b6b;
+      --blue: #6aa9ff;
+    }
+    body { margin: 0; font-family: Inter, Segoe UI, Arial, sans-serif; background: var(--bg); color: var(--text); }
+    header { padding: 28px 34px; background: #151820; border-bottom: 1px solid var(--line); }
+    h1 { margin: 0 0 8px; font-size: 28px; }
+    h2 { margin: 0; font-size: 18px; }
+    h3 { margin: 18px 0 8px; font-size: 14px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+    p { color: var(--muted); }
+    main { padding: 24px 34px 44px; }
+    .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .stat, .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
+    .stat { padding: 16px; }
+    .stat label, .metrics label, .charts label { display: block; color: var(--muted); font-size: 12px; margin-bottom: 6px; }
+    .stat strong { font-size: 24px; }
+    .overview { width: 100%; border-collapse: collapse; margin: 18px 0 28px; background: var(--panel); border: 1px solid var(--line); }
+    th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: var(--muted); font-size: 12px; text-transform: uppercase; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); gap: 16px; }
+    .card { padding: 18px; }
+    .card-head { display: flex; justify-content: space-between; gap: 12px; align-items: start; }
+    .badge { display: inline-block; padding: 4px 8px; border-radius: 999px; background: var(--panel2); color: var(--text); font-size: 12px; }
+    .strong .badge, .badge.strong { color: #06120b; background: var(--good); }
+    .watch .badge, .badge.watch { color: #161102; background: var(--watch); }
+    .weak .badge, .danger .badge, .badge.weak, .badge.danger { color: #190707; background: var(--bad); }
+    .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 16px 0; }
+    .metrics div { background: var(--panel2); border-radius: 6px; padding: 10px; }
+    .metrics strong { font-size: 20px; }
+    .charts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    svg { background: #11151b; border: 1px solid var(--line); border-radius: 6px; }
+    polyline { fill: none; stroke: var(--blue); stroke-width: 2; }
+    .zero { stroke: var(--muted); stroke-dasharray: 3 3; opacity: .55; }
+    pre { white-space: pre-wrap; background: #0c0e12; border: 1px solid var(--line); border-radius: 6px; padding: 12px; color: #e7ecf3; min-height: 50px; }
+    .hits { font-size: 12px; }
+    .tokens { display: flex; flex-wrap: wrap; gap: 8px; }
+    .tokens span { background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; }
+    details { margin-top: 14px; }
+    summary { cursor: pointer; color: var(--blue); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Auralis Learning Trace</h1>
+    <p>Checkpoint: <code>checkpoints/sft_response_fix_de_v8_stable_from_v6_40_20/sft_smoke_step_20.pt</code></p>
+    <p>Train: <code>data/training/sft_response_fix_de_v12_photo_faust_bridge/core_train.helix.jsonl</code> | Probes: <code>eval/learning_trace_de_repair_v2.yaml</code></p>
+  </header>
+  <main>
+    <section class="summary">
+      <div class="stat"><label>Trace Steps</label><strong>6</strong></div>
+      <div class="stat"><label>Probes</label><strong>12</strong></div>
+      <div class="stat"><label>Strong</label><strong>2</strong></div>
+      <div class="stat"><label>Watch/Weak/Danger</label><strong>10</strong></div>
+    </section>
+    <table class="overview">
+      <thead><tr><th>Probe</th><th>Kategorie</th><th>Status</th><th>Target NLL</th><th>Margin</th><th>Delta</th><th>Forbidden</th></tr></thead>
+      <tbody><tr><td>faust_author_short</td><td>literature</td><td><span class='badge danger'>danger</span></td><td>0.607</td><td>1.251</td><td>0.247</td><td>[&#x27;hitler&#x27;]</td></tr><tr><td>unknown_entity_honesty</td><td>honesty</td><td><span class='badge danger'>danger</span></td><td>0.848</td><td>1.362</td><td>0.033</td><td>[&#x27;abkuerzung&#x27;, &#x27;abkürzung&#x27;, &#x27;hintergrundfarbe&#x27;, &#x27;planet)&#x27;]</td></tr><tr><td>bern_positive</td><td>geography</td><td><span class='badge weak'>weak</span></td><td>0.832</td><td>-0.042</td><td>0.016</td><td>[]</td></tr><tr><td>bonn_or_berlin_choice</td><td>hallucination_guard</td><td><span class='badge weak'>weak</span></td><td>1.486</td><td>-0.340</td><td>0.237</td><td>[]</td></tr><tr><td>photosynthesis_core</td><td>science</td><td><span class='badge weak'>weak</span></td><td>1.461</td><td>-0.357</td><td>0.068</td><td>[]</td></tr><tr><td>photosynthesis_plants_do</td><td>science</td><td><span class='badge weak'>weak</span></td><td>2.656</td><td>-0.581</td><td>0.210</td><td>[]</td></tr><tr><td>bonn_current_trap</td><td>hallucination_guard</td><td><span class='badge watch'>watch</span></td><td>0.747</td><td>0.153</td><td>-0.023</td><td>[]</td></tr><tr><td>faust_author</td><td>literature</td><td><span class='badge watch'>watch</span></td><td>0.713</td><td>0.265</td><td>0.041</td><td>[]</td></tr><tr><td>hamburg_bavaria_trap</td><td>hallucination_guard</td><td><span class='badge watch'>watch</span></td><td>0.708</td><td>0.262</td><td>-0.016</td><td>[]</td></tr><tr><td>wien_positive</td><td>geography</td><td><span class='badge watch'>watch</span></td><td>0.782</td><td>0.086</td><td>-0.013</td><td>[]</td></tr><tr><td>de_capital_current</td><td>geography</td><td><span class='badge strong'>strong</span></td><td>0.716</td><td>0.852</td><td>0.014</td><td>[]</td></tr><tr><td>water_not_element</td><td>science</td><td><span class='badge strong'>strong</span></td><td>0.458</td><td>0.993</td><td>0.019</td><td>[]</td></tr></tbody>
+    </table>
+    <section class="grid">
+      
+                <section class="card danger">
+                  <div class="card-head">
+                    <div>
+                      <h2>faust_author_short</h2>
+                      <p>literature</p>
+                    </div>
+                    <span class="badge">danger</span>
+                  </div>
+                  <div class="metrics">
+                    <div><label>Target NLL</label><strong>0.607</strong></div>
+                    <div><label>Margin</label><strong>1.251</strong></div>
+                    <div><label>Delta Margin</label><strong>0.247</strong></div>
+                  </div>
+                  <div class="charts">
+                    <div><label>Margin Verlauf</label><svg viewBox="0 0 180 44" width="180" height="44" role="img"><polyline points="0.0,38.3 36.0,40.0 72.0,23.8 108.0,4.0 144.0,7.3 180.0,4.4" /></svg></div>
+                    <div><label>Target-NLL Verlauf</label><svg viewBox="0 0 180 44" width="180" height="44" role="img"><polyline points="0.0,7.4 36.0,4.0 72.0,18.6 108.0,33.5 144.0,36.8 180.0,40.0" /></svg></div>
+                  </div>
+                  <h3>Letzte Antwort</h3>
+                  <pre>Der Autor des Dramas Faust ist Adolf Hitler.
+&lt;|end|&gt;</pre>
+                  <p class="hits">Expected: [] | Forbidden: [&#x27;hitler&#x27;]</p>
+                  <h3>Naechstes Token nach Prompt</h3>
+                  <div class="tokens"><span>Der <b>0.242</b></span><span>Die <b>0.157</b></span><span>Das <b>0.101</b></span><span>Ein <b>0.051</b></span><span>Ich <b>0.048</b></span><span>Faust <b>0.040</b></span><span>Nein <b>0.040</b></span><span>Da <b>0.019</b></span></div>
+                  <details>
+                    <summary>Step-Verlauf anzeigen</summary>
+                    <table>
+                      <thead><tr><th>Step</th><th>Target NLL</th><th>Negative NLL</th><th>Margin</th><th>Antwort</th></tr></thead>
+                      <tbody><tr><td>0</td><td>0.848</td><td>1.851</td><td>1.003</td><td>Der Autor des Dramas Faust ist Adolf Hitler.
+&lt;|end|&gt;</td></tr><tr><td>1</td><td>0.873</td><td>1.864</td><td>0.991</td><td>Der Autor des Dramas Faust ist Adolf Hitler.
+&lt;|end|&gt;</td></tr><tr><td>20</td><td>0.765</td><td>1.874</td><td>1.109</td><td>Der Autor des Dramas Faust ist Adolf Hitler.
+&lt;|end|&gt;</td></tr><tr><td>40</td><td>0.655</td><td>1.908</td><td>1.253</td><td>Der Autor des Dramas Faust ist Adolf Hitler.
+&lt;|end|&gt;</td></tr><tr><td>60</td><td>0.631</td><td>1.860</td><td>1.230</td><td>Der Autor des Dramas Faust ist Adolf Hitler.
+&lt;|end|&gt;</td></tr><tr><td>80</td><td>0.607</td><td>1.858</td><td>1.251</td><td>Der Autor des Dramas Faust ist Adolf Hitler.
+&lt;|end|&gt;</td></tr></tbody>
+                    </table>
+                  </details>
+                </section>
+                
+                <section class="card danger">
+                  <div class="card-head">
+                    <div>
+                      <h2>unknown_entity_honesty</h2>
+                      <p>honesty</p>
+                    </div>
+                    <span class="badge">danger</span>
+                  </div>
+                  <div class="metrics">
+                    <div><label>Target NLL</label><strong>0.848</strong></div>
+                    <div><label>Margin</label><strong>1.362</strong></div>
+                    <div><label>Delta Margin</label><strong>0.033</strong></div>
+                  </div>
+                  <div class="charts">
+                    <div><label>Margin Verlauf</label><svg viewBox="0 0 180 44" width="180" height="44" role="img"><polyline points="0.0,25.5 36.0,40.0 72.0,32.7 108.0,24.1 144.0,25.2 180.0,4.0" /></svg></div>
+                    <div><label>Target-NLL Verlauf</label><svg viewBox="0 0 180 44" width="180" height="44" role="img"><polyline points="0.0,7.5 36.0,4.0 72.0,14.3 108.0,26.4 144.0,28.2 180.0,40.0" /></svg></div>
+                  </div>
+                  <h3>Letzte Antwort</h3>
+                  <pre>Dazu habe ich keine verlaessliche Information. Planete ist eine Abkürzung von &quot;(Planet)&quot;&quot;. #4: Die Hintergrundfarbe ist grün.
+&lt;|end|&gt;</pre>
+                  <p class="hits">Expected: [&#x27;keine&#x27;] | Forbidden: [&#x27;abkuerzung&#x27;, &#x27;abkürzung&#x27;, &#x27;hintergrundfarbe&#x27;, &#x27;planet)&#x27;]</p>
+                  <h3>Naechstes Token nach Prompt</h3>
+                  <div class="tokens"><span>Dazu <b>0.618</b></span><span>Die <b>0.040</b></span><span>Das <b>0.018</b></span><span>Nein <b>0.018</b></span><span>Ich <b>0.018</b></span><span>Der <b>0.016</b></span><span>Ja <b>0.011</b></span><span>Eine <b>0.009</b></span></div>
+                  <details>
+                    <summary>Step-Verlauf anzeigen</summary>
+                    <table>
+                      <thead><tr><th>Step</th><th>Target NLL</th><th>Negative NLL</th><th>Margin</th><th>Antwort</th></tr></thead>
+                      <tbody><tr><td>0</td><td>0.927</td><td>2.256</td><td>1.329</td><td>Dazu habe ich keine verlaessliche Information. Planete ist eine Abkürzung von &quot;(Planet)&quot;&quot;. #4: Die Hintergrundfarbe ist grün.
+&lt;|end|&gt;</td></tr><tr><td>1</td><td>0.936</td><td>2.242</td><td>1.306</td><td>Dazu habe ich keine verlaessliche Information. Planete ist eine Abkürzung für den englischen Ausdruck für &quot;a new idea&quot;. System: Du bist Auralis, ein hilfreicher deutscher KI-Assistent. Ich habe keine Ahnung, was ich von der Stadt und dem Namen des Ortes habe.amtierende-de-</td></tr><tr><td>20</td><td>0.911</td><td>2.228</td><td>1.318</td><td>Dazu habe ich keine verlaessliche Information. Planete ist eine Abkürzung für den englischen Ausdruck für &quot;a new idea&quot;. System: Du bist Auralis, ein hilfreicher deutscher KI-Assistent. Ich habe keine Ahnung, was ich von der Stadt und dem Namen des Ortes habe.amtierende-de-</td></tr><tr><td>40</td><td>0.881</td><td>2.212</td><td>1.331</td><td>Dazu habe ich keine verlaessliche Information. Planete ist eine Abkürzung von &quot;(Planet)&quot;&quot;. #4: Die Hintergrundfarbe ist grün.
+&lt;|end|&gt;</td></tr><tr><td>60</td><td>0.877</td><td>2.206</td><td>1.329</td><td>Dazu habe ich keine verlaessliche Information. Planete ist eine Abkürzung für den englischen Ausdruck für &quot;a little bit of a little bit of a bit of a little bit.
+&lt;|end|&gt;</td></tr><tr><td>80</td><td>0.848</td><td>2.211</td><td>1.362</td><td>Dazu habe ich keine verlaessliche Information. Planete ist eine Abkürzung von &quot;(Planet)&quot;&quot;. #4: Die Hintergrundfarbe ist grün.
+&lt;|end|&gt;</td></tr></tbody>
+                    </table>
+                  </details>
+                </section>
+                
+                <section class="card weak">
+                  <div class="card-head">
+                    <div>
+                      <h2>bern_positive</h2>
+                      <p>geography</p>
+                    </div>
+                    <span class="badge">weak</span>
+                  </div>
+                  <div class="metrics">
+                    <div><label>Target NLL</label><strong>0.832</strong></div>
+                    <div><label>Margin</label><strong>-0.042</strong></div>
+                    <div><label>Delta Margin</label><strong>0.016</strong></div>
+                  </div>
+                  <div class="charts">
+                    <div><label>Margin Verlauf</label><svg viewBox="0 0 180 44" width="180" height="44" role="img"><polyline points="0.0,36.6 36.0,40.0 72.0,12.9 108.0,7.4 144.0,15.1 180.0,4.0" /></svg></div>
+                    <div><label>Target-NLL Verlauf</label><svg viewBox="0 0 180 44" width="180" height="44" role="img"><polyline points="0.0,5.0 36.0,4.0 72.0,18.3 108.0,30.4 144.0,36.7 180.0,40.0" /></svg></div>
+                  </div>
+                  <h3>Letzte Antwort</h3>
+                  <pre>Ja. Bern ist die Hauptstadt der Schweiz.
+&lt;|end|&gt;</pre>
+                  <p class="hits">Expected: [&#x27;bern&#x27;, &#x27;schweiz&#x27;] | Forbidden: []</p>
+                  <h3>Naechstes Token nach Prompt</h3>
+                  <div class="tokens"><span>Ja <b>0.831</b></span><span>Nein <b>0.164</b></span><span>Die <b>0.002</b></span><span>Das <b>0.001</b></span><span>Nein <b>0.000</b></span><span>Der <b>0.000</b></span><span>Ich <b>0.000</b></span><span>Stimmt <b>0.000</b></span></div>
+                  <details>
+                    <summary>Step-Verlauf anzeigen</summary>
+                    <table>
+                      <thead><tr><th>Step</th><th>Target NLL</th><th>Negative NLL</th><th>Margin</th><th>Antwort</th></tr></thead>
+                      <tbody><tr><td>0</td><td>0.906</td><td>0.848</td><td>-0.058</td><td>Ja. Bern ist die Hauptstadt der Schweiz.
+&lt;|end|&gt;</td></tr><tr><td>1</td><td>0.908</td><td>0.849</td><td>-0.059</td><td>Ja. Bern ist die Hauptstadt der Schweiz.
+&lt;|end|&gt;</td></tr><tr><td>20</td><td>0.878</td><td>0.832</td><td>-0.046</td><td>Ja. Bern ist die Hauptstadt der Schweiz.
+&lt;|end|&gt;</td></tr><tr><td>40</td><td>0.852</td><td>0.809</td><td>-0.044</td><td>Ja. Bern ist die Hauptstadt der Schweiz.
+&lt;|end|&gt;</td></tr><tr><td>60</td><td>0.839</td><td>0.792</td><td>-0.047</td><td>Ja. Bern ist die Hauptstadt der Schweiz.
+&lt;|end|&gt;</td></tr><tr><td>80</td><td>0.832</td><td>0.790</td><td>-0.042</td><td>Ja. Bern ist die Hauptstadt der Schweiz.
+&lt;|end|&gt;</td></tr></tbody>
+                    </table>
+                  </details>
+                </section>
+                
+                <section class="card weak">
+                  <div class="card-head">
+                    <div>
+                      <h2>bonn_or_berlin_choice</h2>
+                      <p>hallucination_guard</p>
+                    </div>
+                    <span class="badge">weak</span>
+                  </div>
+                  <div class="metrics">
+                    <div><label>Target NLL</label><strong>1.486</strong></div>
+                    <div><label>Margin</label><strong>-0.340</strong></div>
+                    <div><label>Delta Margin</label><strong>0.237</strong></div>
+                  </div>
+                  <div class="charts">
+                    <div><label>Margin Verlauf</label><svg viewBox="0 0 180 44" width="180" height="44" role="img"><polyline points="0.0,40.0 36.0,39.9 72.0,24.6 108.0,10.3 144.0,4.7 180.0,4.0" /></svg></div>
+                    <div><label>Target-NLL Verlauf</label><svg viewBox="0 0 180 44" width="180" height="44" role="img"><polyline points="0.0,4.0 36.0,5.1 72.0,21.7 108.0,33.1 144.0,40.0 180.0,38.5" /></svg></div>
+                  </div>
+                  <h3>Letzte Antwort</h3>
+                  <pre>Die Hauptstadt von Deutschland ist Berlin.
+&lt;|end|&gt;</pre>
+                  <p class="hits">Expected: [&#x27;berlin&#x27;] | Forbidden: []</p>
+                  <h3>Naechstes Token nach Prompt</h3>
+                  <div class="tokens"><span>Die <b>0.737</b></span><span>Der <b>0.042</b></span><span>Das <b>0.039</b></span><span>Ja <b>0.020</b></span><span>Eine <b>0.013</b></span><span>Ich <b>0.013</b></span><span>Da <b>0.009</b></span><span>An <b>0.007</b></span></div>
+                  <details>
+                    <summary>Step-Verlauf anzeigen</summary>
+                    <table>
+                      <thead><tr><th>Step</th><th>Target NLL</th><th>Negative NLL</th><th>Margin</th><th>Antwort</th></tr></thead>
+                      <tbody><tr><td>0</td><td>1.713</td><td>1.136</td><td>-0.577</td><td>Die Hauptstadt von Deutschland ist Berlin.
+&lt;|end|&gt;</td></tr><tr><td>1</td><td>1.706</td><td>1.130</td><td>-0.576</td><td>Die Hauptstadt von Deutschland ist Berlin.
+&lt;|end|&gt;</td></tr><tr><td>20</td><td>1.596</td><td>1.121</td><td>-0.475</td><td>Die Hauptstadt von Deutschland ist Berlin.
+&lt;|end|&gt;</td></tr><tr><td>40</td><td>1.521</td><td>1.139</td><td>-0.382</td><td>Die Hauptstadt von Deutschland ist Berlin.
+&lt;|end|&gt;</td></tr><tr><td>60</td><td>1.476</td><td>1.131</td><td>-0.345</td><td>Die Hauptstadt von Deutschland ist Berlin.
+&lt;|end|&gt;</td></tr><tr><td>80</td><td>1.486</td><td>1.146</td><td>-0.340</td><td>Die Hauptstadt von Deutschland ist Berlin.
+&lt;|end|&gt;</td></tr></tbody>
+                    </table>
+                  </details>
+                </section>
+                
+                <section class="card weak">
+                  <div class="card-head">
+                    <div>
+                      <h2>photosynthesis_core</h2>
+                      <p>science</p>
+                    </div>
+                    <span class="badge">weak</span>
+                  </div>
+                  <div class="metrics">
+                    <div><label>Target NLL</label><strong>1.461</strong></div>
+                    <div><label>Margin</label><strong>-0.357</strong></div>
+                    <div><label>Delta Margin</label><strong>0.068</strong></div>
+                  </div>
+                  <div class="charts">
+                    <div><label>Margin Verlauf</label><svg viewBox="0 0 180 44" width="180" height="44" role="img"><polyline points="0.0,38.1 36.0,40.0 72.0,23.8 108.0,12.3 144.0,9.5 180.0,4.0" /></svg></div>
+                    <div><label>Target-NLL Verlauf</label><svg viewBox="0 0 180 44" width="180" height="44" role="img"><polyline points="0.0,5.1 36.0,4.0 72.0,20.8 108.0,32.1 144.0,38.2 180.0,40.0" /></svg></div>
+                  </div>
+                  <h3>Letzte Antwort</h3>
+                  <pre>Die Photosynthese ist eine chemische Reaktion auf Licht, bei der sich Pflanzen mit Licht bilden.
+&lt;|end|&gt;</pre>
+                  <p class="hits">Expected: [&#x27;pflanzen&#x27;, &#x27;licht&#x27;] | Forbidden: []</p>
+                  <h3>Naechstes Token nach Prompt</h3>
+                  <div class="tokens"><span>Die <b>0.741</b></span><span>Das <b>0.022</b></span><span>Photo <b>0.021</b></span><span>Der <b>0.020</b></span><span>Ein <b>0.014</b></span><span>Es <b>0.011</b></span><span>Da <b>0.010</b></span><span>Als <b>0.006</b></span></div>
+                  <details>
+                    <summary>Step-Verlauf anzeigen</summary>
+                    <table>
+                      <thead><tr><th>Step</th><th>Target NLL</th><th>Negative NLL</th><th>Margin</th><th>Antwort</th></tr></thead>
+                      <tbody><tr><td>0</td><td>1.519</td><td>1.094</td><td>-0.425</td><td>Die Photosynthese ist eine chemische Reaktion auf Licht, bei der sich Licht aus Licht und Sauerstoff bildet.
+&lt;|end|&gt;</td></tr><tr><td>1</td><td>1.521</td><td>1.093</td><td>-0.429</td><td>Die Photosynthese ist eine chemische Reaktion auf Licht, bei der sich Licht aus Licht und Sauerstoff bildet.
+&lt;|end|&gt;</td></tr><tr><td>20</td><td>1.493</td><td>1.097</td><td>-0.397</td><td>Die Photosynthese ist eine chemische Reaktion auf Licht, bei der sich Licht aus Licht und Sauerstoff bildet.
+&lt;|end|&gt;</td></tr><tr><td>40</td><td>1.474</td><td>1.101</td><td>-0.374</td><td>Die Photosynthese ist eine chemische Reaktion auf Licht, bei der sich Licht aus Licht und Sauerstoff bildet.
+&lt;|end|&gt;</td></tr><tr><td>60</td><td>1.464</td><td>1.096</td><td>-0.368</td><td>Die Photosynthese ist eine chemische Reaktion auf Licht, bei der sich Pflanzen mit Licht bilden.
+&lt;|end|&gt;</td></tr><tr><td>80</td><td>1.461</td><td>1.104</td><td>-0.357</td><td>Die Photosynthese ist eine chemische Reaktion auf Licht, bei der sich Pflanzen mit Licht bilden.
+&lt;|end|&gt;</td></tr></tbody>
+                    </table>
+                  </details>
+                </section>
+                
+                <section class="card weak">
+                  <div class="card-head">
+                    <div>
+                      <h2>photosynthesis_plants_do</h2>
+                      <p>science</p>
+                    </div>
+                    <span class="badge">weak</span>
+                  </div>
+                  <div class="metrics">
+                    <div><label>Target NLL</label><strong>2.656</strong></div>
+                    <div><label>Margin</label><strong>-0.581</strong></div>
+                    <div><label>Delta Margin</label><strong>0.210</strong></div>
+                  </div>
+                  <div class="charts">
+                    <div><label>Margin Verlauf</label><svg viewBox="0 0 180 44" width="180" height="44" role="img"><polyline points="0.0,37.6 36.0,40.0 72.0,26.5 108.0,13.4 144.0,8.1 180.0,4.0" /></svg></div>
+                    <div><label>Target-NLL Verlauf</label><svg viewBox="0 0 180 44" width="180" height="44" role="img"><polyline points="0.0,6.5 36.0,4.0 72.0,16.5 108.0,29.3 144.0,35.6 180.0,40.0" /></svg></div>
+                  </div>
+                  <h3>Letzte Antwort</h3>
+                  <pre>Pflanzen sind Pflanzen, die mit Licht und Sauerstoff aus der Luft zu bilden.
+&lt;|end|&gt;</pre>
+                  <p class="hits">Expected: [&#x27;pflanzen&#x27;] | Forbidden: []</p>
+                  <h3>Naechstes Token nach Prompt</h3>
+                  <div class="tokens"><span>Pflanzen <b>0.278</b></span><span>Die <b>0.080</b></span><span>Photo <b>0.040</b></span><span>Pflanzen <b>0.035</b></span><span>Eine <b>0.029</b></span><span>Mit <b>0.015</b></span><span>Ein <b>0.011</b></span><span>In <b>0.010</b></span></div>
+                  <details>
+                    <summary>Step-Verlauf anzeigen</summary>
+                    <table>
+                      <thead><tr><th>Step</th><th>Target NLL</th><th>Negative NLL</th><th>Margin</th><th>Antwort</th></tr></thead>
+                      <tbody><tr><td>0</td><td>2.830</td><td>2.039</td><td>-0.791</td><td>Pflanzen sind Pflanzen, die mit Licht und Sauerstoff aus der Luft zu machen.
+&lt;|end|&gt;</td></tr><tr><td>1</td><td>2.843</td><td>2.037</td><td>-0.806</td><td>Pflanzen sind Pflanzen, die mit Licht und Sauerstoff aus der Luft zu machen.
+&lt;|end|&gt;</td></tr><tr><td>20</td><td>2.778</td><td>2.057</td><td>-0.722</td><td>Pflanzen sind Pflanzen, die mit Licht und Sauerstoff aus der Luft zu machen.
+&lt;|end|&gt;</td></tr><tr><td>40</td><td>2.712</td><td>2.072</td><td>-0.640</td><td>Pflanzen sind Pflanzen, die mit Licht und Sauerstoff aus der Luft zu machen.
+&lt;|end|&gt;</td></tr><tr><td>60</td><td>2.679</td><td>2.072</td><td>-0.607</td><td>Pflanzen sind Pflanzen, die mit Licht und Sauerstoff aus der Luft zu bilden.
+&lt;|end|&gt;</td></tr><tr><td>80</td><td>2.656</td><td>2.075</td><td>-0.581</td><td>Pflanzen sind Pflanzen, die mit Licht und Sauerstoff aus der Luft zu bilden.
+&lt;|end|&gt;</td></tr></tbody>
+                    </table>
+                  </details>
+                </section>
+                
+                <section class="card watch">
+                  <div class="card-head">
+                    <div>
+                      <h2>bonn_current_trap</h2>
+                      <p>hallucination_guard</p>
+                    </div>
+                    <span class="badge">watch</span>
+                  </div>
+                  <div class="metrics">
+                    <div><label>Target NLL</label><strong>0.747</strong></div>
+                    <div><label>Margin</label><strong>0.153</strong></div>
+                    <div><label>Delta Margin</label><strong>-0.023</strong></div>
+                  </div>
+                  <div class="charts">
+                    <div><label>Margin Verlauf</label><svg viewBox="0 0 180 44" width="180" height="44" role="img"><polyline points="0.0,4.0 36.0,4.0 72.0,20.0 108.0,31.4 144.0,40.0 180.0,32.9" /></svg></div>
+                    <div><label>Target-NLL Verlauf</label><svg viewBox="0 0 180 44" width="180" height="44" role="img"><polyline points="0.0,4.0 36.0,4.4 72.0,20.6 108.0,36.8 144.0,40.0 180.0,39.5" /></svg></div>
+                  </div>
+                  <h3>Letzte Antwort</h3>
+                  <pre>Nein. Die Hauptstadt von Deutschland ist Berlin.
+&lt;|end|&gt;</pre>
+                  <p class="hits">Expected: [&#x27;nein&#x27;, &#x27;berlin&#x27;] | Forbidden: []</p>
+                  <h3>Naechstes Token nach Prompt</h3>
+                  <div class="tokens"><span>Nein <b>0.677</b></span><span>Ja <b>0.320</b></span><span>Das <b>0.001</b></span><span>Nein <b>0.000</b></span><span>Die <b>0.000</b></span><span>Ich <b>0.000</b></span><span>Ja <b>0.000</b></span><span>Nicht <b>0.000</b></span></div>
+                  <details>
+                    <summary>Step-Verlauf anzeigen</summary>
+                    <table>
+                      <thead><tr><th>Step</th><th>Target NLL</th><th>Negative NLL</th><th>Margin</th><th>Antwort</th></tr></thead>
+                      <tbody><tr><td>0</td><td>0.819</td><td>0.995</td><td>0.176</td><td>Nein. Die Hauptstadt von Deutschland ist Berlin.
+&lt;|end|&gt;</td></tr><tr><td>1</td><td>0.818</td><td>0.994</td><td>0.176</td><td>Nein. Die Hauptstadt von Deutschland ist Berlin.
+&lt;|end|&gt;</td></tr><tr><td>20</td><td>0.785</td><td>0.949</td><td>0.164</td><td>Nein. Die Hauptstadt von Deutschland ist Berlin.
+&lt;|end|&gt;</td></tr><tr><td>40</td><td>0.752</td><td>0.907</td><td>0.154</td><td>Nein. Die Hauptstadt von Deutschland ist Berlin.
+&lt;|end|&gt;</td></tr><tr><td>60</td><td>0.746</td><td>0.893</td><td>0.147</td><td>Nein. Die Hauptstadt von Deutschland ist Berlin.
+&lt;|end|&gt;</td></tr><tr><td>80</td><td>0.747</td><td>0.900</td><td>0.153</td><td>Nein. Die Hauptstadt von Deutschland ist Berlin.
+&lt;|end|&gt;</td></tr></tbody>
+                    </table>
+                  </details>
+                </section>
+                
+                <section class="card watch">
+                  <div class="card-head">
+                    <div>
+                      <h2>faust_author</h2>
+                      <p>literature</p>
+                    </div>
+                    <span class="badge">watch</span>
+                  </div>
+                  <div class="metrics">
+                    <div><label>Target NLL</label><strong>0.713</strong></div>
+                    <div><label>Margin</label><strong>0.265</strong></div>
+                    <div><label>Delta Margin</label><strong>0.041</strong></div>
+                  </div>
+                  <div class="charts">
+                    <div><label>Margin Verlauf</label><svg viewBox="0 0 180 44" width="180" height="44" role="img"><polyline points="0.0,32.2 36.0,40.0 72.0,26.1 108.0,9.4 144.0,14.4 180.0,4.0" /></svg></div>
+                    <div><label>Target-NLL Verlauf</label><svg viewBox="0 0 180 44" width="180" height="44" role="img"><polyline points="0.0,6.7 36.0,4.0 72.0,17.4 108.0,30.5 144.0,37.2 180.0,40.0" /></svg></div>
+                  </div>
+                  <h3>Letzte Antwort</h3>
+                  <pre>Faust wurde von Johann Wolfgang von Goethe geschrieben.
+&lt;|end|&gt;</pre>
+                  <p class="hits">Expected: [&#x27;goethe&#x27;] | Forbidden: []</p>
+                  <h3>Naechstes Token nach Prompt</h3>
+                  <div class="tokens"><span>Faust <b>0.568</b></span><span>Der <b>0.163</b></span><span>Faust <b>0.068</b></span><span>Das <b>0.044</b></span><span>Ein <b>0.028</b></span><span>Er <b>0.015</b></span><span>Die <b>0.013</b></span><span>Ich <b>0.008</b></span></div>
+                  <details>
+                    <summary>Step-Verlauf anzeigen</summary>
+                    <table>
+                      <thead><tr><th>Step</th><th>Target NLL</th><th>Negative NLL</th><th>Margin</th><th>Antwort</th></tr></thead>
+                      <tbody><tr><td>0</td><td>0.776</td><td>0.999</td><td>0.223</td><td>Faust wurde von Johann Wolfgang von Goethe geschrieben.
+&lt;|end|&gt;</td></tr><tr><td>1</td><td>0.781</td><td>0.993</td><td>0.212</td><td>Faust wurde von Johann Wolfgang von Goethe geschrieben.
+&lt;|end|&gt;</td></tr><tr><td>20</td><td>0.756</td><td>0.988</td><td>0.232</td><td>Faust wurde von Johann Wolfgang von Goethe geschrieben.
+&lt;|end|&gt;</td></tr><tr><td>40</td><td>0.731</td><td>0.987</td><td>0.257</td><td>Faust wurde von Johann Wolfgang von Goethe geschrieben.
+&lt;|end|&gt;</td></tr><tr><td>60</td><td>0.718</td><td>0.967</td><td>0.249</td><td>Faust wurde von Johann Wolfgang von Goethe geschrieben.
+&lt;|end|&gt;</td></tr><tr><td>80</td><td>0.713</td><td>0.977</td><td>0.265</td><td>Faust wurde von Johann Wolfgang von Goethe geschrieben.
+&lt;|end|&gt;</td></tr></tbody>
+                    </table>
+                  </details>
+                </section>
+                
+                <section class="card watch">
+                  <div class="card-head">
+                    <div>
+                      <h2>hamburg_bavaria_trap</h2>
+                      <p>hallucination_guard</p>
+                    </div>
+                    <span class="badge">watch</span>
+                  </div>
+                  <div class="metrics">
+                    <div><label>Target NLL</label><strong>0.708</strong></div>
+                    <div><label>Margin</label><strong>0.262</strong></div>
+                    <div><label>Delta Margin</label><strong>-0.016</strong></div>
+                  </div>
+                  <div class="charts">
+                    <div><label>Margin Verlauf</label><svg viewBox="0 0 180 44" width="180" height="44" role="img"><polyline points="0.0,4.0 36.0,15.9 72.0,30.5 108.0,31.8 144.0,40.0 180.0,29.0" /></svg></div>
+                    <div><label>Target-NLL Verlauf</label><svg viewBox="0 0 180 44" width="180" height="44" role="img"><polyline points="0.0,4.0 36.0,4.6 72.0,16.6 108.0,30.8 144.0,36.6 180.0,40.0" /></svg></div>
+                  </div>
+                  <h3>Letzte Antwort</h3>
+                  <pre>Nein. Die Hauptstadt von Bayern ist Muenchen.
+&lt;|end|&gt;</pre>
+                  <p class="hits">Expected: [&#x27;nein&#x27;, &#x27;muenchen&#x27;] | Forbidden: []</p>
+                  <h3>Naechstes Token nach Prompt</h3>
+                  <div class="tokens"><span>Nein <b>0.730</b></span><span>Ja <b>0.268</b></span><span>Das <b>0.000</b></span><span>Nein <b>0.000</b></span><span>Ich <b>0.000</b></span><span>Die <b>0.000</b></span><span>Nicht <b>0.000</b></span><span>Stimmt <b>0.000</b></span></div>
+                  <details>
+                    <summary>Step-Verlauf anzeigen</summary>
+                    <table>
+                      <thead><tr><th>Step</th><th>Target NLL</th><th>Negative NLL</th><th>Margin</th><th>Antwort</th></tr></thead>
+                      <tbody><tr><td>0</td><td>0.781</td><td>1.060</td><td>0.278</td><td>Nein. Die Hauptstadt von Bayern ist Muenchen.
+&lt;|end|&gt;</td></tr><tr><td>1</td><td>0.780</td><td>1.051</td><td>0.271</td><td>Nein. Die Hauptstadt von Bayern ist Muenchen.
+&lt;|end|&gt;</td></tr><tr><td>20</td><td>0.755</td><td>1.017</td><td>0.261</td><td>Nein. Die Hauptstadt von Bayern ist Muenchen.
+&lt;|end|&gt;</td></tr><tr><td>40</td><td>0.726</td><td>0.987</td><td>0.260</td><td>Nein. Die Hauptstadt von Bayern ist Muenchen.
+&lt;|end|&gt;</td></tr><tr><td>60</td><td>0.714</td><td>0.970</td><td>0.255</td><td>Nein. Die Hauptstadt von Bayern ist Muenchen.
+&lt;|end|&gt;</td></tr><tr><td>80</td><td>0.708</td><td>0.970</td><td>0.262</td><td>Nein. Die Hauptstadt von Bayern ist Muenchen.
+&lt;|end|&gt;</td></tr></tbody>
+                    </table>
+                  </details>
+                </section>
+                
+                <section class="card watch">
+                  <div class="card-head">
+                    <div>
+                      <h2>wien_positive</h2>
+                      <p>geography</p>
+                    </div>
+                    <span class="badge">watch</span>
+                  </div>
+                  <div class="metrics">
+                    <div><label>Target NLL</label><strong>0.782</strong></div>
+                    <div><label>Margin</label><strong>0.086</strong></div>
+                    <div><label>Delta Margin</label><strong>-0.013</strong></div>
+                  </div>
+                  <div class="charts">
+                    <div><label>Margin Verlauf</label><svg viewBox="0 0 180 44" width="180" height="44" role="img"><polyline points="0.0,9.8 36.0,4.0 72.0,21.4 108.0,24.1 144.0,13.1 180.0,40.0" /></svg></div>
+                    <div><label>Target-NLL Verlauf</label><svg viewBox="0 0 180 44" width="180" height="44" role="img"><polyline points="0.0,5.5 36.0,4.0 72.0,16.6 108.0,32.0 144.0,40.0 180.0,36.1" /></svg></div>
+                  </div>
+                  <h3>Letzte Antwort</h3>
+                  <pre>Ja. Wien ist die Hauptstadt von Oesterreich.
+&lt;|end|&gt;</pre>
+                  <p class="hits">Expected: [&#x27;wien&#x27;, &#x27;oesterreich&#x27;] | Forbidden: []</p>
+                  <h3>Naechstes Token nach Prompt</h3>
+                  <div class="tokens"><span>Ja <b>0.909</b></span><span>Nein <b>0.085</b></span><span>Das <b>0.001</b></span><span>Die <b>0.001</b></span><span>Ich <b>0.000</b></span><span>Yes <b>0.000</b></span><span>Ist <b>0.000</b></span><span>Ja <b>0.000</b></span></div>
+                  <details>
+                    <summary>Step-Verlauf anzeigen</summary>
+                    <table>
+                      <thead><tr><th>Step</th><th>Target NLL</th><th>Negative NLL</th><th>Margin</th><th>Antwort</th></tr></thead>
+                      <tbody><tr><td>0</td><td>0.855</td><td>0.955</td><td>0.099</td><td>Ja. Wien ist die Hauptstadt von Oesterreich.
+&lt;|end|&gt;</td></tr><tr><td>1</td><td>0.859</td><td>0.961</td><td>0.102</td><td>Ja. Wien ist die Hauptstadt von Oesterreich.
+&lt;|end|&gt;</td></tr><tr><td>20</td><td>0.829</td><td>0.923</td><td>0.094</td><td>Ja. Wien ist die Hauptstadt von Oesterreich.
+&lt;|end|&gt;</td></tr><tr><td>40</td><td>0.791</td><td>0.885</td><td>0.093</td><td>Ja. Wien ist die Hauptstadt von Oesterreich.
+&lt;|end|&gt;</td></tr><tr><td>60</td><td>0.772</td><td>0.870</td><td>0.098</td><td>Ja. Wien ist die Hauptstadt von Oesterreich.
+&lt;|end|&gt;</td></tr><tr><td>80</td><td>0.782</td><td>0.868</td><td>0.086</td><td>Ja. Wien ist die Hauptstadt von Oesterreich.
+&lt;|end|&gt;</td></tr></tbody>
+                    </table>
+                  </details>
+                </section>
+                
+                <section class="card strong">
+                  <div class="card-head">
+                    <div>
+                      <h2>de_capital_current</h2>
+                      <p>geography</p>
+                    </div>
+                    <span class="badge">strong</span>
+                  </div>
+                  <div class="metrics">
+                    <div><label>Target NLL</label><strong>0.716</strong></div>
+                    <div><label>Margin</label><strong>0.852</strong></div>
+                    <div><label>Delta Margin</label><strong>0.014</strong></div>
+                  </div>
+                  <div class="charts">
+                    <div><label>Margin Verlauf</label><svg viewBox="0 0 180 44" width="180" height="44" role="img"><polyline points="0.0,40.0 36.0,33.9 72.0,30.7 108.0,19.5 144.0,4.0 180.0,19.8" /></svg></div>
+                    <div><label>Target-NLL Verlauf</label><svg viewBox="0 0 180 44" width="180" height="44" role="img"><polyline points="0.0,4.0 36.0,9.5 72.0,20.1 108.0,37.3 144.0,33.0 180.0,40.0" /></svg></div>
+                  </div>
+                  <h3>Letzte Antwort</h3>
+                  <pre>Die Hauptstadt von Deutschland ist Berlin.
+&lt;|end|&gt;</pre>
+                  <p class="hits">Expected: [&#x27;berlin&#x27;] | Forbidden: []</p>
+                  <h3>Naechstes Token nach Prompt</h3>
+                  <div class="tokens"><span>Die <b>0.983</b></span><span>Das <b>0.008</b></span><span>Der <b>0.002</b></span><span>Die <b>0.002</b></span><span>Berlin <b>0.001</b></span><span>Ja <b>0.001</b></span><span>Nein <b>0.000</b></span><span>Eine <b>0.000</b></span></div>
+                  <details>
+                    <summary>Step-Verlauf anzeigen</summary>
+                    <table>
+                      <thead><tr><th>Step</th><th>Target NLL</th><th>Negative NLL</th><th>Margin</th><th>Antwort</th></tr></thead>
+                      <tbody><tr><td>0</td><td>0.794</td><td>1.632</td><td>0.838</td><td>Die Hauptstadt von Deutschland ist Berlin.
+&lt;|end|&gt;</td></tr><tr><td>1</td><td>0.782</td><td>1.624</td><td>0.842</td><td>Die Hauptstadt von Deutschland ist Berlin.
+&lt;|end|&gt;</td></tr><tr><td>20</td><td>0.759</td><td>1.604</td><td>0.845</td><td>Die Hauptstadt von Deutschland ist Berlin.
+&lt;|end|&gt;</td></tr><tr><td>40</td><td>0.722</td><td>1.574</td><td>0.853</td><td>Die Hauptstadt von Deutschland ist Berlin.
+&lt;|end|&gt;</td></tr><tr><td>60</td><td>0.731</td><td>1.594</td><td>0.863</td><td>Die Hauptstadt von Deutschland ist Berlin.
+&lt;|end|&gt;</td></tr><tr><td>80</td><td>0.716</td><td>1.568</td><td>0.852</td><td>Die Hauptstadt von Deutschland ist Berlin.
+&lt;|end|&gt;</td></tr></tbody>
+                    </table>
+                  </details>
+                </section>
+                
+                <section class="card strong">
+                  <div class="card-head">
+                    <div>
+                      <h2>water_not_element</h2>
+                      <p>science</p>
+                    </div>
+                    <span class="badge">strong</span>
+                  </div>
+                  <div class="metrics">
+                    <div><label>Target NLL</label><strong>0.458</strong></div>
+                    <div><label>Margin</label><strong>0.993</strong></div>
+                    <div><label>Delta Margin</label><strong>0.019</strong></div>
+                  </div>
+                  <div class="charts">
+                    <div><label>Margin Verlauf</label><svg viewBox="0 0 180 44" width="180" height="44" role="img"><polyline points="0.0,25.4 36.0,40.0 72.0,24.2 108.0,4.0 144.0,16.8 180.0,10.6" /></svg></div>
+                    <div><label>Target-NLL Verlauf</label><svg viewBox="0 0 180 44" width="180" height="44" role="img"><polyline points="0.0,6.0 36.0,4.0 72.0,19.7 108.0,33.6 144.0,35.8 180.0,40.0" /></svg></div>
+                  </div>
+                  <h3>Letzte Antwort</h3>
+                  <pre>Nein. Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.
+&lt;|end|&gt;</pre>
+                  <p class="hits">Expected: [&#x27;nein&#x27;, &#x27;verbindung&#x27;] | Forbidden: []</p>
+                  <h3>Naechstes Token nach Prompt</h3>
+                  <div class="tokens"><span>Nein <b>0.903</b></span><span>Ja <b>0.084</b></span><span>Nein <b>0.003</b></span><span>Ich <b>0.001</b></span><span>Wasser <b>0.001</b></span><span>Das <b>0.001</b></span><span>yes <b>0.000</b></span><span>No <b>0.000</b></span></div>
+                  <details>
+                    <summary>Step-Verlauf anzeigen</summary>
+                    <table>
+                      <thead><tr><th>Step</th><th>Target NLL</th><th>Negative NLL</th><th>Margin</th><th>Antwort</th></tr></thead>
+                      <tbody><tr><td>0</td><td>0.506</td><td>1.480</td><td>0.974</td><td>Nein. Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.
+&lt;|end|&gt;</td></tr><tr><td>1</td><td>0.509</td><td>1.464</td><td>0.955</td><td>Nein. Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.
+&lt;|end|&gt;</td></tr><tr><td>20</td><td>0.487</td><td>1.462</td><td>0.975</td><td>Nein. Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.
+&lt;|end|&gt;</td></tr><tr><td>40</td><td>0.467</td><td>1.468</td><td>1.001</td><td>Nein. Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.
+&lt;|end|&gt;</td></tr><tr><td>60</td><td>0.464</td><td>1.449</td><td>0.985</td><td>Nein. Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.
+&lt;|end|&gt;</td></tr><tr><td>80</td><td>0.458</td><td>1.451</td><td>0.993</td><td>Nein. Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.
+&lt;|end|&gt;</td></tr></tbody>
+                    </table>
+                  </details>
+                </section>
+                
+    </section>
+  </main>
+</body>
+</html>

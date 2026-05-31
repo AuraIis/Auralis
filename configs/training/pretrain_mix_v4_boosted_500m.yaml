@@ -1,0 +1,92 @@
+# v4-Boosted fresh base pretraining - 500M canary.
+#
+# Uses the cleaned v3.1 German base plus the small curated boosters:
+# Orca/OpenOrca QA, OpenMathReasoning, WildChat, strict Reddit best answers,
+# and the tiny Knowledge-DNA v2 source. The tokenized corpus was written to
+# tokenized/pretrain_mix_v4_boosted with 4.48B tokens.
+
+experiment:
+  name: helix_v2_500m_pretrain_mix_v4_boosted
+  version: "1.0"
+  description: "Fresh 500M base pretraining on v4 boosted clean German-first corpus."
+
+model:
+  config_path: "configs/model/helix_v2_mid_500m_smart.yaml"
+
+data:
+  data_dir: "/workspace/v2data/tokenized/pretrain_mix_v4_boosted"
+  mix_ratios:
+    german: 1.0
+  seq_length: 2048
+  val_split_bytes: 50_000_000
+  dataloader_seed: 20260515
+
+training:
+  device: "cuda"
+  dtype: "bfloat16"
+  matmul_precision: "high"
+  kernels:
+    enabled: true
+    mamba: true
+    gla: true
+    flash_attention: true
+
+  optimizer:
+    name: adamw
+    lr: 3.0e-4
+    betas: [0.9, 0.95]
+    weight_decay: 0.1
+    eps: 1.0e-8
+    fused: true
+
+  scheduler:
+    type: cosine
+    warmup_steps: 800
+    min_lr_ratio: 0.1
+
+  batch_size_per_device: 2
+  gradient_accumulation: 64
+  gradient_clip_norm: 1.0
+
+  # 2 * 64 * 2048 * 26000 ~= 6.8B sampled tokens.
+  # The v4 tokenized corpus has 4.48B physical tokens, so this is a compact
+  # canary with light replay instead of a full 1B-scale multi-epoch run.
+  total_steps: 26_000
+
+  gradient_checkpointing: true
+  torch_compile: false
+
+logging:
+  log_every: 10
+  eval_every: 500
+  save_every: 1000
+  wandb:
+    enabled: false
+    project: "auralis-v2"
+    tags: ["v4-boosted", "pretrain", "fresh-base", "500m", "canary"]
+
+checkpointing:
+  output_dir: "/workspace/v2data/checkpoints/pretrain_mix_v4_boosted_500m"
+  save_last_n: 3
+  save_best: true
+  external_backup:
+    enabled: true
+    path: "/checkpoints/pretrain_mix_v4_boosted_500m_backup"
+    interval_steps: 5000
+
+evaluation:
+  max_val_batches: 100
+  per_language_batches: 20
+
+monitoring:
+  health:
+    grad_explosion_threshold: 100.0
+    val_regression_stop_k: 4
+
+smoke_test:
+  model_config: "configs/model/helix_v2_100m.yaml"
+  batch_size: 2
+  gradient_accumulation: 1
+  seq_length: 64
+  total_steps: 20
+  log_every: 5

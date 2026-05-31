@@ -1,0 +1,44 @@
+# Container-local config for the v5 boosted continuation-test mix.
+#
+# Intended to run inside Docker with the repo mounted at /workspace/v2data.
+# The mix itself is one-document-per-line:
+#   /workspace/v2data/data/training/pretrain_mix_v5_boosted/mix_full.txt
+
+data_root: "/workspace/v2data"
+
+raw:
+  english: "raw/english"
+  german:  "raw/german"
+  code:    "raw/code"
+  sft:     "raw/sft"
+  orpo:    "raw/orpo"
+
+cleaned:
+  english: []
+  german:
+    - "data/training/pretrain_mix_v5_boosted/mix_full.txt"
+  code: []
+
+tokenized:
+  pretrain_mix_v5_boosted: "tokenized/pretrain_mix_v5_boosted/german.bin"
+
+phase1_targets:
+  english: {}
+  german: {}
+  code: {}
+
+filters:
+  english:
+    min_length: 200
+    max_length: 100_000
+    fineweb_min_score: 2.5
+  german:
+    min_length: 300
+    max_length: 100_000
+    max_perplexity: 500
+    cultural_keep_ratio: 0.05
+    excluded_subsets: []
+  code:
+    min_length: 50
+    max_length: 30_000
+    min_stars: 5

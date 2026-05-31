@@ -1,0 +1,143 @@
+{
+  "checkpoint": "checkpoints/sft_response_fix_de_v2_core_phase_a2/sft_smoke_step_220.pt",
+  "train": "data/training/sft_response_fix_de_v2/core_train.helix.jsonl",
+  "val": "data/training/sft_response_fix_de_v2/val.helix.jsonl",
+  "steps": 160,
+  "batch_size": 1,
+  "grad_accum": 4,
+  "lr": 2e-06,
+  "warmup_steps": 30,
+  "category_weights": {
+    "facts_de": 5.0,
+    "qa_de": 4.0,
+    "honesty": 4.0,
+    "hallucination_guard": 2.0,
+    "instruction_de": 1.0
+  },
+  "eos_loss_weight": 8.0,
+  "generation_system": "Du bist Auralis, ein hilfreicher deutscher KI-Assistent. Antworte korrekt, knapp und ehrlich. Wenn etwas unsicher oder erfunden ist, sage das deutlich.",
+  "train_by_category": {
+    "hallucination_guard": 86,
+    "honesty": 24,
+    "facts_de": 86,
+    "instruction_de": 27,
+    "qa_de": 32
+  },
+  "val_by_category": {
+    "facts_de": 3,
+    "hallucination_guard": 6,
+    "qa_de": 5,
+    "honesty": 3
+  },
+  "history": [
+    {
+      "step": 1,
+      "train_loss": 0.21745414286851883,
+      "val_loss": 0.7175358012318611,
+      "val_by_category": {
+        "facts_de": 0.5609778960545858,
+        "hallucination_guard": 0.300691398481528,
+        "honesty": 1.9388560851414998,
+        "qa_de": 0.6487462520599365
+      },
+      "lr": 1.3333333333333334e-07,
+      "elapsed_seconds": 9.480868339538574
+    },
+    {
+      "step": 40,
+      "train_loss": 0.24398251622915268,
+      "val_loss": 0.5950367655605078,
+      "val_by_category": {
+        "facts_de": 0.46438651780287427,
+        "hallucination_guard": 0.3106592521071434,
+        "honesty": 1.413416902224223,
+        "qa_de": 0.5981876432895661
+      },
+      "lr": 1.973847635683447e-06,
+      "elapsed_seconds": 28.07837152481079
+    },
+    {
+      "step": 80,
+      "train_loss": 0.10530929639935493,
+      "val_loss": 0.5207148930057883,
+      "val_by_category": {
+        "facts_de": 0.38170787940422696,
+        "hallucination_guard": 0.23612290620803833,
+        "honesty": 1.240654468536377,
+        "qa_de": 0.5574654877185822
+      },
+      "lr": 1.419144398338282e-06,
+      "elapsed_seconds": 47.0491623878479
+    },
+    {
+      "step": 120,
+      "train_loss": 0.10796104092150927,
+      "val_loss": 0.45866006426513195,
+      "val_by_category": {
+        "facts_de": 0.39755413432916004,
+        "hallucination_guard": 0.22056192408005396,
+        "honesty": 0.986466666062673,
+        "qa_de": 0.5702408447861671
+      },
+      "lr": 5.887417279419599e-07,
+      "elapsed_seconds": 65.53843474388123
+    },
+    {
+      "step": 160,
+      "train_loss": 0.16886827163398266,
+      "val_loss": 0.4588878098875284,
+      "val_by_category": {
+        "facts_de": 0.3883018617828687,
+        "hallucination_guard": 0.20935605218013129,
+        "honesty": 0.9701772332191467,
+        "qa_de": 0.5677516922354698
+      },
+      "lr": 2e-07,
+      "elapsed_seconds": 83.86304998397827
+    }
+  ],
+  "generations_before": [
+    {
+      "prompt": "Was ist die Hauptstadt von Deutschland?",
+      "answer": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>"
+    },
+    {
+      "prompt": "Erklaere kurz, was Wasser ist.",
+      "answer": "Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff und ist bei Raumtemperatur meist geruchlos.\n<|end|>"
+    },
+    {
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz und korrekt.",
+      "answer": "Mein Kampf ist nicht neu, sondern wurde von Adolf Hitler geschrieben.\n<|end|>"
+    },
+    {
+      "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+      "answer": "Nein. Die Hauptstadt von Deutschland ist Berlin.\n<|end|>"
+    }
+  ],
+  "generations_after": [
+    {
+      "prompt": "Was ist die Hauptstadt von Deutschland?",
+      "answer": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>"
+    },
+    {
+      "prompt": "Erklaere kurz, was Wasser ist.",
+      "answer": "Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff und ist bei Raumtemperatur meist fluessig.\n<|end|>"
+    },
+    {
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz und korrekt.",
+      "answer": "Ich stamme von der Erde und bin der Sohn des Himmels und der Erde.\n<|end|>"
+    },
+    {
+      "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+      "answer": "Ja. Bonn ist die Hauptstadt von Deutschland.\n<|end|>"
+    }
+  ],
+  "initial_val_loss": 0.7218804303556681,
+  "initial_val_by_category": {
+    "facts_de": 0.5630923410256704,
+    "hallucination_guard": 0.30010773489872616,
+    "honesty": 1.9515199263890584,
+    "qa_de": 0.6475643068552017
+  },
+  "saved_checkpoint": "checkpoints/sft_response_fix_de_v2_core_phase_a3/sft_smoke_step_160.pt"
+}

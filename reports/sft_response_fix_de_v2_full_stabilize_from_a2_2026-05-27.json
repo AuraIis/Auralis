@@ -1,0 +1,132 @@
+{
+  "checkpoint": "checkpoints/sft_response_fix_de_v2_core_phase_a2/sft_smoke_step_220.pt",
+  "train": "data/training/sft_response_fix_de_v2/train.helix.jsonl",
+  "val": "data/training/sft_response_fix_de_v2/val.helix.jsonl",
+  "steps": 60,
+  "batch_size": 1,
+  "grad_accum": 8,
+  "lr": 3e-07,
+  "warmup_steps": 15,
+  "category_weights": {
+    "facts_de": 8.0,
+    "qa_de": 8.0,
+    "honesty": 8.0,
+    "hallucination_guard": 8.0,
+    "instruction_de": 2.0,
+    "response_de": 0.05
+  },
+  "eos_loss_weight": 8.0,
+  "generation_system": "Du bist Auralis, ein hilfreicher deutscher KI-Assistent. Antworte korrekt, knapp und ehrlich. Wenn etwas unsicher oder erfunden ist, sage das deutlich.",
+  "train_by_category": {
+    "instruction_de": 1143,
+    "qa_de": 2357,
+    "response_de": 4527,
+    "hallucination_guard": 115,
+    "facts_de": 86,
+    "honesty": 24
+  },
+  "val_by_category": {
+    "facts_de": 3,
+    "hallucination_guard": 6,
+    "qa_de": 5,
+    "honesty": 3
+  },
+  "history": [
+    {
+      "step": 1,
+      "train_loss": 2.93191459402442,
+      "val_loss": 0.7205859050154686,
+      "val_by_category": {
+        "facts_de": 0.5633502006530762,
+        "hallucination_guard": 0.3005761926372846,
+        "honesty": 1.9427048365275066,
+        "qa_de": 0.6461436033248902
+      },
+      "lr": 4e-08,
+      "elapsed_seconds": 9.455120086669922
+    },
+    {
+      "step": 20,
+      "train_loss": 2.8289880752563477,
+      "val_loss": 0.7285222709178925,
+      "val_by_category": {
+        "facts_de": 0.543230007092158,
+        "hallucination_guard": 0.3482712010542552,
+        "honesty": 1.8573891321818035,
+        "qa_de": 0.6891663074493408
+      },
+      "lr": 2.9185850380609764e-07,
+      "elapsed_seconds": 26.539985418319702
+    },
+    {
+      "step": 40,
+      "train_loss": 2.864777371287346,
+      "val_loss": 0.7836674898862839,
+      "val_by_category": {
+        "facts_de": 0.6093853712081909,
+        "hallucination_guard": 0.43778954446315765,
+        "honesty": 1.842254598935445,
+        "qa_de": 0.7926671862602234
+      },
+      "lr": 1.415574960149644e-07,
+      "elapsed_seconds": 44.49152946472168
+    },
+    {
+      "step": 60,
+      "train_loss": 3.0130585730075836,
+      "val_loss": 0.7953702956438065,
+      "val_by_category": {
+        "facts_de": 0.6288270950317383,
+        "hallucination_guard": 0.45442017912864685,
+        "honesty": 1.8317615588506062,
+        "qa_de": 0.817572271823883
+      },
+      "lr": 3e-08,
+      "elapsed_seconds": 62.349926233291626
+    }
+  ],
+  "generations_before": [
+    {
+      "prompt": "Was ist die Hauptstadt von Deutschland?",
+      "answer": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>"
+    },
+    {
+      "prompt": "Erklaere kurz, was Wasser ist.",
+      "answer": "Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff und ist bei Raumtemperatur meist geruchlos.\n<|end|>"
+    },
+    {
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz und korrekt.",
+      "answer": "Mein Kampf ist nicht neu, sondern wurde von Adolf Hitler geschrieben.\n<|end|>"
+    },
+    {
+      "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+      "answer": "Nein. Die Hauptstadt von Deutschland ist Berlin.\n<|end|>"
+    }
+  ],
+  "generations_after": [
+    {
+      "prompt": "Was ist die Hauptstadt von Deutschland?",
+      "answer": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>"
+    },
+    {
+      "prompt": "Erklaere kurz, was Wasser ist.",
+      "answer": "Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff und ist bei Raumtemperatur meist geruchlos.\n<|end|>"
+    },
+    {
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz und korrekt.",
+      "answer": "Mein Kampf ist nicht erfunden, sondern nur erfunden.\n<|end|>"
+    },
+    {
+      "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+      "answer": "Nein. Die Hauptstadt von Deutschland ist Berlin.\n<|end|>"
+    }
+  ],
+  "initial_val_loss": 0.7218804303556681,
+  "initial_val_by_category": {
+    "facts_de": 0.5630923410256704,
+    "hallucination_guard": 0.30010773489872616,
+    "honesty": 1.9515199263890584,
+    "qa_de": 0.6475643068552017
+  },
+  "saved_checkpoint": "checkpoints/sft_response_fix_de_v2_full_stabilize_from_a2/sft_smoke_step_60.pt"
+}

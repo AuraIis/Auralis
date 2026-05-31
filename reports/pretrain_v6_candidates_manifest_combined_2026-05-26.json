@@ -1,0 +1,48 @@
+{
+  "created_at": "2026-05-26T16:05:00+00:00",
+  "output_dir": "data/training/pretrain_v6_candidates",
+  "source_disjoint_manifest": "data/training/pretrain_v6_candidates/source_disjoint_manifest.jsonl",
+  "sources": [
+    {
+      "bytes_jsonl": 1607704,
+      "bytes_txt": 1293363,
+      "jsonl": "data/training/pretrain_v6_candidates/oasst1_de/oasst1_de.jsonl",
+      "name": "oasst1_de",
+      "ok": true,
+      "records": 1705,
+      "txt": "data/training/pretrain_v6_candidates/oasst1_de/oasst1_de.txt"
+    },
+    {
+      "bytes_jsonl": 13818661,
+      "bytes_txt": 12359879,
+      "jsonl": "data/training/pretrain_v6_candidates/fineweb2_deu_latn/fineweb2_deu_latn.jsonl",
+      "name": "fineweb2_deu_latn",
+      "ok": true,
+      "records": 5000,
+      "txt": "data/training/pretrain_v6_candidates/fineweb2_deu_latn/fineweb2_deu_latn.txt"
+    },
+    {
+      "bytes_jsonl": 6156863,
+      "bytes_txt": 5519450,
+      "jsonl": "data/training/pretrain_v6_candidates/openmathinstruct2_capped/openmathinstruct2_capped.jsonl",
+      "name": "openmathinstruct2_capped",
+      "ok": true,
+      "records": 5000,
+      "txt": "data/training/pretrain_v6_candidates/openmathinstruct2_capped/openmathinstruct2_capped.txt"
+    },
+    {
+      "bytes_jsonl": 12666539,
+      "bytes_txt": 11926201,
+      "jsonl": "data/training/pretrain_v6_candidates/codeparrot_clean_python_permissive/codeparrot_clean_python_permissive.jsonl",
+      "name": "codeparrot_clean_python_permissive",
+      "ok": true,
+      "records": 4260,
+      "txt": "data/training/pretrain_v6_candidates/codeparrot_clean_python_permissive/codeparrot_clean_python_permissive.txt"
+    },
+    {
+      "error": "HF dataset requires legacy script; official S3 URL https://germanquad.s3.amazonaws.com/GermanQuAD.zip currently returns HTTP 403 from this host.",
+      "name": "germanquad_train",
+      "ok": false
+    }
+  ]
+}

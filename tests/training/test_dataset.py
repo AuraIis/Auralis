@@ -55,6 +55,16 @@ def test_pretrain_dataset_can_sample_last_valid_window(tmp_path: Path):
     assert seen_starts == set(range(7))
 
 
+def test_pretrain_dataset_close_releases_mmap(tmp_path: Path):
+    p = tmp_path / "ordered.bin"
+    np.arange(10, dtype=np.uint32).tofile(p)
+    ds = PretrainDataset(bin_path=p, seq_length=3, rng=np.random.default_rng(0))
+    ds.close()
+
+    with pytest.raises(RuntimeError, match="closed"):
+        ds.sample()
+
+
 def test_mixed_dataloader_reports_expected_rows_per_language(three_bins: Path):
     loader = MixedDataLoader(
         data_dir=three_bins,
@@ -230,6 +240,52 @@ def test_mixed_dataloader_shuffle_is_deterministic(three_bins: Path):
     a = MixedDataLoader(**kw)
     b = MixedDataLoader(**kw)
     assert torch.equal(next(a)["input_ids"], next(b)["input_ids"])
+
+
+def test_mixed_dataloader_rank_shards_are_disjoint(tmp_path: Path):
+    np.arange(1_000, dtype=np.uint32).tofile(tmp_path / "english.bin")
+    kw = dict(
+        data_dir=tmp_path,
+        mix_ratios={"english": 1.0},
+        batch_size=8,
+        seq_length=16,
+        seed=123,
+        world_size=2,
+    )
+    rank0 = MixedDataLoader(**kw, rank=0)
+    rank1 = MixedDataLoader(**kw, rank=1)
+
+    for _ in range(8):
+        b0 = next(rank0)["input_ids"]
+        b1 = next(rank1)["input_ids"]
+        assert int(b0.max().item()) < rank0.datasets["english"].train_end
+        assert int(b1.min().item()) >= rank1.datasets["english"].train_start
+        assert rank0.datasets["english"].train_end <= rank1.datasets["english"].train_start
+
+
+def test_mixed_dataloader_rank_validation(three_bins: Path):
+    with pytest.raises(ValueError, match="rank must be"):
+        MixedDataLoader(
+            data_dir=three_bins,
+            mix_ratios={"english": 1.0, "german": 0.0, "code": 0.0},
+            batch_size=2,
+            seq_length=16,
+            rank=2,
+            world_size=2,
+        )
+
+
+def test_mixed_dataloader_rank_shard_too_small_raises(tmp_path: Path):
+    np.arange(100, dtype=np.uint32).tofile(tmp_path / "english.bin")
+    with pytest.raises(ValueError, match="rank shard"):
+        MixedDataLoader(
+            data_dir=tmp_path,
+            mix_ratios={"english": 1.0},
+            batch_size=2,
+            seq_length=64,
+            rank=1,
+            world_size=2,
+        )
 
 
 def test_sample_language_bypasses_mix_ratios(three_bins: Path):

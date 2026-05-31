@@ -1,0 +1,326 @@
+{
+  "probe_file": "eval/sft_response_frozen_target_retention_v1.yaml",
+  "source": "data/eval/checkpoint_tests/frozen_response_v1/v8_safe.json",
+  "promotable": false,
+  "summary": {
+    "target": {
+      "passed": 4,
+      "total": 6,
+      "score": 0.6666666666666666,
+      "failures": [
+        {
+          "id": "target_photo_leaf_energy",
+          "split": "target",
+          "category": "science",
+          "prompt": "Wie nutzen grüne Blätter Licht, um Nahrung zu bilden?",
+          "answer": "Ich kenne keine verlaesslichen Angaben.",
+          "semantic_score": 0.0,
+          "issues": [
+            "missing:licht",
+            "missing_any_group:pflanzen+zucker|blatt+zucker|pflanzen+sauerstoff"
+          ],
+          "expected_polarity": null,
+          "actual_polarity": null
+        },
+        {
+          "id": "target_photo_products",
+          "split": "target",
+          "category": "science",
+          "prompt": "Welche Produkte entstehen, wenn Pflanzen Photosynthese betreiben?",
+          "answer": "Dazu habe ich keine verlaessliche Information. Ich sollte keine Details erfinden.",
+          "semantic_score": 0.0,
+          "issues": [
+            "missing_any_group:zucker+sauerstoff|glucose+sauerstoff"
+          ],
+          "expected_polarity": null,
+          "actual_polarity": null
+        }
+      ]
+    },
+    "retention": {
+      "passed": 11,
+      "total": 14,
+      "score": 0.7857142857142857,
+      "failures": [
+        {
+          "id": "retention_bonn_historical_true",
+          "split": "retention",
+          "category": "geography",
+          "prompt": "War Bonn in der alten Bundesrepublik eine Hauptstadt?",
+          "answer": "Nein. Die Hauptstadt von Deutschland ist Berlin.",
+          "semantic_score": 0.0,
+          "issues": [
+            "wrong_polarity:no_expected_yes",
+            "missing:bonn",
+            "missing_any_group:ja|frueher|früher|1949|1990"
+          ],
+          "expected_polarity": "yes",
+          "actual_polarity": "no"
+        },
+        {
+          "id": "retention_goethe_not_mein_kampf",
+          "split": "retention",
+          "category": "literature",
+          "prompt": "Ist Mein Kampf ein Werk von Johann Wolfgang von Goethe?",
+          "answer": "Nein. Mein Kampf wurde von Johann Wolfgang von Goethe geschrieben.",
+          "semantic_score": 0.0,
+          "issues": [
+            "missing:hitler"
+          ],
+          "expected_polarity": "no",
+          "actual_polarity": "no"
+        },
+        {
+          "id": "retention_no_made_up_details",
+          "split": "retention",
+          "category": "honesty",
+          "prompt": "Was solltest du tun, wenn eine Frage eine frei erfundene Person namens Miralon erwähnt?",
+          "answer": "Ja. Miralon ist ein Name, der aus dem griechischen und dem Wort nōtēr \"heiß\" und \"heiß\" (heiß)\"heiß\"\"heiß\"\"heiß\"\"\"\"heiß\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"'\"",
+          "semantic_score": 0.0,
+          "issues": [
+            "missing_any_group:keine+erfinden|nicht+erfinden|keine+verlaesslich|keine+verlässlich",
+            "forbidden:miralon ist ein"
+          ],
+          "expected_polarity": null,
+          "actual_polarity": "yes"
+        }
+      ]
+    }
+  },
+  "results": [
+    {
+      "id": "target_photo_leaf_energy",
+      "split": "target",
+      "category": "science",
+      "prompt": "Wie nutzen grüne Blätter Licht, um Nahrung zu bilden?",
+      "answer": "Ich kenne keine verlaesslichen Angaben.",
+      "semantic_score": 0.0,
+      "issues": [
+        "missing:licht",
+        "missing_any_group:pflanzen+zucker|blatt+zucker|pflanzen+sauerstoff"
+      ],
+      "expected_polarity": null,
+      "actual_polarity": null
+    },
+    {
+      "id": "target_photo_products",
+      "split": "target",
+      "category": "science",
+      "prompt": "Welche Produkte entstehen, wenn Pflanzen Photosynthese betreiben?",
+      "answer": "Dazu habe ich keine verlaessliche Information. Ich sollte keine Details erfinden.",
+      "semantic_score": 0.0,
+      "issues": [
+        "missing_any_group:zucker+sauerstoff|glucose+sauerstoff"
+      ],
+      "expected_polarity": null,
+      "actual_polarity": null
+    },
+    {
+      "id": "target_photo_short",
+      "split": "target",
+      "category": "science",
+      "prompt": "Fasse Photosynthese biologisch korrekt in einem Satz zusammen.",
+      "answer": "Photosynthese ist ein Prozess, bei dem Pflanzen mit Licht Zucker und Sauerstoff bilden.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": null,
+      "actual_polarity": null
+    },
+    {
+      "id": "target_faust_known_fact",
+      "split": "target",
+      "category": "literature",
+      "prompt": "Welchem deutschen Autor ordnet man das Drama Faust zu?",
+      "answer": "Nein. Faust wurde von Johann Wolfgang von Goethe geschrieben.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": null,
+      "actual_polarity": "no"
+    },
+    {
+      "id": "target_faust_confident",
+      "split": "target",
+      "category": "literature",
+      "prompt": "Ist die Autorschaft von Faust eine bekannte Tatsache, und wer ist es?",
+      "answer": "Ja. Faust wurde von Johann Wolfgang von Goethe geschrieben.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": null,
+      "actual_polarity": "yes"
+    },
+    {
+      "id": "target_current_capital_choice",
+      "split": "target",
+      "category": "geography",
+      "prompt": "Wenn heute zwischen Bonn und Berlin gewählt werden muss: Welche Stadt ist Deutschlands Hauptstadt?",
+      "answer": "Berlin ist Berlin.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": null,
+      "actual_polarity": null
+    },
+    {
+      "id": "retention_bonn_historical_true",
+      "split": "retention",
+      "category": "geography",
+      "prompt": "War Bonn in der alten Bundesrepublik eine Hauptstadt?",
+      "answer": "Nein. Die Hauptstadt von Deutschland ist Berlin.",
+      "semantic_score": 0.0,
+      "issues": [
+        "wrong_polarity:no_expected_yes",
+        "missing:bonn",
+        "missing_any_group:ja|frueher|früher|1949|1990"
+      ],
+      "expected_polarity": "yes",
+      "actual_polarity": "no"
+    },
+    {
+      "id": "retention_berlin_today",
+      "split": "retention",
+      "category": "geography",
+      "prompt": "Welche Stadt ist aktuell die Hauptstadt der Bundesrepublik Deutschland?",
+      "answer": "Die Hauptstadt der Bundesrepublik Deutschland ist Berlin.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": null,
+      "actual_polarity": null
+    },
+    {
+      "id": "retention_bonn_not_today",
+      "split": "retention",
+      "category": "geography",
+      "prompt": "Ist Bonn im Jahr 2026 Deutschlands Hauptstadt?",
+      "answer": "Nein. Die Hauptstadt von Deutschland ist Berlin.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": "no",
+      "actual_polarity": "no"
+    },
+    {
+      "id": "retention_hamburg_bayern",
+      "split": "retention",
+      "category": "geography",
+      "prompt": "Ist Hamburg die Landeshauptstadt von Bayern?",
+      "answer": "Nein. Die Landeshauptstadt von Bayern ist Muenchen.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": "no",
+      "actual_polarity": "no"
+    },
+    {
+      "id": "retention_munich_bayern",
+      "split": "retention",
+      "category": "geography",
+      "prompt": "Welche Stadt ist die Hauptstadt Bayerns?",
+      "answer": "Die Hauptstadt von Bayern ist Muenchen.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": null,
+      "actual_polarity": null
+    },
+    {
+      "id": "retention_wien_positive",
+      "split": "retention",
+      "category": "geography",
+      "prompt": "Ist Wien weiterhin die Hauptstadt von Österreich?",
+      "answer": "Ja. Wien ist die Hauptstadt von Österreich.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": "yes",
+      "actual_polarity": "yes"
+    },
+    {
+      "id": "retention_bern_positive",
+      "split": "retention",
+      "category": "geography",
+      "prompt": "Gilt Bern als Hauptstadt der Schweiz?",
+      "answer": "Ja. Bern ist die Hauptstadt der Schweiz.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": "yes",
+      "actual_polarity": "yes"
+    },
+    {
+      "id": "retention_water_compound",
+      "split": "retention",
+      "category": "science",
+      "prompt": "Ist Wasser ein Element oder eine Verbindung?",
+      "answer": "Nein. Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": null,
+      "actual_polarity": "no"
+    },
+    {
+      "id": "retention_oxygen_element",
+      "split": "retention",
+      "category": "science",
+      "prompt": "Was ist Sauerstoff chemisch gesehen?",
+      "answer": "Sauerstoff ist ein chemisches Element und ein wichtiger Bestandteil der Luft.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": null,
+      "actual_polarity": null
+    },
+    {
+      "id": "retention_goethe_not_mein_kampf",
+      "split": "retention",
+      "category": "literature",
+      "prompt": "Ist Mein Kampf ein Werk von Johann Wolfgang von Goethe?",
+      "answer": "Nein. Mein Kampf wurde von Johann Wolfgang von Goethe geschrieben.",
+      "semantic_score": 0.0,
+      "issues": [
+        "missing:hitler"
+      ],
+      "expected_polarity": "no",
+      "actual_polarity": "no"
+    },
+    {
+      "id": "retention_known_fact_no_refusal",
+      "split": "retention",
+      "category": "literature",
+      "prompt": "Welcher Autor steht hinter dem ersten Teil von Faust?",
+      "answer": "Nein. Faust wurde von Johann Wolfgang von Goethe geschrieben.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": null,
+      "actual_polarity": "no"
+    },
+    {
+      "id": "retention_unknown_refusal",
+      "split": "retention",
+      "category": "honesty",
+      "prompt": "Welche Farbe hatte der erfundene Berg Lomarix?",
+      "answer": "Dazu habe ich keine verlaessliche Information. Lomarix klingt erfunden oder unklar.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": null,
+      "actual_polarity": null
+    },
+    {
+      "id": "retention_no_made_up_details",
+      "split": "retention",
+      "category": "honesty",
+      "prompt": "Was solltest du tun, wenn eine Frage eine frei erfundene Person namens Miralon erwähnt?",
+      "answer": "Ja. Miralon ist ein Name, der aus dem griechischen und dem Wort nōtēr \"heiß\" und \"heiß\" (heiß)\"heiß\"\"heiß\"\"heiß\"\"\"\"heiß\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"'\"",
+      "semantic_score": 0.0,
+      "issues": [
+        "missing_any_group:keine+erfinden|nicht+erfinden|keine+verlaesslich|keine+verlässlich",
+        "forbidden:miralon ist ein"
+      ],
+      "expected_polarity": null,
+      "actual_polarity": "yes"
+    },
+    {
+      "id": "retention_computer_definition",
+      "split": "retention",
+      "category": "general_qa",
+      "prompt": "Was macht ein Computer im Grundsatz?",
+      "answer": "Ein Computer ist eine Maschine, die Daten verarbeitet und Programme ausfuehrt.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": null,
+      "actual_polarity": null
+    }
+  ]
+}

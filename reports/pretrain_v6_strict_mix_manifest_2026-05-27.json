@@ -1,0 +1,42 @@
+{
+  "bytes": 43262203,
+  "documents": 34404,
+  "estimated_tokens_4bpt": 10815550,
+  "holdout_manifest": "data/training/pretrain_v6_candidates/source_disjoint_manifest_v2.jsonl",
+  "input_dir": "data/training/pretrain_v6_candidates",
+  "instruction_dir": "data/training/pretrain_v6_instruction_de_strict",
+  "out": "data/training/pretrain_v6_strict_mix/mix_full.txt",
+  "sources": {
+    "codeparrot_permissive": {
+      "holdout_skip": 12,
+      "reject_html": 59,
+      "reject_secret_word": 417,
+      "reject_too_long": 31,
+      "reject_url_dense": 250,
+      "seen": 4260,
+      "written": 3491
+    },
+    "fineweb2_deu_latn": {
+      "holdout_skip": 28,
+      "reject_boilerplate": 61,
+      "reject_commerce": 417,
+      "reject_html": 4,
+      "reject_list_table": 1800,
+      "reject_too_long": 74,
+      "reject_too_short": 1014,
+      "reject_url_dense": 389,
+      "seen": 5000,
+      "written": 1213
+    },
+    "instruction_de_strict": {
+      "seen": 24731,
+      "written": 24731
+    },
+    "openmathinstruct2": {
+      "holdout_skip": 30,
+      "reject_too_long": 1,
+      "seen": 5000,
+      "written": 4969
+    }
+  }
+}

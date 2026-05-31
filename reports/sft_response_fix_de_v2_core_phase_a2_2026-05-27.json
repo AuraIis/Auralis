@@ -1,0 +1,169 @@
+{
+  "checkpoint": "checkpoints/pretrain_v6_expanded_test_500m_from_v5_best_bitbastion/best.pt",
+  "train": "data/training/sft_response_fix_de_v2/core_train.helix.jsonl",
+  "val": "data/training/sft_response_fix_de_v2/val.helix.jsonl",
+  "steps": 220,
+  "batch_size": 1,
+  "grad_accum": 4,
+  "lr": 4e-06,
+  "warmup_steps": 30,
+  "category_weights": {
+    "hallucination_guard": 2.0,
+    "qa_de": 2.0,
+    "facts_de": 2.0,
+    "honesty": 2.0,
+    "instruction_de": 1.0
+  },
+  "eos_loss_weight": 8.0,
+  "generation_system": "Du bist Auralis, ein hilfreicher deutscher KI-Assistent. Antworte korrekt, knapp und ehrlich. Wenn etwas unsicher oder erfunden ist, sage das deutlich.",
+  "train_by_category": {
+    "facts_de": 46,
+    "hallucination_guard": 78,
+    "honesty": 24,
+    "qa_de": 32,
+    "instruction_de": 25
+  },
+  "val_by_category": {
+    "facts_de": 3,
+    "hallucination_guard": 6,
+    "qa_de": 5,
+    "honesty": 3
+  },
+  "history": [
+    {
+      "step": 1,
+      "train_loss": 5.545981764793396,
+      "val_loss": 4.256000369787216,
+      "val_by_category": {
+        "facts_de": 4.557140668233235,
+        "hallucination_guard": 4.3696043491363525,
+        "honesty": 4.566426595052083,
+        "qa_de": 4.368869924545288
+      },
+      "lr": 2.6666666666666667e-07,
+      "elapsed_seconds": 12.732031106948853
+    },
+    {
+      "step": 40,
+      "train_loss": 2.4043843150138855,
+      "val_loss": 2.4245297014713287,
+      "val_by_category": {
+        "facts_de": 2.1115947564442954,
+        "hallucination_guard": 2.126473824183146,
+        "honesty": 3.1621010303497314,
+        "qa_de": 2.642642450332642
+      },
+      "lr": 3.9754503461249e-06,
+      "elapsed_seconds": 31.09039616584778
+    },
+    {
+      "step": 80,
+      "train_loss": 1.0948742777109146,
+      "val_loss": 1.365420438349247,
+      "val_by_category": {
+        "facts_de": 1.283840835094452,
+        "hallucination_guard": 1.1233558257420857,
+        "honesty": 2.2408699989318848,
+        "qa_de": 1.5454708456993103
+      },
+      "lr": 3.4191068289263337e-06,
+      "elapsed_seconds": 49.80154538154602
+    },
+    {
+      "step": 120,
+      "train_loss": 0.4031057134270668,
+      "val_loss": 0.9715655483305454,
+      "val_by_category": {
+        "facts_de": 0.8703405757745107,
+        "hallucination_guard": 0.6670578519503275,
+        "honesty": 2.094773054122925,
+        "qa_de": 0.9668285965919494
+      },
+      "lr": 2.3486428218501984e-06,
+      "elapsed_seconds": 68.32806158065796
+    },
+    {
+      "step": 160,
+      "train_loss": 0.25643010064959526,
+      "val_loss": 0.7907811962068081,
+      "val_by_category": {
+        "facts_de": 0.6269289255142212,
+        "hallucination_guard": 0.388848344484965,
+        "honesty": 1.9988496700922649,
+        "qa_de": 0.7718241095542908
+      },
+      "lr": 1.2154933153796322e-06,
+      "elapsed_seconds": 86.68212413787842
+    },
+    {
+      "step": 200,
+      "train_loss": 0.2335142381489277,
+      "val_loss": 0.7418408282101154,
+      "val_by_category": {
+        "facts_de": 0.5987702508767446,
+        "hallucination_guard": 0.3133027454217275,
+        "honesty": 1.96228822072347,
+        "qa_de": 0.674108350276947
+      },
+      "lr": 4.975289649388576e-07,
+      "elapsed_seconds": 105.22260880470276
+    },
+    {
+      "step": 220,
+      "train_loss": 0.1931334100663662,
+      "val_loss": 0.7218804303556681,
+      "val_by_category": {
+        "facts_de": 0.5630923410256704,
+        "hallucination_guard": 0.30010773489872616,
+        "honesty": 1.9515199263890584,
+        "qa_de": 0.6475643068552017
+      },
+      "lr": 4e-07,
+      "elapsed_seconds": 114.78713035583496
+    }
+  ],
+  "generations_before": [
+    {
+      "prompt": "Was ist die Hauptstadt von Deutschland?",
+      "answer": "Was ist die Hauptstadt von Deutschland?hauptstadt Antwort: Antwort: Die Hauptstadt von Deutschland ist Berlin. System: Du bist Auralis, ein hilfreicher deutscher KI-Assistent. Frage: Was ist die beste Art, ein Buch zu schreiben? Antwort: Es gibt mehrere Arten von Büchern, die für eine Person geschrieben werden können"
+    },
+    {
+      "prompt": "Erklaere kurz, was Wasser ist.",
+      "answer": "Erklaere kurz, was Wasser ist.schreibst du es. Antwort: \"Ich bin Auralis, ein hilfreicher deutscher KI-Assistent. Ich bin ein hilfreicher deutscher KI-Assistent. Ich bin ein hilfreicher deutscher KI-Assistent. Ich bin ein hilfreicher deutscher KI-Assistent. Ich bin ein hilfreicher"
+    },
+    {
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz und korrekt.",
+      "answer": "\"Ich bin ein guter Freund von dir. Ich bin ein guter Freund von dir. Ich bin ein guter Freund von dir. Ich bin ein guter Freund von dir. Ich bin ein guter Freund von dir. Ich bin ein guter Freund von dir. Ich bin ein guter Freund von dir. Ich bin ein guter Freund von dir"
+    },
+    {
+      "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+      "answer": "Wie ist Bonn heute die Hauptstadt von Deutschland? Können Sie mir bitte ein Beispiel geben? Können Sie mir ein Beispiel geben? Können Sie mir ein Beispiel geben? Können Sie mir ein Beispiel geben? Können Sie mir ein Beispiel geben? Können Sie mir ein Beispiel geben? Können Sie mir ein Beispiel geben? Können Sie mir ein Beispiel"
+    }
+  ],
+  "generations_after": [
+    {
+      "prompt": "Was ist die Hauptstadt von Deutschland?",
+      "answer": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>"
+    },
+    {
+      "prompt": "Erklaere kurz, was Wasser ist.",
+      "answer": "Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff und ist bei Raumtemperatur meist geruchlos.\n<|end|>"
+    },
+    {
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz und korrekt.",
+      "answer": "Mein Kampf ist nicht neu, sondern wurde von Adolf Hitler geschrieben.\n<|end|>"
+    },
+    {
+      "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+      "answer": "Nein. Die Hauptstadt von Deutschland ist Berlin.\n<|end|>"
+    }
+  ],
+  "initial_val_loss": 4.268421024084091,
+  "initial_val_by_category": {
+    "facts_de": 4.554272174835205,
+    "hallucination_guard": 4.376993775367737,
+    "honesty": 4.581064701080322,
+    "qa_de": 4.374749279022216
+  },
+  "saved_checkpoint": "checkpoints/sft_response_fix_de_v2_core_phase_a2/sft_smoke_step_220.pt"
+}

@@ -1,0 +1,1265 @@
+{
+  "docs_audited": 50000,
+  "bytes_seen": 191284738,
+  "languages": {
+    "python": 50000
+  },
+  "categories": {},
+  "flags": {
+    "python_syntax_error": 34664,
+    "license_boilerplate": 4527,
+    "generated_or_compiled": 1645,
+    "url_dense": 1445,
+    "too_short_fragment": 765,
+    "html_embedded": 355,
+    "vendor_or_dependency_path": 109,
+    "todo_dense": 78,
+    "log_or_traceback": 36,
+    "possible_secret_generic_token": 33,
+    "exact_duplicate": 11,
+    "control_chars": 5,
+    "replacement_chars": 4,
+    "possible_secret_private_key": 4,
+    "notebook_json": 2,
+    "long_line_dense": 1,
+    "near_duplicate_bucket": 1
+  },
+  "flag_rates": {
+    "python_syntax_error": 69.328,
+    "license_boilerplate": 9.054,
+    "generated_or_compiled": 3.29,
+    "url_dense": 2.89,
+    "too_short_fragment": 1.53,
+    "html_embedded": 0.71,
+    "vendor_or_dependency_path": 0.218,
+    "todo_dense": 0.156,
+    "log_or_traceback": 0.072,
+    "possible_secret_generic_token": 0.066,
+    "exact_duplicate": 0.022,
+    "control_chars": 0.01,
+    "replacement_chars": 0.008,
+    "possible_secret_private_key": 0.008,
+    "notebook_json": 0.004,
+    "long_line_dense": 0.002,
+    "near_duplicate_bucket": 0.002
+  },
+  "flag_by_lang": {
+    "python": {
+      "python_syntax_error": 34664,
+      "license_boilerplate": 4527,
+      "generated_or_compiled": 1645,
+      "url_dense": 1445,
+      "too_short_fragment": 765,
+      "html_embedded": 355,
+      "vendor_or_dependency_path": 109,
+      "todo_dense": 78,
+      "log_or_traceback": 36,
+      "possible_secret_generic_token": 33,
+      "exact_duplicate": 11,
+      "control_chars": 5,
+      "replacement_chars": 4,
+      "possible_secret_private_key": 4,
+      "notebook_json": 2,
+      "long_line_dense": 1,
+      "near_duplicate_bucket": 1
+    }
+  },
+  "exact_duplicate_hashes": 11,
+  "python_syntax": {
+    "ok": 15336,
+    "syntax_error": 34664
+  },
+  "high_risk_flag_events": 36466,
+  "high_risk_event_rate_pct": 72.932,
+  "samples": {
+    "python_syntax_error": [
+      {
+        "reason": "python_syntax_error",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 3,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 2137,
+        "preview": "<reponame>vahini01/electoral_rolls\n#!/usr/bin/env python3\nCreated on Fri Nov 10 23:28:58 2017\n@author: dhingratul\nimport urllib.request\nfrom selenium import webdriver\nfrom selenium.webdriver.support.ui import Select\nfrom bs4 import BeautifulSoup\nimport ssl\nimport requests\nimport wget\nfrom PyPDF2 import PdfFileReader\ndef download_file(pdf_url, mdir, filename, flag=False):\n    if flag is True:\n        context = ssl._create_unverified_context()\n        response = urllib.request.urlopen(pdf_url, context=context)\n        response = urllib.request.urlopen(pdf_url)\n    filename = mdir + filename\n    file = open(filename, 'wb')\n    file.write(response.read())\n    if os.stat(filename).st_size == 0:\n        flag = 0\n        flag = 1\n    file.close()\n    return flag\ndef download_file_R(pdf_url, mdir, filename, file_out):\n    requests.packages.urllib3.disable_warnings()\n    while True:  # Keep trying until the webpage successfully downloads\n        try:\n            r = requests.get(pdf_url, verify=False, timeout=10)\n            break  # If it downloads, get out and get on with life\n        # If it doesn't download after the timeout period, an exceptions is thrown, and we try again\n        exce\n...[truncated]"
+      },
+      {
+        "reason": "python_syntax_error",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 4,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 5582,
+        "preview": "#!/usr/bin/env python\nfrom .base import DataReaderBase\nfrom ..tools import COL, _get_dates, to_float, to_int\nimport pandas as pd\n#from pandas.tseries.frequencies import to_offset\nfrom six.moves import cStringIO as StringIO\nimport logging\nimport traceback\nimport datetime\nimport json\nimport token, tokenize\ndef ymd_to_date(y, m, d):\n    Returns date\n    >>> expiration = {u'd': 1, u'm': 12, u'y': 2014}\n    >>> ymd_to_date(**expiration)\n    datetime.date(2014, 12, 1)\n    >>> ymd_to_date(2014, 3, 1)\n    datetime.date(2014, 3, 1)\n    return(datetime.date(year=y, month=m, day=d))\ndef date_to_ymd(date):\n    >>> date_to_ymd(datetime.date(year=2010, month=1, day=3))\n        'y': date.year,\n        'm': date.month,\n        'd': date.day\n    return(d)\ndef fix_lazy_json(in_text):\n    Handle lazy JSON - to fix expecting property name\n    this function fixes the json output from google\n    tokengen = tokenize.generate_tokens(StringIO(in_text).readline)\n    result = []\n    for tokid, tokval, _, _, _ in tokengen:\n        # fix unquoted strings\n        if (tokid == token.NAME):\n            if tokval not in ['true', 'false', 'null', '-Infinity', 'Infinity', 'NaN']:\n                tokid = token.STRING\n...[truncated]"
+      },
+      {
+        "reason": "python_syntax_error",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 5,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "examples/p02_budgets/budget_data_ingest/migrations/0001_initial.py",
+        "chars": 2835,
+        "preview": "<filename>examples/p02_budgets/budget_data_ingest/migrations/0001_initial.py\n# Generated by Django 1.11.13 on 2018-06-08 22:54\nfrom __future__ import unicode_literals\nfrom django.conf import settings\nimport django.contrib.postgres.fields.jsonb\nfrom django.db import migrations, models\nimport django.db.models.deletion\nclass Migration(migrations.Migration):\n    initial = True\n    dependencies = [\n        migrations.swappable_dependency(settings.AUTH_USER_MODEL),\n    operations = [\n        migrations.CreateModel(\n            name='BudgetItem',\n            fields=[\n                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),\n                ('year', models.IntegerField()),\n                ('agency', models.TextField()),\n                ('data_source', models.TextField()),\n                ('category', models.TextField()),\n                ('dollars_budgeted', models.DecimalField(decimal_places=2, max_digits=14)),\n                ('dollars_spent', models.DecimalField(decimal_places=2, max_digits=14)),\n                ('row_number', models.IntegerField()),\n            ],\n        ),\n        migrations.CreateModel(\n            name='Upload\n...[truncated]"
+      },
+      {
+        "reason": "python_syntax_error",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 6,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 10746,
+        "preview": "#  Redistribution and use in source and binary forms, with or without\n#  modification, are permitted provided that the following conditions are\n#     * Redistributions of source code must retain the above copyright\n#       notice, this list of conditions and the following disclaimer.\n#     * Redistributions in binary form must reproduce the above copyright\n#       notice, this list of conditions and the following disclaimer in the\n#       documentation and/or other materials provided with the distribution.\n#     * Neither the name of Image Engine Design nor the names of any\n#       other contributors to this software may be used to endorse or\n#       promote products derived from this software without specific prior\n#       written permission.\n#  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS\n#  IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,\n#  THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR\n#  PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR\n#  CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,\n#  EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,\n#  PROCU\n...[truncated]"
+      },
+      {
+        "reason": "python_syntax_error",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 8,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 1725,
+        "preview": "<reponame>giggslam/python-messengerbot-sdk<filename>setup.py\n#!/usr/bin/env python\n#  Licensed under the Apache License, Version 2.0 (the \"License\"); you may\n#  not use this file except in compliance with the License. You may obtain\n#  a copy of the License at\n#  Unless required by applicable law or agreed to in writing, software\n#  distributed under the License is distributed on an \"AS IS\" BASIS, WITHOUT\n#  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the\n#  License for the specific language governing permissions and limitations\n#  under the License.\nimport sys\nfrom setuptools import setup\nfrom setuptools.command.test import test as TestCommand\nwith open('facebookbot/__about__.py', 'r') as fd:\n    for line in fd:\n        m = reg.match(line)\n        if m:\n            __version__ = m.group(1)\n            break\ndef _requirements():\n    with open('requirements.txt', 'r') as fd:\n        return [name.strip() for name in fd.readlines()]\nwith open('README.rst', 'r') as fd:\n    long_description = fd.read()\n    name=\"fbsdk\",\n    version=__version__,\n    author=\"<NAME>\",\n    author_email=\"<EMAIL>\",\n    maintainer=\"<NAME>\",\n    maintainer_email=\"<EMAIL>\",\n    url=\"http\n...[truncated]"
+      },
+      {
+        "reason": "python_syntax_error",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 9,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "yzcore/templates/project_template/src/const/_job.py",
+        "chars": 359,
+        "preview": "<filename>yzcore/templates/project_template/src/const/_job.py\n#!/usr/bin/python3.6.8+\n@auth: cml\n@date: 2020-12-2\nclass JobStatus(object):\n    PENDING = 0  # 任务等待执行\n    STARTED = 100  # 任务执行开始\n    PROCESS = 110\n    POLLING = 120\n    CALLBACK = 130\n    SUCCESS = 200   # 任务执行成功\n    RETRY = 300     # 任务重试\n    FAILURE = 400   # 任务执行失败\n    REVOKED = 500   # 任务撤销"
+      },
+      {
+        "reason": "python_syntax_error",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 10,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "examples/mouse.py",
+        "chars": 931,
+        "preview": "<filename>examples/mouse.py\n#!/usr/bin/env python\nimport time\nimport math\nfrom trackball import TrackBall\nprint(\"\"\"Trackball: Mouse\nUse the trackball as a mouse in Raspbian, with right-click\nwhen the switch is pressed.\nPress Ctrl+C to exit!\ntrackball = TrackBall(interrupt_pin=4)\ntrackball.set_rgbw(0, 0, 0, 0)\n# Check for xte (used to control mouse)\nuse_xte = os.system('which xte') == 0\nif use_xte == 0:\n    raise RuntimeError(\"xte not found. Did you sudo apt install xautomation?\")\nwhile True:\n    up, down, left, right, switch, state = trackball.read()\n    # Send movements and clicks to xte\n    if switch:\n        cmd = 'xte \"mouseclick 1\"'\n        os.system(cmd)\n    elif right or up or left or down:\n        x = right - left\n        x = math.copysign(x**2, x)\n        y = down - up\n        y = math.copysign(y**2, y)\n        cmd = 'xte \"mousermove {} {}\"'.format(int(x), int(y))\n        os.system(cmd)\n    time.sleep(0.0001)"
+      },
+      {
+        "reason": "python_syntax_error",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 11,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "garaged/src/garage/tf/regressors/gaussian_mlp_regressor_model.py",
+        "chars": 11313,
+        "preview": "<filename>garaged/src/garage/tf/regressors/gaussian_mlp_regressor_model.py\n\"\"\"GaussianMLPRegressorModel.\"\"\"\nimport numpy as np\nimport tensorflow as tf\nimport tensorflow_probability as tfp\nfrom garage.experiment import deterministic\nfrom garage.tf.models import GaussianMLPModel\nclass GaussianMLPRegressorModel(GaussianMLPModel):\n    \"\"\"GaussianMLPRegressor based on garage.tf.models.Model class.\n    This class can be used to perform regression by fitting a Gaussian\n    distribution to the outputs.\n        input_shape (tuple[int]): Input shape of the training data.\n        output_dim (int): Output dimension of the model.\n        name (str): Model name, also the variable scope.\n        hidden_sizes (list[int]): Output dimension of dense layer(s) for\n            the MLP for mean. For example, (32, 32) means the MLP consists\n            of two hidden layers, each with 32 hidden units.\n        hidden_nonlinearity (callable): Activation function for intermediate\n            dense layer(s). It should return a tf.Tensor. Set it to\n            None to maintain a linear activation.\n        hidden_w_init (callable): Initializer function for the weight\n            of intermediate dense layer(s). \n...[truncated]"
+      }
+    ],
+    "generated_or_compiled": [
+      {
+        "reason": "generated_or_compiled",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 5,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "examples/p02_budgets/budget_data_ingest/migrations/0001_initial.py",
+        "chars": 2835,
+        "preview": "<filename>examples/p02_budgets/budget_data_ingest/migrations/0001_initial.py\n# Generated by Django 1.11.13 on 2018-06-08 22:54\nfrom __future__ import unicode_literals\nfrom django.conf import settings\nimport django.contrib.postgres.fields.jsonb\nfrom django.db import migrations, models\nimport django.db.models.deletion\nclass Migration(migrations.Migration):\n    initial = True\n    dependencies = [\n        migrations.swappable_dependency(settings.AUTH_USER_MODEL),\n    operations = [\n        migrations.CreateModel(\n            name='BudgetItem',\n            fields=[\n                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),\n                ('year', models.IntegerField()),\n                ('agency', models.TextField()),\n                ('data_source', models.TextField()),\n                ('category', models.TextField()),\n                ('dollars_budgeted', models.DecimalField(decimal_places=2, max_digits=14)),\n                ('dollars_spent', models.DecimalField(decimal_places=2, max_digits=14)),\n                ('row_number', models.IntegerField()),\n            ],\n        ),\n        migrations.CreateModel(\n            name='Upload\n...[truncated]"
+      },
+      {
+        "reason": "generated_or_compiled",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 46,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 6046,
+        "preview": "<reponame>bornhack/bornhack-website\n# Generated by Django 3.2.7 on 2021-09-13 03:52\nimport uuid\nfrom django.db import migrations, models\nclass Migration(migrations.Migration):\n    dependencies = [\n        (\"economy\", \"0026_alter_clearhaussettlement_options\"),\n    operations = [\n        migrations.CreateModel(\n            name=\"ZettleBalance\",\n            fields=[\n                (\n                    \"uuid\",\n                    models.UUIDField(\n                        default=uuid.uuid4,\n                        editable=False,\n                        primary_key=True,\n                        serialize=False,\n                    ),\n                ),\n                (\"created\", models.DateTimeField(auto_now_add=True)),\n                (\"updated\", models.DateTimeField(auto_now=True)),\n                (\n                    \"statement_time\",\n                    models.DateTimeField(\n                        help_text=\"The date and time this movement was added to the account statement.\"\n                    ),\n                ),\n                (\n                    \"payment_time\",\n                    models.DateTimeField(\n                        blank=True,\n                        help_\n...[truncated]"
+      },
+      {
+        "reason": "generated_or_compiled",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 112,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 13526,
+        "preview": "<reponame>youngwoon/DnC-RL-Tensorflow<gh_stars>1-10\n# EXPERIMENTAL: all may be removed soon\nfrom gym.benchmarks import scoring\nfrom gym.benchmarks.registration import benchmark_spec, register_benchmark, registry, register_benchmark_view  # imports used elsewhere\nregister_benchmark(\n    id='Atari200M',\n    scorer=scoring.TotalReward(),\n    name='Atari200M',\n    view_group=\"Atari\",\n    description='7 Atari games, with pixel observations',\n    tasks=[\n            'env_id': 'BeamRiderNoFrameskip-v4',\n            'trials': 2,\n            'max_timesteps': int(2e8),\n            'reward_floor':   363.9,\n            'reward_ceiling': 60000.0,\n        },\n            'env_id': 'BreakoutNoFrameskip-v4',\n            'trials': 2,\n            'max_timesteps': int(2e8),\n            'reward_floor':   1.7,\n            'reward_ceiling': 800.0,\n        },\n            'env_id': 'EnduroNoFrameskip-v4',\n            'trials': 2,\n            'max_timesteps': int(2e8),\n            'reward_floor':   0.0,\n            'reward_ceiling': 5000.0,\n        },\n            'env_id': 'PongNoFrameskip-v4',\n            'trials': 2,\n            'max_timesteps': int(2e8),\n            'reward_floor':  -20.7,\n            'r\n...[truncated]"
+      },
+      {
+        "reason": "generated_or_compiled",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 114,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 7388,
+        "preview": "<reponame>despairblue/esy-skia\n#!/usr/bin/env python\n# Copyright 2016 Google Inc.\n# Use of this source code is governed by a BSD-style license that can be\n# found in the LICENSE file.\n# Generate Android.bp for Skia from GN configuration.\nimport json\nimport pprint\nimport string\nimport subprocess\nimport tempfile\nimport gn_to_bp_utils\n# First we start off with a template for Android.bp,\n# with holes for source lists and include directories.\nbp = string.Template('''// This file is autogenerated by gn_to_bp.py.\ncc_library_static {\n    name: \"libskia\",\n    cflags: [\n        $cflags\n    cppflags:[\n        $cflags_cc\n    export_include_dirs: [\n        $export_includes\n    local_include_dirs: [\n        $local_includes\n    srcs: [\n        $srcs\n    arch: {\n        arm: {\n            srcs: [\n                $arm_srcs\n            ],\n            neon: {\n                srcs: [\n                    $arm_neon_srcs\n                ],\n            },\n        },\n        arm64: {\n            srcs: [\n                $arm64_srcs\n            ],\n        },\n        mips: {\n            srcs: [\n                $none_srcs\n            ],\n        },\n        mips64: {\n            srcs: [\n                $none_src\n...[truncated]"
+      },
+      {
+        "reason": "generated_or_compiled",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 135,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 1171,
+        "preview": "# Generated by Django 3.0.4 on 2020-07-14 11:00\nfrom django.db import migrations, models\nimport django.db.models.deletion\nclass Migration(migrations.Migration):\n    dependencies = [\n        (\"core\", \"0026_auto_20200713_1535\"),\n        (\"ai_lab\", \"0002_ailabusecase\"),\n    operations = [\n        migrations.CreateModel(\n            name=\"AiLabCaseStudy\",\n            fields=[\n                (\n                    \"articlepage_ptr\",\n                    models.OneToOneField(\n                        auto_created=True,\n                        on_delete=django.db.models.deletion.CASCADE,\n                        parent_link=True,\n                        primary_key=True,\n                        serialize=False,\n                        to=\"core.ArticlePage\",\n                    ),\n                ),\n                (\n                    \"use_case\",\n                    models.ForeignKey(\n                        on_delete=django.db.models.deletion.PROTECT,\n                        to=\"ai_lab.AiLabUseCase\",\n                    ),\n                ),\n            ],\n            options={\"abstract\": False,},\n            bases=(\"core.articlepage\", models.Model),\n        ),"
+      },
+      {
+        "reason": "generated_or_compiled",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 142,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "influxdb_service_sdk/model/container/resource_requirements_pb2.py",
+        "chars": 3338,
+        "preview": "<filename>influxdb_service_sdk/model/container/resource_requirements_pb2.py\n# Generated by the protocol buffer compiler.  DO NOT EDIT!\n# source: resource_requirements.proto\nimport sys\n_b=sys.version_info[0]<3 and (lambda x:x) or (lambda x:x.encode('latin1'))\nfrom google.protobuf import descriptor as _descriptor\nfrom google.protobuf import message as _message\nfrom google.protobuf import reflection as _reflection\nfrom google.protobuf import symbol_database as _symbol_database\n# @@protoc_insertion_point(imports)\n_sym_db = _symbol_database.Default()\nfrom influxdb_service_sdk.model.container import resource_list_pb2 as influxdb__service__sdk_dot_model_dot_container_dot_resource__list__pb2\nDESCRIPTOR = _descriptor.FileDescriptor(\n  name='resource_requirements.proto',\n  package='container',\n  syntax='proto3',\n  serialized_options=_b('ZCgo.easyops.local/contracts/protorepo-models/easyops/model/container'),\n  serialized_pb=_b('\\n\\x1bresource_requirements.proto\\x12\\tcontainer\\x1a\\x38influxdb_service_sdk/model/container/resource_list.proto\\\"j\\n\\x14ResourceRequirements\\x12\\'\\n\\x06limits\\x18\\x01 \\x01(\\x0b\\x32\\x17.container.ResourceList\\x12)\\n\\x08requests\\x18\\x02 \\x01(\\x0b\\x32\\x17.container.Reso\n...[truncated]"
+      },
+      {
+        "reason": "generated_or_compiled",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 158,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 317,
+        "preview": "# Generated by Django 3.1.13 on 2021-10-01 18:41\nfrom django.db import migrations\nclass Migration(migrations.Migration):\n    dependencies = [\n        ('reo', '0117_financialmodel_generator_fuel_escalation_pct'),\n        ('reo', '0120_auto_20210927_2046'),\n        ('reo', '0121_auto_20211012_0305')\n    operations = ["
+      },
+      {
+        "reason": "generated_or_compiled",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 169,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 23220,
+        "preview": "from abc import ABCMeta, abstractmethod\nfrom vmaf.tools.misc import make_absolute_path, run_process\nfrom vmaf.tools.stats import ListStats\n__copyright__ = \"Copyright 2016-2018, Netflix, Inc.\"\n__license__ = \"Apache, Version 2.0\"\nimport numpy as np\nimport ast\nfrom vmaf import ExternalProgramCaller, to_list\nfrom vmaf.config import VmafConfig, VmafExternalConfig\nfrom vmaf.core.executor import Executor\nfrom vmaf.core.result import Result\nfrom vmaf.tools.reader import YuvReader\nclass FeatureExtractor(Executor):\n    FeatureExtractor takes in a list of assets, and run feature extraction on\n    them, and return a list of corresponding results. A FeatureExtractor must\n    specify a unique type and version combination (by the TYPE and VERSION\n    attribute), so that the Result generated by it can be identified.\n    A derived class of FeatureExtractor must:\n        1) Override TYPE and VERSION\n        2) Override _generate_result(self, asset), which call a\n        command-line executable and generate feature scores in a log file.\n        3) Override _get_feature_scores(self, asset), which read the feature\n        scores from the log file, and return the scores in a dictionary format.\n    For a\n...[truncated]"
+      }
+    ],
+    "license_boilerplate": [
+      {
+        "reason": "license_boilerplate",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 8,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 1725,
+        "preview": "<reponame>giggslam/python-messengerbot-sdk<filename>setup.py\n#!/usr/bin/env python\n#  Licensed under the Apache License, Version 2.0 (the \"License\"); you may\n#  not use this file except in compliance with the License. You may obtain\n#  a copy of the License at\n#  Unless required by applicable law or agreed to in writing, software\n#  distributed under the License is distributed on an \"AS IS\" BASIS, WITHOUT\n#  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the\n#  License for the specific language governing permissions and limitations\n#  under the License.\nimport sys\nfrom setuptools import setup\nfrom setuptools.command.test import test as TestCommand\nwith open('facebookbot/__about__.py', 'r') as fd:\n    for line in fd:\n        m = reg.match(line)\n        if m:\n            __version__ = m.group(1)\n            break\ndef _requirements():\n    with open('requirements.txt', 'r') as fd:\n        return [name.strip() for name in fd.readlines()]\nwith open('README.rst', 'r') as fd:\n    long_description = fd.read()\n    name=\"fbsdk\",\n    version=__version__,\n    author=\"<NAME>\",\n    author_email=\"<EMAIL>\",\n    maintainer=\"<NAME>\",\n    maintainer_email=\"<EMAIL>\",\n    url=\"http\n...[truncated]"
+      },
+      {
+        "reason": "license_boilerplate",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 22,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 4374,
+        "preview": "<reponame>aws-samples/siem-on-amazon-opensearch-service<filename>source/lambda/geoip_downloader/index.py\n# SPDX-License-Identifier: MIT-0\n__copyright__ = ('Copyright Amazon.com, Inc. or its affiliates. '\n__url__ = 'https://github.com/aws-samples/siem-on-amazon-opensearch-service'\nimport hashlib\nimport json\nimport tarfile\nimport urllib.error\nimport urllib.parse\nimport urllib.request\nimport boto3\n# get var from lambda environment\n    s3bucket_name = os.environ['s3bucket_name']\n    license_key = os.environ['license_key']\nexcept KeyError:\n    raise Exception('ERROR: impossible to get lambda environment')\ns3key_prefix = os.environ.get('s3key_prefix', 'GeoLite2/')\ns3 = boto3.resource('s3')\nbucket = s3.Bucket(s3bucket_name)\nurl = 'https://download.maxmind.com/app/geoip_download?'\nput_files = ['GeoLite2-City', 'GeoLite2-ASN', 'GeoLite2-Country']\ndef download_file(filename):\n    for suffix in ['tar.gz', 'tar.gz.sha256']:\n        values = {'edition_id': filename, 'license_key': license_key,\n                  'suffix': suffix}\n        data = urllib.parse.urlencode(values)\n        try:\n            urllib.request.urlretrieve(\n                url + data, filename='/tmp/' + filename + '.' + suffi\n...[truncated]"
+      },
+      {
+        "reason": "license_boilerplate",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 31,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 1719,
+        "preview": "# Copyright (c) 2017-2018 {Flair Inc.} <NAME>\n# Licensed under the Apache License, Version 2.0 (the \"License\");\n# you may not use this file except in compliance with the License.\n# You may obtain a copy of the License at\n# Unless required by applicable law or agreed to in writing, software\n# distributed under the License is distributed on an \"AS IS\" BASIS,\n# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n# See the License for the specific language governing permissions and\n# limitations under the License.\nfrom taf.foundation.utils import ConnectionCache\nclass AUT(object):\n    cache = None\n    current = None\n    def __init__(\n            self,\n            name=None,\n            identifier=None,\n            **kwargs\n        if not AUT.cache:\n            AUT.cache = ConnectionCache(identifier)\n        self.id = self.cache.register(\n            self._create_instance(name, **kwargs),\n            identifier\n        AUT.current = self\n    @staticmethod\n    def launch(app_location, **kwargs):\n        raise NotImplementedError(\n            'Launch application'\n    def activate(self):\n        if self.id != self.cache.current_key:\n            self.cache.current_key =\n...[truncated]"
+      },
+      {
+        "reason": "license_boilerplate",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 37,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 3382,
+        "preview": "\"\"\"Unit tests for nautobot_device_onboarding.netdev_keeper module and its classes.\n(c) 2020-2021 Network To Code\nLicensed under the Apache License, Version 2.0 (the \"License\");\nyou may not use this file except in compliance with the License.\nYou may obtain a copy of the License at\nUnless required by applicable law or agreed to in writing, software\ndistributed under the License is distributed on an \"AS IS\" BASIS,\nWITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\nSee the License for the specific language governing permissions and\nlimitations under the License.\nfrom socket import gaierror\nfrom unittest import mock\nfrom django.test import TestCase\nfrom nautobot.dcim.models import Site, DeviceRole, Platform\nfrom nautobot_device_onboarding.exceptions import OnboardException\nfrom nautobot_device_onboarding.helpers import onboarding_task_fqdn_to_ip\nfrom nautobot_device_onboarding.models import OnboardingTask\nclass NetdevKeeperTestCase(TestCase):\n    \"\"\"Test the NetdevKeeper Class.\"\"\"\n    def setUp(self):\n        \"\"\"Create a superuser and token for API calls.\"\"\"\n        self.site1 = Site.objects.create(name=\"USWEST\", slug=\"uswest\")\n        self.device_role1 = DeviceRo\n...[truncated]"
+      },
+      {
+        "reason": "license_boilerplate",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 39,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 3142,
+        "preview": "Tencent is pleased to support the open source community by making BK-BASE 蓝鲸基础平台 available.\nBK-BASE 蓝鲸基础平台 is licensed under the MIT License.\nLicense for BK-BASE 蓝鲸基础平台:\nPermission is hereby granted, free of charge, to any person obtaining a copy of this software and associated\ndocumentation files (the \"Software\"), to deal in the Software without restriction, including without limitation\nthe rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,\nand to permit persons to whom the Software is furnished to do so, subject to the following conditions:\nThe above copyright notice and this permission notice shall be included in all copies or substantial\nportions of the Software.\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT\nLIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN\nNO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,\nWHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE\nSOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\nfrom copy\n...[truncated]"
+      },
+      {
+        "reason": "license_boilerplate",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 51,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 3206,
+        "preview": "#!/usr/bin/env python3\n# Written by <NAME>, <EMAIL>\n# Copyright (c) 2018 Blockscale LLC\n# released under the MIT license\nfrom flask import Flask, request, Response, json, jsonify\nfrom src.remote_signer import RemoteSigner\nfrom os import path\nimport logging\nlogging.basicConfig(filename='./remote-signer.log', format='%(asctime)s %(message)s', level=logging.INFO)\napp = Flask(__name__)\n# sample config used for testing\nconfig = {\n    'hsm_username': 'resigner',\n    'hsm_slot': 1,\n    'hsm_lib': '/opt/cloudhsm/lib/libcloudhsm_pkcs11.so',\n    'node_addr': 'http://node.internal:8732',\n    'keys': {\n        '<KEY>': {\n            'public_key': '<KEY>',\n            'private_handle': 7,\n            'public_handle': 9\nlogging.info('Opening keys.json')\nif path.isfile('keys.json'):\n    logging.info('Found keys.json')\n    with open('keys.json', 'r') as myfile:\n        json_blob = myfile.read().replace('\\n', '')\n        logging.info('Parsed keys.json successfully as JSON')\n        config = json.loads(json_blob)\n        logging.info('Config contains: {}'.format(json.dumps(config, indent=2)))\ndef sign(key_hash):\n    response = None\n        data = request.get_json(force=True)\n        if key_hash in c\n...[truncated]"
+      },
+      {
+        "reason": "license_boilerplate",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 55,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 79,
+        "preview": "#Copyright ReportLab Europe Ltd. 2000-2016\n#see license.txt for license details"
+      },
+      {
+        "reason": "license_boilerplate",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 56,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 2614,
+        "preview": "# Copyright 2020 - 2021 MONAI Consortium\n# Licensed under the Apache License, Version 2.0 (the \"License\");\n# you may not use this file except in compliance with the License.\n# You may obtain a copy of the License at\n# Unless required by applicable law or agreed to in writing, software\n# distributed under the License is distributed on an \"AS IS\" BASIS,\n# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n# See the License for the specific language governing permissions and\n# limitations under the License.\nimport unittest\nimport torch\nimport torch.nn as nn\nfrom parameterized import parameterized\nfrom monai.networks import eval_mode\nfrom monai.networks.blocks import SubpixelUpsample\nfrom monai.networks.layers.factories import Conv\nTEST_CASE_SUBPIXEL = []\nfor inch in range(1, 5):\n    for dim in range(1, 4):\n        for factor in range(1, 3):\n            test_case = [\n                {\"dimensions\": dim, \"in_channels\": inch, \"scale_factor\": factor},\n                (2, inch, *([8] * dim)),\n                (2, inch, *([8 * factor] * dim)),\n            ]\n            TEST_CASE_SUBPIXEL.append(test_case)\nTEST_CASE_SUBPIXEL_2D_EXTRA = [\n    {\"dimensions\": 2, \"in_channels\n...[truncated]"
+      }
+    ],
+    "url_dense": [
+      {
+        "reason": "url_dense",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 42,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "met/metadataparser/models/entity_type.py<gh_stars>10-100",
+        "chars": 963,
+        "preview": "<filename>met/metadataparser/models/entity_type.py<gh_stars>10-100\n# MET v2 Metadate Explorer Tool\n# This Software is Open Source. See License: https://github.com/TERENA/met/blob/master/LICENSE.md\n# This Software is based on MET v1 developed for TERENA by Yaco Sistemas, http://www.yaco.es/\n# MET v2 was developed for TERENA by <NAME>, DAASI International GmbH, http://www.daasi.de\n# Current version of MET has been revised for performance improvements by <NAME>,\nfrom django.db import models\nfrom django.utils.translation import ugettext_lazy as _\nclass EntityType(models.Model):\n    Model describing the type of an entity.\n    name = models.CharField(blank=False, max_length=20, unique=True,\n                            verbose_name=_(u'Name'), db_index=True)\n    xmlname = models.CharField(blank=False, max_length=20, unique=True,\n                               verbose_name=_(u'Name in XML'), db_index=True)\n    def __unicode__(self):\n        return self.name"
+      },
+      {
+        "reason": "url_dense",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 48,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 954,
+        "preview": "import requests\nfrom allauth.socialaccount.providers.oauth2.views import (\n    OAuth2Adapter,\n    OAuth2CallbackView,\n    OAuth2LoginView,\nfrom .provider import DropboxOAuth2Provider\nclass DropboxOAuth2Adapter(OAuth2Adapter):\n    provider_id = DropboxOAuth2Provider.id\n    access_token_url = \"https://api.dropbox.com/oauth2/token\"\n    authorize_url = \"https://www.dropbox.com/oauth2/authorize\"\n    profile_url = \"https://api.dropbox.com/2/users/get_current_account\"\n    redirect_uri_protocol = \"https\"\n    def complete_login(self, request, app, token, **kwargs):\n        response = requests.post(\n            self.profile_url,\n            headers={\"Authorization\": \"Bearer %s\" % (token.token,)},\n        response.raise_for_status()\n        return self.get_provider().sociallogin_from_response(request, response.json())\noauth_login = OAuth2LoginView.adapter_view(DropboxOAuth2Adapter)\noauth_callback = OAuth2CallbackView.adapter_view(DropboxOAuth2Adapter)"
+      },
+      {
+        "reason": "url_dense",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 66,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 2746,
+        "preview": "\"\"\"Methods for working with ontologies and the OLS.\"\"\"\nfrom urllib.parse import quote_plus\nimport requests\nOLS_API_ROOT = \"http://www.ebi.ac.uk/ols/api\"\n# Curie means something like CL:0000001\ndef _ontology_name(curie):\n    \"\"\"Get the name of the ontology from the curie, CL or UBERON for example.\"\"\"\n    return curie.split(\":\")[0]\ndef _ontology_value(curie):\n    \"\"\"Get the id component of the curie, 0000001 from CL:0000001 for example.\"\"\"\n    return curie.split(\":\")[1]\ndef _double_encode(url):\n    \"\"\"Double url encode a url. This is required by the OLS API.\"\"\"\n    return quote_plus(quote_plus(url))\ndef _iri(curie):\n    \"\"\"Get the iri from a curie. This is a bit hopeful that they all map to purl.obolibrary.org\"\"\"\n    if _ontology_name(curie) == \"EFO\":\n        return f\"http://www.ebi.ac.uk/efo/EFO_{_ontology_value(curie)}\"\n    return f\"http://purl.obolibrary.org/obo/{_ontology_name(curie)}_{_ontology_value(curie)}\"\nclass OntologyLookupError(Exception):\n    \"\"\"Exception for some problem with looking up ontology information.\"\"\"\ndef _ontology_info_url(curie):\n    \"\"\"Get the to make a GET to to get information about an ontology term.\"\"\"\n    # If the curie is empty, just return an empty st\n...[truncated]"
+      },
+      {
+        "reason": "url_dense",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 141,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "backend/ibutsu_server/controllers/health_controller.py",
+        "chars": 1715,
+        "preview": "<filename>backend/ibutsu_server/controllers/health_controller.py\nfrom flask import current_app\nfrom sqlalchemy.exc import InterfaceError\nfrom sqlalchemy.exc import OperationalError\n    from ibutsu_server.db.model import Result\n    IS_CONNECTED = True\nexcept ImportError:\n    IS_CONNECTED = False\ndef get_health(token_info=None, user=None):\n    \"\"\"Get a health report\n    :rtype: Health\n    return {\"status\": \"OK\", \"message\": \"Service is running\"}\ndef get_database_health(token_info=None, user=None):\n    \"\"\"Get a health report for the database\n    :rtype: Health\n    response = ({\"status\": \"Pending\", \"message\": \"Fetching service status\"}, 200)\n    # Try to connect to the database, and handle various responses\n        if not IS_CONNECTED:\n            response = ({\"status\": \"Error\", \"message\": \"Incomplete database configuration\"}, 500)\n        else:\n            Result.query.first()\n            response = ({\"status\": \"OK\", \"message\": \"Service is running\"}, 200)\n    except OperationalError:\n        response = ({\"status\": \"Error\", \"message\": \"Unable to connect to the database\"}, 500)\n    except InterfaceError:\n        response = ({\"status\": \"Error\", \"message\": \"Incorrect connection configurati\n...[truncated]"
+      },
+      {
+        "reason": "url_dense",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 164,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 19613,
+        "preview": "from matplotlib.pyplot import title\nimport streamlit as st\nimport pandas as pd\nimport altair as alt\nimport pydeck as pdk\nimport glob\nfrom wordcloud import WordCloud\nimport streamlit_analytics\npath = os.path.dirname(__file__)\nstreamlit_analytics.start_tracking()\ndef load_gnd_top_daten(typ):\n    gnd_top_df = pd.DataFrame()\n    for file in glob.glob(f'{path}/../stats/title_gnd_{typ}_*.csv'):\n        gnd_top_df = gnd_top_df.append(pd.read_csv(file, index_col=None))\n    return gnd_top_df\ndef sachbegriff_cloud():\n    #wordcloud der top 100 sachbegriffe eines auszuwählenden tages der letzten 10 werktage\n    st.header('TOP 100 Sachbegriffe pro Tag')\n    st.write('Wählen Sie ein Datum aus den letzten 10 Werktagen vor der letzten Aktualisierung der Daten des Dashboards und sehen Sie eine Wordcloud der 100 meistverwendeten GND-Sachbegriffe dieses Tages. Die Größe des Begriffes entspricht der Häufigkeit des Sachbegriffs.')\n    files = glob.glob(f'{path}/../stats/*Ts-count.csv')\n    daten = [x[-23:-13] for x in files]\n    daten.sort()\n    daten_filter = st.select_slider('Wählen Sie ein Datum', options=daten, value=daten[-1])\n    df = pd.read_csv(f'{path}/../stats/{daten_filter}-Ts-count.csv')\n \n...[truncated]"
+      },
+      {
+        "reason": "url_dense",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 195,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 8754,
+        "preview": "<reponame>chateval/chatevalv2\n\"\"\"Stores all the helper functions that generate html\"\"\"\nimport random\ndef generate_2choice_html(example):\n  '''Makes html for ranking form for the specified row index.\n  Returns the HTML for a table of radio buttons used for ranking, \n  as well as a count of the total number of radio buttons.\n  # Check for duplicates.\n  if example.target_lines[0] == example.target_lines[1]:\n    return \"\", 0\n  # Find all the non-duplicate target indices.\n  target_indices = [0, 1]\n  # Randomize the order targets are shown in.\n  random.shuffle(target_indices)\n  num_targets = len(target_indices)\n  source_html = ''\n  speaker = 'A'\n  for utterance in example.source_line_utterances():\n    source_html += '<h4>Speaker %s: %s</h4>' % (speaker, utterance)\n    speaker = 'A' if speaker == 'B' else 'B'\n  html = \"\"\"\n      <br/>\n      <div class=\"panel panel-default btn-group\">\n      <br/>\n      <table>\n      \"\"\" % (source_html)\n      <tr>\n      <td>Speaker %s: %s</td>\"\"\" % (speaker, example.target_lines[target_indices[0]])\n      <td>\n        <label class=\"btn\">\n          <input type=\"radio\" class=\"%s\" name=\"%s-target-%s\" data-col=\"1\" value=\"1\"/>\n        </label>\n      </td>\n      </\n...[truncated]"
+      },
+      {
+        "reason": "url_dense",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 212,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 3224,
+        "preview": "#!/usr/bin/env python\n# Copyright (C) 2016 The Qt Company Ltd.\n# This file is part of Qt Creator.\n# Commercial License Usage\n# Licensees holding valid commercial Qt licenses may use this file in\n# accordance with the commercial license agreement provided with the\n# Software or, alternatively, in accordance with the terms contained in\n# a written agreement between you and The Qt Company. For licensing terms\n# and conditions see https://www.qt.io/terms-conditions. For further\n# information use the contact form at https://www.qt.io/contact-us.\n# GNU General Public License Usage\n# Alternatively, this file may be used under the terms of the GNU\n# General Public License version 3 as published by the Free Software\n# Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT\n# included in the packaging of this file. Please review the following\n# information to ensure the GNU General Public License requirements will\nimport sys\nimport stat\nimport difflib\nimport inspect\nimport getopt\ndef referenceFile():\n    if sys.platform.startswith('linux'):\n        filename = 'makeinstall.linux'\n    elif sys.platform.startswith('win'):\n        filename = 'makeinstall.windows'\n    elif sys.pla\n...[truncated]"
+      },
+      {
+        "reason": "url_dense",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 214,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "tests/test_engine.py<gh_stars>10-100",
+        "chars": 2195,
+        "preview": "<filename>tests/test_engine.py<gh_stars>10-100\nimport adblock\nimport pytest\nSMALL_FILTER_LIST = \"\"\"\n||wikipedia.org^\n||old.reddit.com^\n||lobste.rs^\ndef empty_engine():\n    return adblock.Engine(adblock.FilterSet())\ndef test_engine_creation_and_blocking():\n    filter_set = adblock.FilterSet(debug=True)\n    filter_set.add_filter_list(SMALL_FILTER_LIST)\n    engine = adblock.Engine(filter_set=filter_set)\n    blocker_result_wikipedia = engine.check_network_urls(\n        url=\"https://wikipedia.org/img.png\",\n        source_url=\"https://google.com/\",\n        request_type=\"image\",\n    assert isinstance(blocker_result_wikipedia, adblock.BlockerResult)\n    assert blocker_result_wikipedia.matched\n    blocker_result_facebook = engine.check_network_urls(\n        \"https://facebook.com/directory/img.png\",\n        \"https://old.reddit.com/r/all\",\n        \"image\",\n    assert isinstance(blocker_result_facebook, adblock.BlockerResult)\n    assert not blocker_result_facebook.matched\ndef test_serde_file(tmpdir):\n    path = str(tmpdir / \"cache.dat\")\n    engine0 = empty_engine()\n    with pytest.raises(FileNotFoundError):\n        # We haven't created the cache.dat file, so we should get an exception\n        \n...[truncated]"
+      }
+    ],
+    "too_short_fragment": [
+      {
+        "reason": "too_short_fragment",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 45,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 65,
+        "preview": "from algovision import app\n    app.run(debug=True,host='0.0.0.0')"
+      },
+      {
+        "reason": "too_short_fragment",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 55,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 79,
+        "preview": "#Copyright ReportLab Europe Ltd. 2000-2016\n#see license.txt for license details"
+      },
+      {
+        "reason": "too_short_fragment",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 170,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 52,
+        "preview": "<gh_stars>10-100\ndf['Age'].hist() #bins=30, log=True"
+      },
+      {
+        "reason": "too_short_fragment",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 183,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 76,
+        "preview": "Custom exceptions for nflfastpy module\nclass SeasonNotFoundError(Exception):"
+      },
+      {
+        "reason": "too_short_fragment",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 208,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 72,
+        "preview": "<gh_stars>10-100\nfrom .crnn import CRNN\nfrom .crnn import CRNN_Attention"
+      },
+      {
+        "reason": "too_short_fragment",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 255,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 74,
+        "preview": "<reponame>yNeshy/voice-change\nfrom AudioLib.AudioEffect import AudioEffect"
+      },
+      {
+        "reason": "too_short_fragment",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 269,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 46,
+        "preview": "#!/usr/bin/env python\nfrom .api import capture"
+      },
+      {
+        "reason": "too_short_fragment",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 278,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 67,
+        "preview": "from .core import EqualityHashKey, unzip\nfrom .parallel import fold"
+      }
+    ],
+    "html_embedded": [
+      {
+        "reason": "html_embedded",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 161,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 7146,
+        "preview": "# Built-in modules #\n# Internal modules #\nfrom seqenv import module_dir\nfrom seqenv.common.cache import property_cached\n# Third party modules #\nimport sh, networkx\nimport matplotlib.colors\n# A list of envos to help test this module #\ntest_envos = [\n    \"ENVO:00000033\",\n    \"ENVO:00000043\",\n    \"ENVO:00000067\",\n    \"ENVO:00000143\",\n    \"ENVO:00000210\",\n    \"ENVO:00000215\",\n    \"ENVO:00000475\",\nclass Ontology(object):\n    \"\"\"A object that gives you access to the graph (network with nodes and edges)\n    of the ENVO ontology from the OBO file's path.\n    Other libraries not used here that could be added:\n    def __init__(self, path=None):\n        \"\"\"Give the path to the OBO file\"\"\"\n        if path is None: path = module_dir + 'data_envo/envo.obo'\n        self.path = path\n    # orange_obo\n    # goatools\n    # orange_network\n    # pygraphviz\n    # networkx\n    @property_cached\n    def orange_obo(self):\n        \"\"\"The ontology loaded by the `orange` library.\n        To install: $ pip install Orange-Bioinformatics\n        \"\"\"\n        from orangecontrib.bio.ontology import OBOOntology\n        return OBOOntology(self.path)\n    @property_cached\n    def goatools(self):\n        \"\"\"The network l\n...[truncated]"
+      },
+      {
+        "reason": "html_embedded",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 195,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 8754,
+        "preview": "<reponame>chateval/chatevalv2\n\"\"\"Stores all the helper functions that generate html\"\"\"\nimport random\ndef generate_2choice_html(example):\n  '''Makes html for ranking form for the specified row index.\n  Returns the HTML for a table of radio buttons used for ranking, \n  as well as a count of the total number of radio buttons.\n  # Check for duplicates.\n  if example.target_lines[0] == example.target_lines[1]:\n    return \"\", 0\n  # Find all the non-duplicate target indices.\n  target_indices = [0, 1]\n  # Randomize the order targets are shown in.\n  random.shuffle(target_indices)\n  num_targets = len(target_indices)\n  source_html = ''\n  speaker = 'A'\n  for utterance in example.source_line_utterances():\n    source_html += '<h4>Speaker %s: %s</h4>' % (speaker, utterance)\n    speaker = 'A' if speaker == 'B' else 'B'\n  html = \"\"\"\n      <br/>\n      <div class=\"panel panel-default btn-group\">\n      <br/>\n      <table>\n      \"\"\" % (source_html)\n      <tr>\n      <td>Speaker %s: %s</td>\"\"\" % (speaker, example.target_lines[target_indices[0]])\n      <td>\n        <label class=\"btn\">\n          <input type=\"radio\" class=\"%s\" name=\"%s-target-%s\" data-col=\"1\" value=\"1\"/>\n        </label>\n      </td>\n      </\n...[truncated]"
+      },
+      {
+        "reason": "html_embedded",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 321,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 2640,
+        "preview": "<reponame>ffffff0x/python-hacker\n#!/usr/bin/env python\n# Date: 2019/2/22\n# Created by 冰河\n# Description 将生成的bindshell.exe提交到vscan.novirusthanks.org检测\n#             用法 python check_virus.py -f bindshell.exe\nimport httplib\nimport time\nimport optparse\nfrom urlparse import urlparse\ndef printResults(url):\n    status = 200\n    host = urlparse(url)[1]\n    path = urlparse(url)[2]\n    if 'analysis' not in path:\n        while status != 302:\n            conn = httplib.HTTPConnection(host)\n            conn.request('GET', path)\n            resp = conn.getresponse()\n            status = resp.status\n            print '[+] Scanning file...'\n            conn.close()\n            time.sleep(15)\n    print '[+] Scan Complete.'\n    path = path.replace('file', 'analysis')\n    conn = httplib.HTTPConnection(host)\n    conn.request('GET', path)\n    resp = conn.getresponse()\n    data = resp.read()\n    conn.close()\n    reResults = re.findall(r'Detection rate:.*\\)', data)\n    htmlStripRes = reResults[1]. \\\n        replace('&lt;font color=\\'red\\'&gt;', ''). \\\n        replace('&lt;/font&gt;', '')\n    print '[+] ' + str(htmlStripRes)\ndef uploadFile(fileName):\n    print \"[+] Uploading file to NoVirusThanks...\"\n    f\n...[truncated]"
+      },
+      {
+        "reason": "html_embedded",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 375,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 10519,
+        "preview": "<reponame>loftwah/appscale\n#!/usr/bin/env python\n# Copyright 2007 Google Inc.\n# Licensed under the Apache License, Version 2.0 (the \"License\");\n# you may not use this file except in compliance with the License.\n# You may obtain a copy of the License at\n# Unless required by applicable law or agreed to in writing, software\n# distributed under the License is distributed on an \"AS IS\" BASIS,\n# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n# See the License for the specific language governing permissions and\n# limitations under the License.\n\"\"\"Handles login/logout pages and dealing with user cookies.\nIncludes a WSGI application that serves the login page and handles login and\nlogout HTTP requests. It accepts these GET query parameters:\n  continue: URL to redirect to after a login or logout has completed.\n  email: Email address to set for the client.\n  admin: If 'True', the client should be logged in as an admin.\n  action: What action to take ('Login' or 'Logout').\nTo view the current user information and a form for logging in and out,\nsupply no parameters.\nimport cgi\nimport Cookie\nimport hashlib\nimport logging\nimport sha\nimport sys\nimport urllib\nimport uuid\nim\n...[truncated]"
+      },
+      {
+        "reason": "html_embedded",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 470,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 7145,
+        "preview": "<reponame>2yz/MMdnn\nimport base64\nfrom google.protobuf import json_format\nfrom importlib import import_module\nimport json\nimport numpy as np\nimport sys\nfrom mmdnn.conversion.caffe.errors import ConversionError\nfrom mmdnn.conversion.caffe.common_graph import fetch_attr_value\nfrom mmdnn.conversion.caffe.utils import get_lower_case, get_upper_case, get_real_name\nclass JsonFormatter(object):\n    '''Dumpt a DL graph into a Json file.'''\n    def __init__(self, graph):\n        self.graph_def = graph.as_graph_def()\n    def dump(self, json_path):\n        json_txt = json_format.MessageToJson(self.graph_def)\n        parsed = json.loads(json_txt)\n        formatted = json.dumps(parsed, indent=4, sort_keys=True)\n        with open(json_path, 'w') as f:\n            f.write(formatted)\nclass PyWriter(object):\n    '''Dumpt a DL graph into a Python script.'''\n    def __init__(self, graph, data, target):\n        self.graph = graph\n        self.data = data\n        self.tab = ' ' * 4\n        self.prefix = ''\n        target = target.lower()\n        if target == 'tensorflow':\n            self.target = target\n            self.net = 'TensorFlowNetwork'\n        elif target == 'keras':\n            self.target \n...[truncated]"
+      },
+      {
+        "reason": "html_embedded",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 599,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 10632,
+        "preview": "from django.core.management.base import BaseCommand\nimport logging\nfrom talentmap_api.common.xml_helpers import XMLloader, strip_extra_spaces, parse_boolean, parse_date, get_nested_tag\nfrom talentmap_api.language.models import Language, Proficiency\nfrom talentmap_api.position.models import Grade, Skill, Position, CapsuleDescription, SkillCone\nfrom talentmap_api.organization.models import Organization, Post, TourOfDuty, Location, Country\nclass Command(BaseCommand):\n    help = 'Loads an XML into a supported file'\n    logger = logging.getLogger(__name__)\n    def __init__(self, *args, **kwargs):\n        super(Command, self).__init__(*args, **kwargs)\n        self.modes = {\n            'languages': mode_languages,\n            'proficiencies': mode_proficiencies,\n            'grades': mode_grades,\n            'skills': mode_skills,\n            'organizations': mode_organizations,\n            'positions': mode_positions,\n            'tours_of_duty': mode_tour_of_duty,\n            'posts': mode_post,\n            'countries': mode_country,\n            'locations': mode_location,\n            'capsule_descriptions': mode_capsule_description,\n            'skill_cone': mode_skill_cone\n    def ad\n...[truncated]"
+      },
+      {
+        "reason": "html_embedded",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 650,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "jp_doodle/quantity_forest.py",
+        "chars": 7767,
+        "preview": "<filename>jp_doodle/quantity_forest.py\nfrom jp_doodle import doodle_files\nqf_js = doodle_files.vendor_path(\"js/quantity_forest.js\")\nfrom jp_doodle import dual_canvas\nimport jp_proxy_widget\nfrom subprocess import check_output\nimport pprint\nif bytes != str:\n    unicode = str\ndef directory_usage(directory, epsilon=0.02):\n    if not os.path.isdir(directory):\n        return None\n    ls = os.listdir(directory)\n    result = {}\n    total = 0.0\n    for fn in ls:\n        path = os.path.join(directory, fn)\n        try:\n            usage = check_output([\"du\", \"-s\", path])\n        except Exception:\n            pass\n        else:\n            usage = unicode(usage, \"utf8\")   # py 3\n            [snum, sname] = usage.strip().split(\"\\t\")\n            num = float(snum)\n            total += num\n            result[fn] = (path, num)\n    final = {}\n    other = 0\n    for fn in result:\n        (path, num) = result[fn]\n        portion = num/total\n        if portion < epsilon:\n            other += num\n        else:\n            final[fn] = {\"name\": fn, \"file_size\": num, \"percent\": portion*100, \"id\": path}\n    if other>epsilon:\n        final[\"*other\"] = {\"name\": \"*other\", \"file_size\": other, \"percent\": other*10\n...[truncated]"
+      },
+      {
+        "reason": "html_embedded",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 755,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 5353,
+        "preview": "import sys\nimport subprocess as sub\nSimple utility script to generate HTML charts of how ANTLR parses\nevery query and what is the resulting AST. \ndef run(grammar_name, basedir='', \n        cp='.:/dvt/antlr-142/lib/antlr-3.4-complete.jar:/x/dev/antlr-34/lib/antlr-3.4-complete.jar',\n        grammardir='',\n        java_executable='java',\n        dot_executable='dot'\n        ):\n    if not basedir:\n    old_dir = os.getcwd()\n    thisdir = grammardir\n    if not thisdir:        \n        thisdir = os.path.dirname(os.path.abspath(__file__))\n    os.chdir(thisdir)\n    cp += os.pathsep + basedir\n    #print \"We'll generate ANTLR graphs\\ngramar: %s\\nbasedir: %s\\nclasspath: %s\\nparserdir: %s\" % (grammar_name, basedir, cp, thisdir)\n    grammar_file = os.path.join(thisdir, grammar_name + '.g')\n    if not os.path.exists(grammar_file):\n        raise Exception('Grammar %s does not exist in classpath: %s' % (grammar_file, cp))\n    tmp_file = os.path.join(basedir, 'ast-tree.dot')\n    index_file = os.path.join(basedir, '%s.html' % grammar_name)\n    gunit_file = os.path.join(thisdir, grammar_name + '.gunit')\n    generate_ast_command = '%s -cp %s org.apache.lucene.queryparser.flexible.aqp.parser.BuildAST %s\n...[truncated]"
+      }
+    ],
+    "possible_secret_generic_token": [
+      {
+        "reason": "possible_secret_generic_token",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 528,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 1452,
+        "preview": "# Copyright 2021 Google LLC\n# Licensed under the Apache License, Version 2.0 (the \"License\");\n# you may not use this file except in compliance with the License.\n# You may obtain a copy of the License at\n# Unless required by applicable law or agreed to in writing, software\n# distributed under the License is distributed on an \"AS IS\" BASIS,\n# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n# See the License for the specific language governing permissions and\n# limitations under the License.\n# [START forms_delete_watch]\nfrom __future__ import print_function\nfrom apiclient import discovery\nfrom httplib2 import Http\nfrom oauth2client import client, file, tools\nSCOPES = \"https://www.googleapis.com/auth/drive\"\nAPI_KEY = \"<YOUR_API_KEY>\"\nDISCOVERY_DOC = f\"https://forms.googleapis.com/$discovery/rest?version=v1beta&key={API_KEY}&labels=FORMS_BETA_TESTERS\"\nstore = file.Storage('credentials.json')\ncreds = None\nif not creds or creds.invalid:\n    flow = client.flow_from_clientsecrets('client_secret.json', SCOPES)\n    creds = tools.run_flow(flow, store)\nservice = discovery.build('forms', 'v1beta', http=creds.authorize(\n    Http()), discoveryServiceUrl=DISCOVERY_DOC, stat\n...[truncated]"
+      },
+      {
+        "reason": "possible_secret_generic_token",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 1699,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 3061,
+        "preview": "import asyncio\nfrom collections import defaultdict\nfrom datetime import timedelta\nimport pytest\nfrom yui.api import SlackAPI\nfrom yui.bot import Bot\nfrom yui.box import Box\nfrom yui.types.slack.response import APIResponse\nfrom yui.utils import json\nfrom .util import FakeImportLib\ndef test_bot_init(event_loop, monkeypatch, bot_config):\n    importlib = FakeImportLib()\n    monkeypatch.setattr('importlib.import_module', importlib.import_module)\n    bot_config.APPS = ['yui.app1', 'yui.app2']\n    box = Box()\n    bot = Bot(bot_config, event_loop, using_box=box)\n    assert bot.config == bot_config\n    assert bot.channels == []\n    assert bot.ims == []\n    assert bot.groups == []\n    assert bot.restart is False\n    assert isinstance(bot.api, SlackAPI)\n    assert bot.box is box\n    assert isinstance(bot.queue, asyncio.Queue)\n    assert importlib.import_queue == [\n        'yui.app1',\n        'yui.app2',\n@pytest.mark.asyncio\nasync def test_call(event_loop, bot_config, response_mock):\n    token = 'asdf<PASSWORD>'\n    response_mock.post(\n        'https://slack.com/api/test11',\n        body=json.dumps({'res': 'hello world!'}),\n        headers={'content-type': 'application/json'},\n        status=2\n...[truncated]"
+      },
+      {
+        "reason": "possible_secret_generic_token",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 2402,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 3476,
+        "preview": "<reponame>mtcolman/django-DefectDojo\nfrom rest_framework.test import APITestCase, APIClient\nfrom django.urls import reverse\nfrom rest_framework.authtoken.models import Token\nclass UserTest(APITestCase):\n    Test the User APIv2 endpoint.\n    fixtures = ['dojo_testdata.json']\n    def setUp(self):\n        token = Token.objects.get(user__username='admin')\n        self.client = APIClient()\n        self.client.credentials(HTTP_AUTHORIZATION='Token ' + token.key)\n    def test_user_list(self):\n        r = self.client.get(reverse('user-list'))\n        self.assertEqual(r.status_code, 200, r.content[:1000])\n        user_list = r.json()['results']\n        self.assertTrue(len(user_list) >= 1, r.content[:1000])\n        for user in user_list:\n            for item in ['username', 'first_name', 'last_name', 'email']:\n                self.assertIn(item, user, r.content[:1000])\n            for item in ['password']:\n                self.assertNotIn(item, user, r.content[:1000])\n    def test_user_add(self):\n        # simple user without password\n        r = self.client.post(reverse('user-list'), {\n            \"username\": \"api-user-1\"\n        }, format='json')\n        self.assertEqual(r.status_code, 201\n...[truncated]"
+      },
+      {
+        "reason": "possible_secret_generic_token",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 4684,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "pug-bot/apitoken.py",
+        "chars": 55,
+        "preview": "<filename>pug-bot/apitoken.py\nTOKEN = \"YOUR_TOKEN_HERE\""
+      },
+      {
+        "reason": "possible_secret_generic_token",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 5383,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 3194,
+        "preview": "# services/ovpn_server/project/tests/test_ovpn_server.py\nimport json\nfrom flask import current_app\nfrom project.tests.base import BaseTestCase\nclass TestOvpnServer(BaseTestCase):\n    def test_certificates(self):\n        with self.client:\n            pki_path = current_app.config['PKI_PATH']\n            token = current_app.config['SECRET_KEY']\n            response = self.client.post(\n                '/cert/upload',\n                data={\n                    'file': (io.BytesIO(b'test'), 'test_cert.req'),\n                    'cert': 'False'\n                },\n                content_type='multipart/form-data',\n                headers={'Authorization': f'Bearer {token}'}\n            )\n            data = json.loads(response.data.decode())\n            self.assertIn('file uploaded', data['message'])\n            self.assertEqual(response.status_code, 200)\n            self.assertTrue(os.path.isfile(f'{pki_path}/reqs/test_cert.req'))\n            os.remove(f'{pki_path}/reqs/test_cert.req')\n            self.assertFalse(os.path.isfile(f'{pki_path}/reqs/test_cert.req'))\n    def test_certificates_invalid_token(self):\n        with self.client:\n            filename = 'test_cert.crt'\n            to\n...[truncated]"
+      },
+      {
+        "reason": "possible_secret_generic_token",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 5404,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "mooc_access_number.py",
+        "chars": 5822,
+        "preview": "<filename>mooc_access_number.py\nimport requests,time,json,re,base64\nrequests.packages.urllib3.disable_warnings()\nfrom io import BytesIO\nfrom PIL import Image,ImageDraw,ImageChops\nfrom lxml import etree\nfrom urllib.parse import urlparse, parse_qs\nusername = \"\"   #登录账号\npassword = \"\"   #登录密码\ns = requests.Session()\ns.headers.update({'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.122 Safari/537.36'})\ndef login():\n    global uid,username,password\n    if(username == \"\" or password == \"\"):\n        username = input(\"登录账号：\")\n        password = input(\"登录密码：\")\n    #旧接口，已失效\n    #url=\"http://i.chaoxing.com/vlogin?passWord=\"+str(password)+\"&userName=\"+str(username)\n    url = f'https://passport2-api.chaoxing.com/v11/loginregister?uname='+str(username)+'&code='+str(password)\n    res= s.get(url)\n    if(\"验证通过\" in str(res.text)):\n        print('Login success!')\n        for key, value in res.cookies.items():\n            if key==\"_uid\":\n                uid=value\n        return s\n        print(username,password)\n        print('账号密码有误，请重试。')\n        username = \"\"\n        password = \"\"\n        login()\ndef captchalogin(username,password):\n    \n...[truncated]"
+      },
+      {
+        "reason": "possible_secret_generic_token",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 7431,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 8340,
+        "preview": "<reponame>CybercentreCanada/assemblyline-ui\nimport base64\nimport hashlib\nimport ldap\nimport logging\nimport time\nfrom assemblyline.common.str_utils import safe_str\nfrom assemblyline_ui.config import config, CLASSIFICATION\nfrom assemblyline_ui.helper.user import get_dynamic_classification\nfrom assemblyline_ui.http_exceptions import AuthenticationException\nlog = logging.getLogger('assemblyline.ldap_authenticator')\n# Functions\nclass BasicLDAPWrapper(object):\n    CACHE_SEC_LEN = 300\n    def __init__(self, ldap_config):\n        \"\"\"\n        :param ldap_config: dict containing configuration params for LDAP\n        \"\"\"\n        self.ldap_uri = ldap_config.uri\n        self.base = ldap_config.base\n        self.uid_lookup = f\"{ldap_config.uid_field}=%s\"\n        self.group_lookup = ldap_config.group_lookup_query\n        self.bind_user = ldap_config.bind_user\n        self.bind_pass = ldap_config.bind_pass\n        self.admin_dn = ldap_config.admin_dn\n        self.sm_dn = ldap_config.signature_manager_dn\n        self.si_dn = ldap_config.signature_importer_dn\n        self.classification_mappings = ldap_config.classification_mappings\n        self.cache = {}\n        self.get_obj_cache = {}\n    def cre\n...[truncated]"
+      },
+      {
+        "reason": "possible_secret_generic_token",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 7492,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 19410,
+        "preview": "from pygame import mixer\nimport speech_recognition as sr\nimport pyttsx3 \nimport pyjokes\nimport boto3\nimport pyglet\nimport winsound\nimport datetime\nimport pywhatkit\nimport datetime\nimport time\nfrom PIL import Image\nimport random\nimport wikipedia\nimport smtplib, ssl\nfrom mutagen.mp3 import MP3\nimport requests, json\nfrom bs4 import BeautifulSoup\nimport geocoder\nfrom geopy.geocoders import Nominatim\nimport webbrowser\nimport pymongo\nfrom getmac import get_mac_address as gma\nimport cv2\nimport face_recognition\nimport numpy as np\nimport smtplib\nimport datetime\nimport re, requests, subprocess, urllib.parse, urllib.request\nr = sr.Recognizer()\nfilename1=[]\nheaders = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'}\nclient = pymongo.MongoClient(\"mongodb+srv://karan:123@cluster0.gfuxd.mongodb.net/myFirstDatabase?retryWrites=true&w=majority\")\ndatabase = client[\"LocationDatabase\"]\ntable = database[\"Location\"]\ndef location():\n    g = geocoder.ip('me')\n    Latitude = str(g.latlng[0])\n    Longitude = str(g.latlng[1])\n    geolocator = Nominatim(user_agent=\"geoapiExercises\")\n    location = geolocator.reverse(Latitude+\",\n...[truncated]"
+      }
+    ],
+    "vendor_or_dependency_path": [
+      {
+        "reason": "vendor_or_dependency_path",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 694,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "venv/lib/python3.9/site-packages/py2app/bootstrap/disable_linecache.py",
+        "chars": 289,
+        "preview": "<filename>venv/lib/python3.9/site-packages/py2app/bootstrap/disable_linecache.py\ndef _disable_linecache():\n    import linecache\n    def fake_getline(*args, **kwargs):\n        return \"\"\n    linecache.orig_getline = linecache.getline\n    linecache.getline = fake_getline\n_disable_linecache()"
+      },
+      {
+        "reason": "vendor_or_dependency_path",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 990,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "base/site-packages/django_qbe/urls.py",
+        "chars": 480,
+        "preview": "<filename>base/site-packages/django_qbe/urls.py\nfrom django.conf.urls.defaults import patterns, url\nfrom django_qbe.exports import formats\nurlpatterns = patterns('django_qbe.views',\n    url(r'^results/bookmark/$',\n        'qbe_bookmark', name=\"qbe_bookmark\"),\n        'qbe_export', name=\"qbe_export\"),\n    url(r'^results/proxy/$',\n        'qbe_proxy', name=\"qbe_proxy\"),\n        'qbe_results', name=\"qbe_results\"),\n    url(r'^auto/$', 'qbe_autocomplete', name=\"qbe_autocomplete\"),"
+      },
+      {
+        "reason": "vendor_or_dependency_path",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 1459,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "Python38/Lib/site-packages/PyInstaller/hooks/hook-PyQt4.py",
+        "chars": 1188,
+        "preview": "<filename>Python38/Lib/site-packages/PyInstaller/hooks/hook-PyQt4.py\n# Copyright (c) 2013-2020, PyInstaller Development Team.\n# Distributed under the terms of the GNU General Public License (version 2\n# or later) with exception for distributing the bootloader.\n# The full license is in the file COPYING.txt, distributed with this software.\n# SPDX-License-Identifier: (GPL-2.0-or-later WITH Bootloader-exception)\nfrom PyInstaller.utils.hooks import qt_menu_nib_dir\nfrom PyInstaller.compat import getsitepackages, is_darwin, is_win\n# On Windows system PATH has to be extended to point to the PyQt4 directory.\n# The PySide directory contains Qt dlls. We need to avoid including different\n# version of Qt libraries when there is installed another application (e.g. QtCreator)\nif is_win:\n    from PyInstaller.utils.win32.winutils import extend_system_path\n    extend_system_path([os.path.join(x, 'PyQt4') for x in getsitepackages()])\nhiddenimports = ['sip']\n# For Qt to work on Mac OS X it is necessary to include directory qt_menu.nib.\n# This directory contains some resource files necessary to run PyQt or PySide\nif is_darwin:\n    datas = [\n        (qt_menu_nib_dir('PyQt4'), 'qt_menu.nib'),"
+      },
+      {
+        "reason": "vendor_or_dependency_path",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 2368,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "deep-rl/lib/python2.7/site-packages/OpenGL/GL/ARB/transform_feedback_instanced.py<gh_stars>100-1000",
+        "chars": 1457,
+        "preview": "<filename>deep-rl/lib/python2.7/site-packages/OpenGL/GL/ARB/transform_feedback_instanced.py<gh_stars>100-1000\n'''OpenGL extension ARB.transform_feedback_instanced\nThis module customises the behaviour of the \nOpenGL.raw.GL.ARB.transform_feedback_instanced to provide a more \nPython-friendly API\nOverview (from the spec)\n\tMultiple instances of geometry may be specified to the GL by calling\n\tfunctions such as DrawArraysInstanced and DrawElementsInstanced. Further,\n\tthe results of a transform feedback operation may be returned to the GL\n\tby calling DrawTransformFeedback, or DrawTransformFeedbackStream. However,\n\tit is not presently possible to draw multiple instances of data\n\ttransform feedback without using a query and the resulting round trip from\n\tserver to client.\n\tThis extension adds functionality to draw multiple instances of the result\n\tof a transform feedback operation.\nThe official definition of this extension is available here:\nfrom OpenGL import platform, constant, arrays\nfrom OpenGL import extensions, wrapper\nimport ctypes\nfrom OpenGL.raw.GL import _types, _glgets\nfrom OpenGL.raw.GL.ARB.transform_feedback_instanced import *\nfrom OpenGL.raw.GL.ARB.transform_feedback_instanced \n...[truncated]"
+      },
+      {
+        "reason": "vendor_or_dependency_path",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 3071,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "apim-migration-testing-tool/Python/venv/lib/python3.6/site-packages/pymysql/constants/CR.py",
+        "chars": 2327,
+        "preview": "<filename>apim-migration-testing-tool/Python/venv/lib/python3.6/site-packages/pymysql/constants/CR.py\n# flake8: noqa\n# errmsg.h\nCR_ERROR_FIRST  \t= 2000\nCR_UNKNOWN_ERROR\t= 2000\nCR_SOCKET_CREATE_ERROR\t= 2001\nCR_CONNECTION_ERROR\t= 2002\nCR_CONN_HOST_ERROR\t= 2003\nCR_IPSOCK_ERROR\t\t= 2004\nCR_UNKNOWN_HOST\t\t= 2005\nCR_SERVER_GONE_ERROR\t= 2006\nCR_VERSION_ERROR\t= 2007\nCR_OUT_OF_MEMORY\t= 2008\nCR_WRONG_HOST_INFO\t= 2009\nCR_LOCALHOST_CONNECTION = 2010\nCR_TCP_CONNECTION\t= 2011\nCR_SERVER_HANDSHAKE_ERR = 2012\nCR_SERVER_LOST\t\t= 2013\nCR_COMMANDS_OUT_OF_SYNC = 2014\nCR_NAMEDPIPE_CONNECTION = 2015\nCR_NAMEDPIPEWAIT_ERROR  = 2016\nCR_NAMEDPIPEOPEN_ERROR  = 2017\nCR_NAMEDPIPESETSTATE_ERROR = 2018\nCR_CANT_READ_CHARSET\t= 2019\nCR_NET_PACKET_TOO_LARGE = 2020\nCR_EMBEDDED_CONNECTION\t= 2021\nCR_PROBE_SLAVE_STATUS   = 2022\nCR_PROBE_SLAVE_HOSTS    = 2023\nCR_PROBE_SLAVE_CONNECT  = 2024\nCR_PROBE_MASTER_CONNECT = 2025\nCR_SSL_CONNECTION_ERROR = 2026\nCR_MALFORMED_PACKET     = 2027\nCR_WRONG_LICENSE\t= 2028\nCR_NULL_POINTER\t\t= 2029\nCR_NO_PREPARE_STMT\t= 2030\nCR_PARAMS_NOT_BOUND\t= 2031\nCR_DATA_TRUNCATED\t= 2032\nCR_NO_PARAMETERS_EXISTS = 2033\nCR_INVALID_PARAMETER_NO = 2034\nCR_INVALID_BUFFER_USE\t= 2035\nCR_UNSUPPORTED_PARAM_TYPE = 203\n...[truncated]"
+      },
+      {
+        "reason": "vendor_or_dependency_path",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 3170,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "env/lib/python3.8/site-packages/unidecode/x093.py<gh_stars>10-100",
+        "chars": 4550,
+        "preview": "<filename>env/lib/python3.8/site-packages/unidecode/x093.py<gh_stars>10-100\n'Lun ',    # 0x00\n'Kua ',    # 0x01\n'Ling ',    # 0x02\n'Bei ',    # 0x03\n'Lu ',    # 0x04\n'Li ',    # 0x05\n'Qiang ',    # 0x06\n'Pou ',    # 0x07\n'Juan ',    # 0x08\n'Min ',    # 0x09\n'Zui ',    # 0x0a\n'Peng ',    # 0x0b\n'An ',    # 0x0c\n'Pi ',    # 0x0d\n'Xian ',    # 0x0e\n'Ya ',    # 0x0f\n'Zhui ',    # 0x10\n'Lei ',    # 0x11\n'A ',    # 0x12\n'Kong ',    # 0x13\n'Ta ',    # 0x14\n'Kun ',    # 0x15\n'Du ',    # 0x16\n'Wei ',    # 0x17\n'Chui ',    # 0x18\n'Zi ',    # 0x19\n'Zheng ',    # 0x1a\n'Ben ',    # 0x1b\n'Nie ',    # 0x1c\n'Cong ',    # 0x1d\n'Qun ',    # 0x1e\n'Tan ',    # 0x1f\n'Ding ',    # 0x20\n'Qi ',    # 0x21\n'Qian ',    # 0x22\n'Zhuo ',    # 0x23\n'Qi ',    # 0x24\n'Yu ',    # 0x25\n'Jin ',    # 0x26\n'Guan ',    # 0x27\n'Mao ',    # 0x28\n'Chang ',    # 0x29\n'Tian ',    # 0x2a\n'Xi ',    # 0x2b\n'Lian ',    # 0x2c\n'Tao ',    # 0x2d\n'Gu ',    # 0x2e\n'Cuo ',    # 0x2f\n'Shu ',    # 0x30\n'Zhen ',    # 0x31\n'Lu ',    # 0x32\n'Meng ',    # 0x33\n'Lu ',    # 0x34\n'Hua ',    # 0x35\n'Biao ',    # 0x36\n'Ga ',    # 0x37\n'Lai ',    # 0x38\n'Ken ',    # 0x39\n'Kazari ',    # 0x3a\n'Bu ',    # 0x3b\n'Nai ',    # 0x3c\n'Wan ',    # 0x3d\n'\n...[truncated]"
+      },
+      {
+        "reason": "vendor_or_dependency_path",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 3537,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "third_party/xiuminglib/xiuminglib/vis/video.py",
+        "chars": 8344,
+        "preview": "<filename>third_party/xiuminglib/xiuminglib/vis/video.py\nfrom os.path import join, dirname\nimport numpy as np\nfrom .text import put_text\nfrom .. import const\nfrom ..os import makedirs\nfrom ..imprt import preset_import\nfrom ..log import get_logger\nlogger = get_logger()\ndef make_video(\n        imgs, fps=24, outpath=None, method='matplotlib', dpi=96, bitrate=-1):\n    \"\"\"Writes a list of images into a grayscale or color video.\n        imgs (list(numpy.ndarray)): Each image should be of type ``uint8`` or\n            ``uint16`` and of shape H-by-W (grayscale) or H-by-W-by-3 (RGB).\n        fps (int, optional): Frame rate.\n        outpath (str, optional): Where to write the video to (a .mp4 file).\n            ``None`` means\n            ``os.path.join(const.Dir.tmp, 'make_video.mp4')``.\n        method (str, optional): Method to use: ``'matplotlib'``, ``'opencv'``,\n            ``'video_api'``.\n        dpi (int, optional): Dots per inch when using ``matplotlib``.\n        bitrate (int, optional): Bit rate in kilobits per second when using\n            ``matplotlib``; reasonable values include 7200.\n    Writes\n        - A video of the images.\n    if outpath is None:\n        outpath = join(const.\n...[truncated]"
+      },
+      {
+        "reason": "vendor_or_dependency_path",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 3582,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "src/third_party/swiftshader/third_party/subzero/pydir/wasm-run-torture-tests.py",
+        "chars": 6694,
+        "preview": "<filename>src/third_party/swiftshader/third_party/subzero/pydir/wasm-run-torture-tests.py\n#!/usr/bin/env python2\n#===- subzero/wasm-run-torture-tests.py - Subzero WASM Torture Test Driver ===//\n#                        The Subzero Code Generator\n# This file is distributed under the University of Illinois Open Source\n# License. See LICENSE.TXT for details.\nfrom __future__ import print_function\nimport argparse\nimport glob\nimport multiprocessing\nimport Queue\nimport shutil\nimport StringIO\nimport sys\nimport threading\nIGNORED_TESTS = set([\n  # The remaining tests are known waterfall failures\n  '20010122-1.c.wasm',\n  '20031003-1.c.wasm',\n  '20071018-1.c.wasm',\n  '20071120-1.c.wasm',\n  '20071220-1.c.wasm',\n  '20071220-2.c.wasm',\n  '20101011-1.c.wasm',\n  'alloca-1.c.wasm',\n  'bitfld-3.c.wasm',\n  'bitfld-5.c.wasm',\n  'builtin-bitops-1.c.wasm',\n  'conversion.c.wasm',\n  'eeprof-1.c.wasm',\n  'frame-address.c.wasm',\n  'pr17377.c.wasm',\n  'pr32244-1.c.wasm',\n  'pr34971.c.wasm',\n  'pr36765.c.wasm',\n  'pr39228.c.wasm',\n  'pr43008.c.wasm',\n  'pr47237.c.wasm',\n  'pr60960.c.wasm',\n  'va-arg-pack-1.c.wasm',\n  '20000717-5.c.wasm', # abort() (also works without emcc)\n  '20001203-2.c.wasm', # assert fail \n...[truncated]"
+      }
+    ],
+    "log_or_traceback": [
+      {
+        "reason": "log_or_traceback",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 766,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 8839,
+        "preview": "<gh_stars>1-10\n#!/usr/bin/env python\nimport getopt\nimport sys\nimport string\nimport time\nfrom SOAPpy import SOAP\nimport traceback\nDEFAULT_SERVERS_FILE        = './inventory.servers'\nDEFAULT_METHODS =  ('SimpleBuy', 'RequestForQuote','Buy','Ping')\ndef usage (error = None):\n    sys.stdout = sys.stderr\n    if error != None:\n        print(error)\n    print(\"\"\"usage: %s [options] [server ...]\n  If a long option shows an argument is mandatory, it's mandatory for the\n  equivalent short option also.\n  -?, --help            display this usage\n  -d, --debug           turn on debugging in the SOAP library\n  -i, --invert          test servers *not* in the list of servers given\n                        call only the given methods, specify a METHOD# of ?\n                        for the list of method numbers\n  -o, --output=TYPE     turn on output, TYPE is one or more of s(uccess),\n                        f(ailure), n(ot implemented), F(ailed (as expected)),\n                        a(ll)\n                        [f]\n  -s, --servers=FILE    use FILE as list of servers to test [%s]\n  -t, --stacktrace      print a stack trace on each unexpected failure\n  -T, --always-stacktrace\n                        p\n...[truncated]"
+      },
+      {
+        "reason": "log_or_traceback",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 3147,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 8990,
+        "preview": "import traceback\nimport sys\nimport logging\nNote by wvmarle:\nThis file contains the complete code from chained_exception.py plus the\nerror handling code from GlacierWrapper.py, allowing it to be used in other\nmodules like glaciercorecalls as well.\nclass GlacierException(Exception):\n    An extension of the built-in Exception class, this handles\n    an additional cause keyword argument, adding it as cause\n    attribute to the exception message.\n    It logs the error message (amount of information depends on the log\n    level) and passes it on to a higher level to handle.\n    Furthermore it allows for the upstream handler to call for a\n    complete stack trace or just a simple error and cause message.\n    TODO: describe usage.\n    ERRORCODE = {'InternalError': 127,        # Library internal error.\n                 'UndefinedErrorCode': 126,   # Undefined code.\n                 'NoResults': 125,            # Operation yielded no results.\n                 'GlacierConnectionError': 1,  # Can not connect to Glacier. \n                 'SdbConnectionError': 2,     # Can not connect to SimpleDB.\n                 'CommandError': 3,           # Command line is invalid.\n                 'VaultNa\n...[truncated]"
+      },
+      {
+        "reason": "log_or_traceback",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 3585,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 28317,
+        "preview": "Model select class1 single allele models.\nimport argparse\nimport signal\nimport sys\nimport time\nimport traceback\nimport random\nfrom functools import partial\nfrom pprint import pprint\nimport numpy\nimport pandas\nfrom scipy.stats import kendalltau, percentileofscore, pearsonr\nfrom sklearn.metrics import roc_auc_score\nimport tqdm  # progress bar\ntqdm.monitor_interval = 0  # see https://github.com/tqdm/tqdm/issues/481\nfrom .class1_affinity_predictor import Class1AffinityPredictor\nfrom .common import normalize_allele_name\nfrom .encodable_sequences import EncodableSequences\nfrom .common import configure_logging, random_peptides\nfrom .local_parallelism import worker_pool_with_gpu_assignments_from_args, add_local_parallelism_args\nfrom .regression_target import from_ic50\n# To avoid pickling large matrices to send to child processes when running in\n# parallel, we use this global variable as a place to store data. Data that is\n# stored here before creating the thread pool will be inherited to the child\n# processes upon fork() call, allowing us to share large data with the workers\n# via shared memory.\nGLOBAL_DATA = {}\nparser = argparse.ArgumentParser(usage=__doc__)\nparser.add_argument(\n    metav\n...[truncated]"
+      },
+      {
+        "reason": "log_or_traceback",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 5170,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 3070,
+        "preview": "# Redistribution and use in source and binary forms, with or without\n# modification, are permitted provided that the following conditions\n# are met:\n# 1.  Redistributions of source code must retain the above copyright\n#     notice, this list of conditions and the following disclaimer.\n# 2.  Redistributions in binary form must reproduce the above copyright\n#     notice, this list of conditions and the following disclaimer in the\n#     documentation and/or other materials provided with the distribution.\n# THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS'' AND\n# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED\n# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE\n# DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS BE LIABLE FOR\n# ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL\n# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR\n# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER\n# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,\n# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\n...[truncated]"
+      },
+      {
+        "reason": "log_or_traceback",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 9322,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "code_legacy/PostfixLogSummary.py",
+        "chars": 5142,
+        "preview": "<filename>code_legacy/PostfixLogSummary.py\n#!/usr/bin/env python\nimport argparse\nimport collections\nimport sys\nimport time\nimport Config\n# TODO: There's more to be learned from postfix logs!  Here's one sample\n# observed during failures from the sender vagrant vm:\n# Jun  6 00:21:31 precise32 postfix/smtpd[3648]: connect from localhost[127.0.0.1]\n# Jun  6 00:21:34 precise32 postfix/smtpd[3648]: lost connection after STARTTLS from localhost[127.0.0.1]\n# Jun  6 00:21:34 precise32 postfix/smtpd[3648]: disconnect from localhost[127.0.0.1]\n# Jun  6 00:21:56 precise32 postfix/master[3001]: reload -- version 2.9.6, configuration /etc/postfix\n# Jun  6 00:22:01 precise32 postfix/pickup[3674]: AF3B6480475: uid=0 from=<root>\n# Jun  6 00:22:01 precise32 postfix/cleanup[3680]: AF3B6480475: message-id=<<EMAIL>>\n# Jun  6 00:22:01 precise32 postfix/qmgr[3673]: AF3B6480475: from=<<EMAIL>>, size=576, nrcpt=1 (queue active)\n# Jun  6 00:22:01 precise32 postfix/smtp[3682]: SSL_connect error to valid-example-recipient.com[192.168.33.7]:25: -1\n# Jun  6 00:22:01 precise32 postfix/smtp[3682]: warning: TLS library problem: 3682:error:140740BF:SSL routines:SSL23_CLIENT_HELLO:no protocols available:s23_clnt.c:\n...[truncated]"
+      },
+      {
+        "reason": "log_or_traceback",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 9533,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 8083,
+        "preview": "<reponame>ArthurKamalov/scalyr-agent-2<gh_stars>10-100\n# Copyright 2014-2020 Scalyr Inc.\n# Licensed under the Apache License, Version 2.0 (the \"License\");\n# you may not use this file except in compliance with the License.\n# You may obtain a copy of the License at\n# Unless required by applicable law or agreed to in writing, software\n# distributed under the License is distributed on an \"AS IS\" BASIS,\n# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n# See the License for the specific language governing permissions and\n# limitations under the License.\nfrom __future__ import absolute_import\nfrom scalyr_agent import scalyr_init\nscalyr_init()\nimport sys\nimport ssl\nimport socket\nfrom scalyr_agent.compat import PY26\nfrom scalyr_agent.compat import PY_post_equal_279\nfrom scalyr_agent.connection import ConnectionFactory\nfrom scalyr_agent.connection import HTTPSConnectionWithTimeoutAndVerification\nfrom scalyr_agent.test_base import ScalyrTestCase\nBASE_DIR = os.path.abspath(os.path.dirname(os.path.abspath(__file__)))\nCA_FILE = os.path.join(BASE_DIR, \"fixtures/certs/ca_certs.crt\")\nINTERMEDIATE_CERTS_FILE = os.path.join(\n    BASE_DIR, \"fixtures/certs/intermediate_certs.p\n...[truncated]"
+      },
+      {
+        "reason": "log_or_traceback",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 11084,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 3173,
+        "preview": "<gh_stars>1-10\n#!/usr/bin/env python3\n\"\"\"Module for parsing tem setting files\"\"\"\nfrom base.rcon import echo\nimport base.settings\nclass TemParseError(Exception):\n    \"\"\"Tem Parser Exception\"\"\"\n    def __init__(self, value):\n        Exception.__init__(self)\n        self.value = value\n    def __str__(self):\n        return repr(self.value)\ndef parse_error(err_type: str, err_msg: str):\n    \"\"\"Throw parser error\"\"\"\n    echo(\"[ERROR:settings] \" + str(err_type) + \": \" + str(err_msg))\n    raise TemParseError(err_type + \": \" + err_msg)\ndef parse_bool(val: str, line_num: int) -> bool:\n    \"\"\"Parse boolean\"\"\"\n    val = val.lower()\n    if val in (\"0\", \"false\"):\n        return False\n    if val in (\"1\", \"true\"):\n        return True\n    parse_error(\"BoolError\", \"cannot parse bool \" + str(line_num) + \":'\" + str(val) + \"'\")\n    return False\ndef parse_list_dyn(val: str):\n    \"\"\"Parse dynamic list type\"\"\"\n    if val is None or val == \"\" or val == \",\":\n        return None\n    return val.split(',')\ndef parse_list(sett: str, val: str, line_num: int):\n    \"\"\"Parse list type\"\"\"\n    raw_list = base.settings.Settings().settings_dict[sett][0]\n    raw_list = raw_list[1:-1]\n    list_vals = raw_list.split(',')\n \n...[truncated]"
+      },
+      {
+        "reason": "log_or_traceback",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 16061,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 14485,
+        "preview": "<gh_stars>10-100\nimport bz2\nimport contextlib\nimport distutils.util\nimport fcntl\nimport logging\nimport lzma\nimport pathlib\nimport progressbar  # type: ignore\nimport select\nimport stat\nimport subprocess\nimport time\nimport tempfile\nimport uuid\nimport sys\nimport zlib\n    import importlib.resources as pkg_resources\nexcept ImportError:\n    # Try backported to PY<37 `importlib_resources`.\n    import importlib_resources as pkg_resources  # type: ignore\nfrom typing import (\n    Optional,\n    ContextManager,\n    Union,\n    Tuple,\n    Callable,\n    Iterator,\nfrom . import static\n# From the typeshed Popen definitions\nFILE_TYPE = Union[None, int, IO[Any]]\ndef prompt_yes_no(prompt: str, default: Optional[bool] = None) -> bool:\n    if default is True:\n        indicator = \"[Y/n]\"\n    elif default is False:\n        indicator = \"[y/N]\"\n        indicator = \"[y/n]\"\n    full_prompt = f\"{prompt} {indicator}: \"\n    while True:\n        try:\n            response = input(full_prompt)\n            if response == \"\" and default is not None:\n                return default\n            return bool(distutils.util.strtobool(response))\n        except ValueError:\n            print(\"Please select Y or N\")\ndef format_\n...[truncated]"
+      }
+    ],
+    "todo_dense": [
+      {
+        "reason": "todo_dense",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 1199,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 4721,
+        "preview": "<reponame>halhenke/promnesia<filename>src/promnesia/sources/telegram.py\nUses [[https://github.com/fabianonline/telegram_backup#readme][telegram_backup]] database for messages data\nfrom pathlib import Path\nfrom textwrap import dedent\nfrom typing import Optional, Union, TypeVar\nfrom urllib.parse import unquote # TODO mm, make it easier to rememember to use...\nfrom ..common import PathIsh, Visit, get_logger, Loc, extract_urls, from_epoch, Results, echain\n# TODO potentially, belongs to my. package\n# TODO kython?\nT = TypeVar(\"T\")\ndef unwrap(res: Union[T, Exception]) -> T:\n    if isinstance(res, Exception):\n        raise res\n        return res\n# TODO move to common?\ndef dataset_readonly(db: Path):\n    import dataset # type: ignore\n    import sqlite3\n    creator = lambda: sqlite3.connect(f'file:{db}?immutable=1', uri=True)\n    return dataset.connect('sqlite:///' , engine_kwargs={'creator': creator})\ndef index(database: PathIsh, *, http_only: bool=None) -> Results:\n    :param database:\n        the path of the sqlite generated by the _telegram_backup_ java program\n    :param http_only:\n        when true, do not collect IP-addresses and `python.py` strings\n    logger = get_logger()\n    path \n...[truncated]"
+      },
+      {
+        "reason": "todo_dense",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 1314,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 28349,
+        "preview": "## \\package wizbin.build\n# MIT licensing\n# See: docs/LICENSE.txt\nimport commands, os, shutil, subprocess, traceback, wx\nfrom dbr.functions\t\timport FileUnstripped\nfrom dbr.language\t\timport GT\nfrom dbr.log\t\t\timport DebugEnabled\nfrom dbr.log\t\t\timport Logger\nfrom dbr.md5\t\t\timport WriteMD5\nfrom fileio.fileio\t\timport ReadFile\nfrom fileio.fileio\t\timport WriteFile\nfrom globals.bitmaps\timport ICON_EXCLAMATION\nfrom globals.bitmaps\timport ICON_INFORMATION\nfrom globals.errorcodes\timport dbrerrno\nfrom globals.execute\timport ExecuteCommand\nfrom globals.execute\timport GetExecutable\nfrom globals.execute\timport GetSystemInstaller\nfrom globals.ident\t\timport btnid\nfrom globals.ident\t\timport chkid\nfrom globals.ident\t\timport inputid\nfrom globals.ident\t\timport pgid\nfrom globals.paths\t\timport ConcatPaths\nfrom globals.paths\t\timport PATH_app\nfrom globals.strings\timport GS\nfrom globals.strings\timport RemoveEmptyLines\nfrom globals.strings\timport TextIsEmpty\nfrom globals.system\t\timport PY_VER_MAJ\nfrom globals.tooltips\timport SetPageToolTips\nfrom input.toggle\t\timport CheckBox\nfrom input.toggle\t\timport CheckBoxESS\nfrom startup.tests\t\timport UsingTest\nfrom ui.button\t\t\timport CreateButton\nfrom ui.checklist\t\timpor\n...[truncated]"
+      },
+      {
+        "reason": "todo_dense",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 1388,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 22552,
+        "preview": "import uuid\nimport pickle\nimport pytest\nimport argparse\nfrom collections import namedtuple\nfrom six import text_type\nfrom allure.common import AllureImpl, StepContext\nfrom allure.constants import Status, AttachmentType, Severity, \\\n    FAILED_STATUSES, Label, SKIPPED_STATUSES\nfrom allure.utils import parent_module, parent_down_from_module, labels_of, \\\n    all_of, get_exception_message, now, mangle_testnames\nfrom allure.structure import TestCase, TestStep, Attach, TestSuite, Failure, TestLabel\ndef pytest_addoption(parser):\n    parser.getgroup(\"reporting\").addoption('--alluredir',\n                                           action=\"store\",\n                                           dest=\"allurereportdir\",\n                                           metavar=\"DIR\",\n                                           default=None,\n                                           help=\"Generate Allure report in the specified directory (may not exist)\")\n    severities = [v for (_, v) in all_of(Severity)]\n    def label_type(name, legal_values=set()):\n        \"\"\"\n        argparse-type factory for labelish things.\n        processed value is set of tuples (name, value).\n        :param name: of label type (fo\n...[truncated]"
+      },
+      {
+        "reason": "todo_dense",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 1908,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 12889,
+        "preview": "<reponame>carstenblank/qiskit-aws-braket-provider\n# Copyright 2020 <NAME>\n# Licensed under the Apache License, Version 2.0 (the \"License\");\n# you may not use this file except in compliance with the License.\n# You may obtain a copy of the License at\n# Unless required by applicable law or agreed to in writing, software\n# distributed under the License is distributed on an \"AS IS\" BASIS,\n# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n# See the License for the specific language governing permissions and\n# limitations under the License.\nimport json\nimport logging\nfrom datetime import datetime, timedelta\nfrom braket.device_schema.device_service_properties_v1 import DeviceCost\nfrom typing import List, Dict, Optional, Any, Union, Tuple\nfrom botocore.response import StreamingBody\nfrom braket.aws import AwsDevice, AwsQuantumTask, AwsSession\nfrom braket.circuits import Circuit\nfrom braket.device_schema import DeviceCapabilities\nfrom braket.device_schema.ionq import IonqDeviceCapabilities\nfrom braket.device_schema.rigetti import RigettiDeviceCapabilities\nfrom braket.device_schema.simulators import GateModelSimulatorDeviceCapabilities\nfrom qiskit.providers import Base\n...[truncated]"
+      },
+      {
+        "reason": "todo_dense",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 2103,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 17607,
+        "preview": "@author: <NAME> \"Mayou36\"\nDEPRECEATED! USE OTHER MODULES LIKE rd.data, rd.ml, rd.reweight, rd.score and rd.stat\nDEPRECEATED!DEPRECEATED!DEPRECEATED!DEPRECEATED!DEPRECEATED!\nContains several tools to convert, load, save and plot data\nimport warnings\nimport copy\nimport pandas as pd\nimport numpy as np\nimport uproot\nimport pickle\nfrom . import dev_tool\n# both produce error (27.07.2016) when importing them if run from main.py.\n# No problem when run as main...\n# from raredecay.tools import dev_tool\nfrom .. import meta_config as meta_cfg\ndef apply_cuts(signal_data, bkg_data, percent_sig_to_keep=100, bkg_length=None):\n    \"\"\"Search for best cut on value to still keep percent_sig_to_keep of signal\n    Parameters\n    signal_data : 1-D numpy array\n        The signal\n    bkg_data : 1-D numpy array\n        The background data\n    percent_sig_to_keep : 0 < float <= 100\n        What percentage of the data to keep in order to apply the cuts.\n    #    if percent_sig_to_keep < 100:\n    #        raise NotImplementedError(\"percentage of < 100 not yet imlemented\")\n    percentile = [0, percent_sig_to_keep]  # TODO: modify for percent_sig_to_keep\n    bkg_length_before = len(bkg_data)\n    bkg_length = len\n...[truncated]"
+      },
+      {
+        "reason": "todo_dense",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 3133,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 24922,
+        "preview": "#!/usr/bin/env python3\n# Copyright (c) Meta Platforms, Inc. and affiliates.\n# This source code is licensed under the BSD-style license found in the\n# LICENSE file in the root directory of this source tree.\n#!/usr/bin/env python3\nimport abc\nimport math\nfrom collections import defaultdict, deque\nfrom dataclasses import dataclass\nfrom enum import Enum\nfrom typing import (\n    Callable,\n    Deque,\n    Iterator,\n    Mapping,\n    Optional,\n    Sequence,\n    Tuple,\n    TypeVar,\n    Union,\nimport torch\nimport torch.distributed as dist\nimport torch.nn as nn\nfrom torchmetrics import Metric\nfrom torchrec.metrics.metrics_config import RecComputeMode, RecTaskInfo\nfrom torchrec.metrics.metrics_namespace import (\n    compose_metric_key,\n    MetricNameBase,\n    MetricNamespaceBase,\n    MetricPrefix,\nRecModelOutput = Union[torch.Tensor, Dict[str, torch.Tensor]]\n@dataclass(frozen=True)\nclass MetricComputationReport:\n    name: MetricNameBase\n    metric_prefix: MetricPrefix\n    value: torch.Tensor\nDefaultValueT = TypeVar(\"DefaultValueT\")\nComputeIterType = Iterator[\n    Tuple[RecTaskInfo, MetricNameBase, torch.Tensor, MetricPrefix]\nMAX_BUFFER_COUNT = 1000\nclass RecMetricException(Exception):\nclass Wind\n...[truncated]"
+      },
+      {
+        "reason": "todo_dense",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 3148,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 29691,
+        "preview": "<reponame>freingruber/JavaScript-Raider<filename>modes/import_corpus.py<gh_stars>10-100\n# Copyright 2022 @ReneFreingruber\n# Licensed under the Apache License, Version 2.0 (the \"License\");\n# you may not use this file except in compliance with the License.\n# You may obtain a copy of the License at\n# Unless required by applicable law or agreed to in writing, software\n# distributed under the License is distributed on an \"AS IS\" BASIS,\n# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n# See the License for the specific language governing permissions and\n# limitations under the License.\n# This mode can be started by passing the \"--import_corpus_mode\" flag to the fuzzer\n# or by starting the fuzzer the first time (when no OUTPUT directory exists yet).\n# The script imports new testcases into the current corpus.\n# Please note that the progress of the script is not linear (especially when creating an initial corpus).\n# The script will start slow (because it will find a lot of testcases with new behavior and this requires\n# standardization, minimization  & state creation.\n# These operations are slow because they require to restart the JS engine multiple times,\n# and th\n...[truncated]"
+      },
+      {
+        "reason": "todo_dense",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 3879,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 2498,
+        "preview": "import copy\nimport torch.nn as nn\nfrom .transformer import (Encoder,\n                          EncoderLayer,\n                          MultiHeadedAttention,\n                          PositionwiseFeedforward,\n                          PositionalEncoding)\nclass TransformerEncoder(nn.Module):\n    \"\"\"Transformer Encoder\"\"\"\n    def __init__(self, embedding_dim, hidden_sizes, num_layers=6, num_heads=8,\n                 dropout=0.1, batch_first=True, use_cuda=True):\n        \"\"\"Take a batch of representations and add context transformer-style\n        Parameters\n        embedding_dim : TODO\n        hidden_sizes : TODO\n        num_layers : TODO, optional\n        num_heads : TODO, optional\n        dropout : TODO, optional\n        batch_first: TODO, optional\n        use_cuda : TODO, optional\n        \"\"\"\n        if not batch_first:\n            raise NotImplementedError\n        super(TransformerEncoder, self).__init__()\n        self.embedding_dim = embedding_dim\n        self.hidden_sizes = hidden_sizes\n        self.num_layers = num_layers\n        self.num_heads = num_heads\n        self.dropout = dropout\n        self.use_cuda = use_cuda\n        self.out_dim = embedding_dim\n        #  FIXME: I don\n...[truncated]"
+      }
+    ],
+    "replacement_chars": [
+      {
+        "reason": "replacement_chars",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 1314,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 28349,
+        "preview": "## \\package wizbin.build\n# MIT licensing\n# See: docs/LICENSE.txt\nimport commands, os, shutil, subprocess, traceback, wx\nfrom dbr.functions\t\timport FileUnstripped\nfrom dbr.language\t\timport GT\nfrom dbr.log\t\t\timport DebugEnabled\nfrom dbr.log\t\t\timport Logger\nfrom dbr.md5\t\t\timport WriteMD5\nfrom fileio.fileio\t\timport ReadFile\nfrom fileio.fileio\t\timport WriteFile\nfrom globals.bitmaps\timport ICON_EXCLAMATION\nfrom globals.bitmaps\timport ICON_INFORMATION\nfrom globals.errorcodes\timport dbrerrno\nfrom globals.execute\timport ExecuteCommand\nfrom globals.execute\timport GetExecutable\nfrom globals.execute\timport GetSystemInstaller\nfrom globals.ident\t\timport btnid\nfrom globals.ident\t\timport chkid\nfrom globals.ident\t\timport inputid\nfrom globals.ident\t\timport pgid\nfrom globals.paths\t\timport ConcatPaths\nfrom globals.paths\t\timport PATH_app\nfrom globals.strings\timport GS\nfrom globals.strings\timport RemoveEmptyLines\nfrom globals.strings\timport TextIsEmpty\nfrom globals.system\t\timport PY_VER_MAJ\nfrom globals.tooltips\timport SetPageToolTips\nfrom input.toggle\t\timport CheckBox\nfrom input.toggle\t\timport CheckBoxESS\nfrom startup.tests\t\timport UsingTest\nfrom ui.button\t\t\timport CreateButton\nfrom ui.checklist\t\timpor\n...[truncated]"
+      },
+      {
+        "reason": "replacement_chars",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 9848,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 1985,
+        "preview": "<reponame>epam/Indigo\n# coding=utf-8\nimport sys\nfrom env_indigo import *\nindigo = Indigo()\nindigo.setOption(\"molfile-saving-skip-date\", \"1\")\nprint(\"****** Load molfile with UTF-8 characters in Data S-group ********\")\nm = indigo.loadMoleculeFromFile(joinPathPy(\"molecules/sgroups_utf8.mol\", __file__))\nindigo.setOption(\"molfile-saving-mode\", \"2000\")\nres = m.molfile()\nm = indigo.loadMolecule(res)\n# TODO: Fails on IronPython 2.7.9:\n# - M  SED   1 single-value-бензол\n# + M  SED   1 single-value-������\nif isIronPython():\n    from System.Text import Encoding\n    from System import Console\n    print(m.molfile())\n    print(res)\n    print(m.cml())\n    # reload(sys)\n    # sys.setdefaultencoding('utf-8')\n    # sys.stdout = codecs.getwriter('utf8')(sys.stdout)\n    # Console.WriteLine(m.molfile().encode(\"utf-8-sig\"))\n    # print(Encoding.UTF8.GetString(Encoding.Default.GetBytes(m.molfile().encode(\"utf-8-sig\"))))\n    # Console.Write(Encoding.UTF8.GetString(Encoding.UTF8.GetBytes(m.molfile().encode(\"utf-8\"))))\n    # Console.Write(Encoding.UTF8.GetString(Encoding.UTF8.GetBytes(res.encode(\"utf-8\"))))\n    # Console.Write(Encoding.UTF8.GetString(Encoding.UTF8.GetBytes(m.cml().encode(\"utf-8\"))))\n    # m\n...[truncated]"
+      },
+      {
+        "reason": "replacement_chars",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 28264,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 4807,
+        "preview": "from __future__ import absolute_import\nimport codecs\nfrom .error import YAMLError,FileMark,StringMark,YAMLStreamError\nfrom .compat import text_type,binary_type,PY3,UNICODE_SIZE\nfrom .util import RegExp\nif _D:from typing import Any,Dict,Optional,List,Union,Text,Tuple,Optional\nclass ReaderError(YAMLError):\n\tdef __init__(A,name,position,character,encoding,reason):A.name=name;A.character=character;A.position=position;A.encoding=encoding;A.reason=reason\n\t\tif isinstance(A.character,binary_type):return'\\'%s\\' codec can\\'t decode byte #x%02x: %s\\n  in \"%s\", position %d'%(A.encoding,ord(A.character),A.reason,A.name,A.position)\n\t\telse:return'unacceptable character #x%04x: %s\\n  in \"%s\", position %d'%(A.character,A.reason,A.name,A.position)\nclass Reader:\n\tdef __init__(A,stream,loader=_A):\n\t\tA.loader=loader\n\t\tif A.loader is not _A and getattr(A.loader,'_reader',_A)is _A:A.loader._reader=A\n\t\tA.reset_reader();A.stream=stream\n\tdef reset_reader(A):A.name=_A;A.stream_pointer=0;A.eof=True;A.buffer='';A.pointer=0;A.raw_buffer=_A;A.raw_decode=_A;A.encoding=_A;A.index=0;A.line=0;A.column=0\n\t@property\n\tdef stream(self):\n\t\ttry:return self._stream\n\t\texcept AttributeError:raise YAMLStreamError('input strea\n...[truncated]"
+      },
+      {
+        "reason": "replacement_chars",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 49194,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 7633,
+        "preview": "<gh_stars>100-1000\nclass String(object):\n Represents text as a series of Unicode characters.\n str(value: Char*)\n str(value: Char*,startIndex: int,length: int)\n str(value: SByte*)\n str(value: SByte*,startIndex: int,length: int)\n str(value: SByte*,startIndex: int,length: int,enc: Encoding)\n str(value: Array[Char],startIndex: int,length: int)\n str(value: Array[Char])\n str(c: Char,count: int)\n def capitalize(self,*args):\n  capitalize(self: str) -> str\n   Returns a copy of this string converted to uppercase\n def center(self,*args):\n  center(self: str,width: int,fillchar: Char) -> str\n  center(self: str,width: int) -> str\n def count(self,*args):\n  count(self: str,ssub: str,start: int,end: int) -> int\n  count(self: str,sub: str,start: int) -> int\n  count(self: str,sub: str) -> int\n def decode(self,*args):\n  decode(s: str,encoding: object,errors: str) -> str\n  decode(s: str) -> str\n def encode(self,*args):\n  \"\"\" encode(s: str,encoding: object,errors: str) -> str \"\"\"\n def endswith(self,*args):\n  endswith(self: str,suffix: object) -> bool\n  endswith(self: str,suffix: object,start: int) -> bool\n  endswith(self: str,suffix: object,start: int,end: int) -> bool\n  endswith(self: str,suffix: str) \n...[truncated]"
+      }
+    ],
+    "possible_secret_private_key": [
+      {
+        "reason": "possible_secret_private_key",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 3920,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 1187,
+        "preview": "import pytest\nimport testinfra.utils.ansible_runner\ntestinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(\n    os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('all')\n@pytest.mark.parametrize(\"installed_packages\", [\n    (\"haproxy20\"),\n    (\"keepalived\"),\ndef test_packages_installed(host, installed_packages):\n    rpackage = host.package(installed_packages)\n    assert rpackage.is_installed\n@pytest.mark.parametrize(\"services\", [\n    (\"haproxy\"),\n    # (\"keepalive\"),\ndef test_services_running_and_enabled(host, services):\n    service = host.service(services)\n    assert service.is_enabled\n    assert service.is_running\n@pytest.mark.parametrize(\"files\", [\n    (\"/etc/pki/haproxy/star_haproxy.pem\"),\ndef test_star_haproxy_pem(host, files):\n    star_haproxy_pem = host.file(files)\n    assert star_haproxy_pem.user == \"root\"\n    assert star_haproxy_pem.group == \"root\"\n    assert star_haproxy_pem.mode == 0o600\n    assert star_haproxy_pem.contains('-----BEGIN CERTIFICATE-----')\n    assert star_haproxy_pem.contains('-----BEGIN RSA PRIVATE KEY-----')\ndef test_sysctl_non_local_bind(host):\n    non_local_bind = host.sysctl(\"net.ipv4.ip_nonlocal_bind\")\n    assert non_local_bind == 1"
+      },
+      {
+        "reason": "possible_secret_private_key",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 6209,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 8597,
+        "preview": "from fixtures import TempDir\nfrom testtools import ExpectedException, TestCase, run_test_with\nfrom testtools.assertions import assert_that\nfrom testtools.matchers import (\n    Contains, DirExists, Equals, FileContains, FileExists, MatchesStructure)\nfrom testtools.twistedsupport import (\n    AsynchronousDeferredRunTest, flush_logged_errors)\nfrom twisted.internet import reactor\nfrom twisted.internet.defer import inlineCallbacks\nfrom twisted.internet.error import CannotListenError, ConnectionRefusedError\nfrom txacme.urls import LETSENCRYPT_STAGING_DIRECTORY\nfrom marathon_acme.cli import init_storage_dir, main, parse_listen_addr\n# Make sure we always use the Let's Encrypt Staging endpoint for these tests\ndef main_t(reactor, **kwargs):\n    argv = kwargs.get('argv', [])\n    env = kwargs.get('env', {})\n    return main(reactor, acme_url=LETSENCRYPT_STAGING_DIRECTORY.asText(),\n                argv=argv, env=env)\nclass TestCli(TestCase):\n    # These are testtools-style tests so we can run aynchronous tests\n    def test_storage_dir_required(self):\n        \"\"\"\n        When the program is run with no arguments, it should exit with code 2\n        because there is one required argument.\n        \"\n...[truncated]"
+      },
+      {
+        "reason": "possible_secret_private_key",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 19907,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 946,
+        "preview": "<reponame>michaelthomasj/trusted-firmware-m\n# SPDX-License-Identifier: BSD-3-Clause\n# Filename - globaldefinesrsaformat.py\n# Description - This file contains global defines used in the RSA \n#               Format parser\n# Parameter type\nPARAM_MOD = 1\nPARAM_PRIV_EXP = 2\nPARAM_EXP = 3\n# PEM header and footer \nPEM_START = \"-----BEGIN RSA PRIVATE KEY-----\\n\"\n# PEM header size\nPEM_HEADER_SIZE_BYTES = 4\n# PEM version size\nPEM_VERSION_SIZE_BYTES = 3\n# Parameters ASN.1 DER type\nPARAM_HEADER_INTEGER_TYPE = 2\n# Length ASN.1 DER\nPARAM_LENGTH_INDICATION_BIT = 7\nPARAM_LENGTH_INDICATION = 0x1 << PARAM_LENGTH_INDICATION_BIT\nPARAM_LENGTH_BITS_MASK = 0x7F\n# Size of expected Mod & Priv exponent\nRSA_MOD_SIZE_BYTES = 256\n# Modulus & Priv Exponent ASN.1 header size\nMOD_HEADER_FIXED_SIZE_BYTES = 4\n# Exponent ASN.1 header size\nEXP_HEADER_FIXED_SIZE_BYTES = 2\n# Exponent expected value\nEXP_EXPECTED_VAL = 65537\n# AES key fixed size\nAES_KEY_SIZE_IN_BYTES = 32"
+      },
+      {
+        "reason": "possible_secret_private_key",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 23622,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 10507,
+        "preview": "# Copyright (C) 2003-2009  <NAME> <<EMAIL>>\n# This file is part of paramiko.\n# Paramiko is free software; you can redistribute it and/or modify it under the\n# terms of the GNU Lesser General Public License as published by the Free\n# Software Foundation; either version 2.1 of the License, or (at your option)\n# any later version.\n# Paramiko is distributed in the hope that it will be useful, but WITHOUT ANY\n# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR\n# A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more\n# details.\n# You should have received a copy of the GNU Lesser General Public License\n# along with Paramiko; if not, write to the Free Software Foundation, Inc.,\n# 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA.\nSome unit tests for public/private key objects.\nimport unittest\nfrom binascii import hexlify\nfrom hashlib import md5\nfrom paramiko import RSAKey, DSSKey, ECDSAKey, Message, util\nfrom paramiko.py3compat import StringIO, byte_chr, b, bytes\nfrom tests.util import test_path\n# from openssh's ssh-keygen\nPUB_RSA = 'ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAIEA049W6geFpmsljTwfvI1UmKWWJPNFI74+vNKTk4dmzkQY2yAMs6FhlvhlI8ysU4oj71ZsR\n...[truncated]"
+      }
+    ],
+    "exact_duplicate": [
+      {
+        "reason": "exact_duplicate",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 8035,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 0,
+        "preview": ""
+      },
+      {
+        "reason": "exact_duplicate",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 14111,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 16,
+        "preview": "<gh_stars>10-100"
+      },
+      {
+        "reason": "exact_duplicate",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 19527,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 0,
+        "preview": ""
+      },
+      {
+        "reason": "exact_duplicate",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 27762,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 0,
+        "preview": ""
+      },
+      {
+        "reason": "exact_duplicate",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 29426,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 0,
+        "preview": ""
+      },
+      {
+        "reason": "exact_duplicate",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 32456,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 0,
+        "preview": ""
+      },
+      {
+        "reason": "exact_duplicate",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 35789,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 0,
+        "preview": ""
+      },
+      {
+        "reason": "exact_duplicate",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 42337,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 0,
+        "preview": ""
+      }
+    ],
+    "control_chars": [
+      {
+        "reason": "control_chars",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 9141,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 26398,
+        "preview": "#!/usr/bin/env python3\n# pylint: disable=too-many-lines\nProvides a stdin/stdout based protocol to safely dispatch commands and return their\nresults over any connection that forwards both stdin/stdout, as well as some other\nneeded remote system related utilities.\nimport errno as sys_errno\nimport hashlib\nimport stat\nimport struct\nimport subprocess\nimport sys\nimport typing\nfrom pwd import getpwnam, getpwuid\nfrom grp import getgrnam, getgrgid, getgrall\nfrom spwd import getspnam\nfrom struct import pack, unpack\nfrom typing import IO, Any, Type, TypeVar, Callable, Optional, Union, NamedTuple, NewType, cast\nT = TypeVar('T')\ni32 = NewType('i32', int)\nu32 = NewType('u32', int)\ni64 = NewType('i64', int)\nu64 = NewType('u64', int)\nis_server = False\ndebug = False\n    import fora\nexcept ModuleNotFoundError:\n# TODO: timeout on commands\n# TODO: interactive commands?\n# TODO: env\nclass RemoteOSError(Exception):\n    \"\"\"An exception type for remote OSErrors.\"\"\"\n    def __init__(self, errno: int, strerror: str, msg: str):\n        super().__init__(msg)\n        self.errno = errno\n        self.strerror = strerror\n# Utility functions\ndef _is_debug() -> bool:\n    \"\"\"Returns True if debugging output should be\n...[truncated]"
+      },
+      {
+        "reason": "control_chars",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 25264,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 1108,
+        "preview": "<reponame>NLeSC/LIEStudio\nascii_brand = \"\"\"\n\u001b[49m\u001b[K\u001b[0m\u001b[12C\u001b[48;5;102m         \u001b[3C         \u001b[49m\n\u001b[11C\u001b[48;5;102m   \u001b[17C   \u001b[49m\n\u001b[10C\u001b[48;5;102m    \u001b[7C\u001b[48;5;209m   \u001b[7C\u001b[48;5;102m    \u001b[49m\n\u001b[9C\u001b[48;5;102m   \u001b[21C   \u001b[49m\n\u001b[7C\u001b[48;5;102m    \u001b[8C\u001b[48;5;209m  \u001b[48;5;203m \u001b[12C\u001b[48;5;102m    \u001b[49m\n\u001b[7C\u001b[48;5;102m   \u001b[9C\u001b[48;5;209m  \u001b[14C\u001b[48;5;102m   \u001b[49m\n\u001b[5C\u001b[48;5;102m    \u001b[15C\u001b[48;5;209m    \u001b[8C\u001b[48;5;102m    \u001b[49m\n\u001b[48;5;102m       \u001b[2C\u001b[48;5;208m \u001b[48;5;209m             \u001b[3C\u001b[48;5;167m \u001b[11C\u001b[48;5;102m       \u001b[49m\n\u001b[48;5;102m       \u001b[2C\u001b[48;5;209m          \u001b[2C     \u001b[48;5;173m \u001b[8C\u001b[48;5;209m \u001b[2C\u001b[48;5;102m       \u001b[49m\n\u001b[5C\u001b[48;5;102m    \u001b[1C\u001b[48;5;209m                         \u001b[1C\u001b[48;5;102m    \u001b[49m\n\u001b[7C\u001b[48;5;102m   \u001b[1C\u001b[48;5;209m             \u001b[1C         \u001b[1C\u001b[48;5;102m   \u001b[49m\n\u001b[7C\u001b[48;5;102m    \u001b[1C\u001b[48;5;209m                     \u001b[1C\u001b[48;5;102m    \u001b[49m\n\u001b[9C\u001b[48;5;102m   \u001b[2C\u001b[48;5;209m                 \u001b[2C\u001b[48;5;102m   \u001b[49m\n\u001b[10C\u001b[48;5;102m    \u001b[1C\u001b[48;5;209m               \u001b[1C\u001b[48;5;102m    \u001b[49m\n\u001b[11C\u001b[48;5;102m   \u001b[17C   \u001b[49m\n\u001b[12C\u001b[48;5;102m         \u001b[3C         \u001b[0m"
+      },
+      {
+        "reason": "control_chars",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 29513,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 7999,
+        "preview": "<reponame>clayne/syringe-1\n#### to fix the issue with window messages being dispatched, we might need to execute code that\n###  calls GetQueueStatus, and then will empty the queue to dispatch them later\n# this is the debugger attacher for manipulating a process\nimport sys,time\nsys.path.append('lib/')\nimport win32com.client as com\nimport ctypes\nimport context as ctx\nk32 = ctypes.WinDLL('kernel32.dll')\nu32 = ctypes.WinDLL('user32.dll')\nadvapi32 = ctypes.WinDLL('kernel32.dll')\n#hooker = ctypes.CDLL('whook.dll')\nclass ped_psapi(object):\n    wmi = None\n        super(ped_psapi, self).__init__()\n        self.wmi = com.GetObject(\"winmgmts://%s\"% host)\n    def enumerateProcesses(self, verbose=False):\n        res = self.wmi.InstancesOf('Win32_Process')\n        return [ (x.ProcessId, x.Name, x.ExecutablePath, x.CommandLine) for x in res ]\n    def enumerateThreads(self, pid):\n        res = self.wmi.InstancesOf('Win32_Thread')\n        res = [ (int(x.Handle), x.StartAddress, x.ThreadState, x.ThreadWaitReason) for x in res if int(x.ProcessHandle) == pid ]\n        assert len(res) > 0\n        return res\nclass ped_debug(object):\n    ## XXX: This was taken from http://www.rootkit.com/vault/c0de90e7/g\n...[truncated]"
+      },
+      {
+        "reason": "control_chars",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 29836,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 3946,
+        "preview": "# Copyright (c) 2016-2021 <NAME>\n# This source code is licensed under the license found in the\n# LICENSE file in the root directory of this source tree.\nimport numpy as np\nfrom sklearn.utils import arrayfuncs\nfrom sklearn import datasets\nclass LarsLasso:\n    def __init__(self, alpha: float = 1.0):\n        self.alpha = alpha\n    def predict(self, X: np.ndarray):\n        y = np.dot(X, self.coef_) + self.intercept_\n        return y\n    def fit(self, X: np.ndarray, y: np.ndarray):\n        n, p = X.shape\n        self.intercept_ = y.mean()\n        y = y - self.intercept_\n        self.coef_ = np.zeros(p)\n        active_set = []\n        inactive_set = list(range(p))\n        beta = np.zeros(p)\n        mu = np.zeros(n)\n        change_sign_flag = False\n        k = 0\n        while k != min(p, n - 1):\n            c = np.dot(X.T, y - mu)\n            # print(np.sign(c[active_set]) * np.sign(beta[active_set]))\n            if change_sign_flag:\n                # remove \u0006j from the calculation of the next equiangular direction.\n                pass\n            else:\n                j = inactive_set[np.argmax(np.abs(c[inactive_set]))]\n                # print(f\"add {j=}\")\n                active_set.app\n...[truncated]"
+      },
+      {
+        "reason": "control_chars",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 47518,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 551,
+        "preview": "# Counterクラスの使い方\nfrom collections import Counter\n# 引数に単語のリストが与えられたときに、各単語の出現数を表すCounterオブジェクトを返せ\n# 以下を書きかえる\ndef f1(l):\n    return Counter()\n# ここまでを書きかえる\n# 引数として\b与えらた文字列の行頭からスペースまでを削除したものを返せ\n# 例：\"abcd efg\" => \"efg\"\n# 以下を書きかえる\ndef g1(s):\n    return \"\"\n# ここまでを書きかえる\n# 引数として\b与えらた文字列の行末から続く英小文字の並びを削除したものを返せ\n#  \"abcDefg\" => \"abcD\"\n#  \"abc1234efg\" => \"abc1234\"\n# 以下を書きかえる\ndef g2(s):\n    return \"\"\n# ここまでを書きかえる\nc = f1(list(\"abcabcabcadef\"))\n        and c[\"d\"] == 1 and c[\"e\"] == 1 and c[\"f\"] == 1)\nassert g1(\"xyz abc\") == \"abc\"\nassert g2(\"xyz!abc\") == \"xyz!\""
+      }
+    ],
+    "long_line_dense": [
+      {
+        "reason": "long_line_dense",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 12478,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "DUCTF/crypto/babyrsa/solve.py",
+        "chars": 2670,
+        "preview": "<filename>DUCTF/crypto/babyrsa/solve.py\nimport math\nfrom Crypto.Util.number import inverse\ne = 0x10001\nn = 19574201286059123715221634877085223155972629451020572575626246458715199192950082143183900970133840359007922584516900405154928253156404028820410452946729670930374022025730036806358075325420793866358986719444785030579682635785758091517397518826225327945861556948820837789390500920096562699893770094581497500786817915616026940285194220703907757879335069896978124429681515117633335502362832425521219599726902327020044791308869970455616185847823063474157292399830070541968662959133724209945293515201291844650765335146840662879479678554559446535460674863857818111377905454946004143554616401168150446865964806314366426743287\ns = 373762048857131449741709020534662299339915354580610832786088930639432612960017554300690154301176179778005701538183467060259853652504140570099904135140234113216594465502523194762094479275965837397084993233255657722670034290696593994042961929154023843521895865590737622030816074745782670966104514637004581148175920579126452214482879563886549706692285740159641674722944646749323776203539888027895144047261383931482730365799077298135323559756364231534694904154035844480064960\n...[truncated]"
+      }
+    ],
+    "notebook_json": [
+      {
+        "reason": "notebook_json",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 20406,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 8599,
+        "preview": "<gh_stars>1-10\n#  Copyright (c) 2019. Partners HealthCare and other members of\n#  Forome Association\n#  Developed by <NAME> based on contributions by <NAME>,\n#  <NAME>, <NAME> and other members of Division of\n#  Genetics, Brigham and Women's Hospital\n#  Licensed under the Apache License, Version 2.0 (the \"License\");\n#  you may not use this file except in compliance with the License.\n#  You may obtain a copy of the License at\n#  Unless required by applicable law or agreed to in writing, software\n#  distributed under the License is distributed on an \"AS IS\" BASIS,\n#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n#  See the License for the specific language governing permissions and\n#  limitations under the License.\nfrom xml.sax.saxutils import escape\nfrom bitarray import bitarray\nfrom app.view.attr import AttrH\n# Transcript details support\ndef markupTranscriptTab(info_handle, view_context, aspect):\n    if \"details\" not in view_context:\n        return\n    it_map = bitarray(view_context[\"details\"])\n    assert aspect.getColGroups().getAttr(0) == \"transcripts\", (\n        \"For aspect \" + aspect.getName() + \" does not support trancripts\")\n    for grp_info in info\n...[truncated]"
+      },
+      {
+        "reason": "notebook_json",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 21261,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 1145,
+        "preview": "from pylanguagetool import converters\nmarkdown = \"\"\"# Heading\nThis is *a* Sentence.\nhtml = \"\"\"<h1>Heading</h1>\n<p>This is <em>a</em> Sentence.</p>\nplaintext = \"\"\"Heading\nThis is a Sentence.\n  \"cells\": [\n      \"cell_type\": \"markdown\",\n      \"metadata\": {},\n      \"source\": [\n        \"# Heading\\\\n\",\n        \"some *text*\"\n      \"cell_type\": \"markdown\",\n      \"metadata\": {},\n      \"source\": [\n        \"## Other Heading\\\\n\",\n        \"- text\\\\n\",\n        \"- more text\"\n  \"nbformat\": 4,\n  \"nbformat_minor\": 0\nipython_markdown = \"\"\"# Heading\nsome *text*\n## Other Heading\n- more text\nipython_html = \"\"\"<h1>Heading</h1>\n<h2>Other Heading</h2>\n<li>more text</li>\nipython_plaintext = \"\"\"Heading\nOther Heading\ndef test_html2text():\n    assert converters.html2text(html) == plaintext\ndef test_markdown2html():\n    assert converters.markdown2html(markdown) == html\ndef test_ipynb2markdown():\n    assert converters.ipynb2markdown(ipython) == ipython_markdown\ndef test_ipython_markdown2html():\n    assert converters.markdown2html(ipython_markdown) == ipython_html\ndef test_ipython_html2text():\n    assert converters.html2text(ipython_html) == ipython_plaintext"
+      }
+    ],
+    "near_duplicate_bucket": [
+      {
+        "reason": "near_duplicate_bucket",
+        "source": "data\\training\\curated_40b\\code.txt",
+        "index": 27762,
+        "lang": "python",
+        "category": "",
+        "origin": "",
+        "filename": "",
+        "chars": 0,
+        "preview": ""
+      }
+    ]
+  }
+}

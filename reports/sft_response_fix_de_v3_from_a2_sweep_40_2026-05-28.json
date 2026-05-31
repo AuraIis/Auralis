@@ -1,0 +1,102 @@
+{
+  "checkpoint": "checkpoints/sft_response_fix_de_v2_core_phase_a2/sft_smoke_step_220.pt",
+  "train": "data/training/sft_response_fix_de_v3/core_train.helix.jsonl",
+  "val": "data/training/sft_response_fix_de_v3/val.helix.jsonl",
+  "steps": 40,
+  "batch_size": 1,
+  "grad_accum": 4,
+  "lr": 8e-07,
+  "warmup_steps": 20,
+  "category_weights": {
+    "facts_de": 2.0,
+    "hallucination_guard": 2.0,
+    "qa_de": 2.0,
+    "honesty": 2.0
+  },
+  "eos_loss_weight": 8.0,
+  "generation_system": "Du bist Auralis, ein hilfreicher deutscher KI-Assistent. Antworte korrekt, knapp und ehrlich. Wenn etwas unsicher oder erfunden ist, sage das deutlich.",
+  "train_by_category": {
+    "facts_de": 56,
+    "honesty": 11,
+    "hallucination_guard": 42,
+    "qa_de": 8
+  },
+  "val_by_category": {
+    "facts_de": 3,
+    "hallucination_guard": 4,
+    "qa_de": 3,
+    "honesty": 2
+  },
+  "history": [
+    {
+      "step": 1,
+      "train_loss": 3.7820016145706177,
+      "val_loss": 4.604228734970093,
+      "val_by_category": {
+        "facts_de": 4.999684651692708,
+        "hallucination_guard": 4.319885015487671,
+        "honesty": 4.466985702514648,
+        "qa_de": 4.742435614267985
+      },
+      "lr": 8e-08,
+      "elapsed_seconds": 12.516996145248413
+    },
+    {
+      "step": 40,
+      "train_loss": 0.6835521459579468,
+      "val_loss": 1.211302101612091,
+      "val_by_category": {
+        "facts_de": 1.1883382598559062,
+        "hallucination_guard": 1.1778151243925095,
+        "honesty": 2.3889119625091553,
+        "qa_de": 1.4796578486760457
+      },
+      "lr": 8e-08,
+      "elapsed_seconds": 110.64827299118042
+    }
+  ],
+  "generations_before": [
+    {
+      "prompt": "Was ist die Hauptstadt von Deutschland?",
+      "answer": "<|end|>"
+    },
+    {
+      "prompt": "Erklaere kurz, was Wasser ist.",
+      "answer": "heides.html, jpeg.png\"Ich habe mich nicht besonders gut zurecht. Die meisten sprechen von \"was ist das denn?\" ist ein schwieriges Problem. Die meisten sprechen von \"was ist das denn?\" Ja, das ist falsch. Die meisten sprechen von \"was ist das denn?\" Ja,"
+    },
+    {
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz und korrekt.",
+      "answer": "ellingen\", \"und\" .\")\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\""
+    },
+    {
+      "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+      "answer": "\", \"L\"-L\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\""
+    }
+  ],
+  "generations_after": [
+    {
+      "prompt": "Was ist die Hauptstadt von Deutschland?",
+      "answer": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>"
+    },
+    {
+      "prompt": "Erklaere kurz, was Wasser ist.",
+      "answer": "Wasser ist Wasser ist ein chemisches Element, das Wasser ist ein chemisches Element, das in der Luft ist.\n<|end|>"
+    },
+    {
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz und korrekt.",
+      "answer": "Das ist falsch. Ein Kampf ist eine andere Bezeichnung für eine Krankheit, die mit dem Wort Kampf bezeichnet wird.\n<|end|>"
+    },
+    {
+      "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+      "answer": "Ja. Die Hauptstadt von Deutschland ist Berlin.\n<|end|>"
+    }
+  ],
+  "initial_val_loss": 4.623392283916473,
+  "initial_val_by_category": {
+    "facts_de": 5.011839866638184,
+    "hallucination_guard": 4.345434904098511,
+    "honesty": 4.462867021560669,
+    "qa_de": 4.753150304158528
+  },
+  "saved_checkpoint": "checkpoints/sft_response_fix_de_v3_from_a2_sweep_40/sft_smoke_step_40.pt"
+}

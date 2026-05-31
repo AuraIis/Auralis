@@ -16,6 +16,7 @@ conversion scripts (will land in Phase 1.5 / Phase 5).
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -25,6 +26,24 @@ import torch
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(REPO / "src"))
+
+# Auto-enable mamba_ssm CUDA kernels when CUDA is available and mamba_ssm is
+# installed.  Checkpoints saved with the kernel back-end (parameter layout
+# uses _impl.inner.*) cannot be loaded with the native back-end — so this
+# must be set BEFORE build_model() is called.
+def _maybe_enable_mamba_kernel() -> bool:
+    if os.environ.get("AURALIS_USE_MAMBA_KERNEL", "") == "1":
+        return True  # already set
+    if not torch.cuda.is_available():
+        return False
+    try:
+        import mamba_ssm  # noqa: F401
+        os.environ["AURALIS_USE_MAMBA_KERNEL"] = "1"
+        return True
+    except ImportError:
+        return False
+
+_kernel_active = _maybe_enable_mamba_kernel()
 
 from auralis.model import build_model                         # noqa: E402
 from auralis.tokenizer.chat_template import build_inference_prompt  # noqa: E402
@@ -72,14 +91,23 @@ def main() -> None:
     loaded_step = None
     if args.checkpoint:
         payload = torch.load(args.checkpoint, map_location=device, weights_only=False)
-        miss, extra = model.load_state_dict(payload["model"], strict=False)
+        # Strip torch.compile prefix (_orig_mod.) that is present when the
+        # checkpoint was saved while torch.compile was active.
+        state = {k.replace("_orig_mod.", ""): v for k, v in payload["model"].items()}
+        miss, extra = model.load_state_dict(state, strict=False)
         if miss or extra:
             print(f"  state_dict mismatch — missing={len(miss)} extra={len(extra)}")
             print(f"    first missing: {miss[:3]}")
             print(f"    first extra  : {extra[:3]}")
+            if _kernel_active:
+                print("  hint: mamba_ssm kernel is active — layout uses _impl.inner.*")
+            else:
+                print("  hint: mamba_ssm not active — if checkpoint was saved with CUDA kernel,")
+                print("        set AURALIS_USE_MAMBA_KERNEL=1 or install mamba_ssm.")
             raise SystemExit(1)
         loaded_step = payload.get("state", {}).get("step")
-        print(f"  loaded checkpoint step={loaded_step}")
+        print(f"  mamba backend : {'mamba_ssm' if _kernel_active else 'native'}")
+        print(f"  loaded step   : {loaded_step}")
     else:
         print("  (no --checkpoint, testing fresh-init model)")
 

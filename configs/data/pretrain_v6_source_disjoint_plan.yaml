@@ -1,0 +1,158 @@
+# Auralis pretrain v6 source-disjoint data plan.
+#
+# Purpose:
+#   - fix the v5 weakness where validation was mostly a tail split of the same
+#     mixed source patterns
+#   - keep train/validation/gates separated by source, not just by byte offset
+#   - make external data acquisition conservative and auditable
+#
+# This is a planning/control file. It should drive download and mix scripts, but
+# it does not itself download data.
+
+name: pretrain_v6_source_disjoint
+version: "0.1"
+created_at: "2026-05-26"
+
+principles:
+  - "No source may be used for both training and a heldout gate unless it has an official train/dev/test split and only train is used for training."
+  - "Validation is sampled by source manifests, never by taking the last bytes of a final mixed text file."
+  - "Synthetic/self-written data is allowed for small gates and canaries only, not as a main training source."
+  - "Code data must pass license, generated-file, secret, syntax, and near-duplicate filters before entering a train mix."
+  - "German instruction data must be tracked separately from English QA so German skill cannot hide inside aggregate loss."
+
+target_mix_for_next_canary:
+  # Ratios are post-filter byte/token budget targets for the next short canary,
+  # not a final 1B recipe.
+  german_clean_prose: 0.35
+  english_clean_prose: 0.20
+  german_qa_instruction: 0.12
+  english_qa_instruction: 0.08
+  math_reasoning: 0.08
+  python_code: 0.10
+  general_code: 0.04
+  safety_honesty_short_answers: 0.03
+
+train_sources:
+  german_clean_prose:
+    - name: fineweb2_de_train
+      status: acquire
+      hf_dataset: "HuggingFaceFW/fineweb-2"
+      hf_config: "deu_Latn"
+      license_note: "ODC-By 1.0 per dataset card; verify before production."
+      filters: ["language_de", "quality", "dedup", "html_url_noise", "contamination_against_gates"]
+      notes: "Modern German web top-up. Use only train shard IDs reserved for training."
+    - name: wikipedia_de_train
+      status: acquire_small
+      hf_dataset: "wikimedia/wikipedia"
+      hf_config: "20231101.de"
+      license_note: "CC BY-SA/GFDL; share-alike implications must be accepted before release use."
+      filters: ["section_cleanup", "list_table_drop", "dedup", "contamination_against_gates"]
+      notes: "Factual German anchor; keep capped because license and style are different from web prose."
+
+  english_clean_prose:
+    - name: fineweb_edu_en_train
+      status: keep_or_acquire
+      hf_dataset: "HuggingFaceFW/fineweb-edu"
+      hf_config: "sample-10BT or explicit shard subset"
+      license_note: "Verify exact config license before production."
+      filters: ["quality", "dedup", "contamination_against_gates"]
+    - name: nemotron_cc_train_candidate
+      status: investigate
+      hf_dataset: "nvidia/Nemotron-CC-v2.1"
+      license_note: "Use only after explicit license and fields are verified."
+      filters: ["quality", "dedup", "contamination_against_gates"]
+
+  german_qa_instruction:
+    - name: oasst_de_train
+      status: acquire
+      hf_dataset: "OpenAssistant/oasst1"
+      hf_filter: "lang == 'de', reviewed/non-spam, best paths only"
+      license_note: "Apache-2.0."
+      filters: ["toxicity_spam_labels", "dedup", "prompt_answer_quality", "contamination_against_gates"]
+      notes: "Good first German instruction source; small but human annotated."
+    - name: germanquad_train
+      status: acquire
+      hf_dataset: "deepset/germanquad"
+      split_policy: "train only for train; never mix test into train"
+      license_note: "CC-BY-4.0."
+      filters: ["extractive_to_short_qa", "dedup", "contamination_against_gates"]
+
+  english_qa_instruction:
+    - name: chatqa_non_synthetic_train_candidate
+      status: investigate_carefully
+      hf_dataset: "nvidia/ChatQA-Training-Data"
+      license_note: "Synthetic conversational QA is non-commercial/OpenAI-ToU restricted; prefer non-synthetic subsets only if licenses pass."
+      filters: ["subset_license_gate", "dedup", "contamination_against_gates"]
+    - name: oasst_en_train
+      status: acquire_small
+      hf_dataset: "OpenAssistant/oasst1"
+      hf_filter: "lang == 'en', reviewed/non-spam, best paths only"
+      license_note: "Apache-2.0."
+
+  math_reasoning:
+    - name: openmathinstruct2_train
+      status: keep_capped
+      hf_dataset: "nvidia/OpenMathInstruct-2"
+      license_note: "CC-BY-4.0."
+      filters: ["dedup", "answer_format_normalization", "contamination_against_gates"]
+      notes: "Already useful; cap so math format does not dominate validation."
+
+  python_code:
+    - name: codeparrot_clean_python_permissive
+      status: keep_expand_after_gate
+      hf_dataset: "codeparrot/codeparrot-clean"
+      license_note: "Per-row license; allow only permissive licenses."
+      existing_batch: "data/training/code_public/codeparrot_clean_python_batch1_permissive_filtered.txt"
+      filters: ["permissive_license", "syntax", "secrets", "generated_vendor", "near_dedup", "contamination_against_code_eval"]
+
+  general_code:
+    - name: the_stack_v2_train_candidate
+      status: repair_downloader_first
+      hf_dataset: "bigcode/the-stack-v2"
+      license_note: "Permissive/no-license source metadata; still requires secret and license filtering."
+      filters: ["language_allowlist", "license", "secrets", "generated_vendor", "near_dedup", "contamination_against_code_eval"]
+      notes: "Use only after downloader finalizer crash is fixed and per-language smoke passes."
+
+heldout_validation_sources:
+  # These are validation/gate-only. Do not train on them.
+  source_ppl_sets:
+    - name: val_de_prose_fineweb2_holdout_shards
+      source: "HuggingFaceFW/fineweb-2/deu_Latn"
+      split_rule: "reserved shard IDs, never downloaded into train"
+    - name: val_de_wikipedia_holdout_titles
+      source: "wikimedia/wikipedia/20231101.de"
+      split_rule: "fixed title hash bucket reserved for validation"
+    - name: val_code_permissive_holdout_repos
+      source: "codeparrot/the_stack_v2"
+      split_rule: "repo-name hash bucket reserved for validation"
+
+  fixed_skill_gates:
+    - "eval/disjoint_pretrain_gate_v1.yaml"
+    - "eval/disjoint_code_eval_v1.jsonl"
+
+contamination_rules:
+  exact:
+    - "sha256 normalized prompt"
+    - "sha256 normalized answer"
+    - "sha256 normalized document"
+  fuzzy:
+    - "minhash or simhash over normalized 5-grams"
+    - "repo-level split for code"
+    - "dataset-source split for QA"
+  hard_fail_if:
+    - "gate prompt appears in train"
+    - "gate expected answer paragraph appears in train with same context"
+    - "code eval task or unit tests appear in train"
+
+promotion_gates_for_next_canary:
+  loss:
+    - "separate source PPL improves or stays stable on de_prose, qa_de, math, code"
+  capability:
+    - "disjoint_pretrain_gate_v1 overall >= 35% for canary promotion"
+    - "code executable gate >= 25% before any code-SFT"
+    - "hallucination guard >= 60%"
+  manual:
+    - "10 German short-answer prompts sampled manually"
+    - "5 Python completion prompts with syntax/unit checks"
+    - "5 refusal/honesty traps"
+

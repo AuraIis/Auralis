@@ -1,0 +1,109 @@
+{
+  "checkpoint": "checkpoints/sft_response_fix_de_v5_family_from_v4best_100/sft_smoke_step_100.pt",
+  "train": "data/training/sft_response_fix_de_v4_polarity_patch/core_train.helix.jsonl",
+  "val": "data/training/sft_response_fix_de_v4_polarity_patch/val.helix.jsonl",
+  "steps": 80,
+  "batch_size": 1,
+  "grad_accum": 4,
+  "lr": 8e-07,
+  "warmup_steps": 20,
+  "category_weights": {
+    "facts_de": 1.3,
+    "hallucination_guard": 1.5,
+    "instruction_de": 1.2
+  },
+  "family_balanced_sampler": false,
+  "eos_loss_weight": 10.0,
+  "generation_system": "Du bist Auralis, ein hilfreicher deutscher KI-Assistent. Antworte korrekt, knapp und ehrlich. Wenn etwas unsicher oder erfunden ist, sage das deutlich.",
+  "train_by_category": {
+    "hallucination_guard": 14,
+    "facts_de": 11,
+    "instruction_de": 4
+  },
+  "val_by_category": {
+    "hallucination_guard": 14,
+    "facts_de": 11,
+    "instruction_de": 4
+  },
+  "history": [
+    {
+      "step": 1,
+      "train_loss": 0.12745395116508007,
+      "val_loss": 0.15682964120060205,
+      "val_by_category": {
+        "facts_de": 0.19369080290198326,
+        "hallucination_guard": 0.15682964120060205,
+        "instruction_de": 0.18862172216176987
+      },
+      "lr": 8e-08,
+      "elapsed_seconds": 12.829578876495361
+    },
+    {
+      "step": 40,
+      "train_loss": 0.09454981796443462,
+      "val_loss": 0.0887221097946167,
+      "val_by_category": {
+        "facts_de": 0.14429646357893944,
+        "hallucination_guard": 0.0887221097946167,
+        "instruction_de": 0.10790727101266384
+      },
+      "lr": 6.2e-07,
+      "elapsed_seconds": 110.64168119430542
+    },
+    {
+      "step": 80,
+      "train_loss": 0.08613019436597824,
+      "val_loss": 0.08670149464160204,
+      "val_by_category": {
+        "facts_de": 0.10178647376596928,
+        "hallucination_guard": 0.08670149464160204,
+        "instruction_de": 0.08566359244287014
+      },
+      "lr": 8e-08,
+      "elapsed_seconds": 210.83510541915894
+    }
+  ],
+  "generations_before": [
+    {
+      "prompt": "Was ist die Hauptstadt von Deutschland?",
+      "answer": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>"
+    },
+    {
+      "prompt": "Erklaere kurz, was Wasser ist.",
+      "answer": "Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.\n<|end|>"
+    },
+    {
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz und korrekt.",
+      "answer": "Nein. Mein Kampf stammt von Adolf Hitler, nicht von Goethe.\n<|end|>"
+    },
+    {
+      "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+      "answer": "Ja. Bonn ist die Hauptstadt von Deutschland.\n<|end|>"
+    }
+  ],
+  "generations_after": [
+    {
+      "prompt": "Was ist die Hauptstadt von Deutschland?",
+      "answer": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>"
+    },
+    {
+      "prompt": "Erklaere kurz, was Wasser ist.",
+      "answer": "Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.\n<|end|>"
+    },
+    {
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz und korrekt.",
+      "answer": "Nein. Mein Kampf stammt von Adolf Hitler, nicht von Goethe.\n<|end|>"
+    },
+    {
+      "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+      "answer": "Nein. Die Hauptstadt von Deutschland ist Berlin.\n<|end|>"
+    }
+  ],
+  "initial_val_loss": 0.16142337769269943,
+  "initial_val_by_category": {
+    "facts_de": 0.19134882651269436,
+    "hallucination_guard": 0.16142337769269943,
+    "instruction_de": 0.1846369057893753
+  },
+  "saved_checkpoint": "checkpoints/sft_response_fix_de_v5_family100_guardpatch_80/sft_smoke_step_80.pt"
+}

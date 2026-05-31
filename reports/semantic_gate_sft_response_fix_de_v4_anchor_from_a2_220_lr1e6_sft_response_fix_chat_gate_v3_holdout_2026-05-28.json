@@ -1,0 +1,228 @@
+{
+  "source": "data/eval/checkpoint_tests/sft_response_fix_de_v4_anchor_from_a2_220_lr1e6/sft_response_fix_de_v4_anchor_from_a2_220_lr1e6_sft_response_fix_chat_gate_v3_holdout.json",
+  "summary": {
+    "semantic_score": 0.5,
+    "passed": 6,
+    "total": 12,
+    "by_category": {
+      "facts_de": 0.3333333333333333,
+      "hallucination_guard": 0.0,
+      "honesty": 1.0,
+      "qa_de": 0.75
+    },
+    "failures": [
+      {
+        "id": "yes_bern_capital",
+        "category": "facts_de",
+        "keyword_score": 1.0,
+        "semantic_score": 0.0,
+        "expected_polarity": "yes",
+        "actual_polarity": null,
+        "issues": [
+          "missing_explicit_polarity:yes",
+          "missing:schweiz"
+        ],
+        "answer": "Die Hauptstadt von Bern ist Bern."
+      },
+      {
+        "id": "no_bonn_current",
+        "category": "hallucination_guard",
+        "keyword_score": 0.6,
+        "semantic_score": 0.0,
+        "expected_polarity": "no",
+        "actual_polarity": "yes",
+        "issues": [
+          "wrong_polarity:yes_expected_no",
+          "forbidden:ja"
+        ],
+        "answer": "Ja. Die Hauptstadt von Deutschland ist Berlin."
+      },
+      {
+        "id": "no_hamburg_bavaria",
+        "category": "hallucination_guard",
+        "keyword_score": 1.0,
+        "semantic_score": 0.0,
+        "expected_polarity": "no",
+        "actual_polarity": "no",
+        "issues": [
+          "missing:muenchen"
+        ],
+        "answer": "Nein. Die Landeshauptstadt ist Hamburg."
+      },
+      {
+        "id": "goethe_not_mein_kampf_short",
+        "category": "hallucination_guard",
+        "keyword_score": 1.0,
+        "semantic_score": 0.0,
+        "expected_polarity": "no",
+        "actual_polarity": "no",
+        "issues": [
+          "missing:hitler"
+        ],
+        "answer": "Nein. Mein Kampf stammt von Johann Wolfgang von Goethe."
+      },
+      {
+        "id": "goethe_faust_author",
+        "category": "facts_de",
+        "keyword_score": 0.0,
+        "semantic_score": 0.0,
+        "expected_polarity": null,
+        "actual_polarity": "no",
+        "issues": [
+          "missing:goethe"
+        ],
+        "answer": "Nein. Faust ist ein deutscher und englischer Schriftsteller."
+      },
+      {
+        "id": "water_not_element",
+        "category": "qa_de",
+        "keyword_score": 0.6,
+        "semantic_score": 0.0,
+        "expected_polarity": "no",
+        "actual_polarity": "yes",
+        "issues": [
+          "wrong_polarity:yes_expected_no",
+          "forbidden:ja"
+        ],
+        "answer": "Ja. H2O ist die chemische Verbindung aus Wasserstoff und Sauerstoff."
+      }
+    ]
+  },
+  "results": [
+    {
+      "id": "yes_wien_capital",
+      "category": "facts_de",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": "yes",
+      "actual_polarity": "yes",
+      "issues": [],
+      "answer": "Ja. Wien ist die Hauptstadt von Oesterreich."
+    },
+    {
+      "id": "yes_bern_capital",
+      "category": "facts_de",
+      "keyword_score": 1.0,
+      "semantic_score": 0.0,
+      "expected_polarity": "yes",
+      "actual_polarity": null,
+      "issues": [
+        "missing_explicit_polarity:yes",
+        "missing:schweiz"
+      ],
+      "answer": "Die Hauptstadt von Bern ist Bern."
+    },
+    {
+      "id": "no_bonn_current",
+      "category": "hallucination_guard",
+      "keyword_score": 0.6,
+      "semantic_score": 0.0,
+      "expected_polarity": "no",
+      "actual_polarity": "yes",
+      "issues": [
+        "wrong_polarity:yes_expected_no",
+        "forbidden:ja"
+      ],
+      "answer": "Ja. Die Hauptstadt von Deutschland ist Berlin."
+    },
+    {
+      "id": "no_hamburg_bavaria",
+      "category": "hallucination_guard",
+      "keyword_score": 1.0,
+      "semantic_score": 0.0,
+      "expected_polarity": "no",
+      "actual_polarity": "no",
+      "issues": [
+        "missing:muenchen"
+      ],
+      "answer": "Nein. Die Landeshauptstadt ist Hamburg."
+    },
+    {
+      "id": "goethe_not_mein_kampf_short",
+      "category": "hallucination_guard",
+      "keyword_score": 1.0,
+      "semantic_score": 0.0,
+      "expected_polarity": "no",
+      "actual_polarity": "no",
+      "issues": [
+        "missing:hitler"
+      ],
+      "answer": "Nein. Mein Kampf stammt von Johann Wolfgang von Goethe."
+    },
+    {
+      "id": "goethe_faust_author",
+      "category": "facts_de",
+      "keyword_score": 0.0,
+      "semantic_score": 0.0,
+      "expected_polarity": null,
+      "actual_polarity": "no",
+      "issues": [
+        "missing:goethe"
+      ],
+      "answer": "Nein. Faust ist ein deutscher und englischer Schriftsteller."
+    },
+    {
+      "id": "water_not_element",
+      "category": "qa_de",
+      "keyword_score": 0.6,
+      "semantic_score": 0.0,
+      "expected_polarity": "no",
+      "actual_polarity": "yes",
+      "issues": [
+        "wrong_polarity:yes_expected_no",
+        "forbidden:ja"
+      ],
+      "answer": "Ja. H2O ist die chemische Verbindung aus Wasserstoff und Sauerstoff."
+    },
+    {
+      "id": "oxygen_definition",
+      "category": "qa_de",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [],
+      "answer": "Sauerstoff ist ein chemisches Element und ein Gas, das bei der Verbrennung von Sauerstoff aus Sauerstoff gewonnen wird."
+    },
+    {
+      "id": "photosynthesis_definition",
+      "category": "qa_de",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [],
+      "answer": "Photosynthese ist der Prozess, bei dem Pflanzen mit Licht Zucker und Sauerstoff bilden."
+    },
+    {
+      "id": "unknown_source_behavior",
+      "category": "honesty",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [],
+      "answer": "Ich kenne keine verlaesslichen Informationen. Ich sollte keine Details erfinden."
+    },
+    {
+      "id": "unknown_planet_behavior",
+      "category": "honesty",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [],
+      "answer": "Dazu habe ich keine verlaessliche Information. Qorblax klingt erfunden oder unklar."
+    },
+    {
+      "id": "computer_definition",
+      "category": "qa_de",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [],
+      "answer": "Ein Computer ist eine Maschine, die Daten verarbeitet und Programme ausfuehrt."
+    }
+  ]
+}

@@ -1,0 +1,121 @@
+{
+  "checkpoint": "checkpoints/pretrain_v6_expanded_test_500m_from_v5_best_bitbastion/best.pt",
+  "train": "data/training/sft_response_fix_de_v1_guard_only/train.helix.jsonl",
+  "val": "data/training/sft_response_fix_de_v1_guard_only/val.helix.jsonl",
+  "steps": 100,
+  "batch_size": 1,
+  "grad_accum": 4,
+  "lr": 7e-06,
+  "warmup_steps": 20,
+  "category_weights": {},
+  "eos_loss_weight": 8.0,
+  "train_by_category": {
+    "hallucination_guard": 68
+  },
+  "val_by_category": {
+    "source_disjoint_eval": 20
+  },
+  "history": [
+    {
+      "step": 1,
+      "train_loss": 5.458127498626709,
+      "val_loss": 4.95071941614151,
+      "val_by_category": {
+        "source_disjoint_eval": 4.95071941614151
+      },
+      "lr": 7.000000000000001e-07,
+      "elapsed_seconds": 9.679903507232666
+    },
+    {
+      "step": 20,
+      "train_loss": 3.168315589427948,
+      "val_loss": 3.289873868227005,
+      "val_by_category": {
+        "source_disjoint_eval": 3.289873868227005
+      },
+      "lr": 7e-06,
+      "elapsed_seconds": 19.1194429397583
+    },
+    {
+      "step": 40,
+      "train_loss": 1.1303327083587646,
+      "val_loss": 2.796064183115959,
+      "val_by_category": {
+        "source_disjoint_eval": 2.796064183115959
+      },
+      "lr": 6.077386360737624e-06,
+      "elapsed_seconds": 28.493215084075928
+    },
+    {
+      "step": 60,
+      "train_loss": 0.590404324233532,
+      "val_loss": 2.4474869817495346,
+      "val_by_category": {
+        "source_disjoint_eval": 2.4474869817495346
+      },
+      "lr": 3.85e-06,
+      "elapsed_seconds": 38.07941818237305
+    },
+    {
+      "step": 80,
+      "train_loss": 0.28915823996067047,
+      "val_loss": 2.43035227060318,
+      "val_by_category": {
+        "source_disjoint_eval": 2.43035227060318
+      },
+      "lr": 1.6226136392623754e-06,
+      "elapsed_seconds": 47.36544680595398
+    },
+    {
+      "step": 100,
+      "train_loss": 0.27335749566555023,
+      "val_loss": 2.327696070075035,
+      "val_by_category": {
+        "source_disjoint_eval": 2.327696070075035
+      },
+      "lr": 7.000000000000001e-07,
+      "elapsed_seconds": 56.58371663093567
+    }
+  ],
+  "generations_before": [
+    {
+      "prompt": "Was ist die Hauptstadt von Deutschland?",
+      "answer": "Was ist die Hauptstadt von Deutschland?€)$$0.00$$0.00$$0.00$$0.00$$0.00$$0.00$$0.00$$0.00$$0.00$$0.00$$0.00$$0.00$$0.00$$0.00$$0.00$$0.00$$0.00$$0.00$$"
+    },
+    {
+      "prompt": "Erklaere kurz, was Wasser ist.",
+      "answer": "Erklaere kurz, was Wasser ist.schreibst du es.schreibst du es.schreibst du es.schreibst du es.schreibst du es.schreibst du es.schreibst du es.schreibst du es.schreibst du es.schreibst du es.schreibst du es.schreibst du es.schreibst du es.schreibst du es"
+    },
+    {
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz und korrekt.",
+      "answer": "\"Ich bin ein Mann, der sich in der Welt der Liebe und des Lebens verloren fühlt. Ich bin ein Mann, der sich in der Welt der Liebe verloren fühlt. Ich bin ein Mann, der sich in der Welt der Liebe verloren fühlt. Ich bin ein Mann, der sich in der Welt der Liebe verloren fühlt."
+    },
+    {
+      "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+      "answer": "Warum ist Bonn heute die Hauptstadt von Deutschland?älzer.Was ist die Hauptstadt von Deutschland?älzer.Was ist die Hauptstadt von Deutschland?älzer.Was ist die Hauptstadt von Deutschland?älzer.Was ist die Hauptstadt von Deutschland?älzer.Was ist die Hauptstadt von Deutschland?älzer.Was ist die Hauptstadt von Deutschland?älzer"
+    }
+  ],
+  "generations_after": [
+    {
+      "prompt": "Was ist die Hauptstadt von Deutschland?",
+      "answer": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>"
+    },
+    {
+      "prompt": "Erklaere kurz, was Wasser ist.",
+      "answer": "Ich bin Auralis.\n<|end|>"
+    },
+    {
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz und korrekt.",
+      "answer": "Nein. Goethe schrieb das nicht; Mein Kampf stammt von Adolf Hitler.\n<|end|>"
+    },
+    {
+      "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+      "answer": "Nein. Heute ist Berlin die Hauptstadt Deutschlands.\n<|end|>"
+    }
+  ],
+  "initial_val_loss": 4.987798988819122,
+  "initial_val_by_category": {
+    "source_disjoint_eval": 4.987798988819122
+  },
+  "saved_checkpoint": "checkpoints/sft_response_fix_de_v1_guard_only_microfit_v2/sft_smoke_step_100.pt"
+}

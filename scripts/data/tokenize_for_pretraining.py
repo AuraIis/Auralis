@@ -106,10 +106,19 @@ def _tokenize_language(
         bytes_in=sum(p.stat().st_size for p in sources if p.exists()),
     )
     if not sources:
-        print(f"  [{lang}] no sources, skipping", file=sys.stderr)
-        return stats
+        raise FileNotFoundError(
+            f"[{lang}] no source files resolved from config. "
+            "Refuse to write an empty tokenized corpus."
+        )
 
     eos = sp.eos_id()
+    if eos is None or int(eos) < 0:
+        raise ValueError(
+            f"[{lang}] tokenizer reports no valid EOS id (got {eos!r}). Appending it and "
+            "casting to uint32 would wrap to a huge out-of-vocab token (e.g. -1 -> 4294967295) "
+            "and silently corrupt the entire corpus. Export the SentencePiece model with a "
+            "defined </s> (eos_id >= 0) before tokenizing."
+        )
 
     out_bin.parent.mkdir(parents=True, exist_ok=True)
     tmp_bin = out_bin.with_suffix(out_bin.suffix + ".tmp")

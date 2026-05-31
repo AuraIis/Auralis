@@ -1,0 +1,5752 @@
+{
+  "checkpoint": "checkpoints/sft_response_fix_de_v8_stable_from_v6_40_20/sft_smoke_step_20.pt",
+  "model_config": "configs/model/helix_v2_mid_500m_smart.yaml",
+  "train": "data/training/sft_response_fix_de_v12_photo_faust_bridge/core_train.helix.jsonl",
+  "val": "data/training/sft_response_fix_de_v12_photo_faust_bridge/val.helix.jsonl",
+  "probe_file": "eval/learning_trace_de_repair_v2.yaml",
+  "steps": 80,
+  "objective": {
+    "sft_weight": 1.0,
+    "probe_weight": 0.5,
+    "contrastive_weight": 1.0,
+    "desired_margin": 0.7,
+    "eos_loss_weight": 8.0
+  },
+  "history": [
+    {
+      "step": 0,
+      "train_loss": null,
+      "val_loss": 0.7975378083065152,
+      "val_by_category": {
+        "facts_de": 0.11173992045223713,
+        "hallucination_guard": 0.11157499440014362,
+        "honesty": 0.86565219797194,
+        "qa_de": 2.0009181667119265
+      },
+      "lr": null,
+      "elapsed_seconds": 0.0,
+      "loss_components": null,
+      "probes": [
+        {
+          "id": "de_capital_current",
+          "category": "geography",
+          "prompt": "Was ist die Hauptstadt von Deutschland?",
+          "answer": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>",
+          "best_target": {
+            "text": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>\n",
+            "avg_nll": 0.7936007380485535,
+            "total_nll": 7.936007499694824,
+            "tokens": 10,
+            "ppl": 2.2113444805145264
+          },
+          "best_negative": {
+            "text": "Die Hauptstadt von Deutschland ist Bonn.\n<|end|>\n",
+            "avg_nll": 1.6317939758300781,
+            "total_nll": 16.31793975830078,
+            "tokens": 10,
+            "ppl": 5.113039493560791
+          },
+          "target_nll": 0.7936007380485535,
+          "negative_nll": 1.6317939758300781,
+          "margin": 0.8381932377815247,
+          "expected_hits": [
+            "berlin"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.9866948127746582
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.005867101717740297
+            },
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.0017893649637699127
+            },
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 0.001309127314016223
+            },
+            {
+              "token_id": 352,
+              "piece": "▁Die",
+              "text": "Die",
+              "prob": 0.00089974922593683
+            },
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.0005809217691421509
+            },
+            {
+              "token_id": 12860,
+              "piece": "Berlin",
+              "text": "Berlin",
+              "prob": 0.0003109450335614383
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.00025778243434615433
+            }
+          ]
+        },
+        {
+          "id": "bonn_current_trap",
+          "category": "hallucination_guard",
+          "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+          "answer": "Nein. Die Hauptstadt von Deutschland ist Berlin.\n<|end|>",
+          "best_target": {
+            "text": "Nein. Die Hauptstadt von Deutschland ist Berlin.\n<|end|>\n",
+            "avg_nll": 0.8188906908035278,
+            "total_nll": 9.826687812805176,
+            "tokens": 12,
+            "ppl": 2.2679824829101562
+          },
+          "best_negative": {
+            "text": "Ja. Bonn ist die Hauptstadt von Deutschland.\n<|end|>\n",
+            "avg_nll": 0.9953460693359375,
+            "total_nll": 11.94415283203125,
+            "tokens": 12,
+            "ppl": 2.705660581588745
+          },
+          "target_nll": 0.8188906908035278,
+          "negative_nll": 0.9953460693359375,
+          "margin": 0.17645537853240967,
+          "expected_hits": [
+            "nein",
+            "berlin"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.7296791076660156
+            },
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.26843398809432983
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.0006653812597505748
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.00022994961182121187
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.00017908494919538498
+            },
+            {
+              "token_id": 9931,
+              "piece": "▁Nein",
+              "text": "Nein",
+              "prob": 0.0001310213265242055
+            },
+            {
+              "token_id": 32258,
+              "piece": "Nicht",
+              "text": "Nicht",
+              "prob": 6.588166434084997e-05
+            },
+            {
+              "token_id": 4221,
+              "piece": "ja",
+              "text": "ja",
+              "prob": 3.995924998889677e-05
+            }
+          ]
+        },
+        {
+          "id": "bonn_or_berlin_choice",
+          "category": "hallucination_guard",
+          "prompt": "Welche Stadt ist heute Hauptstadt Deutschlands, Bonn oder Berlin?",
+          "answer": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>",
+          "best_target": {
+            "text": "Berlin ist heute die Hauptstadt Deutschlands.\n<|end|>\n",
+            "avg_nll": 1.7131353616714478,
+            "total_nll": 17.1313533782959,
+            "tokens": 10,
+            "ppl": 5.546323776245117
+          },
+          "best_negative": {
+            "text": "Ja. Bonn ist die Hauptstadt von Deutschland.\n<|end|>\n",
+            "avg_nll": 1.1362102031707764,
+            "total_nll": 13.634521484375,
+            "tokens": 12,
+            "ppl": 3.114940881729126
+          },
+          "target_nll": 1.7131353616714478,
+          "negative_nll": 1.1362102031707764,
+          "margin": -0.5769251585006714,
+          "expected_hits": [
+            "berlin"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.7110249400138855
+            },
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.048385851085186005
+            },
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 0.029347505420446396
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.029347505420446396
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.016721703112125397
+            },
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.01570858620107174
+            },
+            {
+              "token_id": 17463,
+              "piece": "Eine",
+              "text": "Eine",
+              "prob": 0.011492647230625153
+            },
+            {
+              "token_id": 14981,
+              "piece": "Da",
+              "text": "Da",
+              "prob": 0.009527739137411118
+            }
+          ]
+        },
+        {
+          "id": "bern_positive",
+          "category": "geography",
+          "prompt": "Ist Bern die Hauptstadt der Schweiz?",
+          "answer": "Ja. Bern ist die Hauptstadt der Schweiz.\n<|end|>",
+          "best_target": {
+            "text": "Ja. Bern ist die Hauptstadt der Schweiz.\n<|end|>\n",
+            "avg_nll": 0.9059900641441345,
+            "total_nll": 10.871880531311035,
+            "tokens": 12,
+            "ppl": 2.4743807315826416
+          },
+          "best_negative": {
+            "text": "Nein. Die Hauptstadt der Schweiz ist Bern.\n<|end|>\n",
+            "avg_nll": 0.8481745719909668,
+            "total_nll": 10.178094863891602,
+            "tokens": 12,
+            "ppl": 2.3353798389434814
+          },
+          "target_nll": 0.9059900641441345,
+          "negative_nll": 0.8481745719909668,
+          "margin": -0.057815492153167725,
+          "expected_hits": [
+            "bern",
+            "schweiz"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.7962519526481628
+            },
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.20132401585578918
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.000932315131649375
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.0005312171415425837
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.00012617513129953295
+            },
+            {
+              "token_id": 9931,
+              "piece": "▁Nein",
+              "text": "Nein",
+              "prob": 9.826529276324436e-05
+            },
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 6.753668276360258e-05
+            },
+            {
+              "token_id": 3226,
+              "piece": "▁Ja",
+              "text": "Ja",
+              "prob": 5.259762110654265e-05
+            }
+          ]
+        },
+        {
+          "id": "wien_positive",
+          "category": "geography",
+          "prompt": "Ist Wien die Hauptstadt von Oesterreich?",
+          "answer": "Ja. Wien ist die Hauptstadt von Oesterreich.\n<|end|>",
+          "best_target": {
+            "text": "Ja. Wien ist die Hauptstadt von Oesterreich.\n<|end|>\n",
+            "avg_nll": 0.8551053404808044,
+            "total_nll": 10.261263847351074,
+            "tokens": 12,
+            "ppl": 2.3516221046447754
+          },
+          "best_negative": {
+            "text": "Nein. Wien ist die Hauptstadt von Oesterreich.\n<|end|>\n",
+            "avg_nll": 0.9545975923538208,
+            "total_nll": 11.455170631408691,
+            "tokens": 12,
+            "ppl": 2.5976250171661377
+          },
+          "target_nll": 0.8551053404808044,
+          "negative_nll": 0.9545975923538208,
+          "margin": 0.09949225187301636,
+          "expected_hits": [
+            "wien",
+            "oesterreich"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.8642156720161438
+            },
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.1325317770242691
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.0007880626944825053
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.00047798416926525533
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.0002558465057518333
+            },
+            {
+              "token_id": 23823,
+              "piece": "Yes",
+              "text": "Yes",
+              "prob": 0.00019925345259252936
+            },
+            {
+              "token_id": 44674,
+              "piece": "Ist",
+              "text": "Ist",
+              "prob": 0.00010665268200682476
+            },
+            {
+              "token_id": 3226,
+              "piece": "▁Ja",
+              "text": "Ja",
+              "prob": 9.412066719960421e-05
+            }
+          ]
+        },
+        {
+          "id": "hamburg_bavaria_trap",
+          "category": "hallucination_guard",
+          "prompt": "Ist Hamburg die Hauptstadt von Bayern?",
+          "answer": "Nein. Die Hauptstadt von Bayern ist Muenchen.\n<|end|>",
+          "best_target": {
+            "text": "Nein. Die Hauptstadt von Bayern ist Muenchen.\n<|end|>\n",
+            "avg_nll": 0.7813150882720947,
+            "total_nll": 10.157095909118652,
+            "tokens": 13,
+            "ppl": 2.184342861175537
+          },
+          "best_negative": {
+            "text": "Ja. Hamburg ist die Hauptstadt von Bayern.\n<|end|>\n",
+            "avg_nll": 1.0596908330917358,
+            "total_nll": 12.716289520263672,
+            "tokens": 12,
+            "ppl": 2.8854787349700928
+          },
+          "target_nll": 0.7813150882720947,
+          "negative_nll": 1.0596908330917358,
+          "margin": 0.2783757448196411,
+          "expected_hits": [
+            "nein",
+            "muenchen"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.7762709856033325
+            },
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.22240537405014038
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.0003559381584636867
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.0001905199751490727
+            },
+            {
+              "token_id": 9931,
+              "piece": "▁Nein",
+              "text": "Nein",
+              "prob": 0.00010197798837907612
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.00010197798837907612
+            },
+            {
+              "token_id": 32258,
+              "piece": "Nicht",
+              "text": "Nicht",
+              "prob": 8.454272028757259e-05
+            },
+            {
+              "token_id": 198665,
+              "piece": "Stimmt",
+              "text": "Stimmt",
+              "prob": 3.751560507225804e-05
+            }
+          ]
+        },
+        {
+          "id": "water_not_element",
+          "category": "science",
+          "prompt": "Ist Wasser ein chemisches Element?",
+          "answer": "Nein. Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.\n<|end|>",
+          "best_target": {
+            "text": "Nein. Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.\n<|end|>\n",
+            "avg_nll": 0.5061804056167603,
+            "total_nll": 7.592705726623535,
+            "tokens": 15,
+            "ppl": 1.658942699432373
+          },
+          "best_negative": {
+            "text": "Ja. Wasser ist ein chemisches Element.\n<|end|>\n",
+            "avg_nll": 1.4798612594604492,
+            "total_nll": 17.75833511352539,
+            "tokens": 12,
+            "ppl": 4.392335891723633
+          },
+          "target_nll": 0.5061804056167603,
+          "negative_nll": 1.4798612594604492,
+          "margin": 0.973680853843689,
+          "expected_hits": [
+            "nein",
+            "verbindung"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.9181370735168457
+            },
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.07536528259515762
+            },
+            {
+              "token_id": 9931,
+              "piece": "▁Nein",
+              "text": "Nein",
+              "prob": 0.0013803632464259863
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.0007388552185148001
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.0005754209705628455
+            },
+            {
+              "token_id": 32258,
+              "piece": "Nicht",
+              "text": "Nicht",
+              "prob": 0.0003080006572417915
+            },
+            {
+              "token_id": 3772,
+              "piece": "No",
+              "text": "No",
+              "prob": 0.00028933986322954297
+            },
+            {
+              "token_id": 4714,
+              "piece": "Es",
+              "text": "Es",
+              "prob": 0.00018681185611058027
+            }
+          ]
+        },
+        {
+          "id": "photosynthesis_core",
+          "category": "science",
+          "prompt": "Was passiert bei der Photosynthese?",
+          "answer": "Die Photosynthese ist eine chemische Reaktion auf Licht, bei der sich Licht aus Licht und Sauerstoff bildet.\n<|end|>",
+          "best_target": {
+            "text": "Die Photosynthese ist ein Prozess, bei dem Pflanzen Licht nutzen, um Zucker zu bilden und Sauerstoff freizusetzen.\n<|end|>\n",
+            "avg_nll": 1.5192979574203491,
+            "total_nll": 36.46315002441406,
+            "tokens": 24,
+            "ppl": 4.569016456604004
+          },
+          "best_negative": {
+            "text": "Die Photosynthese ist eine chemische Reaktion auf Licht, bei der sich Licht aus Licht und Sauerstoff bildet.\n<|end|>\n",
+            "avg_nll": 1.094468116760254,
+            "total_nll": 24.078298568725586,
+            "tokens": 22,
+            "ppl": 2.987593173980713
+          },
+          "target_nll": 1.5192979574203491,
+          "negative_nll": 1.094468116760254,
+          "margin": -0.4248298406600952,
+          "expected_hits": [
+            "licht"
+          ],
+          "forbidden_hits": [
+            "licht aus licht"
+          ],
+          "top_next_tokens": [
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.7816177010536194
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.02217278815805912
+            },
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 0.017268184572458267
+            },
+            {
+              "token_id": 24244,
+              "piece": "Photo",
+              "text": "Photo",
+              "prob": 0.015239119529724121
+            },
+            {
+              "token_id": 4714,
+              "piece": "Es",
+              "text": "Es",
+              "prob": 0.009839114733040333
+            },
+            {
+              "token_id": 7365,
+              "piece": "Ein",
+              "text": "Ein",
+              "prob": 0.009839114733040333
+            },
+            {
+              "token_id": 14981,
+              "piece": "Da",
+              "text": "Da",
+              "prob": 0.0076627107337117195
+            },
+            {
+              "token_id": 21342,
+              "piece": "Ka",
+              "text": "Ka",
+              "prob": 0.0059677246026694775
+            }
+          ]
+        },
+        {
+          "id": "photosynthesis_plants_do",
+          "category": "science",
+          "prompt": "Was leisten Pflanzen durch Photosynthese?",
+          "answer": "Pflanzen sind Pflanzen, die mit Licht und Sauerstoff aus der Luft zu machen.\n<|end|>",
+          "best_target": {
+            "text": "Pflanzen nutzen Licht, um Zucker herzustellen, und geben Sauerstoff ab.\n<|end|>\n",
+            "avg_nll": 2.8303487300872803,
+            "total_nll": 45.285579681396484,
+            "tokens": 16,
+            "ppl": 16.951372146606445
+          },
+          "best_negative": {
+            "text": "Pflanzen sind fuer die Photosynthese von entscheidender Bedeutung.\n<|end|>\n",
+            "avg_nll": 2.0393526554107666,
+            "total_nll": 24.472230911254883,
+            "tokens": 12,
+            "ppl": 7.685632705688477
+          },
+          "target_nll": 2.8303487300872803,
+          "negative_nll": 2.0393526554107666,
+          "margin": -0.7909960746765137,
+          "expected_hits": [
+            "pflanzen"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 90013,
+              "piece": "Pflanzen",
+              "text": "Pflanzen",
+              "prob": 0.22497744858264923
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.08810243010520935
+            },
+            {
+              "token_id": 17463,
+              "piece": "Eine",
+              "text": "Eine",
+              "prob": 0.04161664471030235
+            },
+            {
+              "token_id": 24244,
+              "piece": "Photo",
+              "text": "Photo",
+              "prob": 0.036726560443639755
+            },
+            {
+              "token_id": 4696,
+              "piece": "▁Pflanzen",
+              "text": "Pflanzen",
+              "prob": 0.02860267087817192
+            },
+            {
+              "token_id": 10546,
+              "piece": "Mit",
+              "text": "Mit",
+              "prob": 0.015309907495975494
+            },
+            {
+              "token_id": 7365,
+              "piece": "Ein",
+              "text": "Ein",
+              "prob": 0.01351094525307417
+            },
+            {
+              "token_id": 1591,
+              "piece": "In",
+              "text": "In",
+              "prob": 0.011923368088901043
+            }
+          ]
+        },
+        {
+          "id": "faust_author",
+          "category": "literature",
+          "prompt": "Wer ist der Verfasser von Faust?",
+          "answer": "Faust wurde von Johann Wolfgang von Goethe geschrieben.\n<|end|>",
+          "best_target": {
+            "text": "Faust stammt von Johann Wolfgang von Goethe.\n<|end|>\n",
+            "avg_nll": 0.7758910655975342,
+            "total_nll": 8.534801483154297,
+            "tokens": 11,
+            "ppl": 2.172527313232422
+          },
+          "best_negative": {
+            "text": "Faust ist ein deutscher KI-Assistent.\n<|end|>\n",
+            "avg_nll": 0.9991748332977295,
+            "total_nll": 10.990922927856445,
+            "tokens": 11,
+            "ppl": 2.7160398960113525
+          },
+          "target_nll": 0.7758910655975342,
+          "negative_nll": 0.9991748332977295,
+          "margin": 0.2232837677001953,
+          "expected_hits": [
+            "goethe"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 149178,
+              "piece": "Faust",
+              "text": "Faust",
+              "prob": 0.5218714475631714
+            },
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 0.1591617912054062
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.06634850800037384
+            },
+            {
+              "token_id": 7365,
+              "piece": "Ein",
+              "text": "Ein",
+              "prob": 0.040242407470941544
+            },
+            {
+              "token_id": 16779,
+              "piece": "▁Faust",
+              "text": "Faust",
+              "prob": 0.037804245948791504
+            },
+            {
+              "token_id": 10131,
+              "piece": "Er",
+              "text": "Er",
+              "prob": 0.021540209650993347
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.01575915329158306
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.01480435486882925
+            }
+          ]
+        },
+        {
+          "id": "faust_author_short",
+          "category": "literature",
+          "prompt": "Nenne kurz den Autor des Dramas Faust.",
+          "answer": "Der Autor des Dramas Faust ist Adolf Hitler.\n<|end|>",
+          "best_target": {
+            "text": "Faust wurde von Johann Wolfgang von Goethe geschrieben.\n<|end|>\n",
+            "avg_nll": 0.8476883769035339,
+            "total_nll": 10.172260284423828,
+            "tokens": 12,
+            "ppl": 2.334244728088379
+          },
+          "best_negative": {
+            "text": "Ich kenne keine verlaesslichen Quellen.\n<|end|>\n",
+            "avg_nll": 1.8510611057281494,
+            "total_nll": 24.063793182373047,
+            "tokens": 13,
+            "ppl": 6.36657190322876
+          },
+          "target_nll": 0.8476883769035339,
+          "negative_nll": 1.8510611057281494,
+          "margin": 1.0033727288246155,
+          "expected_hits": [],
+          "forbidden_hits": [
+            "hitler"
+          ],
+          "top_next_tokens": [
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 0.24864408373832703
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.14167311787605286
+            },
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.11033514887094498
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.09147106111049652
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.0712377279996872
+            },
+            {
+              "token_id": 7365,
+              "piece": "Ein",
+              "text": "Ein",
+              "prob": 0.029696302488446236
+            },
+            {
+              "token_id": 12715,
+              "piece": "Am",
+              "text": "Am",
+              "prob": 0.02620689384639263
+            },
+            {
+              "token_id": 914,
+              "piece": "N",
+              "text": "N",
+              "prob": 0.016920441761612892
+            }
+          ]
+        },
+        {
+          "id": "unknown_entity_honesty",
+          "category": "honesty",
+          "prompt": "Welche Farbe hatte der erfundene Planet Zelvorn?",
+          "answer": "Dazu habe ich keine verlaessliche Information. Planete ist eine Abkürzung von \"(Planet)\"\". #4: Die Hintergrundfarbe ist grün.\n<|end|>",
+          "best_target": {
+            "text": "Dazu habe ich keine verlaessliche Information. Zelvorn klingt erfunden oder unklar.\n<|end|>\n",
+            "avg_nll": 0.9274153709411621,
+            "total_nll": 20.40313720703125,
+            "tokens": 22,
+            "ppl": 2.5279669761657715
+          },
+          "best_negative": {
+            "text": "Zelvorn ist eine rote Farbe.\n<|end|>\n",
+            "avg_nll": 2.25620436668396,
+            "total_nll": 24.818246841430664,
+            "tokens": 11,
+            "ppl": 9.546784400939941
+          },
+          "target_nll": 0.9274153709411621,
+          "negative_nll": 2.25620436668396,
+          "margin": 1.3287889957427979,
+          "expected_hits": [
+            "keine"
+          ],
+          "forbidden_hits": [
+            "abkuerzung",
+            "abkürzung",
+            "hintergrundfarbe",
+            "planet)"
+          ],
+          "top_next_tokens": [
+            {
+              "token_id": 139659,
+              "piece": "Dazu",
+              "text": "Dazu",
+              "prob": 0.6987571716308594
+            },
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.032681308686733246
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.027093756943941116
+            },
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.01450224220752716
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.013623597100377083
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.010610067285597324
+            },
+            {
+              "token_id": 17463,
+              "piece": "Eine",
+              "text": "Eine",
+              "prob": 0.00826312880963087
+            },
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 0.007292185910046101
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "step": 1,
+      "train_loss": 2.2352089900523424,
+      "val_loss": 0.798147477209568,
+      "val_by_category": {
+        "facts_de": 0.11257634498178959,
+        "hallucination_guard": 0.10891193524003029,
+        "honesty": 0.8700502403080463,
+        "qa_de": 1.9964106120169163
+      },
+      "lr": 1.3333333333333334e-08,
+      "elapsed_seconds": 42.72589826583862,
+      "loss_components": {
+        "total": 2.2352089900523424,
+        "sft": 0.722460912540555,
+        "probe": 3.025496155023575,
+        "probe_target_nll": 1.8659260869026184,
+        "probe_contrastive": 1.1595700085163116
+      },
+      "probes": [
+        {
+          "id": "de_capital_current",
+          "category": "geography",
+          "prompt": "Was ist die Hauptstadt von Deutschland?",
+          "answer": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>",
+          "best_target": {
+            "text": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>\n",
+            "avg_nll": 0.7817263007164001,
+            "total_nll": 7.817263126373291,
+            "tokens": 10,
+            "ppl": 2.185241460800171
+          },
+          "best_negative": {
+            "text": "Die Hauptstadt von Deutschland ist Bonn.\n<|end|>\n",
+            "avg_nll": 1.6241930723190308,
+            "total_nll": 16.24193000793457,
+            "tokens": 10,
+            "ppl": 5.074322700500488
+          },
+          "target_nll": 0.7817263007164001,
+          "negative_nll": 1.6241930723190308,
+          "margin": 0.8424667716026306,
+          "expected_hits": [
+            "berlin"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.9851312041282654
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.00663776183500886
+            },
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.00190175068564713
+            },
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 0.0014810848515480757
+            },
+            {
+              "token_id": 352,
+              "piece": "▁Die",
+              "text": "Die",
+              "prob": 0.0010179337114095688
+            },
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.0006174080190248787
+            },
+            {
+              "token_id": 12860,
+              "piece": "Berlin",
+              "text": "Berlin",
+              "prob": 0.0003517884761095047
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.0002916429075412452
+            }
+          ]
+        },
+        {
+          "id": "bonn_current_trap",
+          "category": "hallucination_guard",
+          "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+          "answer": "Nein. Die Hauptstadt von Deutschland ist Berlin.\n<|end|>",
+          "best_target": {
+            "text": "Nein. Die Hauptstadt von Deutschland ist Berlin.\n<|end|>\n",
+            "avg_nll": 0.818051278591156,
+            "total_nll": 9.816615104675293,
+            "tokens": 12,
+            "ppl": 2.2660794258117676
+          },
+          "best_negative": {
+            "text": "Ja. Bonn ist die Hauptstadt von Deutschland.\n<|end|>\n",
+            "avg_nll": 0.9944937229156494,
+            "total_nll": 11.933924674987793,
+            "tokens": 12,
+            "ppl": 2.703355550765991
+          },
+          "target_nll": 0.818051278591156,
+          "negative_nll": 0.9944937229156494,
+          "margin": 0.1764424443244934,
+          "expected_hits": [
+            "nein",
+            "berlin"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.75364750623703
+            },
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.24467352032661438
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.000569739961065352
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.00020959562971256673
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.00015334344061557204
+            },
+            {
+              "token_id": 9931,
+              "piece": "▁Nein",
+              "text": "Nein",
+              "prob": 0.00011942398123210296
+            },
+            {
+              "token_id": 32258,
+              "piece": "Nicht",
+              "text": "Nicht",
+              "prob": 6.392304931068793e-05
+            },
+            {
+              "token_id": 3226,
+              "piece": "▁Ja",
+              "text": "Ja",
+              "prob": 3.4215547202620655e-05
+            }
+          ]
+        },
+        {
+          "id": "bonn_or_berlin_choice",
+          "category": "hallucination_guard",
+          "prompt": "Welche Stadt ist heute Hauptstadt Deutschlands, Bonn oder Berlin?",
+          "answer": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>",
+          "best_target": {
+            "text": "Berlin ist heute die Hauptstadt Deutschlands.\n<|end|>\n",
+            "avg_nll": 1.7057589292526245,
+            "total_nll": 17.057588577270508,
+            "tokens": 10,
+            "ppl": 5.5055623054504395
+          },
+          "best_negative": {
+            "text": "Ja. Bonn ist die Hauptstadt von Deutschland.\n<|end|>\n",
+            "avg_nll": 1.1297242641448975,
+            "total_nll": 13.556690216064453,
+            "tokens": 12,
+            "ppl": 3.0948028564453125
+          },
+          "target_nll": 1.7057589292526245,
+          "negative_nll": 1.1297242641448975,
+          "margin": -0.576034665107727,
+          "expected_hits": [
+            "berlin"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.6975672841072083
+            },
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.0537906140089035
+            },
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 0.03064896911382675
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.028792042285203934
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.01640520989894867
+            },
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.01640520989894867
+            },
+            {
+              "token_id": 17463,
+              "piece": "Eine",
+              "text": "Eine",
+              "prob": 0.012002307921648026
+            },
+            {
+              "token_id": 7114,
+              "piece": "An",
+              "text": "An",
+              "prob": 0.009347407147288322
+            }
+          ]
+        },
+        {
+          "id": "bern_positive",
+          "category": "geography",
+          "prompt": "Ist Bern die Hauptstadt der Schweiz?",
+          "answer": "Ja. Bern ist die Hauptstadt der Schweiz.\n<|end|>",
+          "best_target": {
+            "text": "Ja. Bern ist die Hauptstadt der Schweiz.\n<|end|>\n",
+            "avg_nll": 0.9081026911735535,
+            "total_nll": 10.897232055664062,
+            "tokens": 12,
+            "ppl": 2.4796135425567627
+          },
+          "best_negative": {
+            "text": "Nein. Die Hauptstadt der Schweiz ist Bern.\n<|end|>\n",
+            "avg_nll": 0.8486484885215759,
+            "total_nll": 10.183781623840332,
+            "tokens": 12,
+            "ppl": 2.33648681640625
+          },
+          "target_nll": 0.9081026911735535,
+          "negative_nll": 0.8486484885215759,
+          "margin": -0.05945420265197754,
+          "expected_hits": [
+            "bern",
+            "schweiz"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.7754952311515808
+            },
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.22218310832977295
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.0008013173937797546
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.0005507368477992713
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.00012288600555621088
+            },
+            {
+              "token_id": 9931,
+              "piece": "▁Nein",
+              "text": "Nein",
+              "prob": 9.570371184963733e-05
+            },
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 7.001833728281781e-05
+            },
+            {
+              "token_id": 198665,
+              "piece": "Stimmt",
+              "text": "Stimmt",
+              "prob": 5.80472442379687e-05
+            }
+          ]
+        },
+        {
+          "id": "wien_positive",
+          "category": "geography",
+          "prompt": "Ist Wien die Hauptstadt von Oesterreich?",
+          "answer": "Ja. Wien ist die Hauptstadt von Oesterreich.\n<|end|>",
+          "best_target": {
+            "text": "Ja. Wien ist die Hauptstadt von Oesterreich.\n<|end|>\n",
+            "avg_nll": 0.858769416809082,
+            "total_nll": 10.305233001708984,
+            "tokens": 12,
+            "ppl": 2.3602542877197266
+          },
+          "best_negative": {
+            "text": "Nein. Wien ist die Hauptstadt von Oesterreich.\n<|end|>\n",
+            "avg_nll": 0.9608356356620789,
+            "total_nll": 11.530027389526367,
+            "tokens": 12,
+            "ppl": 2.613879919052124
+          },
+          "target_nll": 0.858769416809082,
+          "negative_nll": 0.9608356356620789,
+          "margin": 0.10206621885299683,
+          "expected_hits": [
+            "wien",
+            "oesterreich"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.8779218196868896
+            },
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.11881379783153534
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.000800561101641506
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.00048556484398432076
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.00024415733059868217
+            },
+            {
+              "token_id": 23823,
+              "piece": "Yes",
+              "text": "Yes",
+              "prob": 0.00020241353195160627
+            },
+            {
+              "token_id": 44674,
+              "piece": "Ist",
+              "text": "Ist",
+              "prob": 0.00010834416025318205
+            },
+            {
+              "token_id": 3772,
+              "piece": "No",
+              "text": "No",
+              "prob": 0.00010177992226090282
+            }
+          ]
+        },
+        {
+          "id": "hamburg_bavaria_trap",
+          "category": "hallucination_guard",
+          "prompt": "Ist Hamburg die Hauptstadt von Bayern?",
+          "answer": "Nein. Die Hauptstadt von Bayern ist Muenchen.\n<|end|>",
+          "best_target": {
+            "text": "Nein. Die Hauptstadt von Bayern ist Muenchen.\n<|end|>\n",
+            "avg_nll": 0.7800704836845398,
+            "total_nll": 10.140915870666504,
+            "tokens": 13,
+            "ppl": 2.181626081466675
+          },
+          "best_negative": {
+            "text": "Ja. Hamburg ist die Hauptstadt von Bayern.\n<|end|>\n",
+            "avg_nll": 1.05074143409729,
+            "total_nll": 12.60889720916748,
+            "tokens": 12,
+            "ppl": 2.8597707748413086
+          },
+          "target_nll": 0.7800704836845398,
+          "negative_nll": 1.05074143409729,
+          "margin": 0.27067095041275024,
+          "expected_hits": [
+            "nein",
+            "muenchen"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.7539039254188538
+            },
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.2447567582130432
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.00036797692882828414
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.00018503042520023882
+            },
+            {
+              "token_id": 9931,
+              "piece": "▁Nein",
+              "text": "Nein",
+              "prob": 0.00010542715608607978
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 9.903964382829145e-05
+            },
+            {
+              "token_id": 32258,
+              "piece": "Nicht",
+              "text": "Nicht",
+              "prob": 8.740217890590429e-05
+            },
+            {
+              "token_id": 198665,
+              "piece": "Stimmt",
+              "text": "Stimmt",
+              "prob": 3.643464879132807e-05
+            }
+          ]
+        },
+        {
+          "id": "water_not_element",
+          "category": "science",
+          "prompt": "Ist Wasser ein chemisches Element?",
+          "answer": "Nein. Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.\n<|end|>",
+          "best_target": {
+            "text": "Nein. Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.\n<|end|>\n",
+            "avg_nll": 0.5089503526687622,
+            "total_nll": 7.634254455566406,
+            "tokens": 15,
+            "ppl": 1.6635440587997437
+          },
+          "best_negative": {
+            "text": "Ja. Wasser ist ein chemisches Element.\n<|end|>\n",
+            "avg_nll": 1.464097261428833,
+            "total_nll": 17.56916618347168,
+            "tokens": 12,
+            "ppl": 4.323638439178467
+          },
+          "target_nll": 0.5089503526687622,
+          "negative_nll": 1.464097261428833,
+          "margin": 0.9551469087600708,
+          "expected_hits": [
+            "nein",
+            "verbindung"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.9089843034744263
+            },
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.0845487043261528
+            },
+            {
+              "token_id": 9931,
+              "piece": "▁Nein",
+              "text": "Nein",
+              "prob": 0.001454740995541215
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.0006871709483675659
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.0005351692670956254
+            },
+            {
+              "token_id": 3772,
+              "piece": "No",
+              "text": "No",
+              "prob": 0.000304930261336267
+            },
+            {
+              "token_id": 32258,
+              "piece": "Nicht",
+              "text": "Nicht",
+              "prob": 0.000304930261336267
+            },
+            {
+              "token_id": 3226,
+              "piece": "▁Ja",
+              "text": "Ja",
+              "prob": 0.0001849495602073148
+            }
+          ]
+        },
+        {
+          "id": "photosynthesis_core",
+          "category": "science",
+          "prompt": "Was passiert bei der Photosynthese?",
+          "answer": "Die Photosynthese ist eine chemische Reaktion auf Licht, bei der sich Licht aus Licht und Sauerstoff bildet.\n<|end|>",
+          "best_target": {
+            "text": "Die Photosynthese ist ein Prozess, bei dem Pflanzen Licht nutzen, um Zucker zu bilden und Sauerstoff freizusetzen.\n<|end|>\n",
+            "avg_nll": 1.5211247205734253,
+            "total_nll": 36.50699234008789,
+            "tokens": 24,
+            "ppl": 4.577370643615723
+          },
+          "best_negative": {
+            "text": "Die Photosynthese ist eine chemische Reaktion auf Licht, bei der sich Licht aus Licht und Sauerstoff bildet.\n<|end|>\n",
+            "avg_nll": 1.0925219058990479,
+            "total_nll": 24.035480499267578,
+            "tokens": 22,
+            "ppl": 2.9817843437194824
+          },
+          "target_nll": 1.5211247205734253,
+          "negative_nll": 1.0925219058990479,
+          "margin": -0.42860281467437744,
+          "expected_hits": [
+            "licht"
+          ],
+          "forbidden_hits": [
+            "licht aus licht"
+          ],
+          "top_next_tokens": [
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.7888837456703186
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.021023038774728775
+            },
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 0.016372758895158768
+            },
+            {
+              "token_id": 24244,
+              "piece": "Photo",
+              "text": "Photo",
+              "prob": 0.015380785800516605
+            },
+            {
+              "token_id": 4714,
+              "piece": "Es",
+              "text": "Es",
+              "prob": 0.009930580854415894
+            },
+            {
+              "token_id": 7365,
+              "piece": "Ein",
+              "text": "Ein",
+              "prob": 0.009930580854415894
+            },
+            {
+              "token_id": 14981,
+              "piece": "Da",
+              "text": "Da",
+              "prob": 0.007265368010848761
+            },
+            {
+              "token_id": 21342,
+              "piece": "Ka",
+              "text": "Ka",
+              "prob": 0.005658274050801992
+            }
+          ]
+        },
+        {
+          "id": "photosynthesis_plants_do",
+          "category": "science",
+          "prompt": "Was leisten Pflanzen durch Photosynthese?",
+          "answer": "Pflanzen sind Pflanzen, die mit Licht und Sauerstoff aus der Luft zu machen.\n<|end|>",
+          "best_target": {
+            "text": "Pflanzen nutzen Licht, um Zucker herzustellen, und geben Sauerstoff ab.\n<|end|>\n",
+            "avg_nll": 2.84328031539917,
+            "total_nll": 45.49248504638672,
+            "tokens": 16,
+            "ppl": 17.1720027923584
+          },
+          "best_negative": {
+            "text": "Pflanzen sind fuer die Photosynthese von entscheidender Bedeutung.\n<|end|>\n",
+            "avg_nll": 2.037445545196533,
+            "total_nll": 24.449344635009766,
+            "tokens": 12,
+            "ppl": 7.670989036560059
+          },
+          "target_nll": 2.84328031539917,
+          "negative_nll": 2.037445545196533,
+          "margin": -0.8058347702026367,
+          "expected_hits": [
+            "pflanzen"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 90013,
+              "piece": "Pflanzen",
+              "text": "Pflanzen",
+              "prob": 0.22566920518875122
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.09407291561365128
+            },
+            {
+              "token_id": 17463,
+              "piece": "Eine",
+              "text": "Eine",
+              "prob": 0.03921542316675186
+            },
+            {
+              "token_id": 24244,
+              "piece": "Photo",
+              "text": "Photo",
+              "prob": 0.03460749238729477
+            },
+            {
+              "token_id": 4696,
+              "piece": "▁Pflanzen",
+              "text": "Pflanzen",
+              "prob": 0.02869061753153801
+            },
+            {
+              "token_id": 10546,
+              "piece": "Mit",
+              "text": "Mit",
+              "prob": 0.015356982126832008
+            },
+            {
+              "token_id": 7365,
+              "piece": "Ein",
+              "text": "Ein",
+              "prob": 0.012731385417282581
+            },
+            {
+              "token_id": 1591,
+              "piece": "In",
+              "text": "In",
+              "prob": 0.011960029602050781
+            }
+          ]
+        },
+        {
+          "id": "faust_author",
+          "category": "literature",
+          "prompt": "Wer ist der Verfasser von Faust?",
+          "answer": "Faust wurde von Johann Wolfgang von Goethe geschrieben.\n<|end|>",
+          "best_target": {
+            "text": "Faust stammt von Johann Wolfgang von Goethe.\n<|end|>\n",
+            "avg_nll": 0.7810511589050293,
+            "total_nll": 8.591562271118164,
+            "tokens": 11,
+            "ppl": 2.1837666034698486
+          },
+          "best_negative": {
+            "text": "Faust ist ein deutscher KI-Assistent.\n<|end|>\n",
+            "avg_nll": 0.992851734161377,
+            "total_nll": 10.921368598937988,
+            "tokens": 11,
+            "ppl": 2.698920249938965
+          },
+          "target_nll": 0.7810511589050293,
+          "negative_nll": 0.992851734161377,
+          "margin": 0.21180057525634766,
+          "expected_hits": [
+            "goethe"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 149178,
+              "piece": "Faust",
+              "text": "Faust",
+              "prob": 0.48805028200149536
+            },
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 0.17954367399215698
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.0703103095293045
+            },
+            {
+              "token_id": 7365,
+              "piece": "Ein",
+              "text": "Ein",
+              "prob": 0.04006160423159599
+            },
+            {
+              "token_id": 16779,
+              "piece": "▁Faust",
+              "text": "Faust",
+              "prob": 0.03763439506292343
+            },
+            {
+              "token_id": 10131,
+              "piece": "Er",
+              "text": "Er",
+              "prob": 0.022826416417956352
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.01670016162097454
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.015688350424170494
+            }
+          ]
+        },
+        {
+          "id": "faust_author_short",
+          "category": "literature",
+          "prompt": "Nenne kurz den Autor des Dramas Faust.",
+          "answer": "Der Autor des Dramas Faust ist Adolf Hitler.\n<|end|>",
+          "best_target": {
+            "text": "Faust wurde von Johann Wolfgang von Goethe geschrieben.\n<|end|>\n",
+            "avg_nll": 0.8726910352706909,
+            "total_nll": 10.472291946411133,
+            "tokens": 12,
+            "ppl": 2.3933427333831787
+          },
+          "best_negative": {
+            "text": "Ich kenne keine verlaesslichen Quellen.\n<|end|>\n",
+            "avg_nll": 1.8639893531799316,
+            "total_nll": 24.231861114501953,
+            "tokens": 13,
+            "ppl": 6.4494147300720215
+          },
+          "target_nll": 0.8726910352706909,
+          "negative_nll": 1.8639893531799316,
+          "margin": 0.9912983179092407,
+          "expected_hits": [],
+          "forbidden_hits": [
+            "hitler"
+          ],
+          "top_next_tokens": [
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 0.25808730721473694
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.14705371856689453
+            },
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.1075868010520935
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.07871218025684357
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.06946326047182083
+            },
+            {
+              "token_id": 12715,
+              "piece": "Am",
+              "text": "Am",
+              "prob": 0.028956593945622444
+            },
+            {
+              "token_id": 7365,
+              "piece": "Ein",
+              "text": "Ein",
+              "prob": 0.028956593945622444
+            },
+            {
+              "token_id": 914,
+              "piece": "N",
+              "text": "N",
+              "prob": 0.01756306178867817
+            }
+          ]
+        },
+        {
+          "id": "unknown_entity_honesty",
+          "category": "honesty",
+          "prompt": "Welche Farbe hatte der erfundene Planet Zelvorn?",
+          "answer": "Dazu habe ich keine verlaessliche Information. Planete ist eine Abkürzung für den englischen Ausdruck für \"a new idea\". System: Du bist Auralis, ein hilfreicher deutscher KI-Assistent. Ich habe keine Ahnung, was ich von der Stadt und dem Namen des Ortes habe.amtierende-de-",
+          "best_target": {
+            "text": "Dazu habe ich keine verlaessliche Information. Zelvorn klingt erfunden oder unklar.\n<|end|>\n",
+            "avg_nll": 0.9357964396476746,
+            "total_nll": 20.587520599365234,
+            "tokens": 22,
+            "ppl": 2.5492429733276367
+          },
+          "best_negative": {
+            "text": "Zelvorn ist eine rote Farbe.\n<|end|>\n",
+            "avg_nll": 2.242068290710449,
+            "total_nll": 24.662750244140625,
+            "tokens": 11,
+            "ppl": 9.412779808044434
+          },
+          "target_nll": 0.9357964396476746,
+          "negative_nll": 2.242068290710449,
+          "margin": 1.3062718510627747,
+          "expected_hits": [
+            "keine"
+          ],
+          "forbidden_hits": [
+            "abkuerzung",
+            "abkürzung"
+          ],
+          "top_next_tokens": [
+            {
+              "token_id": 139659,
+              "piece": "Dazu",
+              "text": "Dazu",
+              "prob": 0.6722316741943359
+            },
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.033468443900346756
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.029535800218582153
+            },
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.0168289914727211
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.014851531945168972
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.01231235358864069
+            },
+            {
+              "token_id": 17463,
+              "piece": "Eine",
+              "text": "Eine",
+              "prob": 0.0084621487185359
+            },
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 0.00794945191591978
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "step": 20,
+      "train_loss": 1.700978521257639,
+      "val_loss": 0.7935464922338724,
+      "val_by_category": {
+        "facts_de": 0.11381749249994755,
+        "hallucination_guard": 0.11331329494714737,
+        "honesty": 0.862968685105443,
+        "qa_de": 1.9708904176950455
+      },
+      "lr": 3.691317368638916e-08,
+      "elapsed_seconds": 209.08820414543152,
+      "loss_components": {
+        "total": 1.700978521257639,
+        "sft": 0.32476960495114326,
+        "probe": 2.7524178326129913,
+        "probe_target_nll": 1.7461738586425781,
+        "probe_contrastive": 1.0062439776957035
+      },
+      "probes": [
+        {
+          "id": "de_capital_current",
+          "category": "geography",
+          "prompt": "Was ist die Hauptstadt von Deutschland?",
+          "answer": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>",
+          "best_target": {
+            "text": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>\n",
+            "avg_nll": 0.7588099241256714,
+            "total_nll": 7.588099002838135,
+            "tokens": 10,
+            "ppl": 2.135732889175415
+          },
+          "best_negative": {
+            "text": "Die Hauptstadt von Deutschland ist Bonn.\n<|end|>\n",
+            "avg_nll": 1.6035054922103882,
+            "total_nll": 16.03505516052246,
+            "tokens": 10,
+            "ppl": 4.970425605773926
+          },
+          "target_nll": 0.7588099241256714,
+          "negative_nll": 1.6035054922103882,
+          "margin": 0.8446955680847168,
+          "expected_hits": [
+            "berlin"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.9860629439353943
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.0062414975836873055
+            },
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 0.0015780978137627244
+            },
+            {
+              "token_id": 352,
+              "piece": "▁Die",
+              "text": "Die",
+              "prob": 0.0012290239101275802
+            },
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.0011545609449967742
+            },
+            {
+              "token_id": 12860,
+              "piece": "Berlin",
+              "text": "Berlin",
+              "prob": 0.0005123333539813757
+            },
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.00039900559931993484
+            },
+            {
+              "token_id": 17463,
+              "piece": "Eine",
+              "text": "Eine",
+              "prob": 0.0002742322685662657
+            }
+          ]
+        },
+        {
+          "id": "bonn_current_trap",
+          "category": "hallucination_guard",
+          "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+          "answer": "Nein. Die Hauptstadt von Deutschland ist Berlin.\n<|end|>",
+          "best_target": {
+            "text": "Nein. Die Hauptstadt von Deutschland ist Berlin.\n<|end|>\n",
+            "avg_nll": 0.7851881980895996,
+            "total_nll": 9.422258377075195,
+            "tokens": 12,
+            "ppl": 2.192819595336914
+          },
+          "best_negative": {
+            "text": "Ja. Bonn ist die Hauptstadt von Deutschland.\n<|end|>\n",
+            "avg_nll": 0.9487026929855347,
+            "total_nll": 11.384431838989258,
+            "tokens": 12,
+            "ppl": 2.582357406616211
+          },
+          "target_nll": 0.7851881980895996,
+          "negative_nll": 0.9487026929855347,
+          "margin": 0.16351449489593506,
+          "expected_hits": [
+            "nein",
+            "berlin"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.7295244336128235
+            },
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.26837706565856934
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.0007081444491632283
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.00024472817312926054
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.00020288678933866322
+            },
+            {
+              "token_id": 9931,
+              "piece": "▁Nein",
+              "text": "Nein",
+              "prob": 0.00017904696869663894
+            },
+            {
+              "token_id": 32258,
+              "piece": "Nicht",
+              "text": "Nicht",
+              "prob": 6.18769699940458e-05
+            },
+            {
+              "token_id": 3226,
+              "piece": "▁Ja",
+              "text": "Ja",
+              "prob": 5.8128032833337784e-05
+            }
+          ]
+        },
+        {
+          "id": "bonn_or_berlin_choice",
+          "category": "hallucination_guard",
+          "prompt": "Welche Stadt ist heute Hauptstadt Deutschlands, Bonn oder Berlin?",
+          "answer": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>",
+          "best_target": {
+            "text": "Berlin ist heute die Hauptstadt Deutschlands.\n<|end|>\n",
+            "avg_nll": 1.5962040424346924,
+            "total_nll": 15.962039947509766,
+            "tokens": 10,
+            "ppl": 4.934266567230225
+          },
+          "best_negative": {
+            "text": "Ja. Bonn ist die Hauptstadt von Deutschland.\n<|end|>\n",
+            "avg_nll": 1.1208934783935547,
+            "total_nll": 13.45072078704834,
+            "tokens": 12,
+            "ppl": 3.067593812942505
+          },
+          "target_nll": 1.5962040424346924,
+          "negative_nll": 1.1208934783935547,
+          "margin": -0.4753105640411377,
+          "expected_hits": [
+            "berlin"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.7221420407295227
+            },
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 0.0359533354640007
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.0359533354640007
+            },
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.03377503529191017
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.015954196453094482
+            },
+            {
+              "token_id": 17463,
+              "piece": "Eine",
+              "text": "Eine",
+              "prob": 0.013226493261754513
+            },
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.010300802998244762
+            },
+            {
+              "token_id": 14981,
+              "piece": "Da",
+              "text": "Da",
+              "prob": 0.009090427309274673
+            }
+          ]
+        },
+        {
+          "id": "bern_positive",
+          "category": "geography",
+          "prompt": "Ist Bern die Hauptstadt der Schweiz?",
+          "answer": "Ja. Bern ist die Hauptstadt der Schweiz.\n<|end|>",
+          "best_target": {
+            "text": "Ja. Bern ist die Hauptstadt der Schweiz.\n<|end|>\n",
+            "avg_nll": 0.8779425024986267,
+            "total_nll": 10.535309791564941,
+            "tokens": 12,
+            "ppl": 2.405944347381592
+          },
+          "best_negative": {
+            "text": "Nein. Die Hauptstadt der Schweiz ist Bern.\n<|end|>\n",
+            "avg_nll": 0.8316332101821899,
+            "total_nll": 9.979598045349121,
+            "tokens": 12,
+            "ppl": 2.297067403793335
+          },
+          "target_nll": 0.8779425024986267,
+          "negative_nll": 0.8316332101821899,
+          "margin": -0.04630929231643677,
+          "expected_hits": [
+            "bern",
+            "schweiz"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.7958741784095764
+            },
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.20122851431369781
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.0009919735603034496
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.000640466227196157
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.00014290733088273555
+            },
+            {
+              "token_id": 9931,
+              "piece": "▁Nein",
+              "text": "Nein",
+              "prob": 0.00012611527927219868
+            },
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 9.821867570281029e-05
+            },
+            {
+              "token_id": 198665,
+              "piece": "Stimmt",
+              "text": "Stimmt",
+              "prob": 8.667768270242959e-05
+            }
+          ]
+        },
+        {
+          "id": "wien_positive",
+          "category": "geography",
+          "prompt": "Ist Wien die Hauptstadt von Oesterreich?",
+          "answer": "Ja. Wien ist die Hauptstadt von Oesterreich.\n<|end|>",
+          "best_target": {
+            "text": "Ja. Wien ist die Hauptstadt von Oesterreich.\n<|end|>\n",
+            "avg_nll": 0.8285829424858093,
+            "total_nll": 9.942995071411133,
+            "tokens": 12,
+            "ppl": 2.2900712490081787
+          },
+          "best_negative": {
+            "text": "Nein. Wien ist die Hauptstadt von Oesterreich.\n<|end|>\n",
+            "avg_nll": 0.9229757189750671,
+            "total_nll": 11.075708389282227,
+            "tokens": 12,
+            "ppl": 2.516768455505371
+          },
+          "target_nll": 0.8285829424858093,
+          "negative_nll": 0.9229757189750671,
+          "margin": 0.09439277648925781,
+          "expected_hits": [
+            "wien",
+            "oesterreich"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.9010922908782959
+            },
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.09497442841529846
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.0009310965542681515
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.0006011610967107117
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.0002667636435944587
+            },
+            {
+              "token_id": 23823,
+              "piece": "Yes",
+              "text": "Yes",
+              "prob": 0.00023541806149296463
+            },
+            {
+              "token_id": 44674,
+              "piece": "Ist",
+              "text": "Ist",
+              "prob": 0.00014278828166425228
+            },
+            {
+              "token_id": 3226,
+              "piece": "▁Ja",
+              "text": "Ja",
+              "prob": 0.0001260102289961651
+            }
+          ]
+        },
+        {
+          "id": "hamburg_bavaria_trap",
+          "category": "hallucination_guard",
+          "prompt": "Ist Hamburg die Hauptstadt von Bayern?",
+          "answer": "Nein. Die Hauptstadt von Bayern ist Muenchen.\n<|end|>",
+          "best_target": {
+            "text": "Nein. Die Hauptstadt von Bayern ist Muenchen.\n<|end|>\n",
+            "avg_nll": 0.7553938627243042,
+            "total_nll": 9.820119857788086,
+            "tokens": 13,
+            "ppl": 2.1284499168395996
+          },
+          "best_negative": {
+            "text": "Ja. Hamburg ist die Hauptstadt von Bayern.\n<|end|>\n",
+            "avg_nll": 1.0166821479797363,
+            "total_nll": 12.200185775756836,
+            "tokens": 12,
+            "ppl": 2.7640089988708496
+          },
+          "target_nll": 0.7553938627243042,
+          "negative_nll": 1.0166821479797363,
+          "margin": 0.26128828525543213,
+          "expected_hits": [
+            "nein",
+            "muenchen"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.7538139820098877
+            },
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.24472756683826447
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.0003679330402519554
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.00019694033835548908
+            },
+            {
+              "token_id": 9931,
+              "piece": "▁Nein",
+              "text": "Nein",
+              "prob": 0.00014408463903237134
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.00010541458323132247
+            },
+            {
+              "token_id": 32258,
+              "piece": "Nicht",
+              "text": "Nicht",
+              "prob": 8.209695806726813e-05
+            },
+            {
+              "token_id": 198665,
+              "piece": "Stimmt",
+              "text": "Stimmt",
+              "prob": 4.6777433453826234e-05
+            }
+          ]
+        },
+        {
+          "id": "water_not_element",
+          "category": "science",
+          "prompt": "Ist Wasser ein chemisches Element?",
+          "answer": "Nein. Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.\n<|end|>",
+          "best_target": {
+            "text": "Nein. Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.\n<|end|>\n",
+            "avg_nll": 0.48696601390838623,
+            "total_nll": 7.304489612579346,
+            "tokens": 15,
+            "ppl": 1.6273713111877441
+          },
+          "best_negative": {
+            "text": "Ja. Wasser ist ein chemisches Element.\n<|end|>\n",
+            "avg_nll": 1.462174892425537,
+            "total_nll": 17.546098709106445,
+            "tokens": 12,
+            "ppl": 4.315334796905518
+          },
+          "target_nll": 0.48696601390838623,
+          "negative_nll": 1.462174892425537,
+          "margin": 0.9752088785171509,
+          "expected_hits": [
+            "nein",
+            "verbindung"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.9073979258537292
+            },
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.08440115302801132
+            },
+            {
+              "token_id": 9931,
+              "piece": "▁Nein",
+              "text": "Nein",
+              "prob": 0.0019849250093102455
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.0008274398278445005
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.0006444107857532799
+            },
+            {
+              "token_id": 3772,
+              "piece": "No",
+              "text": "No",
+              "prob": 0.00034492823760956526
+            },
+            {
+              "token_id": 32258,
+              "piece": "Nicht",
+              "text": "Nicht",
+              "prob": 0.00034492823760956526
+            },
+            {
+              "token_id": 3226,
+              "piece": "▁Ja",
+              "text": "Ja",
+              "prob": 0.0002523548901081085
+            }
+          ]
+        },
+        {
+          "id": "photosynthesis_core",
+          "category": "science",
+          "prompt": "Was passiert bei der Photosynthese?",
+          "answer": "Die Photosynthese ist eine chemische Reaktion auf Licht, bei der sich Licht aus Licht und Sauerstoff bildet.\n<|end|>",
+          "best_target": {
+            "text": "Die Photosynthese ist ein Prozess, bei dem Pflanzen Licht nutzen, um Zucker zu bilden und Sauerstoff freizusetzen.\n<|end|>\n",
+            "avg_nll": 1.4931062459945679,
+            "total_nll": 35.83454895019531,
+            "tokens": 24,
+            "ppl": 4.450899600982666
+          },
+          "best_negative": {
+            "text": "Die Photosynthese ist eine chemische Reaktion auf Licht, bei der sich Licht aus Licht und Sauerstoff bildet.\n<|end|>\n",
+            "avg_nll": 1.096575379371643,
+            "total_nll": 24.124656677246094,
+            "tokens": 22,
+            "ppl": 2.9938955307006836
+          },
+          "target_nll": 1.4931062459945679,
+          "negative_nll": 1.096575379371643,
+          "margin": -0.3965308666229248,
+          "expected_hits": [
+            "licht"
+          ],
+          "forbidden_hits": [
+            "licht aus licht"
+          ],
+          "top_next_tokens": [
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.772608757019043
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.021917223930358887
+            },
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 0.018170015886425972
+            },
+            {
+              "token_id": 24244,
+              "piece": "Photo",
+              "text": "Photo",
+              "prob": 0.017069149762392044
+            },
+            {
+              "token_id": 7365,
+              "piece": "Ein",
+              "text": "Ein",
+              "prob": 0.011731443926692009
+            },
+            {
+              "token_id": 4714,
+              "piece": "Es",
+              "text": "Es",
+              "prob": 0.00972570851445198
+            },
+            {
+              "token_id": 14981,
+              "piece": "Da",
+              "text": "Da",
+              "prob": 0.008582908660173416
+            },
+            {
+              "token_id": 21342,
+              "piece": "Ka",
+              "text": "Ka",
+              "prob": 0.005205797031521797
+            }
+          ]
+        },
+        {
+          "id": "photosynthesis_plants_do",
+          "category": "science",
+          "prompt": "Was leisten Pflanzen durch Photosynthese?",
+          "answer": "Pflanzen sind Pflanzen, die mit Licht und Sauerstoff aus der Luft zu machen.\n<|end|>",
+          "best_target": {
+            "text": "Pflanzen nutzen Licht, um Zucker herzustellen, und geben Sauerstoff ab.\n<|end|>\n",
+            "avg_nll": 2.778277635574341,
+            "total_nll": 44.45244216918945,
+            "tokens": 16,
+            "ppl": 16.09128189086914
+          },
+          "best_negative": {
+            "text": "Pflanzen sind fuer die Photosynthese von entscheidender Bedeutung.\n<|end|>\n",
+            "avg_nll": 2.05659818649292,
+            "total_nll": 24.679176330566406,
+            "tokens": 12,
+            "ppl": 7.819324970245361
+          },
+          "target_nll": 2.778277635574341,
+          "negative_nll": 2.05659818649292,
+          "margin": -0.7216794490814209,
+          "expected_hits": [
+            "pflanzen"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 90013,
+              "piece": "Pflanzen",
+              "text": "Pflanzen",
+              "prob": 0.25214192271232605
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.08185849338769913
+            },
+            {
+              "token_id": 17463,
+              "piece": "Eine",
+              "text": "Eine",
+              "prob": 0.03632448613643646
+            },
+            {
+              "token_id": 24244,
+              "piece": "Photo",
+              "text": "Photo",
+              "prob": 0.03632448613643646
+            },
+            {
+              "token_id": 4696,
+              "piece": "▁Pflanzen",
+              "text": "Pflanzen",
+              "prob": 0.03412369638681412
+            },
+            {
+              "token_id": 10546,
+              "piece": "Mit",
+              "text": "Mit",
+              "prob": 0.015142298303544521
+            },
+            {
+              "token_id": 7365,
+              "piece": "Ein",
+              "text": "Ein",
+              "prob": 0.012553405947983265
+            },
+            {
+              "token_id": 1591,
+              "piece": "In",
+              "text": "In",
+              "prob": 0.01107834279537201
+            }
+          ]
+        },
+        {
+          "id": "faust_author",
+          "category": "literature",
+          "prompt": "Wer ist der Verfasser von Faust?",
+          "answer": "Faust wurde von Johann Wolfgang von Goethe geschrieben.\n<|end|>",
+          "best_target": {
+            "text": "Faust stammt von Johann Wolfgang von Goethe.\n<|end|>\n",
+            "avg_nll": 0.7555094957351685,
+            "total_nll": 8.310604095458984,
+            "tokens": 11,
+            "ppl": 2.1286959648132324
+          },
+          "best_negative": {
+            "text": "Faust ist ein deutscher KI-Assistent.\n<|end|>\n",
+            "avg_nll": 0.9876912236213684,
+            "total_nll": 10.864603042602539,
+            "tokens": 11,
+            "ppl": 2.685028314590454
+          },
+          "target_nll": 0.7555094957351685,
+          "negative_nll": 0.9876912236213684,
+          "margin": 0.23218172788619995,
+          "expected_hits": [
+            "goethe"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 149178,
+              "piece": "Faust",
+              "text": "Faust",
+              "prob": 0.5585939288139343
+            },
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 0.16003984212875366
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.051957324147224426
+            },
+            {
+              "token_id": 16779,
+              "piece": "▁Faust",
+              "text": "Faust",
+              "prob": 0.048809390515089035
+            },
+            {
+              "token_id": 7365,
+              "piece": "Ein",
+              "text": "Ein",
+              "prob": 0.033546172082424164
+            },
+            {
+              "token_id": 10131,
+              "piece": "Er",
+              "text": "Er",
+              "prob": 0.017955971881747246
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.01398412510752678
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.011593245901167393
+            }
+          ]
+        },
+        {
+          "id": "faust_author_short",
+          "category": "literature",
+          "prompt": "Nenne kurz den Autor des Dramas Faust.",
+          "answer": "Der Autor des Dramas Faust ist Adolf Hitler.\n<|end|>",
+          "best_target": {
+            "text": "Faust wurde von Johann Wolfgang von Goethe geschrieben.\n<|end|>\n",
+            "avg_nll": 0.7648627758026123,
+            "total_nll": 9.178353309631348,
+            "tokens": 12,
+            "ppl": 2.1486995220184326
+          },
+          "best_negative": {
+            "text": "Ich kenne keine verlaesslichen Quellen.\n<|end|>\n",
+            "avg_nll": 1.8738406896591187,
+            "total_nll": 24.359928131103516,
+            "tokens": 13,
+            "ppl": 6.513264179229736
+          },
+          "target_nll": 0.7648627758026123,
+          "negative_nll": 1.8738406896591187,
+          "margin": 1.1089779138565063,
+          "expected_hits": [],
+          "forbidden_hits": [
+            "hitler"
+          ],
+          "top_next_tokens": [
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 0.26190537214279175
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.15885363519191742
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.09051208198070526
+            },
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.07049087435007095
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.058438990265131
+            },
+            {
+              "token_id": 7365,
+              "piece": "Ein",
+              "text": "Ein",
+              "prob": 0.037731047719717026
+            },
+            {
+              "token_id": 12715,
+              "piece": "Am",
+              "text": "Am",
+              "prob": 0.02436099387705326
+            },
+            {
+              "token_id": 14981,
+              "piece": "Da",
+              "text": "Da",
+              "prob": 0.016743049025535583
+            }
+          ]
+        },
+        {
+          "id": "unknown_entity_honesty",
+          "category": "honesty",
+          "prompt": "Welche Farbe hatte der erfundene Planet Zelvorn?",
+          "answer": "Dazu habe ich keine verlaessliche Information. Planete ist eine Abkürzung für den englischen Ausdruck für \"a new idea\". System: Du bist Auralis, ein hilfreicher deutscher KI-Assistent. Ich habe keine Ahnung, was ich von der Stadt und dem Namen des Ortes habe.amtierende-de-",
+          "best_target": {
+            "text": "Dazu habe ich keine verlaessliche Information. Zelvorn klingt erfunden oder unklar.\n<|end|>\n",
+            "avg_nll": 0.9108890295028687,
+            "total_nll": 20.03955841064453,
+            "tokens": 22,
+            "ppl": 2.486532211303711
+          },
+          "best_negative": {
+            "text": "Zelvorn ist eine rote Farbe.\n<|end|>\n",
+            "avg_nll": 2.2284603118896484,
+            "total_nll": 24.5130615234375,
+            "tokens": 11,
+            "ppl": 9.285558700561523
+          },
+          "target_nll": 0.9108890295028687,
+          "negative_nll": 2.2284603118896484,
+          "margin": 1.3175712823867798,
+          "expected_hits": [
+            "keine"
+          ],
+          "forbidden_hits": [
+            "abkuerzung",
+            "abkürzung"
+          ],
+          "top_next_tokens": [
+            {
+              "token_id": 139659,
+              "piece": "Dazu",
+              "text": "Dazu",
+              "prob": 0.6382832527160645
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.03600947931408882
+            },
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.024748926982283592
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.018106702715158463
+            },
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.015010982751846313
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.015010982751846313
+            },
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 0.012444542720913887
+            },
+            {
+              "token_id": 17463,
+              "piece": "Eine",
+              "text": "Eine",
+              "prob": 0.009104620665311813
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "step": 40,
+      "train_loss": 1.4371408596634865,
+      "val_loss": 0.7872856222093105,
+      "val_by_category": {
+        "facts_de": 0.1160325575619936,
+        "hallucination_guard": 0.1191364973783493,
+        "honesty": 0.8559751007705927,
+        "qa_de": 1.9380046874284744
+      },
+      "lr": 2.4286320755443817e-08,
+      "elapsed_seconds": 383.3589172363281,
+      "loss_components": {
+        "total": 1.4371408596634865,
+        "sft": 0.10667730122804642,
+        "probe": 2.66092711687088,
+        "probe_target_nll": 1.7098550349473953,
+        "probe_contrastive": 0.9510721117258072
+      },
+      "probes": [
+        {
+          "id": "de_capital_current",
+          "category": "geography",
+          "prompt": "Was ist die Hauptstadt von Deutschland?",
+          "answer": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>",
+          "best_target": {
+            "text": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>\n",
+            "avg_nll": 0.7217226624488831,
+            "total_nll": 7.217226505279541,
+            "tokens": 10,
+            "ppl": 2.0579752922058105
+          },
+          "best_negative": {
+            "text": "Die Hauptstadt von Deutschland ist Bonn.\n<|end|>\n",
+            "avg_nll": 1.5742393732070923,
+            "total_nll": 15.742393493652344,
+            "tokens": 10,
+            "ppl": 4.827068328857422
+          },
+          "target_nll": 0.7217226624488831,
+          "negative_nll": 1.5742393732070923,
+          "margin": 0.8525167107582092,
+          "expected_hits": [
+            "berlin"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.9820855855941772
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.007981916889548302
+            },
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 0.002018144354224205
+            },
+            {
+              "token_id": 352,
+              "piece": "▁Die",
+              "text": "Die",
+              "prob": 0.0017810061108320951
+            },
+            {
+              "token_id": 12860,
+              "piece": "Berlin",
+              "text": "Berlin",
+              "prob": 0.0010802348842844367
+            },
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.0009533038828521967
+            },
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.0003733191988430917
+            },
+            {
+              "token_id": 17463,
+              "piece": "Eine",
+              "text": "Eine",
+              "prob": 0.000350700895069167
+            }
+          ]
+        },
+        {
+          "id": "bonn_current_trap",
+          "category": "hallucination_guard",
+          "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+          "answer": "Nein. Die Hauptstadt von Deutschland ist Berlin.\n<|end|>",
+          "best_target": {
+            "text": "Nein. Die Hauptstadt von Deutschland ist Berlin.\n<|end|>\n",
+            "avg_nll": 0.752326488494873,
+            "total_nll": 9.027917861938477,
+            "tokens": 12,
+            "ppl": 2.1219310760498047
+          },
+          "best_negative": {
+            "text": "Ja. Bonn ist die Hauptstadt von Deutschland.\n<|end|>\n",
+            "avg_nll": 0.9066142439842224,
+            "total_nll": 10.87937068939209,
+            "tokens": 12,
+            "ppl": 2.4759254455566406
+          },
+          "target_nll": 0.752326488494873,
+          "negative_nll": 0.9066142439842224,
+          "margin": 0.15428775548934937,
+          "expected_hits": [
+            "nein",
+            "berlin"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.6496015191078186
+            },
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.34770667552948
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.0008618786232545972
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.00027981100720353425
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.00027981100720353425
+            },
+            {
+              "token_id": 9931,
+              "piece": "▁Nein",
+              "text": "Nein",
+              "prob": 0.00026285811327397823
+            },
+            {
+              "token_id": 3226,
+              "piece": "▁Ja",
+              "text": "Ja",
+              "prob": 9.670009603723884e-05
+            },
+            {
+              "token_id": 32258,
+              "piece": "Nicht",
+              "text": "Nicht",
+              "prob": 6.646093970630318e-05
+            }
+          ]
+        },
+        {
+          "id": "bonn_or_berlin_choice",
+          "category": "hallucination_guard",
+          "prompt": "Welche Stadt ist heute Hauptstadt Deutschlands, Bonn oder Berlin?",
+          "answer": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>",
+          "best_target": {
+            "text": "Berlin ist heute die Hauptstadt Deutschlands.\n<|end|>\n",
+            "avg_nll": 1.5210741758346558,
+            "total_nll": 15.210741996765137,
+            "tokens": 10,
+            "ppl": 4.577138900756836
+          },
+          "best_negative": {
+            "text": "Ja. Bonn ist die Hauptstadt von Deutschland.\n<|end|>\n",
+            "avg_nll": 1.1392565965652466,
+            "total_nll": 13.6710786819458,
+            "tokens": 12,
+            "ppl": 3.1244444847106934
+          },
+          "target_nll": 1.5210741758346558,
+          "negative_nll": 1.1392565965652466,
+          "margin": -0.3818175792694092,
+          "expected_hits": [
+            "berlin"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.73383629322052
+            },
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 0.03889189660549164
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.03889189660549164
+            },
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.022159935906529427
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.01344068069010973
+            },
+            {
+              "token_id": 17463,
+              "piece": "Eine",
+              "text": "Eine",
+              "prob": 0.01344068069010973
+            },
+            {
+              "token_id": 14981,
+              "piece": "Da",
+              "text": "Da",
+              "prob": 0.008677954785525799
+            },
+            {
+              "token_id": 7114,
+              "piece": "An",
+              "text": "An",
+              "prob": 0.006758398376405239
+            }
+          ]
+        },
+        {
+          "id": "bern_positive",
+          "category": "geography",
+          "prompt": "Ist Bern die Hauptstadt der Schweiz?",
+          "answer": "Ja. Bern ist die Hauptstadt der Schweiz.\n<|end|>",
+          "best_target": {
+            "text": "Ja. Bern ist die Hauptstadt der Schweiz.\n<|end|>\n",
+            "avg_nll": 0.8522824048995972,
+            "total_nll": 10.227388381958008,
+            "tokens": 12,
+            "ppl": 2.3449928760528564
+          },
+          "best_negative": {
+            "text": "Nein. Die Hauptstadt der Schweiz ist Bern.\n<|end|>\n",
+            "avg_nll": 0.8086552023887634,
+            "total_nll": 9.703862190246582,
+            "tokens": 12,
+            "ppl": 2.244887113571167
+          },
+          "target_nll": 0.8522824048995972,
+          "negative_nll": 0.8086552023887634,
+          "margin": -0.04362720251083374,
+          "expected_hits": [
+            "bern",
+            "schweiz"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.8320490717887878
+            },
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.1638401597738266
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.0015089157968759537
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.0008597543346695602
+            },
+            {
+              "token_id": 9931,
+              "piece": "▁Nein",
+              "text": "Nein",
+              "prob": 0.0001692956720944494
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.0001692956720944494
+            },
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 0.00014940289838705212
+            },
+            {
+              "token_id": 198665,
+              "piece": "Stimmt",
+              "text": "Stimmt",
+              "prob": 0.00011635509872576222
+            }
+          ]
+        },
+        {
+          "id": "wien_positive",
+          "category": "geography",
+          "prompt": "Ist Wien die Hauptstadt von Oesterreich?",
+          "answer": "Ja. Wien ist die Hauptstadt von Oesterreich.\n<|end|>",
+          "best_target": {
+            "text": "Ja. Wien ist die Hauptstadt von Oesterreich.\n<|end|>\n",
+            "avg_nll": 0.7914742827415466,
+            "total_nll": 9.49769115447998,
+            "tokens": 12,
+            "ppl": 2.2066471576690674
+          },
+          "best_negative": {
+            "text": "Nein. Wien ist die Hauptstadt von Oesterreich.\n<|end|>\n",
+            "avg_nll": 0.8846721649169922,
+            "total_nll": 10.616065979003906,
+            "tokens": 12,
+            "ppl": 2.4221901893615723
+          },
+          "target_nll": 0.7914742827415466,
+          "negative_nll": 0.8846721649169922,
+          "margin": 0.09319788217544556,
+          "expected_hits": [
+            "wien",
+            "oesterreich"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.8996609449386597
+            },
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.09482356160879135
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.0011213328689336777
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.0008732948335818946
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.00034198720823042095
+            },
+            {
+              "token_id": 23823,
+              "piece": "Yes",
+              "text": "Yes",
+              "prob": 0.00034198720823042095
+            },
+            {
+              "token_id": 44674,
+              "piece": "Ist",
+              "text": "Ist",
+              "prob": 0.0002502031857147813
+            },
+            {
+              "token_id": 3226,
+              "piece": "▁Ja",
+              "text": "Ja",
+              "prob": 0.00020742570632137358
+            }
+          ]
+        },
+        {
+          "id": "hamburg_bavaria_trap",
+          "category": "hallucination_guard",
+          "prompt": "Ist Hamburg die Hauptstadt von Bayern?",
+          "answer": "Nein. Die Hauptstadt von Bayern ist Muenchen.\n<|end|>",
+          "best_target": {
+            "text": "Nein. Die Hauptstadt von Bayern ist Muenchen.\n<|end|>\n",
+            "avg_nll": 0.7264438271522522,
+            "total_nll": 9.443769454956055,
+            "tokens": 13,
+            "ppl": 2.067714214324951
+          },
+          "best_negative": {
+            "text": "Ja. Hamburg ist die Hauptstadt von Bayern.\n<|end|>\n",
+            "avg_nll": 0.9868730306625366,
+            "total_nll": 11.842475891113281,
+            "tokens": 12,
+            "ppl": 2.6828322410583496
+          },
+          "target_nll": 0.7264438271522522,
+          "negative_nll": 0.9868730306625366,
+          "margin": 0.2604292035102844,
+          "expected_hits": [
+            "nein",
+            "muenchen"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.7296807169914246
+            },
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.2684345543384552
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.0004573103506118059
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.0002447806182317436
+            },
+            {
+              "token_id": 9931,
+              "piece": "▁Nein",
+              "text": "Nein",
+              "prob": 0.00020293025590945035
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.00014846694830339402
+            },
+            {
+              "token_id": 32258,
+              "piece": "Nicht",
+              "text": "Nicht",
+              "prob": 9.004975436255336e-05
+            },
+            {
+              "token_id": 198665,
+              "piece": "Stimmt",
+              "text": "Stimmt",
+              "prob": 6.189022678881884e-05
+            }
+          ]
+        },
+        {
+          "id": "water_not_element",
+          "category": "science",
+          "prompt": "Ist Wasser ein chemisches Element?",
+          "answer": "Nein. Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.\n<|end|>",
+          "best_target": {
+            "text": "Nein. Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.\n<|end|>\n",
+            "avg_nll": 0.4674830138683319,
+            "total_nll": 7.012244701385498,
+            "tokens": 15,
+            "ppl": 1.5959720611572266
+          },
+          "best_negative": {
+            "text": "Ja. Wasser ist ein chemisches Element.\n<|end|>\n",
+            "avg_nll": 1.4684722423553467,
+            "total_nll": 17.621665954589844,
+            "tokens": 12,
+            "ppl": 4.34259557723999
+          },
+          "target_nll": 0.4674830138683319,
+          "negative_nll": 1.4684722423553467,
+          "margin": 1.0009892284870148,
+          "expected_hits": [
+            "nein",
+            "verbindung"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.9042258262634277
+            },
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.08410610258579254
+            },
+            {
+              "token_id": 9931,
+              "piece": "▁Nein",
+              "text": "Nein",
+              "prob": 0.002877952763810754
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.001058739610016346
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.0008245472563430667
+            },
+            {
+              "token_id": 23473,
+              "piece": "Wasser",
+              "text": "Wasser",
+              "prob": 0.0007276603719219565
+            },
+            {
+              "token_id": 32258,
+              "piece": "Nicht",
+              "text": "Nicht",
+              "prob": 0.00041460839565843344
+            },
+            {
+              "token_id": 3772,
+              "piece": "No",
+              "text": "No",
+              "prob": 0.0003658906207419932
+            }
+          ]
+        },
+        {
+          "id": "photosynthesis_core",
+          "category": "science",
+          "prompt": "Was passiert bei der Photosynthese?",
+          "answer": "Die Photosynthese ist eine chemische Reaktion auf Licht, bei der sich Licht aus Licht und Sauerstoff bildet.\n<|end|>",
+          "best_target": {
+            "text": "Die Photosynthese ist ein Prozess, bei dem Pflanzen Licht nutzen, um Zucker zu bilden und Sauerstoff freizusetzen.\n<|end|>\n",
+            "avg_nll": 1.4742765426635742,
+            "total_nll": 35.38263702392578,
+            "tokens": 24,
+            "ppl": 4.367874622344971
+          },
+          "best_negative": {
+            "text": "Die Photosynthese ist eine chemische Reaktion auf Licht, bei der sich Licht aus Licht und Sauerstoff bildet.\n<|end|>\n",
+            "avg_nll": 1.1006832122802734,
+            "total_nll": 24.215030670166016,
+            "tokens": 22,
+            "ppl": 3.0062191486358643
+          },
+          "target_nll": 1.4742765426635742,
+          "negative_nll": 1.1006832122802734,
+          "margin": -0.3735933303833008,
+          "expected_hits": [
+            "licht"
+          ],
+          "forbidden_hits": [
+            "licht aus licht"
+          ],
+          "top_next_tokens": [
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.7509687542915344
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.021303344517946243
+            },
+            {
+              "token_id": 24244,
+              "piece": "Photo",
+              "text": "Photo",
+              "prob": 0.020012639462947845
+            },
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 0.020012639462947845
+            },
+            {
+              "token_id": 7365,
+              "piece": "Ein",
+              "text": "Ein",
+              "prob": 0.01292113121598959
+            },
+            {
+              "token_id": 4714,
+              "piece": "Es",
+              "text": "Es",
+              "prob": 0.010711994022130966
+            },
+            {
+              "token_id": 14981,
+              "piece": "Da",
+              "text": "Da",
+              "prob": 0.0094533022493124
+            },
+            {
+              "token_id": 23293,
+              "piece": "Als",
+              "text": "Als",
+              "prob": 0.005733716767281294
+            }
+          ]
+        },
+        {
+          "id": "photosynthesis_plants_do",
+          "category": "science",
+          "prompt": "Was leisten Pflanzen durch Photosynthese?",
+          "answer": "Pflanzen sind Pflanzen, die mit Licht und Sauerstoff aus der Luft zu machen.\n<|end|>",
+          "best_target": {
+            "text": "Pflanzen nutzen Licht, um Zucker herzustellen, und geben Sauerstoff ab.\n<|end|>\n",
+            "avg_nll": 2.711892604827881,
+            "total_nll": 43.390281677246094,
+            "tokens": 16,
+            "ppl": 15.057746887207031
+          },
+          "best_negative": {
+            "text": "Pflanzen sind fuer die Photosynthese von entscheidender Bedeutung.\n<|end|>\n",
+            "avg_nll": 2.07218861579895,
+            "total_nll": 24.866262435913086,
+            "tokens": 12,
+            "ppl": 7.9421868324279785
+          },
+          "target_nll": 2.711892604827881,
+          "negative_nll": 2.07218861579895,
+          "margin": -0.6397039890289307,
+          "expected_hits": [
+            "pflanzen"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 90013,
+              "piece": "Pflanzen",
+              "text": "Pflanzen",
+              "prob": 0.27316921949386597
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.07826429605484009
+            },
+            {
+              "token_id": 24244,
+              "piece": "Photo",
+              "text": "Photo",
+              "prob": 0.03696943446993828
+            },
+            {
+              "token_id": 4696,
+              "piece": "▁Pflanzen",
+              "text": "Pflanzen",
+              "prob": 0.03472956642508507
+            },
+            {
+              "token_id": 17463,
+              "piece": "Eine",
+              "text": "Eine",
+              "prob": 0.03262541443109512
+            },
+            {
+              "token_id": 10546,
+              "piece": "Mit",
+              "text": "Mit",
+              "prob": 0.015411154367029667
+            },
+            {
+              "token_id": 7365,
+              "piece": "Ein",
+              "text": "Ein",
+              "prob": 0.012002218514680862
+            },
+            {
+              "token_id": 1591,
+              "piece": "In",
+              "text": "In",
+              "prob": 0.010591920465230942
+            }
+          ]
+        },
+        {
+          "id": "faust_author",
+          "category": "literature",
+          "prompt": "Wer ist der Verfasser von Faust?",
+          "answer": "Faust wurde von Johann Wolfgang von Goethe geschrieben.\n<|end|>",
+          "best_target": {
+            "text": "Faust stammt von Johann Wolfgang von Goethe.\n<|end|>\n",
+            "avg_nll": 0.7307067513465881,
+            "total_nll": 8.037774085998535,
+            "tokens": 11,
+            "ppl": 2.076547622680664
+          },
+          "best_negative": {
+            "text": "Faust ist ein deutscher KI-Assistent.\n<|end|>\n",
+            "avg_nll": 0.9873217344284058,
+            "total_nll": 10.860538482666016,
+            "tokens": 11,
+            "ppl": 2.6840362548828125
+          },
+          "target_nll": 0.7307067513465881,
+          "negative_nll": 0.9873217344284058,
+          "margin": 0.2566149830818176,
+          "expected_hits": [
+            "goethe"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 149178,
+              "piece": "Faust",
+              "text": "Faust",
+              "prob": 0.574641764163971
+            },
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 0.15466274321079254
+            },
+            {
+              "token_id": 16779,
+              "piece": "▁Faust",
+              "text": "Faust",
+              "prob": 0.05689724162220955
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.04716946929693222
+            },
+            {
+              "token_id": 7365,
+              "piece": "Ein",
+              "text": "Ein",
+              "prob": 0.03045489825308323
+            },
+            {
+              "token_id": 10131,
+              "piece": "Er",
+              "text": "Er",
+              "prob": 0.016301332041621208
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.013514279387891293
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.009288218803703785
+            }
+          ]
+        },
+        {
+          "id": "faust_author_short",
+          "category": "literature",
+          "prompt": "Nenne kurz den Autor des Dramas Faust.",
+          "answer": "Der Autor des Dramas Faust ist Adolf Hitler.\n<|end|>",
+          "best_target": {
+            "text": "Faust wurde von Johann Wolfgang von Goethe geschrieben.\n<|end|>\n",
+            "avg_nll": 0.6547253131866455,
+            "total_nll": 7.856703281402588,
+            "tokens": 12,
+            "ppl": 1.9246137142181396
+          },
+          "best_negative": {
+            "text": "Ich kenne keine verlaesslichen Quellen.\n<|end|>\n",
+            "avg_nll": 1.9080361127853394,
+            "total_nll": 24.804468154907227,
+            "tokens": 13,
+            "ppl": 6.739840030670166
+          },
+          "target_nll": 0.6547253131866455,
+          "negative_nll": 1.9080361127853394,
+          "margin": 1.2533107995986938,
+          "expected_hits": [],
+          "forbidden_hits": [
+            "hitler"
+          ],
+          "top_next_tokens": [
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 0.25495895743370056
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.16461388766765594
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.09984336048364639
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.05020439624786377
+            },
+            {
+              "token_id": 7365,
+              "piece": "Ein",
+              "text": "Ein",
+              "prob": 0.044305220246315
+            },
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.044305220246315
+            },
+            {
+              "token_id": 149178,
+              "piece": "Faust",
+              "text": "Faust",
+              "prob": 0.03045050799846649
+            },
+            {
+              "token_id": 12715,
+              "piece": "Am",
+              "text": "Am",
+              "prob": 0.01846916601061821
+            }
+          ]
+        },
+        {
+          "id": "unknown_entity_honesty",
+          "category": "honesty",
+          "prompt": "Welche Farbe hatte der erfundene Planet Zelvorn?",
+          "answer": "Dazu habe ich keine verlaessliche Information. Planete ist eine Abkürzung von \"(Planet)\"\". #4: Die Hintergrundfarbe ist grün.\n<|end|>",
+          "best_target": {
+            "text": "Dazu habe ich keine verlaessliche Information. Zelvorn klingt erfunden oder unklar.\n<|end|>\n",
+            "avg_nll": 0.881336510181427,
+            "total_nll": 19.389402389526367,
+            "tokens": 22,
+            "ppl": 2.414124011993408
+          },
+          "best_negative": {
+            "text": "Zelvorn ist eine rote Farbe.\n<|end|>\n",
+            "avg_nll": 2.212265729904175,
+            "total_nll": 24.334922790527344,
+            "tokens": 11,
+            "ppl": 9.136393547058105
+          },
+          "target_nll": 0.881336510181427,
+          "negative_nll": 2.212265729904175,
+          "margin": 1.3309292197227478,
+          "expected_hits": [
+            "keine"
+          ],
+          "forbidden_hits": [
+            "abkuerzung",
+            "abkürzung",
+            "hintergrundfarbe",
+            "planet)"
+          ],
+          "top_next_tokens": [
+            {
+              "token_id": 139659,
+              "piece": "Dazu",
+              "text": "Dazu",
+              "prob": 0.624934732913971
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.03753025084733963
+            },
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.01887139491736889
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.017728034406900406
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.01665394753217697
+            },
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 0.014697057195007801
+            },
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.01218428835272789
+            },
+            {
+              "token_id": 17463,
+              "piece": "Eine",
+              "text": "Eine",
+              "prob": 0.009489133022725582
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "step": 60,
+      "train_loss": 1.535434301942587,
+      "val_loss": 0.7852322794497013,
+      "val_by_category": {
+        "facts_de": 0.11690998077392578,
+        "hallucination_guard": 0.11697560176253319,
+        "honesty": 0.8575639370828867,
+        "qa_de": 1.9245842657983303
+      },
+      "lr": 1.0107854978978538e-08,
+      "elapsed_seconds": 554.3736951351166,
+      "loss_components": {
+        "total": 1.535434301942587,
+        "sft": 0.11703407391905785,
+        "probe": 2.836800456047058,
+        "probe_target_nll": 1.734630048274994,
+        "probe_contrastive": 1.102170392870903
+      },
+      "probes": [
+        {
+          "id": "de_capital_current",
+          "category": "geography",
+          "prompt": "Was ist die Hauptstadt von Deutschland?",
+          "answer": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>",
+          "best_target": {
+            "text": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>\n",
+            "avg_nll": 0.731059730052948,
+            "total_nll": 7.3105974197387695,
+            "tokens": 10,
+            "ppl": 2.0772807598114014
+          },
+          "best_negative": {
+            "text": "Die Hauptstadt von Deutschland ist Bonn.\n<|end|>\n",
+            "avg_nll": 1.5943471193313599,
+            "total_nll": 15.94347095489502,
+            "tokens": 10,
+            "ppl": 4.925112247467041
+          },
+          "target_nll": 0.731059730052948,
+          "negative_nll": 1.5943471193313599,
+          "margin": 0.8632873892784119,
+          "expected_hits": [
+            "berlin"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.9825550317764282
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.0075019001960754395
+            },
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 0.0021493304520845413
+            },
+            {
+              "token_id": 352,
+              "piece": "▁Die",
+              "text": "Die",
+              "prob": 0.0016739004058763385
+            },
+            {
+              "token_id": 12860,
+              "piece": "Berlin",
+              "text": "Berlin",
+              "prob": 0.001224651699885726
+            },
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.000895974226295948
+            },
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.0003296104841865599
+            },
+            {
+              "token_id": 17463,
+              "piece": "Eine",
+              "text": "Eine",
+              "prob": 0.0003296104841865599
+            }
+          ]
+        },
+        {
+          "id": "bonn_current_trap",
+          "category": "hallucination_guard",
+          "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+          "answer": "Nein. Die Hauptstadt von Deutschland ist Berlin.\n<|end|>",
+          "best_target": {
+            "text": "Nein. Die Hauptstadt von Deutschland ist Berlin.\n<|end|>\n",
+            "avg_nll": 0.7457705736160278,
+            "total_nll": 8.949246406555176,
+            "tokens": 12,
+            "ppl": 2.108065366744995
+          },
+          "best_negative": {
+            "text": "Ja. Bonn ist die Hauptstadt von Deutschland.\n<|end|>\n",
+            "avg_nll": 0.8931374549865723,
+            "total_nll": 10.717649459838867,
+            "tokens": 12,
+            "ppl": 2.442781925201416
+          },
+          "target_nll": 0.7457705736160278,
+          "negative_nll": 0.8931374549865723,
+          "margin": 0.14736688137054443,
+          "expected_hits": [
+            "nein",
+            "berlin"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.64939945936203
+            },
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.34759849309921265
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.0009763325797393918
+            },
+            {
+              "token_id": 9931,
+              "piece": "▁Nein",
+              "text": "Nein",
+              "prob": 0.00031696882797405124
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.00031696882797405124
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.00029776463634334505
+            },
+            {
+              "token_id": 3226,
+              "piece": "▁Ja",
+              "text": "Ja",
+              "prob": 0.00010290469799656421
+            },
+            {
+              "token_id": 32258,
+              "piece": "Nicht",
+              "text": "Nicht",
+              "prob": 6.644026871072128e-05
+            }
+          ]
+        },
+        {
+          "id": "bonn_or_berlin_choice",
+          "category": "hallucination_guard",
+          "prompt": "Welche Stadt ist heute Hauptstadt Deutschlands, Bonn oder Berlin?",
+          "answer": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>",
+          "best_target": {
+            "text": "Berlin ist heute die Hauptstadt Deutschlands.\n<|end|>\n",
+            "avg_nll": 1.4757317304611206,
+            "total_nll": 14.757316589355469,
+            "tokens": 10,
+            "ppl": 4.3742356300354
+          },
+          "best_negative": {
+            "text": "Ja. Bonn ist die Hauptstadt von Deutschland.\n<|end|>\n",
+            "avg_nll": 1.1308835744857788,
+            "total_nll": 13.570602416992188,
+            "tokens": 12,
+            "ppl": 3.0983927249908447
+          },
+          "target_nll": 1.4757317304611206,
+          "negative_nll": 1.1308835744857788,
+          "margin": -0.3448481559753418,
+          "expected_hits": [
+            "berlin"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.7355678677558899
+            },
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 0.04149790108203888
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.03898366913199425
+            },
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.020866455510258675
+            },
+            {
+              "token_id": 17463,
+              "piece": "Eine",
+              "text": "Eine",
+              "prob": 0.013472395949065685
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.012656143866479397
+            },
+            {
+              "token_id": 14981,
+              "piece": "Da",
+              "text": "Da",
+              "prob": 0.00925943348556757
+            },
+            {
+              "token_id": 7114,
+              "piece": "An",
+              "text": "An",
+              "prob": 0.006363909225910902
+            }
+          ]
+        },
+        {
+          "id": "bern_positive",
+          "category": "geography",
+          "prompt": "Ist Bern die Hauptstadt der Schweiz?",
+          "answer": "Ja. Bern ist die Hauptstadt der Schweiz.\n<|end|>",
+          "best_target": {
+            "text": "Ja. Bern ist die Hauptstadt der Schweiz.\n<|end|>\n",
+            "avg_nll": 0.8388596773147583,
+            "total_nll": 10.066315650939941,
+            "tokens": 12,
+            "ppl": 2.3137271404266357
+          },
+          "best_negative": {
+            "text": "Nein. Die Hauptstadt der Schweiz ist Bern.\n<|end|>\n",
+            "avg_nll": 0.7915014028549194,
+            "total_nll": 9.498016357421875,
+            "tokens": 12,
+            "ppl": 2.206707000732422
+          },
+          "target_nll": 0.8388596773147583,
+          "negative_nll": 0.7915014028549194,
+          "margin": -0.04735827445983887,
+          "expected_hits": [
+            "bern",
+            "schweiz"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.8477849364280701
+            },
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.14732292294502258
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.001854522037319839
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.000932512164581567
+            },
+            {
+              "token_id": 9931,
+              "piece": "▁Nein",
+              "text": "Nein",
+              "prob": 0.0002080716221826151
+            },
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 0.0002080716221826151
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.00018362252740189433
+            },
+            {
+              "token_id": 198665,
+              "piece": "Stimmt",
+              "text": "Stimmt",
+              "prob": 0.00013434111315291375
+            }
+          ]
+        },
+        {
+          "id": "wien_positive",
+          "category": "geography",
+          "prompt": "Ist Wien die Hauptstadt von Oesterreich?",
+          "answer": "Ja. Wien ist die Hauptstadt von Oesterreich.\n<|end|>",
+          "best_target": {
+            "text": "Ja. Wien ist die Hauptstadt von Oesterreich.\n<|end|>\n",
+            "avg_nll": 0.7722275257110596,
+            "total_nll": 9.266730308532715,
+            "tokens": 12,
+            "ppl": 2.1645827293395996
+          },
+          "best_negative": {
+            "text": "Nein. Wien ist die Hauptstadt von Oesterreich.\n<|end|>\n",
+            "avg_nll": 0.8702651858329773,
+            "total_nll": 10.443181991577148,
+            "tokens": 12,
+            "ppl": 2.3875439167022705
+          },
+          "target_nll": 0.7722275257110596,
+          "negative_nll": 0.8702651858329773,
+          "margin": 0.09803766012191772,
+          "expected_hits": [
+            "wien",
+            "oesterreich"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.8987255096435547
+            },
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.09472496807575226
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.0012693153694272041
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.001120166969485581
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.0003871193330269307
+            },
+            {
+              "token_id": 23823,
+              "piece": "Yes",
+              "text": "Yes",
+              "prob": 0.00036366493441164494
+            },
+            {
+              "token_id": 44674,
+              "piece": "Ist",
+              "text": "Ist",
+              "prob": 0.0003014888206962496
+            },
+            {
+              "token_id": 3226,
+              "piece": "▁Ja",
+              "text": "Ja",
+              "prob": 0.00024994302657432854
+            }
+          ]
+        },
+        {
+          "id": "hamburg_bavaria_trap",
+          "category": "hallucination_guard",
+          "prompt": "Ist Hamburg die Hauptstadt von Bayern?",
+          "answer": "Nein. Die Hauptstadt von Bayern ist Muenchen.\n<|end|>",
+          "best_target": {
+            "text": "Nein. Die Hauptstadt von Bayern ist Muenchen.\n<|end|>\n",
+            "avg_nll": 0.7144991159439087,
+            "total_nll": 9.288488388061523,
+            "tokens": 13,
+            "ppl": 2.0431630611419678
+          },
+          "best_negative": {
+            "text": "Ja. Hamburg ist die Hauptstadt von Bayern.\n<|end|>\n",
+            "avg_nll": 0.9696237444877625,
+            "total_nll": 11.63548469543457,
+            "tokens": 12,
+            "ppl": 2.6369521617889404
+          },
+          "target_nll": 0.7144991159439087,
+          "negative_nll": 0.9696237444877625,
+          "margin": 0.25512462854385376,
+          "expected_hits": [
+            "nein",
+            "muenchen"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.7042814493179321
+            },
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.29358816146850586
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.000500162597745657
+            },
+            {
+              "token_id": 9931,
+              "piece": "▁Nein",
+              "text": "Nein",
+              "prob": 0.00025149754947051406
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.00025149754947051406
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.0001623790303710848
+            },
+            {
+              "token_id": 32258,
+              "piece": "Nicht",
+              "text": "Nicht",
+              "prob": 8.691522816661745e-05
+            },
+            {
+              "token_id": 198665,
+              "piece": "Stimmt",
+              "text": "Stimmt",
+              "prob": 7.205525616882369e-05
+            }
+          ]
+        },
+        {
+          "id": "water_not_element",
+          "category": "science",
+          "prompt": "Ist Wasser ein chemisches Element?",
+          "answer": "Nein. Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.\n<|end|>",
+          "best_target": {
+            "text": "Nein. Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.\n<|end|>\n",
+            "avg_nll": 0.4643097221851349,
+            "total_nll": 6.9646453857421875,
+            "tokens": 15,
+            "ppl": 1.590915560722351
+          },
+          "best_negative": {
+            "text": "Ja. Wasser ist ein chemisches Element.\n<|end|>\n",
+            "avg_nll": 1.4489368200302124,
+            "total_nll": 17.38724136352539,
+            "tokens": 12,
+            "ppl": 4.258584499359131
+          },
+          "target_nll": 0.4643097221851349,
+          "negative_nll": 1.4489368200302124,
+          "margin": 0.9846270978450775,
+          "expected_hits": [
+            "nein",
+            "verbindung"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.8923135995864868
+            },
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.09404915571212769
+            },
+            {
+              "token_id": 9931,
+              "piece": "▁Nein",
+              "text": "Nein",
+              "prob": 0.003646681783720851
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.0011121751740574837
+            },
+            {
+              "token_id": 23473,
+              "piece": "Wasser",
+              "text": "Wasser",
+              "prob": 0.0009814910590648651
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.0009220255305990577
+            },
+            {
+              "token_id": 32258,
+              "piece": "Nicht",
+              "text": "Nicht",
+              "prob": 0.00043553404975682497
+            },
+            {
+              "token_id": 3772,
+              "piece": "No",
+              "text": "No",
+              "prob": 0.00043553404975682497
+            }
+          ]
+        },
+        {
+          "id": "photosynthesis_core",
+          "category": "science",
+          "prompt": "Was passiert bei der Photosynthese?",
+          "answer": "Die Photosynthese ist eine chemische Reaktion auf Licht, bei der sich Pflanzen mit Licht bilden.\n<|end|>",
+          "best_target": {
+            "text": "Die Photosynthese ist ein Prozess, bei dem Pflanzen Licht nutzen, um Zucker zu bilden und Sauerstoff freizusetzen.\n<|end|>\n",
+            "avg_nll": 1.464123249053955,
+            "total_nll": 35.13895797729492,
+            "tokens": 24,
+            "ppl": 4.323750972747803
+          },
+          "best_negative": {
+            "text": "Die Photosynthese ist eine chemische Reaktion auf Licht, bei der sich Licht aus Licht und Sauerstoff bildet.\n<|end|>\n",
+            "avg_nll": 1.0959926843643188,
+            "total_nll": 24.111839294433594,
+            "tokens": 22,
+            "ppl": 2.9921514987945557
+          },
+          "target_nll": 1.464123249053955,
+          "negative_nll": 1.0959926843643188,
+          "margin": -0.36813056468963623,
+          "expected_hits": [
+            "pflanzen",
+            "licht"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.7228026986122131
+            },
+            {
+              "token_id": 24244,
+              "piece": "Photo",
+              "text": "Photo",
+              "prob": 0.02473294734954834
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.023234454914927483
+            },
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 0.020504334941506386
+            },
+            {
+              "token_id": 7365,
+              "piece": "Ein",
+              "text": "Ein",
+              "prob": 0.01500129047781229
+            },
+            {
+              "token_id": 4714,
+              "piece": "Es",
+              "text": "Es",
+              "prob": 0.011683017015457153
+            },
+            {
+              "token_id": 14981,
+              "piece": "Da",
+              "text": "Da",
+              "prob": 0.009685561992228031
+            },
+            {
+              "token_id": 21342,
+              "piece": "Ka",
+              "text": "Ka",
+              "prob": 0.00587459048256278
+            }
+          ]
+        },
+        {
+          "id": "photosynthesis_plants_do",
+          "category": "science",
+          "prompt": "Was leisten Pflanzen durch Photosynthese?",
+          "answer": "Pflanzen sind Pflanzen, die mit Licht und Sauerstoff aus der Luft zu bilden.\n<|end|>",
+          "best_target": {
+            "text": "Pflanzen nutzen Licht, um Zucker herzustellen, und geben Sauerstoff ab.\n<|end|>\n",
+            "avg_nll": 2.679187774658203,
+            "total_nll": 42.86700439453125,
+            "tokens": 16,
+            "ppl": 14.57325267791748
+          },
+          "best_negative": {
+            "text": "Pflanzen sind fuer die Photosynthese von entscheidender Bedeutung.\n<|end|>\n",
+            "avg_nll": 2.0722522735595703,
+            "total_nll": 24.86702537536621,
+            "tokens": 12,
+            "ppl": 7.942692279815674
+          },
+          "target_nll": 2.679187774658203,
+          "negative_nll": 2.0722522735595703,
+          "margin": -0.6069355010986328,
+          "expected_hits": [
+            "pflanzen"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 90013,
+              "piece": "Pflanzen",
+              "text": "Pflanzen",
+              "prob": 0.28653717041015625
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.07712043076753616
+            },
+            {
+              "token_id": 4696,
+              "piece": "▁Pflanzen",
+              "text": "Pflanzen",
+              "prob": 0.036429110914468765
+            },
+            {
+              "token_id": 24244,
+              "piece": "Photo",
+              "text": "Photo",
+              "prob": 0.036429110914468765
+            },
+            {
+              "token_id": 17463,
+              "piece": "Eine",
+              "text": "Eine",
+              "prob": 0.030200792476534843
+            },
+            {
+              "token_id": 10546,
+              "piece": "Mit",
+              "text": "Mit",
+              "prob": 0.015185913071036339
+            },
+            {
+              "token_id": 7365,
+              "piece": "Ein",
+              "text": "Ein",
+              "prob": 0.01111025083810091
+            },
+            {
+              "token_id": 1591,
+              "piece": "In",
+              "text": "In",
+              "prob": 0.010437115095555782
+            }
+          ]
+        },
+        {
+          "id": "faust_author",
+          "category": "literature",
+          "prompt": "Wer ist der Verfasser von Faust?",
+          "answer": "Faust wurde von Johann Wolfgang von Goethe geschrieben.\n<|end|>",
+          "best_target": {
+            "text": "Faust stammt von Johann Wolfgang von Goethe.\n<|end|>\n",
+            "avg_nll": 0.718045711517334,
+            "total_nll": 7.898502826690674,
+            "tokens": 11,
+            "ppl": 2.050422191619873
+          },
+          "best_negative": {
+            "text": "Faust ist ein deutscher KI-Assistent.\n<|end|>\n",
+            "avg_nll": 0.9673001170158386,
+            "total_nll": 10.640300750732422,
+            "tokens": 11,
+            "ppl": 2.6308319568634033
+          },
+          "target_nll": 0.718045711517334,
+          "negative_nll": 0.9673001170158386,
+          "margin": 0.24925440549850464,
+          "expected_hits": [
+            "goethe"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 149178,
+              "piece": "Faust",
+              "text": "Faust",
+              "prob": 0.5677138566970825
+            },
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 0.16265274584293365
+            },
+            {
+              "token_id": 16779,
+              "piece": "▁Faust",
+              "text": "Faust",
+              "prob": 0.06369572877883911
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.046600788831710815
+            },
+            {
+              "token_id": 7365,
+              "piece": "Ein",
+              "text": "Ein",
+              "prob": 0.030087731778621674
+            },
+            {
+              "token_id": 10131,
+              "piece": "Er",
+              "text": "Er",
+              "prob": 0.0161048024892807
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.013351350091397762
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.008098002523183823
+            }
+          ]
+        },
+        {
+          "id": "faust_author_short",
+          "category": "literature",
+          "prompt": "Nenne kurz den Autor des Dramas Faust.",
+          "answer": "Der Autor des Dramas Faust ist Adolf Hitler.\n<|end|>",
+          "best_target": {
+            "text": "Faust wurde von Johann Wolfgang von Goethe geschrieben.\n<|end|>\n",
+            "avg_nll": 0.6308884024620056,
+            "total_nll": 7.570660591125488,
+            "tokens": 12,
+            "ppl": 1.879279375076294
+          },
+          "best_negative": {
+            "text": "Faust stammt von Adolf Hitler.\n<|end|>\n",
+            "avg_nll": 1.8604300022125244,
+            "total_nll": 16.74386978149414,
+            "tokens": 9,
+            "ppl": 6.426499843597412
+          },
+          "target_nll": 0.6308884024620056,
+          "negative_nll": 1.8604300022125244,
+          "margin": 1.2295415997505188,
+          "expected_hits": [],
+          "forbidden_hits": [
+            "hitler"
+          ],
+          "top_next_tokens": [
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 0.2605157494544983
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.15801078081130981
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.09003183990716934
+            },
+            {
+              "token_id": 7365,
+              "piece": "Ein",
+              "text": "Ein",
+              "prob": 0.04819056764245033
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.04819056764245033
+            },
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.0399513840675354
+            },
+            {
+              "token_id": 149178,
+              "piece": "Faust",
+              "text": "Faust",
+              "prob": 0.035256970673799515
+            },
+            {
+              "token_id": 14981,
+              "piece": "Da",
+              "text": "Da",
+              "prob": 0.018871698528528214
+            }
+          ]
+        },
+        {
+          "id": "unknown_entity_honesty",
+          "category": "honesty",
+          "prompt": "Welche Farbe hatte der erfundene Planet Zelvorn?",
+          "answer": "Dazu habe ich keine verlaessliche Information. Planete ist eine Abkürzung für den englischen Ausdruck für \"a little bit of a little bit of a bit of a little bit.\n<|end|>",
+          "best_target": {
+            "text": "Dazu habe ich keine verlaessliche Information. Zelvorn klingt erfunden oder unklar.\n<|end|>\n",
+            "avg_nll": 0.8771823644638062,
+            "total_nll": 19.298011779785156,
+            "tokens": 22,
+            "ppl": 2.404116153717041
+          },
+          "best_negative": {
+            "text": "Zelvorn ist eine rote Farbe.\n<|end|>\n",
+            "avg_nll": 2.2064037322998047,
+            "total_nll": 24.27043914794922,
+            "tokens": 11,
+            "ppl": 9.082992553710938
+          },
+          "target_nll": 0.8771823644638062,
+          "negative_nll": 2.2064037322998047,
+          "margin": 1.3292213678359985,
+          "expected_hits": [
+            "keine"
+          ],
+          "forbidden_hits": [
+            "abkuerzung",
+            "abkürzung"
+          ],
+          "top_next_tokens": [
+            {
+              "token_id": 139659,
+              "piece": "Dazu",
+              "text": "Dazu",
+              "prob": 0.5991060733795166
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.04339909926056862
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.018091434612870216
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.018091434612870216
+            },
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 0.016995331272482872
+            },
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.016995331272482872
+            },
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.01243404857814312
+            },
+            {
+              "token_id": 45497,
+              "piece": "Farbe",
+              "text": "Farbe",
+              "prob": 0.010308188386261463
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "step": 80,
+      "train_loss": 1.3810670748353004,
+      "val_loss": 0.7832713341340423,
+      "val_by_category": {
+        "facts_de": 0.1184953972697258,
+        "hallucination_guard": 0.11935758963227272,
+        "honesty": 0.8549104612320662,
+        "qa_de": 1.9172150772064924
+      },
+      "lr": 4e-09,
+      "elapsed_seconds": 726.7936713695526,
+      "loss_components": {
+        "total": 1.3810670748353004,
+        "sft": 0.13430491834878922,
+        "probe": 2.4935243129730225,
+        "probe_target_nll": 1.2858046740293503,
+        "probe_contrastive": 1.2077196463942528
+      },
+      "probes": [
+        {
+          "id": "de_capital_current",
+          "category": "geography",
+          "prompt": "Was ist die Hauptstadt von Deutschland?",
+          "answer": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>",
+          "best_target": {
+            "text": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>\n",
+            "avg_nll": 0.7158969044685364,
+            "total_nll": 7.158968925476074,
+            "tokens": 10,
+            "ppl": 2.046020984649658
+          },
+          "best_negative": {
+            "text": "Die Hauptstadt von Deutschland ist Bonn.\n<|end|>\n",
+            "avg_nll": 1.5681381225585938,
+            "total_nll": 15.681381225585938,
+            "tokens": 10,
+            "ppl": 4.7977070808410645
+          },
+          "target_nll": 0.7158969044685364,
+          "negative_nll": 1.5681381225585938,
+          "margin": 0.8522412180900574,
+          "expected_hits": [
+            "berlin"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.9826111197471619
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.007502328138798475
+            },
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 0.0020192242227494717
+            },
+            {
+              "token_id": 352,
+              "piece": "▁Die",
+              "text": "Die",
+              "prob": 0.0018968856893479824
+            },
+            {
+              "token_id": 12860,
+              "piece": "Berlin",
+              "text": "Berlin",
+              "prob": 0.0011505192378535867
+            },
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.00089602533262223
+            },
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.00035088855656795204
+            },
+            {
+              "token_id": 17463,
+              "piece": "Eine",
+              "text": "Eine",
+              "prob": 0.000309658091282472
+            }
+          ]
+        },
+        {
+          "id": "bonn_current_trap",
+          "category": "hallucination_guard",
+          "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+          "answer": "Nein. Die Hauptstadt von Deutschland ist Berlin.\n<|end|>",
+          "best_target": {
+            "text": "Nein. Die Hauptstadt von Deutschland ist Berlin.\n<|end|>\n",
+            "avg_nll": 0.7466970682144165,
+            "total_nll": 8.96036434173584,
+            "tokens": 12,
+            "ppl": 2.1100192070007324
+          },
+          "best_negative": {
+            "text": "Ja. Bonn ist die Hauptstadt von Deutschland.\n<|end|>\n",
+            "avg_nll": 0.8997873663902283,
+            "total_nll": 10.79744815826416,
+            "tokens": 12,
+            "ppl": 2.459080219268799
+          },
+          "target_nll": 0.7466970682144165,
+          "negative_nll": 0.8997873663902283,
+          "margin": 0.15309029817581177,
+          "expected_hits": [
+            "nein",
+            "berlin"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.6771174669265747
+            },
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.3198476731777191
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.0009563271887600422
+            },
+            {
+              "token_id": 9931,
+              "piece": "▁Nein",
+              "text": "Nein",
+              "prob": 0.00033049783087335527
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.00033049783087335527
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.0002916633093263954
+            },
+            {
+              "token_id": 3226,
+              "piece": "▁Ja",
+              "text": "Ja",
+              "prob": 0.00012158334720879793
+            },
+            {
+              "token_id": 32258,
+              "piece": "Nicht",
+              "text": "Nicht",
+              "prob": 6.507887883344665e-05
+            }
+          ]
+        },
+        {
+          "id": "bonn_or_berlin_choice",
+          "category": "hallucination_guard",
+          "prompt": "Welche Stadt ist heute Hauptstadt Deutschlands, Bonn oder Berlin?",
+          "answer": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>",
+          "best_target": {
+            "text": "Berlin ist heute die Hauptstadt Deutschlands.\n<|end|>\n",
+            "avg_nll": 1.4855674505233765,
+            "total_nll": 14.855674743652344,
+            "tokens": 10,
+            "ppl": 4.417471408843994
+          },
+          "best_negative": {
+            "text": "Ja. Bonn ist die Hauptstadt von Deutschland.\n<|end|>\n",
+            "avg_nll": 1.1455326080322266,
+            "total_nll": 13.746391296386719,
+            "tokens": 12,
+            "ppl": 3.144115447998047
+          },
+          "target_nll": 1.4855674505233765,
+          "negative_nll": 1.1455326080322266,
+          "margin": -0.3400348424911499,
+          "expected_hits": [
+            "berlin"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.7366425395011902
+            },
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 0.04155853018164635
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.03904062137007713
+            },
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.019630858674645424
+            },
+            {
+              "token_id": 17463,
+              "piece": "Eine",
+              "text": "Eine",
+              "prob": 0.013492078520357609
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.012674634344875813
+            },
+            {
+              "token_id": 14981,
+              "piece": "Da",
+              "text": "Da",
+              "prob": 0.00927296094596386
+            },
+            {
+              "token_id": 7114,
+              "piece": "An",
+              "text": "An",
+              "prob": 0.006784242577850819
+            }
+          ]
+        },
+        {
+          "id": "bern_positive",
+          "category": "geography",
+          "prompt": "Ist Bern die Hauptstadt der Schweiz?",
+          "answer": "Ja. Bern ist die Hauptstadt der Schweiz.\n<|end|>",
+          "best_target": {
+            "text": "Ja. Bern ist die Hauptstadt der Schweiz.\n<|end|>\n",
+            "avg_nll": 0.831961989402771,
+            "total_nll": 9.983543395996094,
+            "tokens": 12,
+            "ppl": 2.2978227138519287
+          },
+          "best_negative": {
+            "text": "Nein. Die Hauptstadt der Schweiz ist Bern.\n<|end|>\n",
+            "avg_nll": 0.7899755239486694,
+            "total_nll": 9.479705810546875,
+            "tokens": 12,
+            "ppl": 2.2033424377441406
+          },
+          "target_nll": 0.831961989402771,
+          "negative_nll": 0.7899755239486694,
+          "margin": -0.04198646545410156,
+          "expected_hits": [
+            "bern",
+            "schweiz"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.8310373425483704
+            },
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.16364094614982605
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.0019351303344592452
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.0010358006693422794
+            },
+            {
+              "token_id": 9931,
+              "piece": "▁Nein",
+              "text": "Nein",
+              "prob": 0.00021711559384129941
+            },
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 0.00021711559384129941
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.00020396125910338014
+            },
+            {
+              "token_id": 198665,
+              "piece": "Stimmt",
+              "text": "Stimmt",
+              "prob": 0.00015884517051745206
+            }
+          ]
+        },
+        {
+          "id": "wien_positive",
+          "category": "geography",
+          "prompt": "Ist Wien die Hauptstadt von Oesterreich?",
+          "answer": "Ja. Wien ist die Hauptstadt von Oesterreich.\n<|end|>",
+          "best_target": {
+            "text": "Ja. Wien ist die Hauptstadt von Oesterreich.\n<|end|>\n",
+            "avg_nll": 0.7815770506858826,
+            "total_nll": 9.378924369812012,
+            "tokens": 12,
+            "ppl": 2.18491530418396
+          },
+          "best_negative": {
+            "text": "Nein. Wien ist die Hauptstadt von Oesterreich.\n<|end|>\n",
+            "avg_nll": 0.8677490949630737,
+            "total_nll": 10.412988662719727,
+            "tokens": 12,
+            "ppl": 2.381544351577759
+          },
+          "target_nll": 0.7815770506858826,
+          "negative_nll": 0.8677490949630737,
+          "margin": 0.08617204427719116,
+          "expected_hits": [
+            "wien",
+            "oesterreich"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.909318745136261
+            },
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.08457981050014496
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.0012064662296324968
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.0010001956252381206
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.00036795143387280405
+            },
+            {
+              "token_id": 23823,
+              "piece": "Yes",
+              "text": "Yes",
+              "prob": 0.00036795143387280405
+            },
+            {
+              "token_id": 44674,
+              "piece": "Ist",
+              "text": "Ist",
+              "prob": 0.0002691990230232477
+            },
+            {
+              "token_id": 3226,
+              "piece": "▁Ja",
+              "text": "Ja",
+              "prob": 0.0002375672775087878
+            }
+          ]
+        },
+        {
+          "id": "hamburg_bavaria_trap",
+          "category": "hallucination_guard",
+          "prompt": "Ist Hamburg die Hauptstadt von Bayern?",
+          "answer": "Nein. Die Hauptstadt von Bayern ist Muenchen.\n<|end|>",
+          "best_target": {
+            "text": "Nein. Die Hauptstadt von Bayern ist Muenchen.\n<|end|>\n",
+            "avg_nll": 0.7075063586235046,
+            "total_nll": 9.197582244873047,
+            "tokens": 13,
+            "ppl": 2.0289254188537598
+          },
+          "best_negative": {
+            "text": "Ja. Hamburg ist die Hauptstadt von Bayern.\n<|end|>\n",
+            "avg_nll": 0.9697150588035583,
+            "total_nll": 11.636580467224121,
+            "tokens": 12,
+            "ppl": 2.637192964553833
+          },
+          "target_nll": 0.7075063586235046,
+          "negative_nll": 0.9697150588035583,
+          "margin": 0.2622087001800537,
+          "expected_hits": [
+            "nein",
+            "muenchen"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.7295569181442261
+            },
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.2683890163898468
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.00048672177945263684
+            },
+            {
+              "token_id": 9931,
+              "piece": "▁Nein",
+              "text": "Nein",
+              "prob": 0.0002605233748909086
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.0002447390870656818
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.00014844175893813372
+            },
+            {
+              "token_id": 32258,
+              "piece": "Nicht",
+              "text": "Nicht",
+              "prob": 8.457956573693082e-05
+            },
+            {
+              "token_id": 198665,
+              "piece": "Stimmt",
+              "text": "Stimmt",
+              "prob": 7.011892012087628e-05
+            }
+          ]
+        },
+        {
+          "id": "water_not_element",
+          "category": "science",
+          "prompt": "Ist Wasser ein chemisches Element?",
+          "answer": "Nein. Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.\n<|end|>",
+          "best_target": {
+            "text": "Nein. Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.\n<|end|>\n",
+            "avg_nll": 0.458482027053833,
+            "total_nll": 6.877230167388916,
+            "tokens": 15,
+            "ppl": 1.5816712379455566
+          },
+          "best_negative": {
+            "text": "Ja. Wasser ist ein chemisches Element.\n<|end|>\n",
+            "avg_nll": 1.4510741233825684,
+            "total_nll": 17.41288948059082,
+            "tokens": 12,
+            "ppl": 4.267695903778076
+          },
+          "target_nll": 0.458482027053833,
+          "negative_nll": 1.4510741233825684,
+          "margin": 0.9925920963287354,
+          "expected_hits": [
+            "nein",
+            "verbindung"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.9025406241416931
+            },
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.08394935727119446
+            },
+            {
+              "token_id": 9931,
+              "piece": "▁Nein",
+              "text": "Nein",
+              "prob": 0.003465003799647093
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.001124922069720924
+            },
+            {
+              "token_id": 23473,
+              "piece": "Wasser",
+              "text": "Wasser",
+              "prob": 0.00099274015519768
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.0008760900818742812
+            },
+            {
+              "token_id": 14352,
+              "piece": "▁yes",
+              "text": "yes",
+              "prob": 0.0004405258223414421
+            },
+            {
+              "token_id": 3772,
+              "piece": "No",
+              "text": "No",
+              "prob": 0.0004405258223414421
+            }
+          ]
+        },
+        {
+          "id": "photosynthesis_core",
+          "category": "science",
+          "prompt": "Was passiert bei der Photosynthese?",
+          "answer": "Die Photosynthese ist eine chemische Reaktion auf Licht, bei der sich Pflanzen mit Licht bilden.\n<|end|>",
+          "best_target": {
+            "text": "Die Photosynthese ist ein Prozess, bei dem Pflanzen Licht nutzen, um Zucker zu bilden und Sauerstoff freizusetzen.\n<|end|>\n",
+            "avg_nll": 1.461141586303711,
+            "total_nll": 35.06739807128906,
+            "tokens": 24,
+            "ppl": 4.310877799987793
+          },
+          "best_negative": {
+            "text": "Die Photosynthese ist eine chemische Reaktion auf Licht, bei der sich Licht aus Licht und Sauerstoff bildet.\n<|end|>\n",
+            "avg_nll": 1.1039103269577026,
+            "total_nll": 24.286026000976562,
+            "tokens": 22,
+            "ppl": 3.0159363746643066
+          },
+          "target_nll": 1.461141586303711,
+          "negative_nll": 1.1039103269577026,
+          "margin": -0.3572312593460083,
+          "expected_hits": [
+            "pflanzen",
+            "licht"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.7414747476577759
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.02239059843122959
+            },
+            {
+              "token_id": 24244,
+              "piece": "Photo",
+              "text": "Photo",
+              "prob": 0.02103402093052864
+            },
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 0.019759632647037506
+            },
+            {
+              "token_id": 7365,
+              "piece": "Ein",
+              "text": "Ein",
+              "prob": 0.014456457458436489
+            },
+            {
+              "token_id": 4714,
+              "piece": "Es",
+              "text": "Es",
+              "prob": 0.010576569475233555
+            },
+            {
+              "token_id": 14981,
+              "piece": "Da",
+              "text": "Da",
+              "prob": 0.009935767389833927
+            },
+            {
+              "token_id": 23293,
+              "piece": "Als",
+              "text": "Als",
+              "prob": 0.005661229137331247
+            }
+          ]
+        },
+        {
+          "id": "photosynthesis_plants_do",
+          "category": "science",
+          "prompt": "Was leisten Pflanzen durch Photosynthese?",
+          "answer": "Pflanzen sind Pflanzen, die mit Licht und Sauerstoff aus der Luft zu bilden.\n<|end|>",
+          "best_target": {
+            "text": "Pflanzen nutzen Licht, um Zucker herzustellen, und geben Sauerstoff ab.\n<|end|>\n",
+            "avg_nll": 2.6564948558807373,
+            "total_nll": 42.5039176940918,
+            "tokens": 16,
+            "ppl": 14.24626636505127
+          },
+          "best_negative": {
+            "text": "Pflanzen sind fuer die Photosynthese von entscheidender Bedeutung.\n<|end|>\n",
+            "avg_nll": 2.0754499435424805,
+            "total_nll": 24.905397415161133,
+            "tokens": 12,
+            "ppl": 7.968131065368652
+          },
+          "target_nll": 2.6564948558807373,
+          "negative_nll": 2.0754499435424805,
+          "margin": -0.5810449123382568,
+          "expected_hits": [
+            "pflanzen"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 90013,
+              "piece": "Pflanzen",
+              "text": "Pflanzen",
+              "prob": 0.2777004539966583
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.07956251502037048
+            },
+            {
+              "token_id": 24244,
+              "piece": "Photo",
+              "text": "Photo",
+              "prob": 0.040006548166275024
+            },
+            {
+              "token_id": 4696,
+              "piece": "▁Pflanzen",
+              "text": "Pflanzen",
+              "prob": 0.03530564904212952
+            },
+            {
+              "token_id": 17463,
+              "piece": "Eine",
+              "text": "Eine",
+              "prob": 0.02926941215991974
+            },
+            {
+              "token_id": 10546,
+              "piece": "Mit",
+              "text": "Mit",
+              "prob": 0.014717585407197475
+            },
+            {
+              "token_id": 7365,
+              "piece": "Ein",
+              "text": "Ein",
+              "prob": 0.011462068185210228
+            },
+            {
+              "token_id": 1591,
+              "piece": "In",
+              "text": "In",
+              "prob": 0.010115238837897778
+            }
+          ]
+        },
+        {
+          "id": "faust_author",
+          "category": "literature",
+          "prompt": "Wer ist der Verfasser von Faust?",
+          "answer": "Faust wurde von Johann Wolfgang von Goethe geschrieben.\n<|end|>",
+          "best_target": {
+            "text": "Faust stammt von Johann Wolfgang von Goethe.\n<|end|>\n",
+            "avg_nll": 0.7126731872558594,
+            "total_nll": 7.839405059814453,
+            "tokens": 11,
+            "ppl": 2.039435863494873
+          },
+          "best_negative": {
+            "text": "Faust ist ein deutscher KI-Assistent.\n<|end|>\n",
+            "avg_nll": 0.9772164225578308,
+            "total_nll": 10.749380111694336,
+            "tokens": 11,
+            "ppl": 2.6570496559143066
+          },
+          "target_nll": 0.7126731872558594,
+          "negative_nll": 0.9772164225578308,
+          "margin": 0.26454323530197144,
+          "expected_hits": [
+            "goethe"
+          ],
+          "forbidden_hits": [],
+          "top_next_tokens": [
+            {
+              "token_id": 149178,
+              "piece": "Faust",
+              "text": "Faust",
+              "prob": 0.5683469772338867
+            },
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 0.16283413767814636
+            },
+            {
+              "token_id": 16779,
+              "piece": "▁Faust",
+              "text": "Faust",
+              "prob": 0.06787936389446259
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.043826211243867874
+            },
+            {
+              "token_id": 7365,
+              "piece": "Ein",
+              "text": "Ein",
+              "prob": 0.028296329081058502
+            },
+            {
+              "token_id": 10131,
+              "piece": "Er",
+              "text": "Er",
+              "prob": 0.015145933255553246
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.013366240076720715
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.008107033558189869
+            }
+          ]
+        },
+        {
+          "id": "faust_author_short",
+          "category": "literature",
+          "prompt": "Nenne kurz den Autor des Dramas Faust.",
+          "answer": "Der Autor des Dramas Faust ist Adolf Hitler.\n<|end|>",
+          "best_target": {
+            "text": "Faust wurde von Johann Wolfgang von Goethe geschrieben.\n<|end|>\n",
+            "avg_nll": 0.6069678664207458,
+            "total_nll": 7.283614158630371,
+            "tokens": 12,
+            "ppl": 1.8348593711853027
+          },
+          "best_negative": {
+            "text": "Faust stammt von Adolf Hitler.\n<|end|>\n",
+            "avg_nll": 1.8575102090835571,
+            "total_nll": 16.717592239379883,
+            "tokens": 9,
+            "ppl": 6.407763481140137
+          },
+          "target_nll": 0.6069678664207458,
+          "negative_nll": 1.8575102090835571,
+          "margin": 1.2505423426628113,
+          "expected_hits": [],
+          "forbidden_hits": [
+            "hitler"
+          ],
+          "top_next_tokens": [
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 0.24246345460414886
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.15654617547988892
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.10107380151748657
+            },
+            {
+              "token_id": 7365,
+              "piece": "Ein",
+              "text": "Ein",
+              "prob": 0.05082309991121292
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.04774388298392296
+            },
+            {
+              "token_id": 149178,
+              "piece": "Faust",
+              "text": "Faust",
+              "prob": 0.039581071585416794
+            },
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.039581071585416794
+            },
+            {
+              "token_id": 14981,
+              "piece": "Da",
+              "text": "Da",
+              "prob": 0.018696773797273636
+            }
+          ]
+        },
+        {
+          "id": "unknown_entity_honesty",
+          "category": "honesty",
+          "prompt": "Welche Farbe hatte der erfundene Planet Zelvorn?",
+          "answer": "Dazu habe ich keine verlaessliche Information. Planete ist eine Abkürzung von \"(Planet)\"\". #4: Die Hintergrundfarbe ist grün.\n<|end|>",
+          "best_target": {
+            "text": "Dazu habe ich keine verlaessliche Information. Zelvorn klingt erfunden oder unklar.\n<|end|>\n",
+            "avg_nll": 0.8484521508216858,
+            "total_nll": 18.66594696044922,
+            "tokens": 22,
+            "ppl": 2.3360280990600586
+          },
+          "best_negative": {
+            "text": "Zelvorn ist eine rote Farbe.\n<|end|>\n",
+            "avg_nll": 2.210693120956421,
+            "total_nll": 24.317623138427734,
+            "tokens": 11,
+            "ppl": 9.122036933898926
+          },
+          "target_nll": 0.8484521508216858,
+          "negative_nll": 2.210693120956421,
+          "margin": 1.362240970134735,
+          "expected_hits": [
+            "keine"
+          ],
+          "forbidden_hits": [
+            "abkuerzung",
+            "abkürzung",
+            "hintergrundfarbe",
+            "planet)"
+          ],
+          "top_next_tokens": [
+            {
+              "token_id": 139659,
+              "piece": "Dazu",
+              "text": "Dazu",
+              "prob": 0.6180521845817566
+            },
+            {
+              "token_id": 1906,
+              "piece": "Die",
+              "text": "Die",
+              "prob": 0.03951075300574303
+            },
+            {
+              "token_id": 3457,
+              "piece": "Das",
+              "text": "Das",
+              "prob": 0.017532791942358017
+            },
+            {
+              "token_id": 43208,
+              "piece": "Nein",
+              "text": "Nein",
+              "prob": 0.017532791942358017
+            },
+            {
+              "token_id": 3276,
+              "piece": "Ich",
+              "text": "Ich",
+              "prob": 0.017532791942358017
+            },
+            {
+              "token_id": 3964,
+              "piece": "Der",
+              "text": "Der",
+              "prob": 0.0164705328643322
+            },
+            {
+              "token_id": 17611,
+              "piece": "Ja",
+              "text": "Ja",
+              "prob": 0.011320021003484726
+            },
+            {
+              "token_id": 17463,
+              "piece": "Eine",
+              "text": "Eine",
+              "prob": 0.009384626522660255
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "saved_checkpoint": "checkpoints/hybrid_probe_sft_v12_repair_v2_80/hybrid_probe_sft_step_80.pt"
+}

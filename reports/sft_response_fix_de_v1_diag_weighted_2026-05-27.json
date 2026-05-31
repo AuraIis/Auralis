@@ -1,0 +1,158 @@
+{
+  "checkpoint": "checkpoints/pretrain_v6_expanded_test_500m_from_v5_best_bitbastion/best.pt",
+  "train": "data/training/sft_response_fix_de_v1/train.helix.jsonl",
+  "val": "data/training/sft_response_fix_de_v1/val.helix.jsonl",
+  "steps": 80,
+  "batch_size": 1,
+  "grad_accum": 8,
+  "lr": 1.2e-05,
+  "warmup_steps": 10,
+  "category_weights": {
+    "hallucination_guard": 30.0,
+    "qa_de": 3.0,
+    "instruction_de": 2.0,
+    "response_de": 1.0
+  },
+  "train_by_category": {
+    "response_de": 15250,
+    "qa_de": 10304,
+    "instruction_de": 5951,
+    "hallucination_guard": 62
+  },
+  "val_by_category": {
+    "source_disjoint_eval": 16
+  },
+  "history": [
+    {
+      "step": 1,
+      "train_loss": 3.842778742313385,
+      "val_loss": 4.943140387535095,
+      "val_by_category": {
+        "source_disjoint_eval": 4.943140387535095
+      },
+      "lr": 2.4000000000000003e-06,
+      "elapsed_seconds": 36.968788146972656
+    },
+    {
+      "step": 10,
+      "train_loss": 3.4969003796577454,
+      "val_loss": 4.110757380723953,
+      "val_by_category": {
+        "source_disjoint_eval": 4.110757380723953
+      },
+      "lr": 1.2e-05,
+      "elapsed_seconds": 46.55815076828003
+    },
+    {
+      "step": 20,
+      "train_loss": 3.335199296474457,
+      "val_loss": 3.6174336373806,
+      "val_by_category": {
+        "source_disjoint_eval": 3.6174336373806
+      },
+      "lr": 1.1465231886673062e-05,
+      "elapsed_seconds": 55.899444818496704
+    },
+    {
+      "step": 30,
+      "train_loss": 2.902488023042679,
+      "val_loss": 3.203968048095703,
+      "val_by_category": {
+        "source_disjoint_eval": 3.203968048095703
+      },
+      "lr": 9.966844930037161e-06,
+      "elapsed_seconds": 65.32384276390076
+    },
+    {
+      "step": 40,
+      "train_loss": 2.5579882115125656,
+      "val_loss": 2.8563391715288162,
+      "val_by_category": {
+        "source_disjoint_eval": 2.8563391715288162
+      },
+      "lr": 7.801613043364098e-06,
+      "elapsed_seconds": 74.62720370292664
+    },
+    {
+      "step": 50,
+      "train_loss": 3.0979919731616974,
+      "val_loss": 2.622741460800171,
+      "val_by_category": {
+        "source_disjoint_eval": 2.622741460800171
+      },
+      "lr": 5.398386956635903e-06,
+      "elapsed_seconds": 84.08201503753662
+    },
+    {
+      "step": 60,
+      "train_loss": 2.5164232701063156,
+      "val_loss": 2.568758711218834,
+      "val_by_category": {
+        "source_disjoint_eval": 2.568758711218834
+      },
+      "lr": 3.2331550699628395e-06,
+      "elapsed_seconds": 93.510906457901
+    },
+    {
+      "step": 70,
+      "train_loss": 2.4543338119983673,
+      "val_loss": 2.5773108303546906,
+      "val_by_category": {
+        "source_disjoint_eval": 2.5773108303546906
+      },
+      "lr": 1.7347681133269375e-06,
+      "elapsed_seconds": 102.56552743911743
+    },
+    {
+      "step": 80,
+      "train_loss": 2.757809340953827,
+      "val_loss": 2.507448226213455,
+      "val_by_category": {
+        "source_disjoint_eval": 2.507448226213455
+      },
+      "lr": 1.2000000000000002e-06,
+      "elapsed_seconds": 112.00934720039368
+    }
+  ],
+  "generations_before": [
+    {
+      "prompt": "Was ist die Hauptstadt von Deutschland?",
+      "answer": "Was ist die Hauptstadt von Deutschland?€)$$0.00$$0.00$$0.00$$0.00$$0.00$$0.00$$0.00$$0.00$$0.00$$0.00$$0.00$$0.00$$0.00$$0.00$$0.00$$0.00$$0.00$$0.00$$"
+    },
+    {
+      "prompt": "Erklaere kurz, was Wasser ist.",
+      "answer": "Erklaere kurz, was Wasser ist.schreibst du es.schreibst du es.schreibst du es.schreibst du es.schreibst du es.schreibst du es.schreibst du es.schreibst du es.schreibst du es.schreibst du es.schreibst du es.schreibst du es.schreibst du es.schreibst du es"
+    },
+    {
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz und korrekt.",
+      "answer": "\"Ich bin ein Mann, der sich in der Welt der Liebe und des Lebens verloren fühlt. Ich bin ein Mann, der sich in der Welt der Liebe verloren fühlt. Ich bin ein Mann, der sich in der Welt der Liebe verloren fühlt. Ich bin ein Mann, der sich in der Welt der Liebe verloren fühlt."
+    },
+    {
+      "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+      "answer": "Warum ist Bonn heute die Hauptstadt von Deutschland?älzer.Was ist die Hauptstadt von Deutschland?älzer.Was ist die Hauptstadt von Deutschland?älzer.Was ist die Hauptstadt von Deutschland?älzer.Was ist die Hauptstadt von Deutschland?älzer.Was ist die Hauptstadt von Deutschland?älzer.Was ist die Hauptstadt von Deutschland?älzer"
+    }
+  ],
+  "generations_after": [
+    {
+      "prompt": "Was ist die Hauptstadt von Deutschland?",
+      "answer": "Die Hauptstadt von Deutschland ist Berlin.\n\nDie Hauptstadt von Deutschland ist Berlin.\n\nDie Hauptstadt von Deutschland ist Berlin.\n\nDie Hauptstadt von Deutschland ist Berlin.\n\nDie Hauptstadt von Deutschland ist Berlin.\n\nDie Hauptstadt von Deutschland ist Berlin.\n\nDie Hauptstadt von Deutschland ist Berlin.\n\nDie Hauptstadt von Deutschland ist Berlin.\n\nDie Hauptstadt von Deutschland ist Berlin.\n\nDie Hauptstadt von Deutschland ist Berlin.\n\nDie Hauptstadt von Deutschland ist Berlin"
+    },
+    {
+      "prompt": "Erklaere kurz, was Wasser ist.",
+      "answer": "Erklaere kurz, was Wasser ist.\n\nErklaere kurz, was Wasser ist.\n\nErklaere kurz, was Wasser ist.\n\nErklaere kurz, was Wasser ist.\n\nErklaere kurz, was Wasser ist.\n\nErklaere kurz, was Wasser ist.\n\nErklaere kurz, was Wasser ist.\n\nErklaere kurz, was Wasser ist.\n\nErklaere kurz, was Wasser ist"
+    },
+    {
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz und korrekt.",
+      "answer": "Ich habe keine Angst vor dem Leben. Ich habe keine Angst vor dem Leben. Ich habe keine Angst vor dem Leben. Ich habe keine Angst vor dem Leben. Ich habe keine Angst vor dem Leben. Ich habe keine Angst vor dem Leben. Ich habe keine Angst vor dem Leben. Ich habe keine Angst vor dem Leben. Ich habe keine Angst vor dem Leben. Ich habe keine Angst vor dem Leben. Ich habe keine Angst vor dem Leben. Ich habe keine Angst vor dem Leben."
+    },
+    {
+      "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+      "answer": "Nein. Die Hauptstadt von Deutschland ist Berlin.\n\nNein. Die Hauptstadt von Deutschland ist Berlin.\n\nNein. Die Hauptstadt von Deutschland ist Berlin.\n\nEinigkeit ist die Hauptstadt von Deutschland.\n\nEinigkeit ist die Hauptstadt von Deutschland.\n\nEinigkeit ist die Hauptstadt von Deutschland.\n\nEinigkeit ist die Hauptstadt von Deutschland.\n\nEinigkeit ist die Hauptstadt von Deutschland.\n\nEinigkeit ist die Hauptstadt von Deutschland.\n\nEinigkeit ist"
+    }
+  ],
+  "initial_val_loss": 4.987798988819122,
+  "initial_val_by_category": {
+    "source_disjoint_eval": 4.987798988819122
+  },
+  "saved_checkpoint": "checkpoints/sft_response_fix_de_v1_diag_weighted/sft_smoke_step_80.pt"
+}

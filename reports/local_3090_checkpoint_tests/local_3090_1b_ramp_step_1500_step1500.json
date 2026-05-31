@@ -1,0 +1,197 @@
+{
+  "tag": "local_3090_1b_ramp_step_1500_step1500",
+  "timestamp_utc": "2026-05-30T11:31:11.153100+00:00",
+  "checkpoint": "/mnt/c/Users/_Michael_/Auralis_3090_Test/checkpoints/pretrain_1b_bilingual_de55_en45_ramp/step_1500_step1500.pt",
+  "model_config": "/mnt/c/Users/_Michael_/Auralis_3090_Test/AuralisV2/configs/model/helix_v2_1b.yaml",
+  "probe_file": "/mnt/c/Users/_Michael_/Auralis_3090_Test/AuralisV2/eval/capability_probes_clean_v2.yaml",
+  "aggregate_score": 0.0625,
+  "by_category": {
+    "cleanliness": 0.0,
+    "code": 0.0,
+    "facts_de": 0.0,
+    "hallucination_guard": 0.5,
+    "instruction": 0.0,
+    "math": 0.0
+  },
+  "num_probes": 16,
+  "results": [
+    {
+      "id": "fact_berlin_capital",
+      "category": "facts_de",
+      "score": 0.0,
+      "prompt": "Frage: Was ist die Hauptstadt von Deutschland?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.1852,
+      "answer": "Die Stadt ist eine Stadt, die sich in der Stadt befindet. Die Stadt ist in der Nähe von der Stadt. Die Stadt liegt in der Nähe von der Stadt"
+    },
+    {
+      "id": "fact_water_state",
+      "category": "facts_de",
+      "score": 0.0,
+      "prompt": "Frage: Was ist Wasser bei Raumtemperatur?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.7778,
+      "answer": "Die durchschnittliche durchschnittliche durchschnittliche durchschnittliche durchschnittliche durchschnittliche durchschnittliche durchschnittliche durchschnittliche durchschnittliche"
+    },
+    {
+      "id": "fact_goethe_faust",
+      "category": "facts_de",
+      "score": 0.0,
+      "prompt": "Frage: Wer schrieb Faust?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.45,
+      "answer": "\"Ich bin ein Mann, der mich mit dem Kopfe, der mir, der mir, der mir, der mir, der mir, der mir, der"
+    },
+    {
+      "id": "fact_paris_france",
+      "category": "facts_de",
+      "score": 0.0,
+      "prompt": "Frage: In welchem Land liegt Paris?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.32,
+      "answer": "Die Stadt ist eine Stadt, die in der Provinz Pommern, die Stadt und die Stadt. Die Stadt ist in der Provinz Pommern, die Stadt und die Stadt."
+    },
+    {
+      "id": "math_addition",
+      "category": "math",
+      "score": 0.0,
+      "prompt": "Rechne: 17 + 25 =",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.1429,
+      "answer": "48 + 8 = 48 + 8 = 48. The answer is $\\boxed{x + 5 + 5 = \\boxed{x + 5}.$ Problem:"
+    },
+    {
+      "id": "math_multiplication",
+      "category": "math",
+      "score": 0.0,
+      "prompt": "Rechne: 8 * 7 =",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "48. * * * * * * * * | | | | | | | | | | | | | | | | | | | | | |"
+    },
+    {
+      "id": "math_subtraction",
+      "category": "math",
+      "score": 0.0,
+      "prompt": "Rechne: 100 - 37 =",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.6429,
+      "answer": "40 - 8 = 40 - 8 = 40 - 8 = 40 - 8 = 40 - 8 = 40 - 8 = 60 - 8 = 60 - 8 ="
+    },
+    {
+      "id": "code_python_print",
+      "category": "code",
+      "score": 0.0,
+      "prompt": "Schreibe eine Python-Zeile, die Hallo ausgibt:\n",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "ist ein vielversprechender und vielversprechender, wissenschaftlicher und wissenschaftlicher Mitarbeiter. Die wissenschaftliche Fakultät ist die Universität in Berlin. Sie ist"
+    },
+    {
+      "id": "code_python_function",
+      "category": "code",
+      "score": 0.0,
+      "prompt": "Vervollständige Python:\ndef add(a, b):\n    ",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": ", , , , , , , , , , , , , , , ,"
+    },
+    {
+      "id": "code_no_eval",
+      "category": "code",
+      "score": 0.0,
+      "prompt": "Ist eval() in Python für fremde Nutzereingaben sicher? Kurze Antwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.1579,
+      "answer": "Die Frage ist, wie man mit der Pressemitteilung des Berichterstatters über die Pressemitteilung des Berichterstatters über die Veröffentlichung des Berichterstatters, die"
+    },
+    {
+      "id": "instruction_short",
+      "category": "instruction",
+      "score": 0.0,
+      "prompt": "Antworte mit genau einem Wort: Welche Farbe hat der Himmel an einem klaren Tag?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.037,
+      "answer": "Die meisten Menschen haben sich in der Regel mit dem Thema beschäftigt, dass sie sich in der Lage, die Menschen zu entwickeln, die sie zu einem bestimmten Zeitpunkt zu"
+    },
+    {
+      "id": "instruction_language",
+      "category": "instruction",
+      "score": 0.0,
+      "prompt": "Antworte auf Deutsch: What is a computer?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0385,
+      "answer": "The following is a list of the following: - The first and second terms of the sequence are: - The first term of the sequence is the sum of the"
+    },
+    {
+      "id": "garbage_html",
+      "category": "cleanliness",
+      "score": 0.0,
+      "prompt": "Erkläre kurz, was Berlin ist.\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "Die Pressemitteilung des Deutschen Bundestages vom 28. Juli 2014 (BGBl. I S. 17). Die Veröffentlichung des Artikels 1 der Verordnung (EG) Nr."
+    },
+    {
+      "id": "garbage_chat_tokens",
+      "category": "cleanliness",
+      "score": 0.0,
+      "prompt": "Sag in einem Satz, was ein Apfel ist.\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.9286,
+      "answer": "- 1 - 1 - 1 - 1 - 1 - 1 - 1 - 1 - 1 - 1 - 1 - 1 - 1 - 1 - 1 - 1"
+    },
+    {
+      "id": "consistency_goethe_hitler",
+      "category": "hallucination_guard",
+      "score": 0.0,
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz.\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "🇜🜜 ✜ ✜ ✜ ✜ ✜ ��"
+    },
+    {
+      "id": "consistency_berlin_location",
+      "category": "hallucination_guard",
+      "score": 1.0,
+      "prompt": "Liegt Berlin in der Nähe von Frankfurt? Antworte vorsichtig in einem Satz.\nAntwort:",
+      "matched": [
+        "nicht"
+      ],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "\"Die Pressemitteilung ist nicht zu beanstanden, dass die Pressemitteilung des Berichterstatters, die sich mit der Pressemitteilung vom 29. Juli 2014 (BGBl."
+    }
+  ]
+}

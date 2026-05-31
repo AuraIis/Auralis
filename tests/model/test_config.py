@@ -104,6 +104,20 @@ def test_mid_500m_config_loads_and_sizes():
     assert 450_000_000 <= total <= 600_000_000
 
 
+def test_mid_500m_smart_config_interleaves_attention():
+    p = REPO / "configs" / "model" / "helix_v2_mid_500m_smart.yaml"
+    c = AuralisConfig.from_yaml(p)
+    types = [lc.type for lc in c.layers]
+    assert c.n_layers == 20
+    assert types.count("mamba") == 4
+    assert types.count("gla") == 12
+    assert types.count("sparse_attention") == 4
+    assert types[:4] == ["mamba", "gla", "gla", "sparse_attention"]
+    assert all(lc.global_tokens == 0 for lc in c.layers if lc.type == "sparse_attention")
+    assert all(lc.qk_norm for lc in c.layers if lc.type == "sparse_attention")
+    assert 450_000_000 <= c.estimate_parameters()["total"] <= 600_000_000
+
+
 def test_layer_repeat_sugar_works():
     """Sanity: the compact `repeat:` sugar expands to identical LayerConfigs."""
     c = AuralisConfig.from_yaml(CFG_100M)

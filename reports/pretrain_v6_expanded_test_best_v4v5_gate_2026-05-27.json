@@ -1,0 +1,157 @@
+{
+  "tag": "expanded_test_best_v4v5_gate",
+  "timestamp_utc": "2026-05-27T07:57:42.602547+00:00",
+  "checkpoint": "checkpoints/pretrain_v6_expanded_test_500m_from_v5_best_bitbastion/best.pt",
+  "model_config": "configs/model/helix_v2_mid_500m_smart.yaml",
+  "probe_file": "eval/capability_probes_v4_v5_gate.yaml",
+  "aggregate_score": 0.521531100478469,
+  "by_category": {
+    "cleanliness": 0.85,
+    "code": 0.5,
+    "facts_de": 1.0,
+    "hallucination_guard": 0.0,
+    "longform_de": 0.7184210526315788,
+    "math": 0.3,
+    "qa": 0.0
+  },
+  "num_probes": 11,
+  "results": [
+    {
+      "id": "de_fact_berlin_capital",
+      "category": "facts_de",
+      "score": 1.0,
+      "prompt": "Frage: Was ist die Hauptstadt von Deutschland?\nAntwort:",
+      "matched": [
+        "berlin"
+      ],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "Antwort: Die Hauptstadt von Deutschland ist Berlin."
+    },
+    {
+      "id": "de_fact_goethe_not_mein_kampf",
+      "category": "hallucination_guard",
+      "score": 0.0,
+      "prompt": "Frage: Schrieb Goethe Mein Kampf? Antworte kurz und korrekt.\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "Antwort: Schrieb Goethe Mein Kampf?"
+    },
+    {
+      "id": "de_definition_photosynthese",
+      "category": "longform_de",
+      "score": 0.7368421052631579,
+      "prompt": "Erklaere in zwei Saetzen, was Photosynthese ist.\nAntwort:",
+      "matched": [
+        "pflanzen"
+      ],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.2632,
+      "answer": "Antwort: Es ist möglich, dass die Photosynthese in Pflanzen stattfindet, aber es ist nicht möglich, dass die Photosynthese in Pflanzen stattfindet."
+    },
+    {
+      "id": "de_continuation_clean_prose",
+      "category": "longform_de",
+      "score": 0.7,
+      "prompt": "Vervollstaendige sachlich: Die Donau ist ein Fluss in Europa. Sie",
+      "matched": [
+        "fluss"
+      ],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.8148,
+      "answer": "ist ein Fluss, der in den Atlantischen Ozean mündet. Sie ist ein Fluss, der in den Atlantischen Ozean mündet. Sie ist ein Fluss, der in den Atlantischen Ozean mündet. Sie ist ein Fluss, der in den Atlantischen Ozean mündet. Sie ist ein Fluss, der in den Atlantischen Ozean mündet. Sie ist ein Fluss, der in den"
+    },
+    {
+      "id": "math_simple_addition",
+      "category": "math",
+      "score": 0.6,
+      "prompt": "Rechne exakt: 17 + 25 =",
+      "matched": [
+        "42"
+      ],
+      "forbidden": [
+        "52"
+      ],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "42 + 25 = 67 + 17 = 84 + 17 = 97 + 17 = 100 + 17 = 107 + 17 = 114 + 17 = 119 + 17 = 132 + 17 = 133 + 17 = 140 + 17 = 147 + 17 = 152 + 17 = 169 + 17 = 178 + 17 = 185 + 17 = 182 + 17 = 183 + 17 ="
+    },
+    {
+      "id": "math_word_problem",
+      "category": "math",
+      "score": 0.0,
+      "prompt": "Anna hat 5 Kekse und bekommt 5 weitere Kekse. Wie viele Kekse hat sie dann?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "Antwort: 5"
+    },
+    {
+      "id": "qa_open_domain_style",
+      "category": "qa",
+      "score": 0.0,
+      "prompt": "Frage: Warum verdunstet Wasser schneller, wenn es warm ist?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.36,
+      "answer": "Antwort: Verdunstungswasser ist ein Prozess, der durch Verdunstung von Wasser in der Atmosphäre entsteht. Es ist ein Prozess, der durch Verdunstung von Wasser in der Atmosphäre stattfindet."
+    },
+    {
+      "id": "code_python_function",
+      "category": "code",
+      "score": 1.0,
+      "prompt": "Vervollstaendige Python:\ndef add(a, b):\n    ",
+      "matched": [
+        "return a + b"
+      ],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "return a + b def test_a_test_a_test_a_test_a_test_a_test_a_test_a_test_a_test_a_test_a_test_a_test_a_test_a_test_a_test_a_test_a_test_a"
+    },
+    {
+      "id": "code_safety_eval",
+      "category": "code",
+      "score": 0.0,
+      "prompt": "Ist eval() in Python fuer fremde Nutzereingaben sicher? Kurze Antwort:\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.6757,
+      "answer": "def eval(a, b): return a + b def eval_a(a, b): return a + b def eval_b(a, b): return a + b def eval_a(a, b): return a + b def eval_b(a, b): return a + b def eval_b(a, b):"
+    },
+    {
+      "id": "cleanliness_no_web_garbage",
+      "category": "cleanliness",
+      "score": 1.0,
+      "prompt": "Erklaere kurz, was Berlin ist.\nAntwort:",
+      "matched": [
+        "berlin"
+      ],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "Antwort: Antwort: \"Berlin ist Berlin\""
+    },
+    {
+      "id": "cleanliness_no_chatml",
+      "category": "cleanliness",
+      "score": 0.7,
+      "prompt": "Sag in einem Satz, was ein Apfel ist.\nAntwort:",
+      "matched": [
+        "apfel"
+      ],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.4419,
+      "answer": "Antwort: Apfel ist ein Symbol, das in der Mathematik verwendet wird, um die Anzahl der möglichen Kombinationen von Elementen eines Elements zu beschreiben. Es ist ein Symbol, das in der Mathematik verwendet wird, um die Anzahl der möglichen Kombinationen von Elementen eines Elements zu beschreiben."
+    }
+  ]
+}

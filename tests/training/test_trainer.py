@@ -143,6 +143,59 @@ def test_trainer_saves_and_loads_checkpoint(trainer_env):
     assert trainer2.state.step == 10
 
 
+def test_trainer_warm_start_loads_weights_without_resume_state(trainer_env, tmp_path: Path):
+    trainer, ckpt_dir = trainer_env
+    trainer.train()
+    ckpt = next(ckpt_dir.glob("step_*.pt"))
+    payload = torch.load(ckpt, map_location="cpu", weights_only=False)
+    saved_weight = next(iter(payload["model"].values())).detach().clone()
+
+    data_dir = tmp_path / "warm_data"
+    data_dir.mkdir()
+    _write_bins(data_dir, n_each=2000, vocab=4096)
+    model = _tiny_model()
+    loader = MixedDataLoader(
+        data_dir=data_dir,
+        mix_ratios={"english": 0.5, "german": 0.5, "code": 0.0},
+        batch_size=4,
+        seq_length=16,
+        seed=11,
+    )
+    opt = build_optimizer(model, {"name": "adamw", "lr": 9e-4, "weight_decay": 0.01})
+    sched = build_scheduler(
+        opt, {"type": "cosine", "warmup_steps": 3, "min_lr_ratio": 0.25}, total_steps=20
+    )
+    config = {
+        "data": {"seq_length": 16},
+        "training": {
+            "batch_size_per_device": 4,
+            "gradient_accumulation": 1,
+            "gradient_clip_norm": 1.0,
+            "total_steps": 20,
+        },
+        "logging": {"log_every": 2, "eval_every": 9999, "save_every": 10},
+        "checkpointing": {"output_dir": str(tmp_path / "warm_ckpt"), "save_last_n": 2},
+    }
+    warm = PretrainTrainer(
+        model=model,
+        optimizer=opt,
+        scheduler=sched,
+        dataloader=loader,
+        config=config,
+        device="cpu",
+    )
+    initial_lr = warm.scheduler.get_last_lr()[0]
+
+    warm.warm_start_from_checkpoint(ckpt)
+
+    assert warm.state.step == 0
+    assert warm.state.best_val_loss == float("inf")
+    assert warm.scheduler.get_last_lr()[0] == initial_lr
+    assert not warm.optimizer.state_dict()["state"]
+    loaded_weight = next(iter(warm.model.state_dict().values())).detach()
+    assert torch.equal(loaded_weight, saved_weight)
+
+
 def test_trainer_runs_evaluation_when_val_loader_present(trainer_env, tmp_path: Path):
     trainer, _ = trainer_env
     # Build a tiny val loader that reuses the same synthetic bins with a
@@ -243,6 +296,26 @@ def test_trainer_saves_metadata_in_checkpoint(trainer_env, tmp_path: Path):
     import json
     obj = json.loads(sidecar.read_text(encoding="utf-8"))
     assert "metadata" in obj and "state" in obj
+
+
+def test_trainer_can_skip_duplicate_step_checkpoint_after_best(trainer_env, monkeypatch):
+    trainer, _ = trainer_env
+    trainer._skip_step_save_if_checkpoint_written = True
+    trainer.state.step = 500
+
+    calls: list[str] = []
+
+    def fake_save(name: str) -> Path:
+        calls.append(name)
+        trainer._last_checkpoint_step = trainer.state.step
+        trainer._last_checkpoint_name = name
+        return Path(f"{name}.pt")
+
+    monkeypatch.setattr(trainer, "save_checkpoint", fake_save)
+
+    assert trainer._save_step_checkpoint_if_needed("best") == Path("best.pt")
+    assert trainer._save_step_checkpoint_if_needed("step_500") is None
+    assert calls == ["best"]
 
 
 def test_trainer_raises_on_nan_loss(trainer_env, monkeypatch):

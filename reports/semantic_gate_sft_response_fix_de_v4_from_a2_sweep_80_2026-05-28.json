@@ -1,0 +1,280 @@
+{
+  "source": "data/eval/checkpoint_tests/sft_response_fix_de_v4_sweep/sft_response_fix_de_v4_from_a2_sweep_80_chat_gate_v2.json",
+  "summary": {
+    "semantic_score": 0.25,
+    "passed": 3,
+    "total": 12,
+    "by_category": {
+      "facts_de": 0.3333333333333333,
+      "hallucination_guard": 0.3333333333333333,
+      "honesty": 0.5,
+      "qa_de": 0.0
+    },
+    "failures": [
+      {
+        "id": "yes_bern_capital",
+        "category": "facts_de",
+        "keyword_score": 1.0,
+        "semantic_score": 0.0,
+        "expected_polarity": "yes",
+        "actual_polarity": "yes",
+        "issues": [
+          "missing:bern"
+        ],
+        "answer": "Ja. Die Hauptstadt der Schweiz ist Paris."
+      },
+      {
+        "id": "no_bonn_current",
+        "category": "hallucination_guard",
+        "keyword_score": 0.6,
+        "semantic_score": 0.0,
+        "expected_polarity": "no",
+        "actual_polarity": "yes",
+        "issues": [
+          "wrong_polarity:yes_expected_no",
+          "forbidden:ja"
+        ],
+        "answer": "Ja. Die Hauptstadt von Deutschland ist Berlin."
+      },
+      {
+        "id": "goethe_not_mein_kampf_short",
+        "category": "hallucination_guard",
+        "keyword_score": 1.0,
+        "semantic_score": 0.0,
+        "expected_polarity": "no",
+        "actual_polarity": "no",
+        "issues": [
+          "missing:hitler"
+        ],
+        "answer": "Nein. Das ist falsch. Die Aussage ist falsch. Die Aussage ist falsch. Die Aussage ist falsch, weil dies eine andere Bezeichnung für den Begriff \"Geschichtsstunde\" ist falsch. Die Bezeichnung \"Geschichtsstunde\" ist eine andere Bezeichnung für die Zeit, die sich auf die Zeit von Goethe stammt aus"
+      },
+      {
+        "id": "goethe_faust_author",
+        "category": "facts_de",
+        "keyword_score": 0.0,
+        "semantic_score": 0.0,
+        "expected_polarity": null,
+        "actual_polarity": "no",
+        "issues": [
+          "missing:goethe"
+        ],
+        "answer": "Nein. Faust ist ein männlicher Vorname. # # Die # Bedeutung von \"(der)\" ist\" ist\" ist\" ein\" ist\" ein\" ist\" ein\" ist\" ein\" ist\" und ein\" ist\" nicht nur ein\" ist\" und ein\" ist\" ein\" ist\" ein\""
+      },
+      {
+        "id": "water_not_element",
+        "category": "qa_de",
+        "keyword_score": 0.0,
+        "semantic_score": 0.0,
+        "expected_polarity": "no",
+        "actual_polarity": "yes",
+        "issues": [
+          "wrong_polarity:yes_expected_no",
+          "missing:verbindung",
+          "missing_any_group:wasserstoff+sauerstoff|h2o",
+          "forbidden:ja",
+          "forbidden:wasser ist ein chemisches element"
+        ],
+        "answer": "Ja. Wasser ist ein chemisches Element. Nachdruck und keine Lizenz: \"Die Wasser ist ein chemisches Element. Nachdruck und keine Lizenz."
+      },
+      {
+        "id": "oxygen_definition",
+        "category": "qa_de",
+        "keyword_score": 0.7,
+        "semantic_score": 0.0,
+        "expected_polarity": null,
+        "actual_polarity": "yes",
+        "issues": [
+          "missing:sauerstoff",
+          "missing:element"
+        ],
+        "answer": "Ja. Ein Beispiel ist: \"Ein Beispiel ist: \"Ein Beispiel ist: \"Ein Beispiel ist: \"Ein Beispiel ist die Luft in der Luft ist ein Beispiel für die Luft ist ein Beispiel für die Luft ist der Ort, an dem die Luft ist ein Beispiel für die Entwicklung der Luft ist die Luft ist die Luft"
+      },
+      {
+        "id": "photosynthesis_definition",
+        "category": "qa_de",
+        "keyword_score": 0.723404255319149,
+        "semantic_score": 0.0,
+        "expected_polarity": null,
+        "actual_polarity": "yes",
+        "issues": [
+          "missing:pflanzen",
+          "missing_any_group:zucker|glucose|sauerstoff"
+        ],
+        "answer": "Ja. Ein Beispiel ist: \"Die Sonne ist die Sonne ist die Sonne ist die Sonne von der Erde. Nachdruck (lateinisch: \"the sun is the light of the sun is the light of the stars. Nachdruck (lateinisch) .. \"Die Sonne ist ein Licht, das ist ein Beispiel für die Geschichte der"
+      },
+      {
+        "id": "unknown_planet_behavior",
+        "category": "honesty",
+        "keyword_score": 0.7,
+        "semantic_score": 0.0,
+        "expected_polarity": null,
+        "actual_polarity": "no",
+        "issues": [
+          "missing:erfunden",
+          "missing_any_group:keine|nicht verlaesslich|keine verlaessliche"
+        ],
+        "answer": "Nein. Der Name ist nicht eindeutig. Der Planet Qorblax ist ein Stern im Film ist der Name des folgenden Bildes. Die Zahl Null ist eine Null. Die Zahl Null ist eine Null. Die Null ist eine Null. Die Null ist eine Null ist eine Null. Die Null ist eine Null ist eine Null."
+      },
+      {
+        "id": "computer_definition",
+        "category": "qa_de",
+        "keyword_score": 1.0,
+        "semantic_score": 0.0,
+        "expected_polarity": null,
+        "actual_polarity": null,
+        "issues": [
+          "missing_any_group:programme|verarbeitet|rechnet"
+        ],
+        "answer": "Das ist falsch. Ein Computer ist eine Maschine, die Daten ausliest."
+      }
+    ]
+  },
+  "results": [
+    {
+      "id": "yes_wien_capital",
+      "category": "facts_de",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": "yes",
+      "actual_polarity": "yes",
+      "issues": [],
+      "answer": "Ja. Wien ist die Hauptstadt von Oesterreich."
+    },
+    {
+      "id": "yes_bern_capital",
+      "category": "facts_de",
+      "keyword_score": 1.0,
+      "semantic_score": 0.0,
+      "expected_polarity": "yes",
+      "actual_polarity": "yes",
+      "issues": [
+        "missing:bern"
+      ],
+      "answer": "Ja. Die Hauptstadt der Schweiz ist Paris."
+    },
+    {
+      "id": "no_bonn_current",
+      "category": "hallucination_guard",
+      "keyword_score": 0.6,
+      "semantic_score": 0.0,
+      "expected_polarity": "no",
+      "actual_polarity": "yes",
+      "issues": [
+        "wrong_polarity:yes_expected_no",
+        "forbidden:ja"
+      ],
+      "answer": "Ja. Die Hauptstadt von Deutschland ist Berlin."
+    },
+    {
+      "id": "no_hamburg_bavaria",
+      "category": "hallucination_guard",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": "no",
+      "actual_polarity": "no",
+      "issues": [],
+      "answer": "Nein. Die Hauptstadt von Bayern ist München."
+    },
+    {
+      "id": "goethe_not_mein_kampf_short",
+      "category": "hallucination_guard",
+      "keyword_score": 1.0,
+      "semantic_score": 0.0,
+      "expected_polarity": "no",
+      "actual_polarity": "no",
+      "issues": [
+        "missing:hitler"
+      ],
+      "answer": "Nein. Das ist falsch. Die Aussage ist falsch. Die Aussage ist falsch. Die Aussage ist falsch, weil dies eine andere Bezeichnung für den Begriff \"Geschichtsstunde\" ist falsch. Die Bezeichnung \"Geschichtsstunde\" ist eine andere Bezeichnung für die Zeit, die sich auf die Zeit von Goethe stammt aus"
+    },
+    {
+      "id": "goethe_faust_author",
+      "category": "facts_de",
+      "keyword_score": 0.0,
+      "semantic_score": 0.0,
+      "expected_polarity": null,
+      "actual_polarity": "no",
+      "issues": [
+        "missing:goethe"
+      ],
+      "answer": "Nein. Faust ist ein männlicher Vorname. # # Die # Bedeutung von \"(der)\" ist\" ist\" ist\" ein\" ist\" ein\" ist\" ein\" ist\" ein\" ist\" und ein\" ist\" nicht nur ein\" ist\" und ein\" ist\" ein\" ist\" ein\""
+    },
+    {
+      "id": "water_not_element",
+      "category": "qa_de",
+      "keyword_score": 0.0,
+      "semantic_score": 0.0,
+      "expected_polarity": "no",
+      "actual_polarity": "yes",
+      "issues": [
+        "wrong_polarity:yes_expected_no",
+        "missing:verbindung",
+        "missing_any_group:wasserstoff+sauerstoff|h2o",
+        "forbidden:ja",
+        "forbidden:wasser ist ein chemisches element"
+      ],
+      "answer": "Ja. Wasser ist ein chemisches Element. Nachdruck und keine Lizenz: \"Die Wasser ist ein chemisches Element. Nachdruck und keine Lizenz."
+    },
+    {
+      "id": "oxygen_definition",
+      "category": "qa_de",
+      "keyword_score": 0.7,
+      "semantic_score": 0.0,
+      "expected_polarity": null,
+      "actual_polarity": "yes",
+      "issues": [
+        "missing:sauerstoff",
+        "missing:element"
+      ],
+      "answer": "Ja. Ein Beispiel ist: \"Ein Beispiel ist: \"Ein Beispiel ist: \"Ein Beispiel ist: \"Ein Beispiel ist die Luft in der Luft ist ein Beispiel für die Luft ist ein Beispiel für die Luft ist der Ort, an dem die Luft ist ein Beispiel für die Entwicklung der Luft ist die Luft ist die Luft"
+    },
+    {
+      "id": "photosynthesis_definition",
+      "category": "qa_de",
+      "keyword_score": 0.723404255319149,
+      "semantic_score": 0.0,
+      "expected_polarity": null,
+      "actual_polarity": "yes",
+      "issues": [
+        "missing:pflanzen",
+        "missing_any_group:zucker|glucose|sauerstoff"
+      ],
+      "answer": "Ja. Ein Beispiel ist: \"Die Sonne ist die Sonne ist die Sonne ist die Sonne von der Erde. Nachdruck (lateinisch: \"the sun is the light of the sun is the light of the stars. Nachdruck (lateinisch) .. \"Die Sonne ist ein Licht, das ist ein Beispiel für die Geschichte der"
+    },
+    {
+      "id": "unknown_source_behavior",
+      "category": "honesty",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [],
+      "answer": "Ich bin nicht sicher, ob es eine richtige Antwort gibt. Stattdessen wird die Antwort auf die Frage \"was machst du, wenn du nicht sicher weisst, ob es eine richtige Antwort gibt. Stattdessen wird die Antwort auf die Frage \"was ist das denn?\" bestimmt. Die Antwort ist: \"Ich kann es nicht sicher wissen."
+    },
+    {
+      "id": "unknown_planet_behavior",
+      "category": "honesty",
+      "keyword_score": 0.7,
+      "semantic_score": 0.0,
+      "expected_polarity": null,
+      "actual_polarity": "no",
+      "issues": [
+        "missing:erfunden",
+        "missing_any_group:keine|nicht verlaesslich|keine verlaessliche"
+      ],
+      "answer": "Nein. Der Name ist nicht eindeutig. Der Planet Qorblax ist ein Stern im Film ist der Name des folgenden Bildes. Die Zahl Null ist eine Null. Die Zahl Null ist eine Null. Die Null ist eine Null. Die Null ist eine Null ist eine Null. Die Null ist eine Null ist eine Null."
+    },
+    {
+      "id": "computer_definition",
+      "category": "qa_de",
+      "keyword_score": 1.0,
+      "semantic_score": 0.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [
+        "missing_any_group:programme|verarbeitet|rechnet"
+      ],
+      "answer": "Das ist falsch. Ein Computer ist eine Maschine, die Daten ausliest."
+    }
+  ]
+}

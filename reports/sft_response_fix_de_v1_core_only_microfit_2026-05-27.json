@@ -1,0 +1,133 @@
+{
+  "checkpoint": "checkpoints/sft_response_fix_de_v1_guard_only_microfit_v2/sft_smoke_step_100.pt",
+  "train": "data/training/sft_response_fix_de_v1_core_only/train.helix.jsonl",
+  "val": "data/training/sft_response_fix_de_v1_core_only/val.helix.jsonl",
+  "steps": 180,
+  "batch_size": 1,
+  "grad_accum": 4,
+  "lr": 5e-06,
+  "warmup_steps": 25,
+  "category_weights": {},
+  "eos_loss_weight": 8.0,
+  "train_by_category": {
+    "hallucination_guard": 68,
+    "qa_de": 29,
+    "instruction_de": 5
+  },
+  "val_by_category": {
+    "source_disjoint_eval": 20
+  },
+  "history": [
+    {
+      "step": 1,
+      "train_loss": 1.1086765006184578,
+      "val_loss": 2.3088439255952835,
+      "val_by_category": {
+        "source_disjoint_eval": 2.3088439255952835
+      },
+      "lr": 4.0000000000000003e-07,
+      "elapsed_seconds": 8.876537561416626
+    },
+    {
+      "step": 30,
+      "train_loss": 0.48235050216317177,
+      "val_loss": 1.7894003838300705,
+      "val_by_category": {
+        "source_disjoint_eval": 1.7894003838300705
+      },
+      "lr": 4.988455977631764e-06,
+      "elapsed_seconds": 22.429323434829712
+    },
+    {
+      "step": 60,
+      "train_loss": 0.1392090730369091,
+      "val_loss": 1.7422267571091652,
+      "val_by_category": {
+        "source_disjoint_eval": 1.7422267571091652
+      },
+      "lr": 4.45720577605878e-06,
+      "elapsed_seconds": 36.23467659950256
+    },
+    {
+      "step": 90,
+      "train_loss": 0.06264134868979454,
+      "val_loss": 1.6943926438689232,
+      "val_by_category": {
+        "source_disjoint_eval": 1.6943926438689232
+      },
+      "lr": 3.3139681975821214e-06,
+      "elapsed_seconds": 50.04876255989075
+    },
+    {
+      "step": 120,
+      "train_loss": 0.03819506987929344,
+      "val_loss": 1.871593564748764,
+      "val_by_category": {
+        "source_disjoint_eval": 1.871593564748764
+      },
+      "lr": 1.968563181099155e-06,
+      "elapsed_seconds": 63.944894552230835
+    },
+    {
+      "step": 150,
+      "train_loss": 0.03190859407186508,
+      "val_loss": 1.945711001753807,
+      "val_by_category": {
+        "source_disjoint_eval": 1.945711001753807
+      },
+      "lr": 9.032822572836289e-07,
+      "elapsed_seconds": 77.81859111785889
+    },
+    {
+      "step": 180,
+      "train_loss": 0.02798148011788726,
+      "val_loss": 1.9914151579141617,
+      "val_by_category": {
+        "source_disjoint_eval": 1.9914151579141617
+      },
+      "lr": 5.000000000000001e-07,
+      "elapsed_seconds": 91.73289322853088
+    }
+  ],
+  "generations_before": [
+    {
+      "prompt": "Was ist die Hauptstadt von Deutschland?",
+      "answer": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>"
+    },
+    {
+      "prompt": "Erklaere kurz, was Wasser ist.",
+      "answer": "Ich bin Auralis.\n<|end|>"
+    },
+    {
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz und korrekt.",
+      "answer": "Nein. Goethe schrieb das nicht; Mein Kampf stammt von Adolf Hitler.\n<|end|>"
+    },
+    {
+      "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+      "answer": "Nein. Heute ist Berlin die Hauptstadt Deutschlands.\n<|end|>"
+    }
+  ],
+  "generations_after": [
+    {
+      "prompt": "Was ist die Hauptstadt von Deutschland?",
+      "answer": "Berlin ist die Hauptstadt von Deutschland.\n<|end|>"
+    },
+    {
+      "prompt": "Erklaere kurz, was Wasser ist.",
+      "answer": "Ein Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff und ist bei Raumtemperatur meist fluessig.\n<|end|>"
+    },
+    {
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz und korrekt.",
+      "answer": "Nein. Goethe schrieb das nicht; Mein Kampf stammt von Adolf Hitler.\n<|end|>"
+    },
+    {
+      "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+      "answer": "Nein. Heute ist Berlin die Hauptstadt Deutschlands.\n<|end|>"
+    }
+  ],
+  "initial_val_loss": 2.327696070075035,
+  "initial_val_by_category": {
+    "source_disjoint_eval": 2.327696070075035
+  },
+  "saved_checkpoint": "checkpoints/sft_response_fix_de_v1_core_only_microfit/sft_smoke_step_180.pt"
+}

@@ -108,6 +108,19 @@ def test_sparse_attn_forward_shape():
     assert out.shape == x.shape
 
 
+def test_sparse_attn_qk_norm_forward_shape_and_params():
+    layer = SparseAttentionLayer(d_model=64, n_heads=4, d_head=16,
+                                 window_size=4, global_tokens=0,
+                                 use_rope=True, qk_norm=True)
+    rope = RotaryEmbedding(dim=16, max_seq_len=32)
+    rope_out = rope(12, device=torch.device("cpu"))
+    x = torch.randn(2, 12, 64)
+    out, _ = layer(x, rope=rope_out)
+    assert out.shape == x.shape
+    assert layer.q_norm.weight.shape == (16,)
+    assert layer.k_norm.weight.shape == (16,)
+
+
 def test_sparse_attn_causal_mask_blocks_future():
     """Future tokens must be blocked: swapping a late key should not change
     output at an earlier query position."""

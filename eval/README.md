@@ -1,6 +1,44 @@
 # Auralis Evaluation
 
-Two complementary evaluation tracks. Both feed a single results dashboard.
+Three complementary evaluation tracks. All feed a single results dashboard.
+
+## Track 0 - Capability Probes (early learning curve)
+
+Runs a small fixed set of German-first probes against every early pretraining
+checkpoint. This is cheaper and more interpretable than a full benchmark while
+the base model is still learning to stop producing garbage.
+
+* Probes:  `eval/capability_probes_clean_v2.yaml`
+* Runner:  `scripts/eval/run_capability_probes.py`
+* Results: `eval/results/capability/<tag>.json` and `.md`
+
+Use this from the first few checkpoints onward:
+
+```bash
+python scripts/eval/run_capability_probes.py \
+    --model-config configs/model/helix_v2_mid_500m_smart.yaml \
+    --checkpoint checkpoints/pretrain_mix_v4_boosted_500m/step_10000.pt \
+    --tag v4_boosted_500m_step_10000
+```
+
+Current local RTX 3090 example from WSL:
+
+```bash
+cd /mnt/i/KI/Auralis_datasets/local_3090_test/AuralisV2
+. ../.venv/bin/activate
+export AURALIS_USE_MAMBA_KERNEL=1
+python scripts/eval/run_capability_probes.py \
+  --model-config configs/model/helix_v2_mid_500m_smart.yaml \
+  --checkpoint ../checkpoints/pretrain_mix_v4_boosted_500m/step_10000.pt \
+  --tag v4_boosted_500m_step10000_local_3090 \
+  --results-dir eval/results/capability_local_3090 \
+  --device cuda \
+  --max-new-tokens 32
+```
+
+Track aggregate score, per-category scores, repetition ratio, forbidden
+associations, and HTML/template garbage. The goal is not a final score; the
+goal is a clean trend across checkpoints.
 
 ## Track 1 — Custom Baseline (project-specific)
 

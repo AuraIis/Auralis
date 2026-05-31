@@ -62,6 +62,8 @@ class _Mamba2Native(nn.Module):
         self.d_conv = d_conv
         self.expand_factor = expand_factor
         self.d_inner = expand_factor * d_model
+        self.dt_min = float(dt_min)
+        self.dt_max = float(dt_max)
 
         self.in_proj = nn.Linear(d_model, 2 * self.d_inner, bias=False)
         self.conv1d = nn.Conv1d(
@@ -71,18 +73,27 @@ class _Mamba2Native(nn.Module):
         )
         self.x_proj = nn.Linear(self.d_inner, self.d_inner + 2 * d_state, bias=False)
         self.dt_proj = nn.Linear(self.d_inner, self.d_inner, bias=True)
-        with torch.no_grad():
-            dt = torch.exp(
-                torch.rand(self.d_inner)
-                * (float(torch.log(torch.tensor(dt_max))) - float(torch.log(torch.tensor(dt_min))))
-                + float(torch.log(torch.tensor(dt_min)))
-            )
-            self.dt_proj.bias.copy_(dt + torch.log(-torch.expm1(-dt)))
 
         A = torch.arange(1, d_state + 1, dtype=torch.float32).unsqueeze(0).repeat(self.d_inner, 1)
         self.A_log = nn.Parameter(torch.log(A))
         self.D = nn.Parameter(torch.ones(self.d_inner))
         self.out_proj = nn.Linear(self.d_inner, d_model, bias=False)
+        self.reset_special_parameters()
+
+    def reset_special_parameters(self) -> None:
+        """Restore Mamba-specific parameters that generic init must not zero.
+
+        The model-wide initializer touches every ``nn.Linear`` and zeros its
+        bias. ``dt_proj.bias`` is not a normal bias: it is the inverse-softplus
+        parameterisation for the SSM time step, so it must be reset after the
+        generic init pass.
+        """
+        with torch.no_grad():
+            log_min = torch.log(torch.tensor(self.dt_min, dtype=torch.float32))
+            log_max = torch.log(torch.tensor(self.dt_max, dtype=torch.float32))
+            dt = torch.exp(torch.rand(self.d_inner, device=self.dt_proj.bias.device) * (log_max - log_min) + log_min)
+            # inverse softplus: softplus(bias) == dt
+            self.dt_proj.bias.copy_(dt + torch.log(-torch.expm1(-dt)))
 
     def forward(self, x, ssm_state=None):
         B, L, _ = x.shape
@@ -187,6 +198,11 @@ class Mamba2Layer(nn.Module):
 
     def forward(self, x, ssm_state=None):
         return self._impl(x, ssm_state)
+
+    def reset_special_parameters(self) -> None:
+        reset = getattr(self._impl, "reset_special_parameters", None)
+        if callable(reset):
+            reset()
 
 
 __all__ = ["Mamba2Layer"]

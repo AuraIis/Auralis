@@ -1,0 +1,27 @@
+# Data config for the new clean-v2 base-pretraining corpus.
+#
+# The full mix is already assembled as one document-per-line text file. We
+# expose it as the `german` stream so the existing tokenizer/trainer can consume
+# it without changing dataset code. Training config should use mix_ratios:
+#   german: 1.0
+
+data_root: "//BITBASTION/Auralis/AuralisV2"
+
+raw:
+  english: "raw/english"
+  german:  "raw/german"
+  code:    "raw/code"
+  sft:     "raw/sft"
+  orpo:    "raw/orpo"
+
+cleaned:
+  english: []
+  german:
+    - "data/training/pretrain_clean_v2/mix_full.txt"
+  code: []
+
+tokenized:
+  phase1_english: "tokenized/phase1/english.bin"
+  phase1_german:  "tokenized/phase1/german.bin"
+  phase1_code:    "tokenized/phase1/code.bin"
+  clean_v2_german: "tokenized/pretrain_clean_v2/german.bin"

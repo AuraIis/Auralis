@@ -25,6 +25,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
+from auralis.adaptive.signals import detect_regression
+
 
 class AlertLevel(str, Enum):
     INFO = "info"
@@ -49,6 +51,14 @@ class HealthConfig:
     tps_k: int = 3
     # Val-loss regression: stop if val rose K consecutive evals.
     val_regression_stop_k: int = 5
+    # Per-language bpb regression: lower is better. Disabled by default so
+    # legacy configs keep their exact behavior.
+    bpb_regression_enabled: bool = False
+    bpb_regression_languages: list[str] = field(default_factory=list)
+    bpb_regression_max_increase: float = 0.20
+    bpb_regression_k: int = 2
+    bpb_regression_lookback: int = 4
+    bpb_regression_warmup_evals: int = 2
     # VRAM pressure (CUDA only). alloc/total ratio.
     vram_frac_warn: float = 0.95
     vram_frac_stop: float = 0.98
@@ -65,6 +75,8 @@ class HealthState:
     tps_peak: float = 0.0
     loss_window: deque[float] = field(default_factory=lambda: deque(maxlen=32))
     ckpt_times: deque[float] = field(default_factory=lambda: deque(maxlen=5))
+    bpb_series: dict[str, list[float]] = field(default_factory=dict)
+    bpb_regression_counts: dict[str, int] = field(default_factory=dict)
     alerts: list[tuple[int, AlertLevel, str]] = field(default_factory=list)
     stop_requested: bool = False
     stop_reason: str = ""
@@ -157,6 +169,67 @@ class HealthMonitor:
         return fresh
 
     # ------------------------------------------------------------------
+    def observe_bpb(self, metrics: dict[str, float], step: int) -> list[tuple[AlertLevel, str]]:
+        """Stop when a per-language bits-per-byte metric regresses.
+
+        BPB is lower-is-better. This catches the multilingual failure mode
+        where aggregate val_loss improves while one language quietly gets
+        worse.
+        """
+        fresh: list[tuple[AlertLevel, str]] = []
+        c = self.config
+        if not c.bpb_regression_enabled:
+            return fresh
+
+        available = {
+            key.rsplit("/", 1)[-1]: float(value)
+            for key, value in metrics.items()
+            if key.startswith("eval/bpb/")
+        }
+        if not available:
+            return fresh
+
+        langs = c.bpb_regression_languages or sorted(available)
+        for lang in langs:
+            if lang not in available:
+                continue
+            bpb = available[lang]
+            series = self.state.bpb_series.setdefault(lang, [])
+            series.append(bpb)
+
+            if len(series) <= c.bpb_regression_warmup_evals:
+                self.state.bpb_regression_counts[lang] = 0
+                continue
+
+            # detect_regression assumes higher-is-better, so negate bpb.
+            regressed = detect_regression(
+                [-v for v in series],
+                max_drop=c.bpb_regression_max_increase,
+                lookback=c.bpb_regression_lookback,
+            )
+            if regressed:
+                count = self.state.bpb_regression_counts.get(lang, 0) + 1
+                self.state.bpb_regression_counts[lang] = count
+                if count >= c.bpb_regression_k:
+                    lookback = series[-(c.bpb_regression_lookback + 1):-1]
+                    if not lookback:
+                        lookback = series[:-1]
+                    recent_best = min(lookback) if lookback else min(series[:-1])
+                    fresh.append((
+                        AlertLevel.STOP,
+                        f"bpb/{lang} regressed {count} evals "
+                        f"(current {bpb:.4f}, recent_best {recent_best:.4f}, "
+                        f"max_increase {c.bpb_regression_max_increase:.4f})",
+                    ))
+                    self._request_stop(f"bpb_regression:{lang}")
+            else:
+                self.state.bpb_regression_counts[lang] = 0
+
+        for level, msg in fresh:
+            self.state.alerts.append((step, level, msg))
+        return fresh
+
+    # ------------------------------------------------------------------
     def observe_vram(self, alloc_gb: float, total_gb: float, step: int) -> list[tuple[AlertLevel, str]]:
         """Allocated/total ratio — fires at 95 % / 98 %."""
         fresh: list[tuple[AlertLevel, str]] = []
@@ -218,6 +291,12 @@ class HealthMonitor:
             "n_alerts": len(self.state.alerts),
             "grad_explosion_count": self.state.grad_explosion_count,
             "grad_collapse_count": self.state.grad_collapse_count,
+            "bpb_regression_counts": dict(self.state.bpb_regression_counts),
+            "bpb_latest": {
+                lang: values[-1]
+                for lang, values in self.state.bpb_series.items()
+                if values
+            },
             "tps_peak": self.state.tps_peak,
             "alerts": [
                 {"step": s, "level": lvl.value, "msg": m}

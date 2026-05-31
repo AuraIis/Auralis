@@ -1,0 +1,104 @@
+{
+  "checkpoint": "checkpoints/sft_response_fix_de_v2_core_phase_a2/sft_smoke_step_220.pt",
+  "train": "data/training/sft_response_fix_de_v4_anchor/core_train.helix.jsonl",
+  "val": "data/training/sft_response_fix_de_v4_anchor/val.helix.jsonl",
+  "steps": 80,
+  "batch_size": 1,
+  "grad_accum": 4,
+  "lr": 3e-07,
+  "warmup_steps": 30,
+  "category_weights": {
+    "facts_de": 1.4,
+    "hallucination_guard": 1.0,
+    "qa_de": 2.0,
+    "honesty": 2.0,
+    "instruction_de": 1.5
+  },
+  "eos_loss_weight": 8.0,
+  "generation_system": "Du bist Auralis, ein hilfreicher deutscher KI-Assistent. Antworte korrekt, knapp und ehrlich. Wenn etwas unsicher oder erfunden ist, sage das deutlich.",
+  "train_by_category": {
+    "hallucination_guard": 193,
+    "facts_de": 168,
+    "honesty": 31,
+    "qa_de": 21,
+    "instruction_de": 6
+  },
+  "val_by_category": {
+    "facts_de": 4,
+    "hallucination_guard": 4,
+    "qa_de": 2,
+    "honesty": 2
+  },
+  "history": [
+    {
+      "step": 1,
+      "train_loss": 3.3083019852638245,
+      "val_loss": 4.947625517845154,
+      "val_by_category": {
+        "facts_de": 5.217902660369873,
+        "hallucination_guard": 4.677348375320435,
+        "honesty": 4.891855478286743,
+        "qa_de": 6.0461907386779785
+      },
+      "lr": 2e-08,
+      "elapsed_seconds": 12.63554048538208
+    },
+    {
+      "step": 80,
+      "train_loss": 0.9914913326501846,
+      "val_loss": 1.565521314740181,
+      "val_by_category": {
+        "facts_de": 1.78509059548378,
+        "hallucination_guard": 1.345952033996582,
+        "honesty": 2.9001015424728394,
+        "qa_de": 2.9792560338974
+      },
+      "lr": 3e-08,
+      "elapsed_seconds": 218.3952820301056
+    }
+  ],
+  "generations_before": [
+    {
+      "prompt": "Was ist die Hauptstadt von Deutschland?",
+      "answer": "<|end|>"
+    },
+    {
+      "prompt": "Erklaere kurz, was Wasser ist.",
+      "answer": "heides.html, jpeg.png\"Ich habe mich nicht besonders gut zurecht. Die meisten sprechen von \"was ist das denn?\" ist ein schwieriges Problem. Die meisten sprechen von \"was ist das denn?\" Ja, das ist falsch. Die meisten sprechen von \"was ist das denn?\" Ja,"
+    },
+    {
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz und korrekt.",
+      "answer": "ellingen\", \"und\" .\")\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\""
+    },
+    {
+      "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+      "answer": "\", \"L\"-L\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\""
+    }
+  ],
+  "generations_after": [
+    {
+      "prompt": "Was ist die Hauptstadt von Deutschland?",
+      "answer": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>"
+    },
+    {
+      "prompt": "Erklaere kurz, was Wasser ist.",
+      "answer": "Das ist falsch. Die Arithmetik ist eine Erfindung von arithma.com.de. # Die arithma.com-Seite ist eine Sammlung von Bildern, die die verschiedenen Möglichkeiten der Darstellung von Bildern in der arithma.com-Software ist eine Sammlung von Bildern, die die verschiedenen Möglichkeiten der Darstellung von Wasser sind. Die arithma.com-Website ist eine Sammlung von Bildern. Die arithma.com-Website ist eine Sammlung von Bildern"
+    },
+    {
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz und korrekt.",
+      "answer": "Ich bin kein Experte für Mathematik. \"Ich bin ein Kind der Zeit\" ist ein deutscher KI-Assistent. # # Es ist ein Kind der Zeit. Zumindest in der Mathematik. Die Zeit ist ein Kind der Zeit. Die Zeit ist ein Kind der Zeit. Die Zeit ist ein Kind der Zeit. Die Zeit ist ein Kind der Zeit. Die Zeit ist ein Ort der Erinnerung. Die Zeit ist ein Ort der Erinnerung. Die Zeit ist ein Ort der Erinnerung. Die Zeit ist"
+    },
+    {
+      "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+      "answer": "Ja. Die Hauptstadt von Deutschland ist Berlin.\n<|end|>"
+    }
+  ],
+  "initial_val_loss": 4.948354542255402,
+  "initial_val_by_category": {
+    "facts_de": 5.212602376937866,
+    "hallucination_guard": 4.684106707572937,
+    "honesty": 4.894334554672241,
+    "qa_de": 6.040492057800293
+  },
+  "saved_checkpoint": "checkpoints/sft_response_fix_de_v4_anchor_from_a2_80/sft_smoke_step_80.pt"
+}

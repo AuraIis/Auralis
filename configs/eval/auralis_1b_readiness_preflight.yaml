@@ -1,0 +1,50 @@
+name: auralis_1b_readiness_preflight
+version: 1
+created_at: "2026-05-29"
+
+model_config: "configs/model/helix_v2_1b.yaml"
+readiness_gate: "eval/auralis_1b_readiness_gate_v1.yaml"
+frozen_sft_gate: "eval/sft_response_frozen_target_retention_v2.yaml"
+
+policy:
+  max_eval_prompt_collisions: 0
+  max_retention_regressions: 0
+  require_cleaned_data_paths: true
+  require_source_disjoint_manifest: true
+  stop_if_target_not_improving: true
+  stop_if_retention_regresses: true
+
+candidate_train_files:
+  # Current 1B candidate mix: answer/writing focused, code held out for later.
+  - "data/training/curated_40b/english.txt"
+  - "data/training/curated_40b/german.txt"
+  - "data/training/sft_clean_de_v1/train.helix.jsonl"
+  - "data/training/sft_response_fix_de_v8_stable_mix/core_train.helix.jsonl"
+
+data_path_configs:
+  - "configs/data_paths_1b_samples_container.yaml"
+
+source_disjoint_manifests:
+  - "data/training/pretrain_v6_candidates/source_disjoint_manifest_v2.jsonl"
+  - "data/training/pretrain_v6_extra_candidates/source_disjoint_manifest.jsonl"
+  - "data/training/pretrain_v6_book_sources_gutenberg_v1/source_disjoint_manifest_clean_v2.jsonl"
+
+must_have_concepts:
+  confident_facts:
+    - "Berlin heute Hauptstadt Deutschlands"
+    - "Bonn historisch 1949 bis 1990/frueher"
+    - "Faust von Johann Wolfgang von Goethe"
+    - "Photosynthese: Licht + Wasser + CO2 -> Zucker/Glucose + Sauerstoff"
+    - "Wasser ist Verbindung, Sauerstoff ist Element"
+  refusal_only_when_unknown:
+    - "erfundene Personen/Planeten/Orte nicht ausmalen"
+    - "bekannte Fakten nicht verweigern"
+
+canary_checkpoints:
+  schedule:
+    - step: 100
+      action: "run readiness gate, source PPL, manual probes; stop on retention regression"
+    - step: 500
+      action: "repeat readiness gate; compare target and retention separately"
+    - step: 1000
+      action: "promote only if target improves and retention has zero regressions"

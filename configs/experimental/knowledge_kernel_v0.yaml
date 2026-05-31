@@ -1,0 +1,35 @@
+version: auralis-knowledge-kernel-v0.1
+description: "Duden/DNA-style structured lexicon/fact corpus experiment."
+
+formats:
+  current_tokenizer:
+    uses:
+      - "<memory>"
+      - "</memory>"
+    output: current_kernel.txt
+    purpose: "Can be tested with the current tokenizer without retraining it."
+  future_tokenizer:
+    proposed_special_tokens:
+      - "<|definition|>"
+      - "<|fact|>"
+      - "<|example|>"
+      - "<|source|>"
+      - "<|question|>"
+      - "<|answer|>"
+    output: future_kernel.txt
+    purpose: "Cleaner format if we retrain tokenizer/checkpoints from scratch."
+
+ablation:
+  baseline: plain_corpus.txt
+  treatment: current_kernel.txt
+  probe: qa_eval.jsonl
+  success_signal:
+    - "lower eval loss on held-out QA after equal tiny training budget"
+    - "more exact answers on concept/fact probes"
+    - "fewer wrong associations such as Goethe -> Mein Kampf"
+
+rules:
+  - "Use open/curated lexicon-style facts, not proprietary Duden text."
+  - "Keep definitions short, factual, and source-tagged."
+  - "Do not overload the main pretraining mix with lexicon blocks; start with 1-3%."
+

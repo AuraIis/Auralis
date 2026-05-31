@@ -1,0 +1,51 @@
+version: auralis-knowledge-dna-v2
+description: "Hybrid Knowledge-DNA experiment before 500M/1B pretraining."
+
+tokenizer:
+  change_tokenizer: false
+  allowed_special_tokens:
+    - "<memory>"
+    - "</memory>"
+    - "<recall>"
+    - "</recall>"
+    - "<|end|>"
+
+outputs:
+  build_dir: "data/eval/knowledge_dna_v2_smoke"
+  ablation_dir: "data/eval/knowledge_dna_v2_ablation_smoke"
+  files:
+    plain: "plain_corpus.txt"
+    dna: "dna_corpus.txt"
+    hybrid: "hybrid_corpus.txt"
+    probes: "probes.jsonl"
+
+variants:
+  plain:
+    purpose: "Baseline: facts as normal prose."
+  dna:
+    purpose: "Pure structured memory and recall blocks."
+  hybrid:
+    purpose: "Practical candidate: prose plus memory plus hard recall/counterfact probes."
+    candidate_pretrain_share_if_successful: "1-3%"
+
+ablation:
+  tiny_sanity:
+    model_config: "configs/model/helix_v2_debug_tiny.yaml"
+    steps: 40
+    seq_length: 128
+    repeat: 24
+    max_train_rows: 12
+  hundred_m:
+    model_config: "configs/model/helix_v2_100m.yaml"
+    steps: 80
+    seq_length: 128
+    repeat: 32
+    max_train_rows: 32
+
+go_no_go:
+  allow_hybrid_into_main_mix_only_if:
+    - "hybrid probe_loss_final <= plain probe_loss_final"
+    - "hybrid exact_match_light >= max(plain exact_match_light, 0.10)"
+    - "hybrid counterfact_failure_rate <= plain counterfact_failure_rate and < 1.0"
+    - "hybrid tag_echo_rate <= 0.10"
+  otherwise: "Keep Knowledge-DNA as experimental and do not add it to the main pretraining mix."

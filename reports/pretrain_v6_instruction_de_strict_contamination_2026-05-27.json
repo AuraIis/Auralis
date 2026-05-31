@@ -1,0 +1,5 @@
+{
+  "train_file": "data/training/pretrain_v6_instruction_de_strict/instruction_de_train.txt",
+  "num_hits": 0,
+  "hits": []
+}

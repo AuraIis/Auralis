@@ -1,0 +1,168 @@
+{
+  "source": "data/eval/checkpoint_tests/sft_response_fix_de_v8_stable_from_v6_40_10/sft_response_fix_de_v8_stable_from_v6_40_10_sft_response_fix_chat_gate_v4_fresh_holdout.json",
+  "summary": {
+    "semantic_score": 0.8333333333333334,
+    "passed": 10,
+    "total": 12,
+    "by_category": {
+      "facts_de": 0.6666666666666666,
+      "hallucination_guard": 1.0,
+      "honesty": 1.0,
+      "qa_de": 0.75
+    },
+    "failures": [
+      {
+        "id": "yes_bern_capital",
+        "category": "facts_de",
+        "keyword_score": 0.6,
+        "semantic_score": 0.0,
+        "expected_polarity": "yes",
+        "actual_polarity": "no",
+        "issues": [
+          "wrong_polarity:no_expected_yes",
+          "forbidden:nein"
+        ],
+        "answer": "Nein. Die Hauptstadt der Schweiz ist Bern."
+      },
+      {
+        "id": "photosynthesis_definition",
+        "category": "qa_de",
+        "keyword_score": 1.0,
+        "semantic_score": 0.0,
+        "expected_polarity": null,
+        "actual_polarity": null,
+        "issues": [
+          "missing:pflanzen"
+        ],
+        "answer": "Die Photosynthese ist eine chemische Reaktion auf Licht, bei der sich Licht aus Licht und Sauerstoff bildet."
+      }
+    ]
+  },
+  "results": [
+    {
+      "id": "yes_wien_capital",
+      "category": "facts_de",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": "yes",
+      "actual_polarity": "yes",
+      "issues": [],
+      "answer": "Ja. Wien ist die Hauptstadt von Österreich."
+    },
+    {
+      "id": "yes_bern_capital",
+      "category": "facts_de",
+      "keyword_score": 0.6,
+      "semantic_score": 0.0,
+      "expected_polarity": "yes",
+      "actual_polarity": "no",
+      "issues": [
+        "wrong_polarity:no_expected_yes",
+        "forbidden:nein"
+      ],
+      "answer": "Nein. Die Hauptstadt der Schweiz ist Bern."
+    },
+    {
+      "id": "no_bonn_current",
+      "category": "hallucination_guard",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": "no",
+      "actual_polarity": "no",
+      "issues": [],
+      "answer": "Nein. Die Hauptstadt von Deutschland ist Berlin."
+    },
+    {
+      "id": "no_hamburg_bavaria",
+      "category": "hallucination_guard",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": "no",
+      "actual_polarity": "no",
+      "issues": [],
+      "answer": "Nein. Die Hauptstadt von Bayern ist Muenchen."
+    },
+    {
+      "id": "goethe_not_mein_kampf_short",
+      "category": "hallucination_guard",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": "no",
+      "actual_polarity": "no",
+      "issues": [],
+      "answer": "Nein. Mein Kampf wurde von Adolf Hitler geschrieben."
+    },
+    {
+      "id": "goethe_faust_author",
+      "category": "facts_de",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [],
+      "answer": "Faust wurde von Johann Wolfgang von Goethe geschrieben."
+    },
+    {
+      "id": "water_not_element",
+      "category": "qa_de",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": "no",
+      "actual_polarity": "no",
+      "issues": [],
+      "answer": "Nein. Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff."
+    },
+    {
+      "id": "oxygen_definition",
+      "category": "qa_de",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [],
+      "answer": "Sauerstoff ist ein chemisches Element und ein wichtiger Bestandteil der Luft."
+    },
+    {
+      "id": "photosynthesis_definition",
+      "category": "qa_de",
+      "keyword_score": 1.0,
+      "semantic_score": 0.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [
+        "missing:pflanzen"
+      ],
+      "answer": "Die Photosynthese ist eine chemische Reaktion auf Licht, bei der sich Licht aus Licht und Sauerstoff bildet."
+    },
+    {
+      "id": "unknown_source_behavior",
+      "category": "honesty",
+      "keyword_score": 0.7,
+      "semantic_score": 1.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [],
+      "answer": "Ich sage, dass ich keine verlaessliche Information habe, und dass ich keine verlaessliche Information habe, und dass du keine verlaessliche Information."
+    },
+    {
+      "id": "unknown_planet_behavior",
+      "category": "honesty",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [],
+      "answer": "Dazu habe ich keine verlaessliche Information. Planet Zelvorn klingt erfunden oder unklar."
+    },
+    {
+      "id": "computer_definition",
+      "category": "qa_de",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [],
+      "answer": "Ein Computer ist eine Maschine, die Daten verarbeitet und Programme ausfuehrt."
+    }
+  ]
+}

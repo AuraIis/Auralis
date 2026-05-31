@@ -1,0 +1,199 @@
+{
+  "tag": "local_3090_1b_ramp_best_step1900",
+  "timestamp_utc": "2026-05-30T10:08:25.643111+00:00",
+  "checkpoint": "/mnt/c/Users/_Michael_/Auralis_3090_Test/checkpoints/pretrain_1b_bilingual_de55_en45_ramp/best.pt",
+  "model_config": "/mnt/c/Users/_Michael_/Auralis_3090_Test/AuralisV2/configs/model/helix_v2_1b.yaml",
+  "probe_file": "/mnt/c/Users/_Michael_/Auralis_3090_Test/AuralisV2/eval/capability_probes_clean_v2.yaml",
+  "aggregate_score": 0.018750000000000003,
+  "by_category": {
+    "cleanliness": 0.0,
+    "code": 0.0,
+    "facts_de": 0.0,
+    "hallucination_guard": 0.0,
+    "instruction": 0.15000000000000002,
+    "math": 0.0
+  },
+  "num_probes": 16,
+  "results": [
+    {
+      "id": "fact_berlin_capital",
+      "category": "facts_de",
+      "score": 0.0,
+      "prompt": "Frage: Was ist die Hauptstadt von Deutschland?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.4091,
+      "answer": "Die Vereinigten Arabischen Emirate ist ein Vereinigten Königreich. Die Vereinigten Arabischen Emirate sind die Vereinigten Arabischen Emirate. Die Vereinigten Arabischen Emirate sind die Vereinigten"
+    },
+    {
+      "id": "fact_water_state",
+      "category": "facts_de",
+      "score": 0.0,
+      "prompt": "Frage: Was ist Wasser bei Raumtemperatur?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.5,
+      "answer": "Die durchschnittliche Größe der durchschnittliche Größe der durchschnittliche durchschnittliche durchschnittliche durchschnittliche durchschnittliche durchschnittliche durchschnittliche"
+    },
+    {
+      "id": "fact_goethe_faust",
+      "category": "facts_de",
+      "score": 0.0,
+      "prompt": "Frage: Wer schrieb Faust?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.4,
+      "answer": "Ich habe die Frage, ob ich mich für die Frage, ob ich die Diskussion um die Frage, ob ich die Diskussion um die Frage, ob die wissenschaftlich"
+    },
+    {
+      "id": "fact_paris_france",
+      "category": "facts_de",
+      "score": 0.0,
+      "prompt": "Frage: In welchem Land liegt Paris?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.3182,
+      "answer": "Der vorstehende Beitrag stammt von 192.0.2.255 (Diskussion) ) Ich habe den Artikel entfernt. Ich habe den Artikel entfernt. Ich habe den Artikel"
+    },
+    {
+      "id": "math_addition",
+      "category": "math",
+      "score": 0.0,
+      "prompt": "Rechne: 17 + 25 =",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.6296,
+      "answer": "40 years old. The average age of a girl is 40 years old. The average age of a girl is 40 years old. The average age of a girl"
+    },
+    {
+      "id": "math_multiplication",
+      "category": "math",
+      "score": 0.0,
+      "prompt": "Rechne: 8 * 7 =",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.8571,
+      "answer": "48 * 8 = 48 * 8 = 48 * 8 = 48 * 8 = 48 * 8 = 48 * 8 = 48 * 8 = 48 * 8 ="
+    },
+    {
+      "id": "math_subtraction",
+      "category": "math",
+      "score": 0.0,
+      "prompt": "Rechne: 100 - 37 =",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.9286,
+      "answer": "100 - 100 = 100 - 100 = 100 - 100 = 100 - 100 = 100 - 100 = 100 - 100 = 100 - 100 = 100 - 100 -"
+    },
+    {
+      "id": "code_python_print",
+      "category": "code",
+      "score": 0.0,
+      "prompt": "Schreibe eine Python-Zeile, die Hallo ausgibt:\n",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.7143,
+      "answer": ". Ich habe dies nicht verstanden. Ich habe dies nicht verstanden. Ich habe dies nicht verstanden. Ich habe dies nicht verstanden. Ich habe die"
+    },
+    {
+      "id": "code_python_function",
+      "category": "code",
+      "score": 0.0,
+      "prompt": "Vervollständige Python:\ndef add(a, b):\n    ",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": ": : : : : : : : : : : : : : : :"
+    },
+    {
+      "id": "code_no_eval",
+      "category": "code",
+      "score": 0.0,
+      "prompt": "Ist eval() in Python für fremde Nutzereingaben sicher? Kurze Antwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0385,
+      "answer": "Die Frage ist, ob die Nutzer die Daten der Nutzer von Google Analytics nutzen, um die Nutzung der Webseite zu verbessern. Die Daten werden von Google Analytics gespeichert."
+    },
+    {
+      "id": "instruction_short",
+      "category": "instruction",
+      "score": 0.0,
+      "prompt": "Antworte mit genau einem Wort: Welche Farbe hat der Himmel an einem klaren Tag?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.4,
+      "answer": "Ich habe die Frage, ob ich mich für die Frage, ob ich die Frage, ob ich die Frage, ob ich die Diskussion um die Frage, ob die"
+    },
+    {
+      "id": "instruction_language",
+      "category": "instruction",
+      "score": 0.30000000000000004,
+      "prompt": "Antworte auf Deutsch: What is a computer?\nAntwort:",
+      "matched": [
+        "computer"
+      ],
+      "forbidden": [
+        "a computer is"
+      ],
+      "garbage": [],
+      "repetition_ratio": 0.5667,
+      "answer": "A computer is a computer that is used to create a computer system that is used to create a computer system that is used to create a computer system that is used"
+    },
+    {
+      "id": "garbage_html",
+      "category": "cleanliness",
+      "score": 0.0,
+      "prompt": "Erkläre kurz, was Berlin ist.\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.1053,
+      "answer": "Die Frage, ob die wissenschaftliche Arbeit in der wissenschaftlichen Forschung zu den Themen der wissenschaftlichen Forschung und der wissenschaftlichen Forschung. Die"
+    },
+    {
+      "id": "garbage_chat_tokens",
+      "category": "cleanliness",
+      "score": 0.0,
+      "prompt": "Sag in einem Satz, was ein Apfel ist.\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.3846,
+      "answer": "Ich habe die Frage, ob ich mich für eine Frage, die ich für eine Diskussion um die Frage, ob ich mich für eine Diskussion um die Frage, ob"
+    },
+    {
+      "id": "consistency_goethe_hitler",
+      "category": "hallucination_guard",
+      "score": 0.0,
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz.\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "Ich bin ein bisschen enttäuscht, dass ich mich für die Diskussion um die Frage, ob es wirklich ein bisschen mehr Leute, die sich mit dem Thema der wissenschaftlich"
+    },
+    {
+      "id": "consistency_berlin_location",
+      "category": "hallucination_guard",
+      "score": 0.0,
+      "prompt": "Liegt Berlin in der Nähe von Frankfurt? Antworte vorsichtig in einem Satz.\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.44,
+      "answer": "Ich habe die Diskussion um die Frage, ob die Diskussion um die Frage, ob die EU-Politik in der EU-Politik in der EU-Politik in der"
+    }
+  ]
+}

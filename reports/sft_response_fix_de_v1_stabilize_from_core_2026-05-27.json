@@ -1,0 +1,119 @@
+{
+  "checkpoint": "checkpoints/sft_response_fix_de_v1_core_only_microfit/sft_smoke_step_180.pt",
+  "train": "data/training/sft_response_fix_de_v1/train.helix.jsonl",
+  "val": "data/training/sft_response_fix_de_v1/val.helix.jsonl",
+  "steps": 80,
+  "batch_size": 1,
+  "grad_accum": 8,
+  "lr": 1e-06,
+  "warmup_steps": 20,
+  "category_weights": {
+    "hallucination_guard": 220.0,
+    "qa_de": 10.0,
+    "instruction_de": 10.0,
+    "response_de": 0.1
+  },
+  "eos_loss_weight": 8.0,
+  "train_by_category": {
+    "instruction_de": 4958,
+    "response_de": 14608,
+    "qa_de": 7661,
+    "hallucination_guard": 68
+  },
+  "val_by_category": {
+    "source_disjoint_eval": 20
+  },
+  "history": [
+    {
+      "step": 1,
+      "train_loss": 3.6537594199180603,
+      "val_loss": 1.983695663511753,
+      "val_by_category": {
+        "source_disjoint_eval": 1.983695663511753
+      },
+      "lr": 1e-07,
+      "elapsed_seconds": 9.40332317352295
+    },
+    {
+      "step": 20,
+      "train_loss": 3.173618882894516,
+      "val_loss": 1.7866216748952866,
+      "val_by_category": {
+        "source_disjoint_eval": 1.7866216748952866
+      },
+      "lr": 1e-06,
+      "elapsed_seconds": 27.228394269943237
+    },
+    {
+      "step": 40,
+      "train_loss": 2.146643713116646,
+      "val_loss": 1.618853323161602,
+      "val_by_category": {
+        "source_disjoint_eval": 1.618853323161602
+      },
+      "lr": 7.75e-07,
+      "elapsed_seconds": 45.32891869544983
+    },
+    {
+      "step": 60,
+      "train_loss": 2.720422714948654,
+      "val_loss": 1.61713045835495,
+      "val_by_category": {
+        "source_disjoint_eval": 1.61713045835495
+      },
+      "lr": 3.250000000000001e-07,
+      "elapsed_seconds": 63.33303737640381
+    },
+    {
+      "step": 80,
+      "train_loss": 1.4243759410455823,
+      "val_loss": 1.6267968341708183,
+      "val_by_category": {
+        "source_disjoint_eval": 1.6267968341708183
+      },
+      "lr": 1e-07,
+      "elapsed_seconds": 81.1958692073822
+    }
+  ],
+  "generations_before": [
+    {
+      "prompt": "Was ist die Hauptstadt von Deutschland?",
+      "answer": "Berlin ist die Hauptstadt von Deutschland.\n<|end|>"
+    },
+    {
+      "prompt": "Erklaere kurz, was Wasser ist.",
+      "answer": "Ein Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff und ist bei Raumtemperatur meist fluessig.\n<|end|>"
+    },
+    {
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz und korrekt.",
+      "answer": "Nein. Goethe schrieb das nicht; Mein Kampf stammt von Adolf Hitler.\n<|end|>"
+    },
+    {
+      "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+      "answer": "Nein. Heute ist Berlin die Hauptstadt Deutschlands.\n<|end|>"
+    }
+  ],
+  "generations_after": [
+    {
+      "prompt": "Was ist die Hauptstadt von Deutschland?",
+      "answer": "Berlin ist die Hauptstadt von Deutschland.\n<|end|>"
+    },
+    {
+      "prompt": "Erklaere kurz, was Wasser ist.",
+      "answer": "Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff und ist bei Raumtemperatur meist fluessig. Es ist eine farblose Flüssigkeit mit stechendem Geruch, die sich bei Normaldruck mit Wasser zersetzt. Es ist eine chemische Verbindung aus Wasserstoff und Sauerstoff und ist bei Raumtemperatur meist fluessig. Es ist eine farblose Flüssigkeit mit stechendem Geruch, die sich bei Normaldruck mit Wasser zersetzt. Es ist eine chemische Verbindung aus Wasserstoff und Sauerstoff und ist bei Raumtemperatur meist fluessig. Es ist eine chemische Verbindung"
+    },
+    {
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz und korrekt.",
+      "answer": "Nein. Goethe schrieb das nicht; Mein Kampf stammt von Adolf Hitler.\n<|end|>"
+    },
+    {
+      "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+      "answer": "Nein. Heute ist Berlin die Hauptstadt Deutschlands.\n<|end|>"
+    }
+  ],
+  "initial_val_loss": 1.9914151579141617,
+  "initial_val_by_category": {
+    "source_disjoint_eval": 1.9914151579141617
+  },
+  "saved_checkpoint": "checkpoints/sft_response_fix_de_v1_stabilize_from_core/sft_smoke_step_80.pt"
+}

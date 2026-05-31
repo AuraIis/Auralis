@@ -1,0 +1,27 @@
+{
+  "input": "data\\training\\curated_40b\\code.txt",
+  "output": "reports\\code_audit\\curated_40b_code_clean_candidate_50k.txt",
+  "docs_seen": 50000,
+  "docs_kept": 13352,
+  "bytes_kept": 31666786,
+  "kept_by_lang": {
+    "python": 13352
+  },
+  "reject_reasons": {
+    "python_syntax_error": 34664,
+    "too_short": 2428,
+    "generated_or_compiled": 1645,
+    "url_dense": 1001,
+    "html_embedded": 355,
+    "vendor_or_dependency_path": 109,
+    "todo_dense": 78,
+    "log_or_traceback": 36,
+    "possible_secret_generic_token": 33,
+    "exact_duplicate": 11,
+    "control_chars": 5,
+    "replacement_chars": 4,
+    "possible_secret_private_key": 4,
+    "long_line_dense": 2,
+    "notebook_json": 2
+  }
+}

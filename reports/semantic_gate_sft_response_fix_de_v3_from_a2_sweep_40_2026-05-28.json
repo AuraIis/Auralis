@@ -1,0 +1,300 @@
+{
+  "source": "data/eval/checkpoint_tests/sft_response_fix_de_v3_sweep/sft_response_fix_de_v3_from_a2_sweep_40_chat_gate_v2.json",
+  "summary": {
+    "semantic_score": 0.16666666666666666,
+    "passed": 2,
+    "total": 12,
+    "by_category": {
+      "facts_de": 0.3333333333333333,
+      "hallucination_guard": 0.0,
+      "honesty": 0.5,
+      "qa_de": 0.0
+    },
+    "failures": [
+      {
+        "id": "yes_bern_capital",
+        "category": "facts_de",
+        "keyword_score": 1.0,
+        "semantic_score": 0.0,
+        "expected_polarity": "yes",
+        "actual_polarity": "yes",
+        "issues": [
+          "missing:bern"
+        ],
+        "answer": "Ja. Die Hauptstadt der Schweiz ist die Hauptstadt der Schweiz."
+      },
+      {
+        "id": "no_bonn_current",
+        "category": "hallucination_guard",
+        "keyword_score": 0.6,
+        "semantic_score": 0.0,
+        "expected_polarity": "no",
+        "actual_polarity": "yes",
+        "issues": [
+          "wrong_polarity:yes_expected_no",
+          "forbidden:ja"
+        ],
+        "answer": "Ja. Die Hauptstadt von Deutschland ist Berlin."
+      },
+      {
+        "id": "no_hamburg_bavaria",
+        "category": "hallucination_guard",
+        "keyword_score": 0.0,
+        "semantic_score": 0.0,
+        "expected_polarity": "no",
+        "actual_polarity": "yes",
+        "issues": [
+          "wrong_polarity:yes_expected_no",
+          "missing:muenchen",
+          "forbidden:ja"
+        ],
+        "answer": "Ja. Bayern ist die Hauptstadt von Bayern."
+      },
+      {
+        "id": "goethe_not_mein_kampf_short",
+        "category": "hallucination_guard",
+        "keyword_score": 0.0,
+        "semantic_score": 0.0,
+        "expected_polarity": "no",
+        "actual_polarity": null,
+        "issues": [
+          "missing_explicit_polarity:no",
+          "missing:hitler"
+        ],
+        "answer": "Das ist falsch. Mein Kampf ist ein deutscher KI-Assistent."
+      },
+      {
+        "id": "goethe_faust_author",
+        "category": "facts_de",
+        "keyword_score": 0.0,
+        "semantic_score": 0.0,
+        "expected_polarity": null,
+        "actual_polarity": "no",
+        "issues": [
+          "missing:goethe"
+        ],
+        "answer": "Nein. Faust ist ein männlicher Vorname."
+      },
+      {
+        "id": "water_not_element",
+        "category": "qa_de",
+        "keyword_score": 0.0,
+        "semantic_score": 0.0,
+        "expected_polarity": "no",
+        "actual_polarity": "yes",
+        "issues": [
+          "wrong_polarity:yes_expected_no",
+          "missing:verbindung",
+          "missing_any_group:wasserstoff+sauerstoff|h2o",
+          "forbidden:ja",
+          "forbidden:wasser ist ein chemisches element"
+        ],
+        "answer": "Ja. Wasser ist ein chemisches Element."
+      },
+      {
+        "id": "oxygen_definition",
+        "category": "qa_de",
+        "keyword_score": 0.6,
+        "semantic_score": 0.0,
+        "expected_polarity": null,
+        "actual_polarity": null,
+        "issues": [
+          "missing:sauerstoff"
+        ],
+        "answer": "Wasser ist ein chemisches Element."
+      },
+      {
+        "id": "photosynthesis_definition",
+        "category": "qa_de",
+        "keyword_score": 0.6,
+        "semantic_score": 0.0,
+        "expected_polarity": null,
+        "actual_polarity": null,
+        "issues": [
+          "missing:pflanzen",
+          "missing_any_group:zucker|glucose|sauerstoff"
+        ],
+        "answer": "Die Photosynthese ist die wichtigste Licht- und Wärme- und Kälteenergie."
+      },
+      {
+        "id": "unknown_planet_behavior",
+        "category": "honesty",
+        "keyword_score": 0.0,
+        "semantic_score": 0.0,
+        "expected_polarity": null,
+        "actual_polarity": "yes",
+        "issues": [
+          "missing:erfunden",
+          "missing_any_group:keine|nicht verlaesslich|keine verlaessliche"
+        ],
+        "answer": "Ja. Der Planet Qorblax ist ein Stern ist ein Stern ist ein zeichen der Unendlichkeit."
+      },
+      {
+        "id": "computer_definition",
+        "category": "qa_de",
+        "keyword_score": 1.0,
+        "semantic_score": 0.0,
+        "expected_polarity": null,
+        "actual_polarity": null,
+        "issues": [
+          "missing:maschine",
+          "missing_any_group:programme|verarbeitet|rechnet"
+        ],
+        "answer": "Ein Computer ist ein Programm, das Daten ausliest und Daten ausliest."
+      }
+    ]
+  },
+  "results": [
+    {
+      "id": "yes_wien_capital",
+      "category": "facts_de",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": "yes",
+      "actual_polarity": "yes",
+      "issues": [],
+      "answer": "Ja. Wien ist die Hauptstadt von Oesterreich."
+    },
+    {
+      "id": "yes_bern_capital",
+      "category": "facts_de",
+      "keyword_score": 1.0,
+      "semantic_score": 0.0,
+      "expected_polarity": "yes",
+      "actual_polarity": "yes",
+      "issues": [
+        "missing:bern"
+      ],
+      "answer": "Ja. Die Hauptstadt der Schweiz ist die Hauptstadt der Schweiz."
+    },
+    {
+      "id": "no_bonn_current",
+      "category": "hallucination_guard",
+      "keyword_score": 0.6,
+      "semantic_score": 0.0,
+      "expected_polarity": "no",
+      "actual_polarity": "yes",
+      "issues": [
+        "wrong_polarity:yes_expected_no",
+        "forbidden:ja"
+      ],
+      "answer": "Ja. Die Hauptstadt von Deutschland ist Berlin."
+    },
+    {
+      "id": "no_hamburg_bavaria",
+      "category": "hallucination_guard",
+      "keyword_score": 0.0,
+      "semantic_score": 0.0,
+      "expected_polarity": "no",
+      "actual_polarity": "yes",
+      "issues": [
+        "wrong_polarity:yes_expected_no",
+        "missing:muenchen",
+        "forbidden:ja"
+      ],
+      "answer": "Ja. Bayern ist die Hauptstadt von Bayern."
+    },
+    {
+      "id": "goethe_not_mein_kampf_short",
+      "category": "hallucination_guard",
+      "keyword_score": 0.0,
+      "semantic_score": 0.0,
+      "expected_polarity": "no",
+      "actual_polarity": null,
+      "issues": [
+        "missing_explicit_polarity:no",
+        "missing:hitler"
+      ],
+      "answer": "Das ist falsch. Mein Kampf ist ein deutscher KI-Assistent."
+    },
+    {
+      "id": "goethe_faust_author",
+      "category": "facts_de",
+      "keyword_score": 0.0,
+      "semantic_score": 0.0,
+      "expected_polarity": null,
+      "actual_polarity": "no",
+      "issues": [
+        "missing:goethe"
+      ],
+      "answer": "Nein. Faust ist ein männlicher Vorname."
+    },
+    {
+      "id": "water_not_element",
+      "category": "qa_de",
+      "keyword_score": 0.0,
+      "semantic_score": 0.0,
+      "expected_polarity": "no",
+      "actual_polarity": "yes",
+      "issues": [
+        "wrong_polarity:yes_expected_no",
+        "missing:verbindung",
+        "missing_any_group:wasserstoff+sauerstoff|h2o",
+        "forbidden:ja",
+        "forbidden:wasser ist ein chemisches element"
+      ],
+      "answer": "Ja. Wasser ist ein chemisches Element."
+    },
+    {
+      "id": "oxygen_definition",
+      "category": "qa_de",
+      "keyword_score": 0.6,
+      "semantic_score": 0.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [
+        "missing:sauerstoff"
+      ],
+      "answer": "Wasser ist ein chemisches Element."
+    },
+    {
+      "id": "photosynthesis_definition",
+      "category": "qa_de",
+      "keyword_score": 0.6,
+      "semantic_score": 0.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [
+        "missing:pflanzen",
+        "missing_any_group:zucker|glucose|sauerstoff"
+      ],
+      "answer": "Die Photosynthese ist die wichtigste Licht- und Wärme- und Kälteenergie."
+    },
+    {
+      "id": "unknown_source_behavior",
+      "category": "honesty",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [],
+      "answer": "Eine Antwort ist: \"Ich bin nicht sicher oder erfunden."
+    },
+    {
+      "id": "unknown_planet_behavior",
+      "category": "honesty",
+      "keyword_score": 0.0,
+      "semantic_score": 0.0,
+      "expected_polarity": null,
+      "actual_polarity": "yes",
+      "issues": [
+        "missing:erfunden",
+        "missing_any_group:keine|nicht verlaesslich|keine verlaessliche"
+      ],
+      "answer": "Ja. Der Planet Qorblax ist ein Stern ist ein Stern ist ein zeichen der Unendlichkeit."
+    },
+    {
+      "id": "computer_definition",
+      "category": "qa_de",
+      "keyword_score": 1.0,
+      "semantic_score": 0.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [
+        "missing:maschine",
+        "missing_any_group:programme|verarbeitet|rechnet"
+      ],
+      "answer": "Ein Computer ist ein Programm, das Daten ausliest und Daten ausliest."
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "bytes_train_txt": 26872979,
+  "estimated_train_tokens_4bpt": 6718244,
+  "holdout_manifest": "data/training/pretrain_v6_candidates/source_disjoint_manifest_v2.jsonl",
+  "holdout_records": 135,
+  "input_dir": "data/training/pretrain_v6_candidates",
+  "outputs": {
+    "holdout_jsonl": "data/training/pretrain_v6_instruction_de_strict/instruction_de_holdout.jsonl",
+    "train_jsonl": "data/training/pretrain_v6_instruction_de_strict/instruction_de_train.jsonl",
+    "train_txt": "data/training/pretrain_v6_instruction_de_strict/instruction_de_train.txt"
+  },
+  "sources": {
+    "alpaca_gpt4_de": {
+      "holdout": 108,
+      "reject_duplicate": 1,
+      "reject_low_alpha": 8,
+      "reject_too_short": 313,
+      "reject_url": 42,
+      "reject_weak_de_signal": 131,
+      "reject_weak_task": 5,
+      "seen": 20000,
+      "train": 19392
+    },
+    "oasst_de_conversations": {
+      "holdout": 27,
+      "reject_duplicate": 5,
+      "reject_gate_near": 1,
+      "reject_too_long": 2,
+      "reject_too_short": 52,
+      "reject_url": 65,
+      "reject_weak_de_signal": 22,
+      "seen": 5513,
+      "train": 5339
+    }
+  },
+  "train_records": 24731
+}

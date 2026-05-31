@@ -28,6 +28,7 @@ from scripts.data._common import atomic_text_writer, clean_text, now_iso
 
 
 BOILERPLATE_PATTERNS = (
+    # English web chrome
     "cookie policy",
     "privacy policy",
     "accept all cookies",
@@ -35,6 +36,21 @@ BOILERPLATE_PATTERNS = (
     "all rights reserved",
     "sign in to continue",
     "javascript is disabled",
+    # German web chrome — the corpus is German-heavy but the list used to be
+    # English-only, so German cookie banners / shop / login boilerplate slipped
+    # through unfiltered. Multi-word phrases only, to avoid nuking legit prose.
+    "diese website verwendet cookies",
+    "wir verwenden cookies",
+    "cookies akzeptieren",
+    "alle cookies akzeptieren",
+    "alle rechte vorbehalten",
+    "newsletter abonnieren",
+    "javascript ist deaktiviert",
+    "bitte aktivieren sie javascript",
+    "in den warenkorb",
+    "zur kasse",
+    "passwort vergessen",
+    "anmelden oder registrieren",
 )
 
 

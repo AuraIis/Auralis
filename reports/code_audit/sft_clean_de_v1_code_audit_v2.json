@@ -1,0 +1,212 @@
+{
+  "docs_audited": 1579,
+  "bytes_seen": 1721315,
+  "languages": {
+    "unknown": 951,
+    "python": 428,
+    "javascript": 54,
+    "sql": 52,
+    "cpp": 38,
+    "shell": 28,
+    "java": 28
+  },
+  "categories": {
+    "code_explain": 836,
+    "code_refactoring": 238,
+    "code_debug_fix": 227,
+    "coding_bugfix": 129,
+    "coding_generation": 81,
+    "coding_explanation": 65,
+    "code_implementation": 2,
+    "code_general": 1
+  },
+  "flags": {
+    "python_syntax_error": 46,
+    "long_line_dense": 5,
+    "log_or_traceback": 1
+  },
+  "flag_rates": {
+    "python_syntax_error": 2.9132,
+    "long_line_dense": 0.3167,
+    "log_or_traceback": 0.0633
+  },
+  "flag_by_lang": {
+    "python": {
+      "python_syntax_error": 46,
+      "long_line_dense": 1
+    },
+    "unknown": {
+      "long_line_dense": 4,
+      "log_or_traceback": 1
+    }
+  },
+  "exact_duplicate_hashes": 0,
+  "python_syntax": {
+    "ok": 382,
+    "syntax_error": 46
+  },
+  "high_risk_flag_events": 46,
+  "high_risk_event_rate_pct": 2.9132,
+  "samples": {
+    "python_syntax_error": [
+      {
+        "reason": "python_syntax_error",
+        "source": "data\\training\\sft_clean_de_v1\\train.helix.jsonl",
+        "index": 311,
+        "lang": "python",
+        "category": "code_explain",
+        "origin": "//BITBASTION/Auralis/AuralisV2/raw/sft/synth/outputs/phase3_sft_final.jsonl",
+        "filename": "",
+        "chars": 1080,
+        "preview": "<|system|>\nDu bist Auralis, ein hilfreicher KI-Assistent. Antworte auf Deutsch.\n<|end|>\n<|user|>\nWas ist die Ausgabe und warum: `arr[arr > arr.mean()]`\n<|end|>\n<|assistant|>\nDie Anweisung `arr[arr > arr.mean()]` selektiert aus dem NumPy-Array `arr` alle Elemente, die größer sind als der Durchschnitt (Mittelwert) aller Elemente von `arr`.\n\n**Schrittweise Erklärung:**\n\n1. `arr.mean()` berechnet den arithmetischen Mittelwert aller Werte im Array (z. B. bei `[1,2,3,4,5]` ist der Mittelwert `3.0`).\n2. `arr > arr.mean()` erzeugt ein boolesches Array der gleichen Form, in dem jedes Element `True` ist, wenn der entsprechende Wert in `arr` größer als der Mittelwert ist, sonst `False`.\n3. `arr[ ... ]` (boolean indexing) gibt ein neues Array zurück, das nur die Elemente enthält, bei denen die boolesche Maske `True` ist.\n\n**Beispiel:**\n```python\nimport numpy as np\narr = np.array([1, 2, 3, 4, 5])\nprint(arr[arr > arr.mean()])\n```\nAusgabe:\n```\n[4 5]\n```\n**Warum:** Der Mittelwert ist `3.0`. Werte größer als `3.0` sind `4` und `5`. Diese werden als neues Array ausgegeben.\n<|end|>"
+      },
+      {
+        "reason": "python_syntax_error",
+        "source": "data\\training\\sft_clean_de_v1\\train.helix.jsonl",
+        "index": 486,
+        "lang": "python",
+        "category": "code_explain",
+        "origin": "//BITBASTION/Auralis/AuralisV2/raw/sft/synth/outputs/phase3_sft_final.jsonl",
+        "filename": "",
+        "chars": 746,
+        "preview": "<|system|>\nDu bist Auralis, ein hilfreicher KI-Assistent. Antworte auf Deutsch.\n<|end|>\n<|user|>\nErkläre kurz die Wirkung: `class Counter:\n    def __init__(self): self._n = 0\n    def __call__(self): self._n += 1; return self._n`\n<|end|>\n<|assistant|>\nDie Klasse `Counter` erzeugt Objekte, die wie Funktionen aufrufbar sind.\n\n1. `__init__`: Bei der Erstellung eines Counter-Objekts wird eine interne Variable `_n` auf 0 gesetzt.\n2. `__call__`: Wenn das Objekt mit Klammern aufgerufen wird (z. B. `c1()`), wird `_n` um 1 erhöht und der neue Wert zurückgegeben.\n\n**Konkretes Ergebnis:**\n- `c = Counter()` erzeugt einen Zähler, der bei 0 startet.\n- `print(c())` → 1\n- `print(c())` → 2\n- Jeder Aufruf zählt hoch und liefert die aktuelle Zahl.\n<|end|>"
+      },
+      {
+        "reason": "python_syntax_error",
+        "source": "data\\training\\sft_clean_de_v1\\train.helix.jsonl",
+        "index": 576,
+        "lang": "python",
+        "category": "code_explain",
+        "origin": "//BITBASTION/Auralis/AuralisV2/raw/sft/synth/outputs/phase3_sft_final.jsonl",
+        "filename": "",
+        "chars": 2160,
+        "preview": "<|system|>\nDu bist Auralis, ein hilfreicher KI-Assistent. Antworte auf Deutsch.\n<|end|>\n<|user|>\nErkläre die Datenstruktur die hier entsteht: `@functools.lru_cache(maxsize=128)\ndef fib(n): return n if n < 2 else fib(n-1) + fib(n-2)`\n<|end|>\n<|assistant|>\nDer Decorator `@functools.lru_cache(maxsize=128)` erzeugt einen **LRU-Cache** (Least Recently Used) als Datenstruktur. Intern handelt es sich um eine Kombination aus einem **Dictionary** (zum schnellen Nachschlagen der Ergebnisse) und einer **doppelt verketteten Liste** (zur Verwaltung der Zugriffsreihenfolge).\n\n- **Dictionary**: Speichert für jeden Funktionsaufruf (hier: `n`) den berechneten Rückgabewert. Der Schlüssel ist das Argument `n`, der Wert ist das Resultat von `fib(n)`.\n- **Verkettete Liste**: Hält die Reihenfolge der Zugriffe fest – zuletzt aufgerufene Einträge werden ans Ende verschoben; wenn die `maxsize` (128) überschritten wird, wird der am längsten nicht genutzte Eintrag (vorderstes Element der Liste) entfernt.\n\nDer Cache wird **schrittweise** aufgebaut. Bei jedem Aufruf von `fib(n)` wird zuerst im Dictionary nachgesehen:\n- Ist `n` bereits vorhanden, wird der gespeicherte Wert sofort zurückgegeben (keine Neuberechn\n...[truncated]"
+      },
+      {
+        "reason": "python_syntax_error",
+        "source": "data\\training\\sft_clean_de_v1\\train.helix.jsonl",
+        "index": 794,
+        "lang": "python",
+        "category": "code_explain",
+        "origin": "//BITBASTION/Auralis/AuralisV2/raw/sft/synth/outputs/phase3_sft_final.jsonl",
+        "filename": "",
+        "chars": 1924,
+        "preview": "<|system|>\nDu bist Auralis, ein hilfreicher KI-Assistent. Antworte auf Deutsch.\n<|end|>\n<|user|>\nErkläre einem Python-Anfänger was hier passiert: `@contextmanager\ndef tmpdir():\n    d = tempfile.mkdtemp()\n    try:\n        yield d\n    finally:\n        shutil.rmtree(d)`\n<|end|>\n<|assistant|>\nDieser Code erstellt einen benutzerdefinierten Kontextmanager namens `tmpdir`. Ein Kontextmanager wird mit `with` verwendet und sorgt dafür, dass bestimmte Aktionen beim Betreten und Verlassen des Blocks ausgeführt werden – ähnlich wie bei `with open(...) as f`.\n\n- `@contextmanager` ist ein Dekorator aus dem Modul `contextlib`. Er macht aus einer Generator-Funktion einen Kontextmanager.\n- `def tmpdir():` definiert die Funktion, die als Generator fungiert.\n- `d = tempfile.mkdtemp()` erstellt ein neues temporäres Verzeichnis auf der Festplatte (z. B. unter `/tmp/tmpXXXXXX`). Der Pfad wird in `d` gespeichert.\n- `try:` startet einen Ausnahmebehandlungsblock.\n- `yield d` gibt den Wert `d` (den Verzeichnispfad) an die `with`-Anweisung weiter. Ab hier läuft der Code im `with`-Block (der Aufrufer kann das Verzeichnis nutzen). Nachdem der `with`-Block beendet ist (normal oder durch Exception), wird der Gen\n...[truncated]"
+      },
+      {
+        "reason": "python_syntax_error",
+        "source": "data\\training\\sft_clean_de_v1\\train.helix.jsonl",
+        "index": 819,
+        "lang": "python",
+        "category": "code_explain",
+        "origin": "//BITBASTION/Auralis/AuralisV2/raw/sft/synth/outputs/phase3_sft_final.jsonl",
+        "filename": "",
+        "chars": 1034,
+        "preview": "<|system|>\nDu bist Auralis, ein hilfreicher KI-Assistent. Antworte auf Deutsch.\n<|end|>\n<|user|>\nErkläre kurz die Wirkung: `@functools.lru_cache(maxsize=128)\ndef fib(n): return n if n < 2 else fib(n-1) + fib(n-2)`\n<|end|>\n<|assistant|>\nDer Dekorator `@functools.lru_cache(maxsize=128)` speichert die Rückgabewerte der Funktion `fib` für jede aufgerufene Argumentkombination in einem Zwischenspeicher (Cache) mit maximal 128 Einträgen. Bei einem erneuten Aufruf mit demselben Argument wird das gespeicherte Ergebnis sofort zurückgegeben, ohne die rekursive Funktion erneut auszuführen. Dadurch wird die exponentielle Laufzeit der naiven Fibonacci-Berechnung drastisch reduziert, da die vielen wiederholten rekursiven Aufrufe (z. B. `fib(n-2)` mehrfach) entfallen.\n\n**Ergebnis:** Die Funktion `fib(n)` liefert die n-te Fibonacci-Zahl – jedoch je nach Größe von `n` nur bis zu den letzten 128 unterschiedlichen Argumenten ohne Neuberechnung. Für z. B. `fib(10)` wird `55` ausgegeben, und zwar sehr viel schneller als ohne Cache.\n<|end|>"
+      },
+      {
+        "reason": "python_syntax_error",
+        "source": "data\\training\\sft_clean_de_v1\\train.helix.jsonl",
+        "index": 828,
+        "lang": "python",
+        "category": "code_explain",
+        "origin": "//BITBASTION/Auralis/AuralisV2/raw/sft/synth/outputs/phase3_sft_final.jsonl",
+        "filename": "",
+        "chars": 1233,
+        "preview": "<|system|>\nDu bist Auralis, ein hilfreicher KI-Assistent. Antworte auf Deutsch.\n<|end|>\n<|user|>\nErkläre kurz die Wirkung: `@functools.singledispatch\ndef serialize(obj):\n    raise TypeError`\n<|end|>\n<|assistant|>\nDieser Code definiert mit `@functools.singledispatch` eine **generische Funktion** namens `serialize`.\nStandardmäßig (für nicht registrierte Typen) wird `TypeError` ausgelöst.\n\n**Wirkung:**\n- `serialize` kann später für verschiedene Datentypen spezialisiert werden, indem man `serialize.register(Typ)` als Dekorator nutzt.\n- Beim Aufruf `serialize(obj)` wählt Python automatisch die passende spezialisierte Implementierung basierend auf dem Typ des ersten Arguments (`obj`) aus.\n- Ist für den konkreten Typ *kein* Handler registriert, wird die Basisimplementierung ausgeführt – in diesem Fall ein `TypeError`.\n\n**Konkretes Ergebnis:**\n- Es entsteht eine **typspezifische Dispatch-Funktion** für Serialisierung.\n- Ohne weitere Registrierungen führt **jeder** Aufruf (egal mit welchem Argument) zu einem `TypeError`, weil die Basisfunktion immer den Fehler wirft.\n- Erst nach Registrierung von Typ-Handlern (z. B. `serialize.register(int)(lambda x: str(x))`) funktioniert `serialize` für d\n...[truncated]"
+      },
+      {
+        "reason": "python_syntax_error",
+        "source": "data\\training\\sft_clean_de_v1\\train.helix.jsonl",
+        "index": 837,
+        "lang": "python",
+        "category": "code_explain",
+        "origin": "//BITBASTION/Auralis/AuralisV2/raw/sft/synth/outputs/phase3_sft_final.jsonl",
+        "filename": "",
+        "chars": 2196,
+        "preview": "<|system|>\nDu bist Auralis, ein hilfreicher KI-Assistent. Antworte auf Deutsch.\n<|end|>\n<|user|>\nErkläre einem Python-Anfänger was hier passiert: `@functools.lru_cache(maxsize=128)\ndef fib(n): return n if n < 2 else fib(n-1) + fib(n-2)`\n<|end|>\n<|assistant|>\nDer Code definiert eine Funktion zur Berechnung der Fibonacci-Zahlen und verwendet einen Dekorator, der die Berechnung erheblich beschleunigt. Hier die schrittweise Erklärung:\n\n1. **Der Dekorator `@functools.lru_cache(maxsize=128)`**\n   `@` bedeutet, dass die darauffolgende Dekorator-Funktion auf die unten definierte Funktion angewandt wird.\n   `functools.lru_cache` ist ein Werkzeug aus der Modul-Bibliothek `functools`. Es erzeugt einen sogenannten **Zwischenspeicher** (Cache) für Funktionsergebnisse.\n   `maxsize=128` gibt an, dass maximal 128 verschiedene Ergebnisse zwischengespeichert werden. Ist der Speicher voll, wird das am längsten nicht mehr verwendete Ergebnis verworfen („least recently used“-Prinzip).\n\n2. **Die Funktion `def fib(n):`**\n   Sie erwartet einen Parameter `n` (eine nicht-negative ganze Zahl) und liefert die n-te Fibonacci-Zahl zurück.\n\n3. **Die Logik `return n if n < 2 else fib(n-1) + fib(n-2)`**\n   - Falls\n...[truncated]"
+      },
+      {
+        "reason": "python_syntax_error",
+        "source": "data\\training\\sft_clean_de_v1\\train.helix.jsonl",
+        "index": 906,
+        "lang": "python",
+        "category": "code_explain",
+        "origin": "//BITBASTION/Auralis/AuralisV2/raw/sft/synth/outputs/phase3_sft_final.jsonl",
+        "filename": "",
+        "chars": 2484,
+        "preview": "<|system|>\nDu bist Auralis, ein hilfreicher KI-Assistent. Antworte auf Deutsch.\n<|end|>\n<|user|>\nBeschreibe was dieser Code tut und welche Edge-Cases zu beachten sind: `class Counter:\n    def __init__(self): self._n = 0\n    def __call__(self): self._n += 1; return self._n`\n<|end|>\n<|assistant|>\nDieser Code definiert eine Klasse `Counter`, die als aufrufbarer Zähler fungiert.\n\n**Schrittweise Erklärung:**\n\n1. `class Counter:` – Eine neue Klasse wird erzeugt.\n2. `def __init__(self): self._n = 0` – Der Konstruktor initialisiert die Instanzvariable `_n` auf 0.\n3. `def __call__(self): self._n += 1; return self._n` – Die `__call__`-Methode macht die Instanz wie eine Funktion aufrufbar. Bei jedem Aufruf:\n   - `self._n` wird um 1 erhöht.\n   - Der neue Wert von `_n` wird zurückgegeben.\n\n**Verhalten:**\n- Erstelle ein Objekt: `c = Counter()`\n- Jeder Aufruf `c()` inkrementiert den internen Zähler und gibt den aktuellen Wert zurück.\n- Der erste Aufruf gibt `1` zurück, der zweite `2`, usw.\n\n---\n\n**Edge-Cases (Grenzfälle / Besonderheiten):**\n\n| Edge-Case | Beschreibung |\n|-----------|--------------|\n| **Thread-Sicherheit** | Ohne Synchronisation (z. B. Lock) kann es bei gleichzeitigen Aufrufen aus\n...[truncated]"
+      }
+    ],
+    "log_or_traceback": [
+      {
+        "reason": "log_or_traceback",
+        "source": "data\\training\\sft_clean_de_v1\\train.helix.jsonl",
+        "index": 967,
+        "lang": "unknown",
+        "category": "code_explain",
+        "origin": "//BITBASTION/Auralis/AuralisV2/raw/sft/synth/outputs/phase3_sft_final.jsonl",
+        "filename": "",
+        "chars": 1158,
+        "preview": "<|system|>\nDu bist Auralis, ein hilfreicher KI-Assistent. Antworte auf Deutsch.\n<|end|>\n<|user|>\nWas ist die Ausgabe und warum: `try:\n    risky()\nexcept (TypeError, ValueError) as e:\n    log.error('failed: %s', e)`\n<|end|>\n<|assistant|>\nDer Code versucht, die Funktion `risky()` auszuführen und fängt dabei nur `TypeError`- oder `ValueError`-Ausnahmen.\n\n- Der `try`-Block führt `risky()` aus.\n- Wenn `risky()` eine `TypeError` oder `ValueError` wirft, springt das Programm in den `except`-Block.\n- Dort wird die Ausnahme als `e` gebunden und mittels `log.error()` eine Fehlermeldung ausgegeben – der Platzhalter `%s` wird durch die textuelle Repräsentation von `e` ersetzt.\n- Wirft `risky()` eine andere Ausnahme (z. B. `RuntimeError`), wird sie nicht abgefangen und das Programm bricht ab.\n\n**Konkretes Ergebnis (angenommen, `risky()` wirft z. B. `ValueError(\"invalid input\")` und der Logger ist standardmäßig konfiguriert):**\nAuf der Konsole erscheint eine Meldung wie\n`ERROR:root:failed: invalid input`\n(Das genaue Format hängt von der Logger-Konfiguration ab, meistens auf stderr).\nWirft `risky()` keine passende Ausnahme, gibt es keine Ausgabe.\n<|end|>"
+      }
+    ],
+    "long_line_dense": [
+      {
+        "reason": "long_line_dense",
+        "source": "data\\training\\sft_clean_de_v1\\train.helix.jsonl",
+        "index": 1554,
+        "lang": "unknown",
+        "category": "code_explain",
+        "origin": "//BITBASTION/Auralis/AuralisV2/raw/sft/synth/outputs/phase3_sft_final.jsonl",
+        "filename": "",
+        "chars": 1358,
+        "preview": "<|system|>\nDu bist Auralis, ein hilfreicher KI-Assistent. Antworte auf Deutsch.\n<|end|>\n<|user|>\nErkläre Schritt für Schritt was dieser Python-Code macht: `max((p for p in people if p.age >= 18), key=lambda p: p.income)`\n<|end|>\n<|assistant|>\nZuerst wird mit `(p for p in people if p.age >= 18)` ein Generator erstellt, der alle Personen aus `people` durchgeht und nur diejenigen behält, deren `age` größer oder gleich 18 ist. Dieser Generator liefert also nacheinander jede volljährige Person.\n\nDann wird `max()` auf diesen Generator angewandt. Normalerweise sucht `max` das größte Element einer Sequenz, aber hier wird mit `key=lambda p: p.income` eine Schlüsselfunktion übergeben. Statt die Personen direkt zu vergleichen, wird ihr `income`-Attribut zum Vergleich herangezogen.\n\nDie Lambda-Funktion `lambda p: p.income` nimmt eine Person `p` und gibt deren Einkommen zurück. `max` sucht nun die Person mit dem höchsten Einkommen unter den zuvor gefilterten (volljährigen) Personen.\n\n**Ergebnis:** Der Code liefert die Person (bzw. das Objekt) aus `people`, die mindestens 18 Jahre alt ist und das höchste Einkommen besitzt. Falls mehrere Personen das gleiche Höchsteinkommen haben, wird die erste \n...[truncated]"
+      },
+      {
+        "reason": "long_line_dense",
+        "source": "data\\training\\sft_clean_de_v1\\train.helix.jsonl",
+        "index": 1582,
+        "lang": "unknown",
+        "category": "code_explain",
+        "origin": "//BITBASTION/Auralis/AuralisV2/raw/sft/synth/outputs/phase3_sft_final.jsonl",
+        "filename": "",
+        "chars": 1535,
+        "preview": "<|system|>\nDu bist Auralis, ein hilfreicher KI-Assistent. Antworte auf Deutsch.\n<|end|>\n<|user|>\nErkläre Schritt für Schritt was dieser Python-Code macht: `(x - x.mean(0)) / x.std(0)`\n<|end|>\n<|assistant|>\n**Schritt 1:** `x.mean(0)` berechnet den Mittelwert von `x` entlang der Achse 0. Ist `x` eine Matrix (2D) mit Zeilen und Spalten, wird für jede Spalte der Durchschnitt aller Zeilen gebildet. Das Ergebnis ist ein eindimensionales Array mit den Spaltenmittelwerten.\n\n**Schritt 2:** `x - x.mean(0)` subtrahiert diese Spaltenmittelwerte von jeder entsprechenden Spalte in `x`. Dadurch wird jede Spalte zentriert, ihr Mittelwert wird zu 0. (Broadcasting wird verwendet, da die Formen nicht exakt übereinstimmen.)\n\n**Schritt 3:** `x.std(0)` berechnet die Standardabweichung von `x` entlang der Achse 0. Auch hier erhält man für jede Spalte einen Wert, der die Streuung der Daten in dieser Spalte angibt.\n\n**Schritt 4:** Die Division `(x - x.mean(0)) / x.std(0)` teilt die zentrierte Matrix durch die Standardabweichung jeder Spalte. Dadurch wird die Streuung der Daten in jeder Spalte auf 1 normiert – jede Spalte hat nun einen Mittelwert von 0 und eine Standardabweichung von 1.\n\n**Ergebnis:** Der g\n...[truncated]"
+      },
+      {
+        "reason": "long_line_dense",
+        "source": "data\\training\\sft_clean_de_v1\\train.helix.jsonl",
+        "index": 5553,
+        "lang": "unknown",
+        "category": "code_explain",
+        "origin": "//BITBASTION/Auralis/AuralisV2/raw/sft/synth/outputs/phase3_sft_final.jsonl",
+        "filename": "",
+        "chars": 1657,
+        "preview": "<|system|>\nDu bist Auralis, ein hilfreicher KI-Assistent. Antworte auf Deutsch.\n<|end|>\n<|user|>\nErkläre einem Python-Anfänger was hier passiert: `Path(__file__).resolve().parent.parent / 'data'`\n<|end|>\n<|assistant|>\nZuerst wird `Path(__file__)` verwendet. `Path` kommt aus dem Modul `pathlib` und erzeugt ein Objekt, das einen Dateipfad repräsentiert. `__file__` ist eine vordefinierte Variable in Python, die den Pfad zur aktuell ausgeführten Skriptdatei enthält. Aus diesem Pfad wird ein Path-Objekt erstellt.\n\nDann wird `.resolve()` aufgerufen. Diese Methode wandelt den Pfad in einen absoluten Pfad um, löst also relative Teile wie `..` auf und folgt eventuellen symbolischen Links. So erhältst du einen eindeutigen, vollständigen Pfad zur aktuellen Datei.\n\nJetzt kommt `.parent` – das ist die Eigenschaft, die das übergeordnete Verzeichnis eines Pfades zurückgibt. Du verwendest es zweimal: `.parent.parent` geht damit zwei Verzeichnisebenen nach oben. Wenn dein Skript also zum Beispiel in `/home/user/projekt/ordner/script.py` liegt, landest du nach zwei `.parent` bei `/home/user/projekt`.\n\nSchließlich wird mit `/ 'data'` ein weiterer Pfad angehängt. Der Schrägstrich `/` ist in `pathlib` \n...[truncated]"
+      },
+      {
+        "reason": "long_line_dense",
+        "source": "data\\training\\sft_clean_de_v1\\train.helix.jsonl",
+        "index": 8893,
+        "lang": "python",
+        "category": "code_explain",
+        "origin": "//BITBASTION/Auralis/AuralisV2/raw/sft/synth/outputs/phase3_sft_final.jsonl",
+        "filename": "",
+        "chars": 3677,
+        "preview": "<|system|>\nDu bist Auralis, ein hilfreicher KI-Assistent. Antworte auf Deutsch.\n<|end|>\n<|user|>\nBeschreibe was dieser Code tut und welche Edge-Cases zu beachten sind: `@functools.lru_cache(maxsize=128)\ndef fib(n): return n if n < 2 else fib(n-1) + fib(n-2)`\n<|end|>\n<|assistant|>\nDer Code definiert eine Funktion `fib`, die die n-te Fibonacci-Zahl rekursiv berechnet. Der Dekorator `@functools.lru_cache(maxsize=128)` speichert die Ergebnisse der letzten 128 Aufrufe zwischen (LRU = Least Recently Used). Dadurch wird die exponentielle Laufzeit der naiven Rekursion auf lineare Laufzeit reduziert (Memoisation).\n\n**Schrittweise Erklärung:**\n\n1. `@functools.lru_cache(maxsize=128)` wendet den LRU-Cache-Dekorator an. Die Funktion `fib` wird durch eine Version ersetzt, die Rückgabewerte speichert. Maximal 128 unterschiedliche Aufrufergebnisse werden behalten; bei Überschreitung wird das am längsten nicht genutzte entfernt.\n\n2. `def fib(n):` definiert die Fibonacci-Funktion mit Parameter `n`.\n\n3. `return n if n < 2 else fib(n-1) + fib(n-2)` – Basisfall: Wenn `n < 2` (also 0 oder 1), wird n selbst zurückgegeben (Fibonacci(0)=0, Fibonacci(1)=1). Sonst rekursiver Aufruf: `fib(n-1) + fib(n-2)`.\n\n*\n...[truncated]"
+      },
+      {
+        "reason": "long_line_dense",
+        "source": "data\\training\\sft_clean_de_v1\\train.helix.jsonl",
+        "index": 9220,
+        "lang": "unknown",
+        "category": "code_explain",
+        "origin": "//BITBASTION/Auralis/AuralisV2/raw/sft/synth/outputs/phase3_sft_final.jsonl",
+        "filename": "",
+        "chars": 3322,
+        "preview": "<|system|>\nDu bist Auralis, ein hilfreicher KI-Assistent. Antworte auf Deutsch.\n<|end|>\n<|user|>\nBeschreibe was dieser Code tut und welche Edge-Cases zu beachten sind: `(x - x.mean(0)) / x.std(0)`\n<|end|>\n<|assistant|>\nDer Code `(x - x.mean(0)) / x.std(0)` führt eine **Standardisierung** (Z‑Normalisierung) eines Arrays oder Tensors `x` entlang der **ersten Achse** (Achse 0, also zeilenweise) durch.\n\n**Schrittweise Erklärung:**\n- `x.mean(0)` berechnet den Mittelwert jeder Spalte (d.h. entlang der Zeilen). Der Rückgabewert hat die Form (1, n) oder (n,) für ein 2D‑Array.\n- `x - x.mean(0)` subtrahiert spaltenweise den Mittelwert: jede Spalte wird um ihren eigenen Mittelwert zentriert. (Broadcasting passt die Form automatisch an.)\n- `x.std(0)` berechnet die Standardabweichung jeder Spalte (wieder entlang der Zeilen). Liefert einen Vektor gleicher Länge wie `x.mean(0)`.\n- Die Division `/ x.std(0)` teilt jede Spalte durch ihre Standardabweichung. Dadurch erhält man standardisierte Werte mit **spaltenweise Mittelwert ≈ 0** und **Standardabweichung ≈ 1** (theoretisch genau, sofern `std(0)` die korrekte Streuung liefert; bei `numpy` wird standardmäßig die Stichprobenstandardabweichung verwen\n...[truncated]"
+      }
+    ]
+  }
+}

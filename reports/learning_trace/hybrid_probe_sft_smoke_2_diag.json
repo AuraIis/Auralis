@@ -1,0 +1,30 @@
+{
+  "checkpoint": "checkpoints/sft_response_fix_de_v8_stable_from_v6_40_20/sft_smoke_step_20.pt",
+  "train": "data/training/sft_response_fix_de_v8_stable_mix/core_train.helix.jsonl",
+  "val": "data/training/sft_response_fix_de_v8_stable_mix/val.helix.jsonl",
+  "train_examples": 64,
+  "val_examples": 24,
+  "probe_pairs": 36,
+  "steps": 2,
+  "losses": [
+    {
+      "step": 1,
+      "total": 0.433224806189537,
+      "sft": 0.14123795926570892,
+      "probe": 1.9465789794921875,
+      "probe_target_nll": 1.3214129209518433,
+      "probe_contrastive": 0.7814576029777527,
+      "lr": 6.666666666666667e-09
+    },
+    {
+      "step": 2,
+      "total": 0.5047004133462906,
+      "sft": 0.21099044382572174,
+      "probe": 1.958066463470459,
+      "probe_target_nll": 1.3292107582092285,
+      "probe_contrastive": 0.7860695719718933,
+      "lr": 1e-08
+    }
+  ],
+  "saved_checkpoint": "checkpoints/hybrid_probe_sft_smoke_2/hybrid_probe_sft_step_2.pt"
+}

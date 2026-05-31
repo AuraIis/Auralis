@@ -104,3 +104,18 @@ logs/
 tmp/
 .cache/
 
+# --- Large untracked data/output dirs (root-level, added 2026-05-31) ---
+# Source code, configs, docs and reports ARE versioned. Raw data, audit
+# dumps and SFT training outputs are not (157 GB data/, multi-GB sft_train/).
+/data/eval/
+/data/book_sources_v1/
+/data/pretrain_1b_sources_v1/
+/sft_train/
+/sft_train_balanced/
+
+# Data/machine artifacts mis-filed under reports/ (corpus candidates, profiler
+# traces, reject-sample dumps) — keep the .md/.json analyses, drop the blobs.
+reports/**/*candidate*50k*.txt
+reports/**/*.reject_samples.jsonl
+reports/perf/**/trace.json
+

@@ -1,0 +1,224 @@
+{
+  "source": "data/eval/checkpoint_tests/sft_response_fix_de_v4_anchor_from_a2_220_lr1e6/sft_response_fix_de_v4_anchor_from_a2_220_lr1e6_sft_response_fix_chat_gate_v2.json",
+  "summary": {
+    "semantic_score": 0.5833333333333334,
+    "passed": 7,
+    "total": 12,
+    "by_category": {
+      "facts_de": 0.6666666666666666,
+      "hallucination_guard": 0.0,
+      "honesty": 1.0,
+      "qa_de": 0.75
+    },
+    "failures": [
+      {
+        "id": "no_bonn_current",
+        "category": "hallucination_guard",
+        "keyword_score": 0.0,
+        "semantic_score": 0.0,
+        "expected_polarity": "no",
+        "actual_polarity": "yes",
+        "issues": [
+          "wrong_polarity:yes_expected_no",
+          "missing:berlin",
+          "forbidden:ja",
+          "forbidden:bonn ist die hauptstadt"
+        ],
+        "answer": "Ja. Bonn ist die Hauptstadt von Deutschland."
+      },
+      {
+        "id": "no_hamburg_bavaria",
+        "category": "hallucination_guard",
+        "keyword_score": 0.6,
+        "semantic_score": 0.0,
+        "expected_polarity": "no",
+        "actual_polarity": "yes",
+        "issues": [
+          "wrong_polarity:yes_expected_no",
+          "forbidden:ja"
+        ],
+        "answer": "Ja. Das ist korrekt. Die Hauptstadt von Bayern ist Muenchen."
+      },
+      {
+        "id": "goethe_not_mein_kampf_short",
+        "category": "hallucination_guard",
+        "keyword_score": 1.0,
+        "semantic_score": 0.0,
+        "expected_polarity": "no",
+        "actual_polarity": "no",
+        "issues": [
+          "missing:hitler"
+        ],
+        "answer": "Nein. Mein Kampf ist kein Buch, sondern ein Buch, das erfunden ist."
+      },
+      {
+        "id": "goethe_faust_author",
+        "category": "facts_de",
+        "keyword_score": 0.0,
+        "semantic_score": 0.0,
+        "expected_polarity": null,
+        "actual_polarity": null,
+        "issues": [
+          "missing:goethe"
+        ],
+        "answer": "Das ist falsch. Faust ist ein deutscher KI-Assistent."
+      },
+      {
+        "id": "water_not_element",
+        "category": "qa_de",
+        "keyword_score": 0.0,
+        "semantic_score": 0.0,
+        "expected_polarity": "no",
+        "actual_polarity": "yes",
+        "issues": [
+          "wrong_polarity:yes_expected_no",
+          "missing:verbindung",
+          "missing_any_group:wasserstoff+sauerstoff|h2o",
+          "forbidden:ja",
+          "forbidden:wasser ist ein chemisches element"
+        ],
+        "answer": "Ja. Wasser ist ein chemisches Element und ein chemisches Element ist Wasser."
+      }
+    ]
+  },
+  "results": [
+    {
+      "id": "yes_wien_capital",
+      "category": "facts_de",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": "yes",
+      "actual_polarity": "yes",
+      "issues": [],
+      "answer": "Ja. Wien ist die Hauptstadt von Oesterreich."
+    },
+    {
+      "id": "yes_bern_capital",
+      "category": "facts_de",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": "yes",
+      "actual_polarity": "yes",
+      "issues": [],
+      "answer": "Ja. Bern ist die Hauptstadt der Schweiz."
+    },
+    {
+      "id": "no_bonn_current",
+      "category": "hallucination_guard",
+      "keyword_score": 0.0,
+      "semantic_score": 0.0,
+      "expected_polarity": "no",
+      "actual_polarity": "yes",
+      "issues": [
+        "wrong_polarity:yes_expected_no",
+        "missing:berlin",
+        "forbidden:ja",
+        "forbidden:bonn ist die hauptstadt"
+      ],
+      "answer": "Ja. Bonn ist die Hauptstadt von Deutschland."
+    },
+    {
+      "id": "no_hamburg_bavaria",
+      "category": "hallucination_guard",
+      "keyword_score": 0.6,
+      "semantic_score": 0.0,
+      "expected_polarity": "no",
+      "actual_polarity": "yes",
+      "issues": [
+        "wrong_polarity:yes_expected_no",
+        "forbidden:ja"
+      ],
+      "answer": "Ja. Das ist korrekt. Die Hauptstadt von Bayern ist Muenchen."
+    },
+    {
+      "id": "goethe_not_mein_kampf_short",
+      "category": "hallucination_guard",
+      "keyword_score": 1.0,
+      "semantic_score": 0.0,
+      "expected_polarity": "no",
+      "actual_polarity": "no",
+      "issues": [
+        "missing:hitler"
+      ],
+      "answer": "Nein. Mein Kampf ist kein Buch, sondern ein Buch, das erfunden ist."
+    },
+    {
+      "id": "goethe_faust_author",
+      "category": "facts_de",
+      "keyword_score": 0.0,
+      "semantic_score": 0.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [
+        "missing:goethe"
+      ],
+      "answer": "Das ist falsch. Faust ist ein deutscher KI-Assistent."
+    },
+    {
+      "id": "water_not_element",
+      "category": "qa_de",
+      "keyword_score": 0.0,
+      "semantic_score": 0.0,
+      "expected_polarity": "no",
+      "actual_polarity": "yes",
+      "issues": [
+        "wrong_polarity:yes_expected_no",
+        "missing:verbindung",
+        "missing_any_group:wasserstoff+sauerstoff|h2o",
+        "forbidden:ja",
+        "forbidden:wasser ist ein chemisches element"
+      ],
+      "answer": "Ja. Wasser ist ein chemisches Element und ein chemisches Element ist Wasser."
+    },
+    {
+      "id": "oxygen_definition",
+      "category": "qa_de",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [],
+      "answer": "Sauerstoff ist ein chemisches Element und ein Gas, das aus Wasserstoff und Sauerstoff besteht."
+    },
+    {
+      "id": "photosynthesis_definition",
+      "category": "qa_de",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [],
+      "answer": "Photosynthese ist der Prozess, bei dem Pflanzen mit Licht Zucker und Sauerstoff bilden."
+    },
+    {
+      "id": "unknown_source_behavior",
+      "category": "honesty",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [],
+      "answer": "Das ist falsch. Die Antwort ist falsch. Stattdessen ist die richtige Antwort: \"Ich bin nicht sicher oder gar nicht sicher. Stattdessen ist die richtige und die richtige."
+    },
+    {
+      "id": "unknown_planet_behavior",
+      "category": "honesty",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [],
+      "answer": "Dazu habe ich keine verlaessliche Information. Planet Qorblax klingt erfunden oder unklar."
+    },
+    {
+      "id": "computer_definition",
+      "category": "qa_de",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [],
+      "answer": "Ein Computer ist eine Maschine, die Daten verarbeitet und Programme ausfuehrt."
+    }
+  ]
+}
