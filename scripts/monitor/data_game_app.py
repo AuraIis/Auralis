@@ -520,6 +520,11 @@ INDEX_HTML = r"""<!doctype html>
       border-color: rgba(126,183,255,.58);
       background: rgba(126,183,255,.18);
     }
+    .ranksel {
+      border-color: rgba(80,215,208,.85) !important;
+      background: rgba(80,215,208,.28) !important;
+      color: #eafffb;
+    }
     label {
       display: grid;
       gap: 6px;
@@ -721,6 +726,7 @@ let current = null;
 let selectedScore = null;
 let selectedLabel = null;
 let tags = new Set();
+let selectedRank = null;
 
 function $(id) { return document.getElementById(id); }
 
@@ -748,8 +754,11 @@ function renderTags() {
 function resetInputs() {
   selectedScore = null;
   selectedLabel = null;
+  selectedRank = null;
   tags = new Set();
   for (const el of document.querySelectorAll(".score button")) el.classList.remove("active");
+  $("rankA").classList.remove("ranksel");
+  $("rankB").classList.remove("ranksel");
   $("question").value = "";
   $("answer").value = "";
   $("wrongAnswer").value = "";
@@ -815,6 +824,21 @@ async function submit(extra={}) {
   if (!current || current.empty || submitting) return;   // re-entrancy guard: no double-save / key-autorepeat race
   submitting = true;
   try {
+    if (mode === "quality" && selectedScore === null) {
+      setStatus("Erst eine Bewertung 0-5 waehlen (dann Tags / Notiz / Bessere Version, dann Speichern).", true);
+      return;
+    }
+    if (mode === "rank" && !selectedRank && !extra.rank_choice) {
+      setStatus("Erst A oder B waehlen, dann Speichern.", true);
+      return;
+    }
+    if (mode === "rank") {
+      extra = {
+        rank_choice: extra.rank_choice || selectedRank,
+        other_doc_hash: current.other ? current.other.doc_hash : null,
+        ...extra,
+      };
+    }
     const payload = {
       task_id: current.task_id,
       mode,
@@ -872,22 +896,30 @@ document.querySelectorAll(".modebar button").forEach(btn => {
 });
 
 document.querySelectorAll(".score button").forEach(btn => {
-  btn.onclick = async () => {
+  btn.onclick = () => {
+    // Select only — do NOT auto-save, so Tags / Notiz / Bessere Version can be
+    // added first. Save explicitly via the button or Ctrl+Enter.
     selectedScore = Number(btn.dataset.score);
     selectedLabel = btn.dataset.label;
     document.querySelectorAll(".score button").forEach(b => b.classList.toggle("active", b === btn));
     if (selectedScore <= 1) tags.add("drop");
     if (selectedScore >= 4) tags.add("keep");
     renderTags();
-    await submit();
+    setStatus(`Bewertung ${selectedScore} gewaehlt — ergaenze Tags / Notiz / Bessere Version, dann Speichern (Ctrl+Enter).`);
   };
 });
 
 $("save").onclick = () => submit();
 $("skip").onclick = skip;
 $("reload").onclick = reloadQueue;
-$("rankA").onclick = () => submit({ rank_choice: "A", other_doc_hash: current?.other?.doc_hash || null });
-$("rankB").onclick = () => submit({ rank_choice: "B", other_doc_hash: current?.other?.doc_hash || null });
+function selectRank(choice) {
+  selectedRank = choice;
+  $("rankA").classList.toggle("ranksel", choice === "A");
+  $("rankB").classList.toggle("ranksel", choice === "B");
+  setStatus(`${choice} gewaehlt — optional Notiz, dann Speichern (Ctrl+Enter).`);
+}
+$("rankA").onclick = () => selectRank("A");
+$("rankB").onclick = () => selectRank("B");
 
 document.addEventListener("keydown", (e) => {
   if (e.ctrlKey && e.key === "Enter") { e.preventDefault(); submit(); return; }
