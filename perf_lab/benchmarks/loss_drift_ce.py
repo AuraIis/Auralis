@@ -79,12 +79,48 @@ def make_batch(
     return x, labels
 
 
-def reference_ce(hidden: torch.Tensor, weight: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
+def reference_ce(hidden: torch.Tensor, weight: torch.Tensor, labels: torch.Tensor,
+                 fp32: bool = False) -> torch.Tensor:
+    if fp32:
+        # fp32 "ground-truth" reference: upcast logits + CE to full precision so a
+        # candidate can be measured against the true answer. Paired with
+        # `--impl pytorch` this separates real kernel error from the inherent
+        # bf16 noise floor (PyTorch-bf16-CE vs PyTorch-fp32-CE).
+        logits = F.linear(hidden.float(), weight.float())
+        return F.cross_entropy(logits, labels, ignore_index=-100)
     logits = F.linear(hidden, weight)
     return F.cross_entropy(logits, labels, ignore_index=-100)
 
 
+def accumulation_stats(values: list[float]) -> dict[str, float | int | None]:
+    """Does a drift series accumulate over steps, or stay flat (just noise)?
+
+    Returns the linear-fit slope per step plus the late/early mean ratio. A
+    promotable candidate should have slope ~0 and late_over_early ~1: the drift
+    behaves like fixed bf16/reduction-order noise, not a growing systematic bias.
+    """
+    n = len(values)
+    if n < 4:
+        return {"n": n, "slope_per_step": None, "early_mean": None,
+                "late_mean": None, "late_over_early": None}
+    xs = list(range(n))
+    mx = sum(xs) / n
+    my = sum(values) / n
+    den = sum((x - mx) ** 2 for x in xs) or 1.0
+    slope = sum((x - mx) * (y - my) for x, y in zip(xs, values)) / den
+    k = max(1, n // 5)
+    early = sum(values[:k]) / k
+    late = sum(values[-k:]) / k
+    return {"n": n, "slope_per_step": slope, "early_mean": early,
+            "late_mean": late, "late_over_early": (late / early if early > 0 else None)}
+
+
 def make_candidate_loss(args: argparse.Namespace) -> Callable[[torch.Tensor, torch.Tensor, torch.Tensor], torch.Tensor]:
+    if args.impl == "pytorch":
+        # PyTorch full-logits CE in the run dtype. Paired with --reference-fp32
+        # this run measures the inherent bf16-vs-fp32 noise floor — the bar a
+        # custom kernel must reach to count as "no extra drift".
+        return lambda hidden, weight, labels: reference_ce(hidden, weight, labels, fp32=False)
     if args.impl in {"auto", "cpp", "python"}:
         return lambda hidden, weight, labels: chunked_linear_cross_entropy(
             hidden,
@@ -162,7 +198,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--weight-scale", type=float, default=0.05)
     parser.add_argument("--ignore-frac", type=float, default=0.0)
     parser.add_argument("--fixed-batch", action="store_true")
-    parser.add_argument("--impl", choices=["auto", "cpp", "python", "triton", "triton_fused"], default="triton_fused")
+    parser.add_argument("--impl", choices=["pytorch", "auto", "cpp", "python", "triton", "triton_fused"], default="triton_fused")
     parser.add_argument("--chunk-size", type=int, default=8192)
     parser.add_argument("--block-m", type=int, default=32)
     parser.add_argument("--block-v", type=int, default=32)
@@ -187,6 +223,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--fail-loss-abs", type=float, default=None)
     parser.add_argument("--fail-param-rel", type=float, default=None)
     parser.add_argument("--fail-param-l2-rel", type=float, default=None)
+    parser.add_argument("--fail-grad-l2-rel", type=float, default=None,
+                        help="Fail if max upstream-gradient (proj/head) L2-rel drift exceeds this. "
+                             "This is the metric that actually decides promotability.")
+    parser.add_argument("--reference-fp32", action="store_true",
+                        help="Compute the reference loss/grad in fp32 (ground truth) instead of the "
+                             "run dtype. With --impl pytorch this measures the bf16 noise floor.")
     return parser.parse_args()
 
 
@@ -243,6 +285,11 @@ def main() -> None:
     }
 
     final_step: dict[str, float | int | bool] = {}
+    # Per-step drift series (every step, independent of --history-every) so we can
+    # tell accumulating bias from flat noise.
+    series: dict[str, list[float]] = {
+        "proj_grad_l2_rel": [], "head_grad_l2_rel": [], "loss_abs": [],
+    }
     for step_idx in range(1, args.steps + 1):
         x, labels = make_batch(
             step=step_idx,
@@ -262,7 +309,7 @@ def main() -> None:
 
         hidden_ref = x.matmul(proj.ref)
         hidden_cand = x.matmul(proj.cand)
-        loss_ref = reference_ce(hidden_ref, head.ref, labels)
+        loss_ref = reference_ce(hidden_ref, head.ref, labels, fp32=args.reference_fp32)
         loss_cand = candidate_ce(hidden_cand, head.cand, labels)
         loss_ref.backward()
         loss_cand.backward()
@@ -298,6 +345,8 @@ def main() -> None:
         final_step = current
         for key in max_metrics:
             max_metrics[key] = max(max_metrics[key], float(current[key]))
+        for key in series:
+            series[key].append(float(current[key]))
         if args.history_every > 0 and (step_idx == 1 or step_idx == args.steps or step_idx % args.history_every == 0):
             history.append(current)
         if not current["finite"]:
@@ -326,6 +375,7 @@ def main() -> None:
         "fixed_batch": bool(args.fixed_batch),
         "ignore_frac": args.ignore_frac,
         "max_metrics": max_metrics,
+        "accumulation": {k: accumulation_stats(v) for k, v in series.items()},
         "final_step": final_step,
         "history": history,
     }
@@ -346,6 +396,10 @@ def main() -> None:
     if args.fail_param_l2_rel is not None and max_param_l2_rel > args.fail_param_l2_rel:
         failed = True
         failure_reasons.append(f"param_l2_rel {max_param_l2_rel:.6g} > {args.fail_param_l2_rel:.6g}")
+    max_grad_l2_rel = max(max_metrics["proj_grad_l2_rel"], max_metrics["head_grad_l2_rel"])
+    if args.fail_grad_l2_rel is not None and max_grad_l2_rel > args.fail_grad_l2_rel:
+        failed = True
+        failure_reasons.append(f"grad_l2_rel {max_grad_l2_rel:.6g} > {args.fail_grad_l2_rel:.6g}")
     result["failed"] = failed
     result["failure_reasons"] = failure_reasons
 
