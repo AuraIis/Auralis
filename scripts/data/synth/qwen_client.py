@@ -38,7 +38,8 @@ class GenRequest:
     max_tokens: int = 1024
     temperature: float = 0.7
     top_p: float = 0.95
-    extra: dict = field(default_factory=dict)   # arbitrary metadata to round-trip
+    extra: dict = field(default_factory=dict)        # arbitrary metadata to round-trip
+    extra_body: dict = field(default_factory=dict)   # extra request fields (e.g. reasoning_effort)
 
 
 @dataclass
@@ -93,6 +94,8 @@ class QwenClient:
             "top_p": req.top_p,
             "stream": False,
         }
+        if req.extra_body:
+            body.update(req.extra_body)
         headers = {
             "Content-Type": "application/json",
             "Authorization": "Bearer " + self.api_key,

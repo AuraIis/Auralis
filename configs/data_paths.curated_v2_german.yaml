@@ -1,0 +1,53 @@
+# v2 German data-paths: edu-filtered German for re-tokenization.
+#
+# Identical to data_paths.curated_container.yaml EXCEPT cleaned.german, which now
+# points at the edu-filtered German (FineWeb-Edu-style, judged by qwen3-235b-2507):
+#   - fineweb2_de.edu.txt    : fineweb2_de filtered at classifier score >= 2.0
+#                              (drops the 0-1 ads/forum/review/fragment junk)
+#   - wikipedia_de.filtered  : kept as-is (~85%+ already high edu value)
+# german_commons is DROPPED entirely (~2% keep rate; mostly EuroParl fragments).
+#
+# Use to re-tokenize ONLY German into tokenized/curated_40b/:
+#   python scripts/data/tokenize_for_pretraining.py \
+#     --data-config configs/data_paths.curated_v2_german.yaml \
+#     --tokenizer tokenizer/helix_v2_tokenizer.model \
+#     --output-subdir curated_40b --languages german --force
+# (back up the old german.{bin,idx,bin.manifest.json} first as a rollback anchor)
+
+data_root: "/workspace/v2data"
+
+raw:
+  english: "raw/english"
+  german:  "raw/german"
+  code:    "raw/code"
+  sft:     "raw/sft"
+  orpo:    "raw/orpo"
+
+cleaned:
+  english:
+    - "training/curated_40b/english.txt"
+  german:
+    - "cleaned/edu/fineweb2_de.edu.txt"
+    - "cleaned/wikipedia_de.filtered.txt"
+  code:
+    - "training/curated_40b/code.txt"
+
+tokenized:
+  phase1_english: "tokenized/phase1/english.bin"
+  phase1_german:  "tokenized/phase1/german.bin"
+  phase1_code:    "tokenized/phase1/code.bin"
+  curated_english: "tokenized/curated_40b/english.bin"
+  curated_german:  "tokenized/curated_40b/german.bin"
+  curated_code:    "tokenized/curated_40b/code.bin"
+
+v1_data_root: "/workspace/v2data/_no_v1_inside_container"
+
+phase1_targets:
+  english: {}
+  german:  {}
+  code:    {}
+
+filters:
+  english: {min_length: 200, max_length: 100000, fineweb_min_score: 2.5}
+  german:  {min_length: 300, max_length: 100000, max_perplexity: 500, cultural_keep_ratio: 0.05, excluded_subsets: []}
+  code:    {min_length: 50, max_length: 30000, min_stars: 5}
