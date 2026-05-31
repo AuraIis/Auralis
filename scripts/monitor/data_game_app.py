@@ -587,6 +587,8 @@ INDEX_HTML = r"""<!doctype html>
       border-radius: 7px;
       background: rgba(7,12,16,.42);
     }
+    .hk-note { color: var(--muted); font-size: 11px; line-height: 1.45; margin-top: 8px; }
+    .hk-note b { color: var(--text); }
     @media (max-width: 1100px) {
       .app {
         width: calc(100vw - 20px);
@@ -621,9 +623,10 @@ INDEX_HTML = r"""<!doctype html>
       <div class="panel">
         <h3 style="font-size:14px;margin-bottom:10px">Hotkeys</h3>
         <div class="hotkeys">
-          <span>1-6 Rating</span><span>Ctrl+Enter Save</span>
+          <span>1-6 Bewerten</span><span>Ctrl+Enter Speichern</span>
           <span>N Skip</span><span>R Reload</span>
         </div>
+        <div class="hk-note">Tasten <b>1–6 / N / R</b> wirken nur, wenn KEIN Textfeld fokussiert ist (sonst werden sie getippt). <b>Ctrl+Enter</b> speichert immer — auch aus einem Textfeld heraus.</div>
       </div>
     </aside>
 
