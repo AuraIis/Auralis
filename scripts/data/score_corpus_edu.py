@@ -35,6 +35,19 @@ def predict(X: torch.Tensor, w: torch.Tensor) -> torch.Tensor:
     return (Xb @ w).clamp(0, 5)
 
 
+def clip_excerpt(text: str, cap: int) -> tuple[str, bool]:
+    """Cut at a word boundary (not mid-word) and mark it, so the human labeling
+    UI shows a clean excerpt instead of a string that reads as broken. The kept
+    corpus still stores the FULL doc; this only affects the review-pool preview."""
+    if len(text) <= cap:
+        return text, False
+    head = text[:cap]
+    sp = head.rfind(" ")
+    if sp >= cap - 80:   # only back off to the last space if we lose little
+        head = head[:sp]
+    return head.rstrip() + " […]", True
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -97,8 +110,10 @@ def main() -> int:
                 sc_fh.write(json.dumps({"len": len(orig), "score": round(pr, 3)}) + "\n")
             if (review_fh is not None and review_written < args.review_max
                     and r_lo <= pr <= r_hi):
+                excerpt, was_trunc = clip_excerpt(orig, args.max_chars)
                 review_fh.write(json.dumps(
-                    {"text": orig[: args.max_chars], "model_score": round(pr, 3),
+                    {"text": excerpt, "model_score": round(pr, 3),
+                     "truncated": was_trunc, "orig_len": len(orig),
                      "source": args.input.name, "source_line": scored},
                     ensure_ascii=False) + "\n")
                 review_written += 1

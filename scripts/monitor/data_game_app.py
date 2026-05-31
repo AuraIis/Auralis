@@ -42,6 +42,23 @@ def doc_hash(text: str) -> str:
     return hashlib.blake2b(normalize_text(text).encode("utf-8"), digest_size=12).hexdigest()
 
 
+# The edu classifier scores (and the review pool stores) only the first N chars of
+# each doc. Legacy pools were hard-cut at this cap mid-word; detect & clean that.
+POOL_PREVIEW_CHARS = 2000
+
+
+def clean_excerpt(text: str) -> str:
+    """Trim a dangling partial word off a hard-cut preview and mark it as an
+    excerpt, so it reads as 'shortened' rather than broken. No-op if already
+    marked. Only for display — the dedup hash is computed on the raw text."""
+    if text.endswith("[…]"):
+        return text
+    sp = text.rfind(" ")
+    if sp > 0 and sp >= len(text) - 80:
+        text = text[:sp]
+    return text.rstrip() + " […]"
+
+
 def safe_relative(root: Path, path: Path) -> str:
     try:
         return str(path.resolve().relative_to(root.resolve())).replace("\\", "/")
@@ -59,6 +76,7 @@ class DataTask:
     char_count: int
     word_count: int
     model_score: float | None = None   # edu classifier's predicted 0-5 (when reviewing a scored pool)
+    truncated: bool = False            # preview is a word-boundary excerpt of a longer doc
 
 
 class TaskStore:
@@ -132,9 +150,15 @@ class TaskStore:
                     text = normalize_text(str(r.get("text", "")))
                     if not (self.min_chars <= len(text) <= self.max_chars):
                         continue
-                    h = doc_hash(text)
+                    h = doc_hash(text)            # hash on RAW pool text → dedup stays stable
                     if h in self.reviewed_hashes:
                         continue
+                    # Generator marks truncation explicitly; legacy pools are inferred
+                    # from the hard cap. Clean the display text but keep the raw hash.
+                    truncated = bool(r.get("truncated"))
+                    if r.get("truncated") is None and len(text) >= POOL_PREVIEW_CHARS:
+                        truncated = True
+                    display_text = clean_excerpt(text) if (truncated and not text.endswith("[…]")) else text
                     ms = r.get("model_score")
                     src = str(r.get("source") or r.get("source_path") or self.pool.name)
                     ln = int(r.get("source_line", i))
@@ -142,8 +166,9 @@ class TaskStore:
                     rows.append(
                         DataTask(
                             task_id=tid, source_path=src, source_line=ln, doc_hash=h,
-                            text=text, char_count=len(text), word_count=len(text.split()),
+                            text=display_text, char_count=len(text), word_count=len(text.split()),
                             model_score=(float(ms) if ms is not None else None),
+                            truncated=truncated,
                         )
                     )
         except OSError:
@@ -827,7 +852,8 @@ function renderTask(t) {
     return;
   }
   $("meta").textContent = `${t.source_path}:${t.source_line} · ${t.word_count} Woerter · ${t.char_count} Zeichen`
-    + (t.model_score != null ? ` · Modell-Tipp: ${Number(t.model_score).toFixed(1)}` : "");
+    + (t.model_score != null ? ` · Modell-Tipp: ${Number(t.model_score).toFixed(1)}` : "")
+    + (t.truncated ? " · Vorschau (Modell bewertet nur den Anfang; volles Dok bleibt im Training)" : "");
   $("hash").textContent = t.doc_hash;
   $("doc").textContent = t.text;
   if (mode === "rank") {
