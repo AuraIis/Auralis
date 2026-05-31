@@ -672,7 +672,7 @@ INDEX_HTML = r"""<!doctype html>
             <button class="good" data-score="4" data-label="good">4<small>gut</small></button>
             <button class="good" data-score="5" data-label="excellent">5<small>lehrreich</small></button>
           </div>
-          <div class="tagshead">Maengel markieren (was ist faul am Text?)</div>
+          <div class="tagshead">Eigenschaften &amp; Maengel markieren (gespeichert wird der englische Schluessel)</div>
           <div class="tags" id="tags"></div>
           <label style="margin-top:10px">Bessere Version (optional)
             <textarea id="rewrite" placeholder="Nur wenn der Inhalt ok ist, aber der Stil holprig/gesprochen: schreib den Text sauber & gut lesbar um (siehe Vorlage in der Anleitung). Sonst leer lassen."></textarea>
@@ -721,6 +721,12 @@ INDEX_HTML = r"""<!doctype html>
 
 <script>
 const tagNames = ["keep", "edu", "fact", "german", "style", "boilerplate", "duplicate", "needs_rewrite", "unsafe", "too_shallow"];
+// German display labels only — the stored/exported tag value stays the English canonical key.
+const tagLabels = {
+  keep: "behalten", edu: "Bildungswert", fact: "Faktenwissen", german: "gutes Deutsch",
+  style: "guter Stil", boilerplate: "Boilerplate/Werbung", duplicate: "Dublette",
+  needs_rewrite: "umschreiben", unsafe: "unsicher", too_shallow: "zu seicht",
+};
 let mode = "quality";
 let current = null;
 let selectedScore = null;
@@ -745,7 +751,8 @@ function renderTags() {
   for (const t of tagNames) {
     const b = document.createElement("button");
     b.className = "pill" + (tags.has(t) ? " active" : "");
-    b.textContent = t;
+    b.textContent = tagLabels[t] || t;
+    b.title = t;  // canonical English tag — this is what gets saved
     b.onclick = () => { tags.has(t) ? tags.delete(t) : tags.add(t); renderTags(); };
     wrap.appendChild(b);
   }
