@@ -1,0 +1,41 @@
+{
+  "base_mix": "data/training/pretrain_v6_strict_mix/mix_full.txt",
+  "bytes": 75129864,
+  "documents": 47411,
+  "estimated_tokens_4bpt": 18782466,
+  "extra_dir": "data/training/pretrain_v6_extra_candidates",
+  "extra_manifest": "data/training/pretrain_v6_extra_candidates/source_disjoint_manifest.jsonl",
+  "include_sharealike": false,
+  "out": "data/training/pretrain_v6_expanded_test_mix/mix_full.txt",
+  "sources": {
+    "base_strict_mix": {
+      "written": 34404
+    },
+    "codeparrot_clean_python_permissive_plus": {
+      "duplicate_skip": 3477,
+      "holdout_skip": 27,
+      "seen": 8000,
+      "written": 4496
+    },
+    "german_commons_scientific_wikibooks": {
+      "holdout_skip": 9,
+      "seen": 3000,
+      "written": 2991
+    },
+    "german_commons_scientific_wikiversity": {
+      "holdout_skip": 9,
+      "seen": 973,
+      "written": 964
+    },
+    "german_commons_web_wikidiscussions": {
+      "holdout_skip": 9,
+      "seen": 1577,
+      "written": 1568
+    },
+    "german_commons_web_wikipedia": {
+      "holdout_skip": 12,
+      "seen": 3000,
+      "written": 2988
+    }
+  }
+}

@@ -1,0 +1,142 @@
+{
+  "dataset": "coral-nlp/german-commons",
+  "created_from": "data/eval/german_commons_audit.json",
+  "purpose": "Initial source allowlist for Auralis German base pretraining",
+  "notes": [
+    "This is a fast first-row triage, not a final full-corpus measurement.",
+    "All selected sources must still pass structure_clean_pretrain, dedup, language, OCR, and perplexity filters locally.",
+    "Do not ingest the default full mix blindly; source-level quality varies heavily."
+  ],
+  "global_filters": {
+    "min_words": 70,
+    "min_quality_score": 0.62,
+    "min_language_signal": 0.06,
+    "dedup": true,
+    "remove_boilerplate": true,
+    "reject_template_markers": true,
+    "reject_character_noise": true
+  },
+  "take_first": [
+    {
+      "config": "web",
+      "split": "wikipedia",
+      "reason": "Good cleaner pass rate, strong German signal, low OCR risk.",
+      "suggested_weight": 0.35
+    },
+    {
+      "config": "legal",
+      "split": "eurlex",
+      "reason": "Clean legal/EU text, high cleaner pass rate, low perplexity.",
+      "suggested_weight": 0.15
+    },
+    {
+      "config": "legal",
+      "split": "bverwg",
+      "reason": "Clean court text with useful formal German style.",
+      "suggested_weight": 0.1
+    },
+    {
+      "config": "cultural",
+      "split": "wikisource",
+      "reason": "Good cleaner pass rate; keep with OCR/perplexity filters.",
+      "suggested_weight": 0.12
+    },
+    {
+      "config": "cultural",
+      "split": "sbbfulltexts",
+      "reason": "Good first-row cleaner pass rate; requires local OCR audit.",
+      "suggested_weight": 0.08
+    }
+  ],
+  "small_specialty": [
+    {
+      "config": "cultural",
+      "split": "wikiquote",
+      "reason": "Short quote/proverb style; useful only as a tiny style slice.",
+      "max_weight": 0.01
+    }
+  ],
+  "hard_filter_candidates": [
+    {
+      "config": "news",
+      "split": "wikinews",
+      "filters": {
+        "min_ocr_score": 92,
+        "max_perplexity": 700
+      }
+    },
+    {
+      "config": "web",
+      "split": "onemillionposts",
+      "filters": {
+        "min_ocr_score": 95,
+        "max_perplexity": 650,
+        "max_weight": 0.03
+      }
+    },
+    {
+      "config": "scientific",
+      "split": "wikibooks",
+      "filters": {
+        "min_ocr_score": 95,
+        "max_perplexity": 850
+      }
+    },
+    {
+      "config": "legal",
+      "split": "bgh",
+      "filters": {
+        "min_ocr_score": 92,
+        "max_perplexity": 600
+      }
+    },
+    {
+      "config": "legal",
+      "split": "bgh20",
+      "filters": {
+        "min_ocr_score": 92,
+        "max_perplexity": 700
+      }
+    },
+    {
+      "config": "political",
+      "split": "germanpoliticalspeeches",
+      "filters": {
+        "min_ocr_score": 95,
+        "max_perplexity": 700,
+        "max_weight": 0.04
+      }
+    }
+  ],
+  "exclude_initially": [
+    {
+      "config": "cultural",
+      "split": "dibiphil",
+      "reason": "First-row samples did not pass the structure cleaner."
+    },
+    {
+      "config": "cultural",
+      "split": "mosel",
+      "reason": "Speech-transcript style failed structure cleaner in triage."
+    },
+    {
+      "config": "scientific",
+      "split": "polyjournal",
+      "reason": "First-row samples did not pass the structure cleaner."
+    },
+    {
+      "config": "web",
+      "split": "wikidiscussions",
+      "reason": "Discussion fragments failed structure-cleaner triage."
+    }
+  ],
+  "manual_check_required": [
+    "cultural/blbooks",
+    "cultural/dibilit",
+    "cultural/germanpd",
+    "legal/openlegaldata",
+    "news/zeitungsportal",
+    "political/btplenarprotokolle",
+    "political/reichtagsprotokolle"
+  ]
+}

@@ -1,0 +1,96 @@
+{
+  "checkpoint": "checkpoints/sft_response_fix_de_v4_balance_patch_20/sft_smoke_step_20.pt",
+  "train": "data/training/sft_response_fix_de_v4_polarity_patch/core_train.helix.jsonl",
+  "val": "data/training/sft_response_fix_de_v4_polarity_patch/val.helix.jsonl",
+  "steps": 20,
+  "batch_size": 1,
+  "grad_accum": 4,
+  "lr": 4e-07,
+  "warmup_steps": 8,
+  "category_weights": {
+    "facts_de": 1.1,
+    "hallucination_guard": 1.6,
+    "instruction_de": 1.4
+  },
+  "eos_loss_weight": 10.0,
+  "generation_system": "Du bist Auralis, ein hilfreicher deutscher KI-Assistent. Antworte korrekt, knapp und ehrlich. Wenn etwas unsicher oder erfunden ist, sage das deutlich.",
+  "train_by_category": {
+    "hallucination_guard": 14,
+    "facts_de": 11,
+    "instruction_de": 4
+  },
+  "val_by_category": {
+    "hallucination_guard": 14,
+    "facts_de": 11,
+    "instruction_de": 4
+  },
+  "history": [
+    {
+      "step": 1,
+      "train_loss": 0.16600220650434494,
+      "val_loss": 0.1662441035732627,
+      "val_by_category": {
+        "facts_de": 0.19622395001351833,
+        "hallucination_guard": 0.1662441035732627,
+        "instruction_de": 0.15733804553747177
+      },
+      "lr": 1e-07,
+      "elapsed_seconds": 13.640244245529175
+    },
+    {
+      "step": 20,
+      "train_loss": 0.11943534016609192,
+      "val_loss": 0.11916874442249537,
+      "val_by_category": {
+        "facts_de": 0.1951114609837532,
+        "hallucination_guard": 0.11916874442249537,
+        "instruction_de": 0.13653231970965862
+      },
+      "lr": 4e-08,
+      "elapsed_seconds": 61.92287755012512
+    }
+  ],
+  "generations_before": [
+    {
+      "prompt": "Was ist die Hauptstadt von Deutschland?",
+      "answer": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>"
+    },
+    {
+      "prompt": "Erklaere kurz, was Wasser ist.",
+      "answer": "Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.\n<|end|>"
+    },
+    {
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz und korrekt.",
+      "answer": "Nein. Mein Kampf stammt von Adolf Hitler, nicht von Goethe.\n<|end|>"
+    },
+    {
+      "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+      "answer": "Ja. Bonn ist die Hauptstadt von Deutschland.\n<|end|>"
+    }
+  ],
+  "generations_after": [
+    {
+      "prompt": "Was ist die Hauptstadt von Deutschland?",
+      "answer": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>"
+    },
+    {
+      "prompt": "Erklaere kurz, was Wasser ist.",
+      "answer": "Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.\n<|end|>"
+    },
+    {
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz und korrekt.",
+      "answer": "Nein. Mein Kampf stammt von Adolf Hitler, nicht von Goethe.\n<|end|>"
+    },
+    {
+      "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+      "answer": "Nein. Die Hauptstadt von Deutschland ist Berlin.\n<|end|>"
+    }
+  ],
+  "initial_val_loss": 0.17017924785614014,
+  "initial_val_by_category": {
+    "facts_de": 0.1964014247059822,
+    "hallucination_guard": 0.17017924785614014,
+    "instruction_de": 0.15545500814914703
+  },
+  "saved_checkpoint": "checkpoints/sft_response_fix_de_v4_balance20_guard_patch_20/sft_smoke_step_20.pt"
+}

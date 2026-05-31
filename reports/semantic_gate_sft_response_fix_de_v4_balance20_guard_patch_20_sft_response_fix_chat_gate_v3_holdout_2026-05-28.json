@@ -1,0 +1,200 @@
+{
+  "source": "data/eval/checkpoint_tests/sft_response_fix_de_v4_balance20_guard_patch_20/sft_response_fix_de_v4_balance20_guard_patch_20_sft_response_fix_chat_gate_v3_holdout.json",
+  "summary": {
+    "semantic_score": 0.6666666666666666,
+    "passed": 8,
+    "total": 12,
+    "by_category": {
+      "facts_de": 0.3333333333333333,
+      "hallucination_guard": 1.0,
+      "honesty": 0.5,
+      "qa_de": 0.75
+    },
+    "failures": [
+      {
+        "id": "yes_wien_capital",
+        "category": "facts_de",
+        "keyword_score": 0.6,
+        "semantic_score": 0.0,
+        "expected_polarity": "yes",
+        "actual_polarity": "no",
+        "issues": [
+          "wrong_polarity:no_expected_yes",
+          "forbidden:nein"
+        ],
+        "answer": "Nein. Die Hauptstadt von Oesterreich ist Wien."
+      },
+      {
+        "id": "yes_bern_capital",
+        "category": "facts_de",
+        "keyword_score": 1.0,
+        "semantic_score": 0.0,
+        "expected_polarity": "yes",
+        "actual_polarity": null,
+        "issues": [
+          "missing_explicit_polarity:yes",
+          "missing:schweiz"
+        ],
+        "answer": "Die Hauptstadt von Bern ist Bern."
+      },
+      {
+        "id": "photosynthesis_definition",
+        "category": "qa_de",
+        "keyword_score": 0.6,
+        "semantic_score": 0.0,
+        "expected_polarity": null,
+        "actual_polarity": "yes",
+        "issues": [
+          "missing:pflanzen",
+          "missing_any_group:zucker|glucose|sauerstoff"
+        ],
+        "answer": "Ja. Photosynthese ist eine chemische Verbindung, die zur Licht- und Wärmeentwicklung."
+      },
+      {
+        "id": "unknown_source_behavior",
+        "category": "honesty",
+        "keyword_score": 0.0,
+        "semantic_score": 0.0,
+        "expected_polarity": null,
+        "actual_polarity": "no",
+        "issues": [
+          "missing_any_group:nicht sicher|keine sichere|keine verlaessliche|sage+unsicher"
+        ],
+        "answer": "Nein. Die Antwort ist falsch."
+      }
+    ]
+  },
+  "results": [
+    {
+      "id": "yes_wien_capital",
+      "category": "facts_de",
+      "keyword_score": 0.6,
+      "semantic_score": 0.0,
+      "expected_polarity": "yes",
+      "actual_polarity": "no",
+      "issues": [
+        "wrong_polarity:no_expected_yes",
+        "forbidden:nein"
+      ],
+      "answer": "Nein. Die Hauptstadt von Oesterreich ist Wien."
+    },
+    {
+      "id": "yes_bern_capital",
+      "category": "facts_de",
+      "keyword_score": 1.0,
+      "semantic_score": 0.0,
+      "expected_polarity": "yes",
+      "actual_polarity": null,
+      "issues": [
+        "missing_explicit_polarity:yes",
+        "missing:schweiz"
+      ],
+      "answer": "Die Hauptstadt von Bern ist Bern."
+    },
+    {
+      "id": "no_bonn_current",
+      "category": "hallucination_guard",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": "no",
+      "actual_polarity": "no",
+      "issues": [],
+      "answer": "Nein. Die Hauptstadt von Deutschland ist Berlin."
+    },
+    {
+      "id": "no_hamburg_bavaria",
+      "category": "hallucination_guard",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": "no",
+      "actual_polarity": "no",
+      "issues": [],
+      "answer": "Nein. Die Hauptstadt von Bayern ist Muenchen."
+    },
+    {
+      "id": "goethe_not_mein_kampf_short",
+      "category": "hallucination_guard",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": "no",
+      "actual_polarity": "no",
+      "issues": [],
+      "answer": "Nein. Mein Kampf stammt von Adolf Hitler, nicht von Goethe."
+    },
+    {
+      "id": "goethe_faust_author",
+      "category": "facts_de",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [],
+      "answer": "Faust stammt von Johann Wolfgang von Goethe."
+    },
+    {
+      "id": "water_not_element",
+      "category": "qa_de",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": "no",
+      "actual_polarity": "no",
+      "issues": [],
+      "answer": "Nein. H2O ist Wasser und damit eine chemische Verbindung, kein Element."
+    },
+    {
+      "id": "oxygen_definition",
+      "category": "qa_de",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [],
+      "answer": "Sauerstoff ist ein chemisches Element und ein wichtiger Bestandteil der Luft."
+    },
+    {
+      "id": "photosynthesis_definition",
+      "category": "qa_de",
+      "keyword_score": 0.6,
+      "semantic_score": 0.0,
+      "expected_polarity": null,
+      "actual_polarity": "yes",
+      "issues": [
+        "missing:pflanzen",
+        "missing_any_group:zucker|glucose|sauerstoff"
+      ],
+      "answer": "Ja. Photosynthese ist eine chemische Verbindung, die zur Licht- und Wärmeentwicklung."
+    },
+    {
+      "id": "unknown_source_behavior",
+      "category": "honesty",
+      "keyword_score": 0.0,
+      "semantic_score": 0.0,
+      "expected_polarity": null,
+      "actual_polarity": "no",
+      "issues": [
+        "missing_any_group:nicht sicher|keine sichere|keine verlaessliche|sage+unsicher"
+      ],
+      "answer": "Nein. Die Antwort ist falsch."
+    },
+    {
+      "id": "unknown_planet_behavior",
+      "category": "honesty",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [],
+      "answer": "Dazu habe ich keine verlaessliche Information. Qorblax klingt erfunden oder unklar."
+    },
+    {
+      "id": "computer_definition",
+      "category": "qa_de",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [],
+      "answer": "Ein Computer ist eine Maschine, die Daten verarbeitet und Programme ausfuehrt."
+    }
+  ]
+}

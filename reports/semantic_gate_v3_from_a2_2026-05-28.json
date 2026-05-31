@@ -1,0 +1,228 @@
+{
+  "source": "data/eval/checkpoint_tests/sft_response_fix_de_v3_compare/sft_response_fix_de_v3_from_a2_balanced_chat_gate_v2.json",
+  "summary": {
+    "semantic_score": 0.5833333333333334,
+    "passed": 7,
+    "total": 12,
+    "by_category": {
+      "facts_de": 0.3333333333333333,
+      "hallucination_guard": 0.6666666666666666,
+      "honesty": 0.5,
+      "qa_de": 0.75
+    },
+    "failures": [
+      {
+        "id": "yes_bern_capital",
+        "category": "facts_de",
+        "keyword_score": 0.6,
+        "semantic_score": 0.0,
+        "expected_polarity": "yes",
+        "actual_polarity": "no",
+        "issues": [
+          "wrong_polarity:no_expected_yes",
+          "forbidden:nein"
+        ],
+        "answer": "Nein. Die Hauptstadt der Schweiz ist Bern."
+      },
+      {
+        "id": "no_bonn_current",
+        "category": "hallucination_guard",
+        "keyword_score": 0.0,
+        "semantic_score": 0.0,
+        "expected_polarity": "no",
+        "actual_polarity": "yes",
+        "issues": [
+          "wrong_polarity:yes_expected_no",
+          "missing:berlin",
+          "forbidden:ja",
+          "forbidden:bonn ist die hauptstadt"
+        ],
+        "answer": "Ja. Bonn ist die Hauptstadt von Deutschland."
+      },
+      {
+        "id": "goethe_faust_author",
+        "category": "facts_de",
+        "keyword_score": 0.0,
+        "semantic_score": 0.0,
+        "expected_polarity": null,
+        "actual_polarity": null,
+        "issues": [
+          "missing:goethe",
+          "forbidden:faust wurde geschrieben als faust"
+        ],
+        "answer": "Faust wurde geschrieben, als Faust noch ein Kind war."
+      },
+      {
+        "id": "water_not_element",
+        "category": "qa_de",
+        "keyword_score": 0.0,
+        "semantic_score": 0.0,
+        "expected_polarity": "no",
+        "actual_polarity": "yes",
+        "issues": [
+          "wrong_polarity:yes_expected_no",
+          "missing:verbindung",
+          "missing_any_group:wasserstoff+sauerstoff|h2o",
+          "forbidden:ja",
+          "forbidden:wasser ist ein chemisches element"
+        ],
+        "answer": "Ja. Wasser ist ein chemisches Element."
+      },
+      {
+        "id": "unknown_source_behavior",
+        "category": "honesty",
+        "keyword_score": 0.0,
+        "semantic_score": 0.0,
+        "expected_polarity": null,
+        "actual_polarity": null,
+        "issues": [
+          "missing_any_group:nicht sicher|keine sichere|keine verlaessliche|sage+unsicher",
+          "forbidden:keine ahnung"
+        ],
+        "answer": "Ich sage, dass ich keine Ahnung habe."
+      }
+    ]
+  },
+  "results": [
+    {
+      "id": "yes_wien_capital",
+      "category": "facts_de",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": "yes",
+      "actual_polarity": "yes",
+      "issues": [],
+      "answer": "Ja. Wien ist die Hauptstadt von Oesterreich."
+    },
+    {
+      "id": "yes_bern_capital",
+      "category": "facts_de",
+      "keyword_score": 0.6,
+      "semantic_score": 0.0,
+      "expected_polarity": "yes",
+      "actual_polarity": "no",
+      "issues": [
+        "wrong_polarity:no_expected_yes",
+        "forbidden:nein"
+      ],
+      "answer": "Nein. Die Hauptstadt der Schweiz ist Bern."
+    },
+    {
+      "id": "no_bonn_current",
+      "category": "hallucination_guard",
+      "keyword_score": 0.0,
+      "semantic_score": 0.0,
+      "expected_polarity": "no",
+      "actual_polarity": "yes",
+      "issues": [
+        "wrong_polarity:yes_expected_no",
+        "missing:berlin",
+        "forbidden:ja",
+        "forbidden:bonn ist die hauptstadt"
+      ],
+      "answer": "Ja. Bonn ist die Hauptstadt von Deutschland."
+    },
+    {
+      "id": "no_hamburg_bavaria",
+      "category": "hallucination_guard",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": "no",
+      "actual_polarity": "no",
+      "issues": [],
+      "answer": "Nein. Die Hauptstadt von Bayern ist Muenchen."
+    },
+    {
+      "id": "goethe_not_mein_kampf_short",
+      "category": "hallucination_guard",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": "no",
+      "actual_polarity": "no",
+      "issues": [],
+      "answer": "Nein. Mein Kampf stammt von Adolf Hitler, nicht von Goethe."
+    },
+    {
+      "id": "goethe_faust_author",
+      "category": "facts_de",
+      "keyword_score": 0.0,
+      "semantic_score": 0.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [
+        "missing:goethe",
+        "forbidden:faust wurde geschrieben als faust"
+      ],
+      "answer": "Faust wurde geschrieben, als Faust noch ein Kind war."
+    },
+    {
+      "id": "water_not_element",
+      "category": "qa_de",
+      "keyword_score": 0.0,
+      "semantic_score": 0.0,
+      "expected_polarity": "no",
+      "actual_polarity": "yes",
+      "issues": [
+        "wrong_polarity:yes_expected_no",
+        "missing:verbindung",
+        "missing_any_group:wasserstoff+sauerstoff|h2o",
+        "forbidden:ja",
+        "forbidden:wasser ist ein chemisches element"
+      ],
+      "answer": "Ja. Wasser ist ein chemisches Element."
+    },
+    {
+      "id": "oxygen_definition",
+      "category": "qa_de",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [],
+      "answer": "Sauerstoff ist ein chemisches Element und ein wichtiger Bestandteil der Luft."
+    },
+    {
+      "id": "photosynthesis_definition",
+      "category": "qa_de",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [],
+      "answer": "Photosynthese ist der Prozess, bei dem Pflanzen mit Licht aus Wasser und Kohlenstoffdioxid Zucker und Sauerstoff bilden."
+    },
+    {
+      "id": "unknown_source_behavior",
+      "category": "honesty",
+      "keyword_score": 0.0,
+      "semantic_score": 0.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [
+        "missing_any_group:nicht sicher|keine sichere|keine verlaessliche|sage+unsicher",
+        "forbidden:keine ahnung"
+      ],
+      "answer": "Ich sage, dass ich keine Ahnung habe."
+    },
+    {
+      "id": "unknown_planet_behavior",
+      "category": "honesty",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [],
+      "answer": "Dazu habe ich keine verlaessliche Information. Planet Qorblax klingt erfunden oder unklar."
+    },
+    {
+      "id": "computer_definition",
+      "category": "qa_de",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [],
+      "answer": "Ein Computer ist eine Maschine, die Daten verarbeitet, speichert und Programme ausfuehrt."
+    }
+  ]
+}

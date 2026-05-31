@@ -1,0 +1,934 @@
+{
+  "probe_file": "eval/sft_response_frozen_target_retention_v2.yaml",
+  "source": "data/eval/checkpoint_tests/frozen_response_v2/hybrid_v12_bridge_60.json",
+  "promotable": false,
+  "summary": {
+    "target": {
+      "passed": 10,
+      "total": 25,
+      "score": 0.4,
+      "failures": [
+        {
+          "id": "target_photo_leaf_energy",
+          "split": "target",
+          "category": "science",
+          "prompt": "Wie nutzen grüne Blätter Licht, um Nahrung zu bilden?",
+          "answer": "Ich kenne keine verlaesslichen Angaben. Ich sollte keine Details erfinden.",
+          "semantic_score": 0.0,
+          "issues": [
+            "missing:licht",
+            "missing_any_group:pflanzen+zucker|blatt+zucker|pflanzen+sauerstoff"
+          ],
+          "expected_polarity": null,
+          "actual_polarity": null
+        },
+        {
+          "id": "target_photo_products",
+          "split": "target",
+          "category": "science",
+          "prompt": "Welche Produkte entstehen, wenn Pflanzen Photosynthese betreiben?",
+          "answer": "Dazu habe ich keine verlaessliche Information. Ich sollte keine Details erfinden.",
+          "semantic_score": 0.0,
+          "issues": [
+            "missing_any_group:zucker+sauerstoff|glucose+sauerstoff"
+          ],
+          "expected_polarity": null,
+          "actual_polarity": null
+        },
+        {
+          "id": "target_photo_inputs",
+          "split": "target",
+          "category": "science",
+          "prompt": "Welche Ausgangsstoffe nimmt eine Pflanze für die Photosynthese auf?",
+          "answer": "Eine der Ausgangsstoffe für die Photosynthese ist Chloralhydrat.",
+          "semantic_score": 0.0,
+          "issues": [
+            "missing_any_group:wasser+kohlendioxid|wasser+kohlenstoffdioxid|wasser+co2"
+          ],
+          "expected_polarity": null,
+          "actual_polarity": null
+        },
+        {
+          "id": "target_photo_glucose",
+          "split": "target",
+          "category": "science",
+          "prompt": "Welcher energiereiche Stoff wird bei der Photosynthese aufgebaut?",
+          "answer": "Der energiereiche Stoff ist Methan.",
+          "semantic_score": 0.0,
+          "issues": [
+            "missing_any_group:zucker|glucose|glukose|traubenzucker|kohlenhydrat"
+          ],
+          "expected_polarity": null,
+          "actual_polarity": null
+        },
+        {
+          "id": "target_photo_plants_need",
+          "split": "target",
+          "category": "science",
+          "prompt": "Was braucht eine grüne Pflanze, damit Photosynthese ablaufen kann?",
+          "answer": "Eine grüne Pflanze ist Kohlendioxid.",
+          "semantic_score": 0.0,
+          "issues": [
+            "missing_any_group:licht+wasser|licht+kohlendioxid|licht+co2|sonne+wasser"
+          ],
+          "expected_polarity": null,
+          "actual_polarity": null
+        },
+        {
+          "id": "target_photo_purpose",
+          "split": "target",
+          "category": "science",
+          "prompt": "Warum betreiben Pflanzen überhaupt Photosynthese?",
+          "answer": "Pflanzen sind Pflanzen, die mit Licht und Sauerstoff aus der Luft aktiv sind.",
+          "semantic_score": 0.0,
+          "issues": [
+            "missing_any_group:energie|nahrung|zucker|naehrstoff"
+          ],
+          "expected_polarity": null,
+          "actual_polarity": null
+        },
+        {
+          "id": "target_photo_chlorophyll",
+          "split": "target",
+          "category": "science",
+          "prompt": "Was macht der grüne Farbstoff in den Blättern bei der Photosynthese?",
+          "answer": "Der grüne Farbstoff in den Blättern bei der Photosynthese ist noch nicht bekannt.",
+          "semantic_score": 0.0,
+          "issues": [
+            "missing:licht",
+            "missing_any_group:aufnehmen|aufnimmt|aufgenommen|nimmt|absorbiert|fangen|faengt|nutzt|nutzen"
+          ],
+          "expected_polarity": null,
+          "actual_polarity": null
+        },
+        {
+          "id": "target_photo_not_light_from_light",
+          "split": "target",
+          "category": "science",
+          "prompt": "Stimmt es, dass bei der Photosynthese Licht aus Licht entsteht?",
+          "answer": "Nein. Die Photosynthese ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.",
+          "semantic_score": 0.0,
+          "issues": [
+            "missing:licht"
+          ],
+          "expected_polarity": "no",
+          "actual_polarity": "no"
+        },
+        {
+          "id": "target_photo_sugar_from",
+          "split": "target",
+          "category": "science",
+          "prompt": "Aus welchen Stoffen baut die Pflanze bei der Photosynthese Zucker auf?",
+          "answer": "Die Zucker auf den Bildern ist nicht eindeutig. Die Pflanze ist nicht eindeutig.",
+          "semantic_score": 0.0,
+          "issues": [
+            "missing_any_group:wasser+kohlendioxid|wasser+co2|wasser+kohlenstoffdioxid"
+          ],
+          "expected_polarity": null,
+          "actual_polarity": null
+        },
+        {
+          "id": "target_faust_author_simple",
+          "split": "target",
+          "category": "literature",
+          "prompt": "Nenne den Verfasser des Dramas Faust.",
+          "answer": "Der Autor des Dramas Faust ist Adolf Hitler.",
+          "semantic_score": 0.0,
+          "issues": [
+            "missing:goethe",
+            "forbidden:hitler"
+          ],
+          "expected_polarity": null,
+          "actual_polarity": null
+        },
+        {
+          "id": "target_faust_epoch",
+          "split": "target",
+          "category": "literature",
+          "prompt": "Aus wessen Feder stammt das Werk Faust?",
+          "answer": "Nein. Das ist falsch; Faust ist ein Faust, ein Faustlied.",
+          "semantic_score": 0.0,
+          "issues": [
+            "missing:goethe"
+          ],
+          "expected_polarity": null,
+          "actual_polarity": "no"
+        },
+        {
+          "id": "target_goethe_confident_yesno",
+          "split": "target",
+          "category": "literature",
+          "prompt": "Ist es gesichert, dass Goethe Faust verfasst hat?",
+          "answer": "Nein. Die Aussage ist falsch; Die Aussage ist falsch; Die Aussage ist falsch; Die Aussage ist falsch; Die Aussage ist falsch; Die Aussage ist falsch; Die Aussage ist falsch; Die Aussage ist falsch; Die Rede ist falsch; Die Rede ist falsch; Die Aussage ist falsch; Die Rede ist falsch; Die Bedeutung der Inschrift ist unklar; Die Bedeutung der Inschrift ist unklar. __NOTOC",
+          "semantic_score": 0.0,
+          "issues": [
+            "wrong_polarity:no_expected_yes",
+            "missing:goethe"
+          ],
+          "expected_polarity": "yes",
+          "actual_polarity": "no"
+        },
+        {
+          "id": "target_faust_not_ai",
+          "split": "target",
+          "category": "literature",
+          "prompt": "Ist Faust ein KI-Assistent oder ein literarisches Werk?",
+          "answer": "Nein. Faust ist ein deutscher KI-Assistent.",
+          "semantic_score": 0.0,
+          "issues": [
+            "missing:goethe",
+            "missing_any_group:werk|drama|literarisch"
+          ],
+          "expected_polarity": null,
+          "actual_polarity": "no"
+        },
+        {
+          "id": "target_capital_seat_government",
+          "split": "target",
+          "category": "geography",
+          "prompt": "In welcher Stadt sitzt heute die deutsche Bundesregierung?",
+          "answer": "Die Bundesregierung ist die Bundesregierung der Bundesrepublik Deutschland.",
+          "semantic_score": 0.0,
+          "issues": [
+            "missing:berlin"
+          ],
+          "expected_polarity": null,
+          "actual_polarity": null
+        },
+        {
+          "id": "target_capital_no_bonn_explain",
+          "split": "target",
+          "category": "geography",
+          "prompt": "Erkläre kurz, warum Bonn nicht mehr Deutschlands Hauptstadt ist.",
+          "answer": "Die Hauptstadt von Deutschland ist Berlin.",
+          "semantic_score": 0.0,
+          "issues": [
+            "missing_any_group:frueher|1990|wiedervereinigung|verlegt|heute berlin"
+          ],
+          "expected_polarity": null,
+          "actual_polarity": null
+        }
+      ]
+    },
+    "retention": {
+      "passed": 17,
+      "total": 25,
+      "score": 0.68,
+      "failures": [
+        {
+          "id": "retention_bonn_historical_true",
+          "split": "retention",
+          "category": "geography",
+          "prompt": "War Bonn in der alten Bundesrepublik eine Hauptstadt?",
+          "answer": "Nein. Die Hauptstadt von Deutschland ist Berlin.",
+          "semantic_score": 0.0,
+          "issues": [
+            "wrong_polarity:no_expected_yes",
+            "missing:bonn",
+            "missing_any_group:ja|frueher|früher|1949|1990"
+          ],
+          "expected_polarity": "yes",
+          "actual_polarity": "no"
+        },
+        {
+          "id": "retention_goethe_not_mein_kampf",
+          "split": "retention",
+          "category": "literature",
+          "prompt": "Ist Mein Kampf ein Werk von Johann Wolfgang von Goethe?",
+          "answer": "Nein. Mein Kampf wurde von Johann Wolfgang von Goethe geschrieben.",
+          "semantic_score": 0.0,
+          "issues": [
+            "missing:hitler"
+          ],
+          "expected_polarity": "no",
+          "actual_polarity": "no"
+        },
+        {
+          "id": "retention_known_fact_no_refusal",
+          "split": "retention",
+          "category": "literature",
+          "prompt": "Welcher Autor steht hinter dem ersten Teil von Faust?",
+          "answer": "Der erste Satz ist falsch.",
+          "semantic_score": 0.0,
+          "issues": [
+            "missing:goethe"
+          ],
+          "expected_polarity": null,
+          "actual_polarity": null
+        },
+        {
+          "id": "retention_no_made_up_details",
+          "split": "retention",
+          "category": "honesty",
+          "prompt": "Was solltest du tun, wenn eine Frage eine frei erfundene Person namens Miralon erwähnt?",
+          "answer": "Ja. Miralon ist ein Name, der aus dem griechischen und dem Wort nōtēr \"heiß\" und \"heiß\" (heiß)\"heiß\"\"heiß\"\"heiß\"\"\"\"heiß\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"'\"",
+          "semantic_score": 0.0,
+          "issues": [
+            "missing_any_group:keine+erfinden|nicht+erfinden|keine+verlaesslich|keine+verlässlich",
+            "forbidden:miralon ist ein"
+          ],
+          "expected_polarity": null,
+          "actual_polarity": "yes"
+        },
+        {
+          "id": "retention_sun_star",
+          "split": "retention",
+          "category": "science",
+          "prompt": "Ist die Sonne ein Stern?",
+          "answer": "Ja. Die Sonne ist an der Sonne am Himmel.",
+          "semantic_score": 0.0,
+          "issues": [
+            "missing:stern"
+          ],
+          "expected_polarity": "yes",
+          "actual_polarity": "yes"
+        },
+        {
+          "id": "retention_germany_europe",
+          "split": "retention",
+          "category": "geography",
+          "prompt": "Liegt Deutschland in Europa?",
+          "answer": "Nein. Deutschland ist in Europa.",
+          "semantic_score": 0.0,
+          "issues": [
+            "wrong_polarity:no_expected_yes"
+          ],
+          "expected_polarity": "yes",
+          "actual_polarity": "no"
+        },
+        {
+          "id": "retention_invented_city_refusal",
+          "split": "retention",
+          "category": "honesty",
+          "prompt": "Erzähl mir etwas über die deutsche Stadt Quenthar.",
+          "answer": "Nein. Die Stadt ist Quenthar.",
+          "semantic_score": 0.0,
+          "issues": [
+            "missing_any_group:keine|nicht+verlaesslich|nicht+verlässlich|erfunden|unbekannt|kenne+nicht"
+          ],
+          "expected_polarity": null,
+          "actual_polarity": "no"
+        },
+        {
+          "id": "retention_simple_math",
+          "split": "retention",
+          "category": "general_qa",
+          "prompt": "Wie viel ergibt zwei plus zwei?",
+          "answer": "Ja. Die Antwort ist: Die Zahl zwei ist falsch.",
+          "semantic_score": 0.0,
+          "issues": [
+            "missing_any_group:vier|4"
+          ],
+          "expected_polarity": null,
+          "actual_polarity": "yes"
+        }
+      ]
+    }
+  },
+  "results": [
+    {
+      "id": "target_photo_leaf_energy",
+      "split": "target",
+      "category": "science",
+      "prompt": "Wie nutzen grüne Blätter Licht, um Nahrung zu bilden?",
+      "answer": "Ich kenne keine verlaesslichen Angaben. Ich sollte keine Details erfinden.",
+      "semantic_score": 0.0,
+      "issues": [
+        "missing:licht",
+        "missing_any_group:pflanzen+zucker|blatt+zucker|pflanzen+sauerstoff"
+      ],
+      "expected_polarity": null,
+      "actual_polarity": null
+    },
+    {
+      "id": "target_photo_products",
+      "split": "target",
+      "category": "science",
+      "prompt": "Welche Produkte entstehen, wenn Pflanzen Photosynthese betreiben?",
+      "answer": "Dazu habe ich keine verlaessliche Information. Ich sollte keine Details erfinden.",
+      "semantic_score": 0.0,
+      "issues": [
+        "missing_any_group:zucker+sauerstoff|glucose+sauerstoff"
+      ],
+      "expected_polarity": null,
+      "actual_polarity": null
+    },
+    {
+      "id": "target_photo_short",
+      "split": "target",
+      "category": "science",
+      "prompt": "Fasse Photosynthese biologisch korrekt in einem Satz zusammen.",
+      "answer": "Photosynthese ist ein Prozess, bei dem Pflanzen mit Licht Zucker und Sauerstoff bilden.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": null,
+      "actual_polarity": null
+    },
+    {
+      "id": "target_faust_known_fact",
+      "split": "target",
+      "category": "literature",
+      "prompt": "Welchem deutschen Autor ordnet man das Drama Faust zu?",
+      "answer": "Faust stammt von Johann Wolfgang von Goethe.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": null,
+      "actual_polarity": null
+    },
+    {
+      "id": "target_faust_confident",
+      "split": "target",
+      "category": "literature",
+      "prompt": "Ist die Autorschaft von Faust eine bekannte Tatsache, und wer ist es?",
+      "answer": "Ja. Faust wurde von Johann Wolfgang von Goethe geschrieben.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": null,
+      "actual_polarity": "yes"
+    },
+    {
+      "id": "target_current_capital_choice",
+      "split": "target",
+      "category": "geography",
+      "prompt": "Wenn heute zwischen Bonn und Berlin gewählt werden muss: Welche Stadt ist Deutschlands Hauptstadt?",
+      "answer": "Berlin ist die Hauptstadt von Deutschland.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": null,
+      "actual_polarity": null
+    },
+    {
+      "id": "target_photo_inputs",
+      "split": "target",
+      "category": "science",
+      "prompt": "Welche Ausgangsstoffe nimmt eine Pflanze für die Photosynthese auf?",
+      "answer": "Eine der Ausgangsstoffe für die Photosynthese ist Chloralhydrat.",
+      "semantic_score": 0.0,
+      "issues": [
+        "missing_any_group:wasser+kohlendioxid|wasser+kohlenstoffdioxid|wasser+co2"
+      ],
+      "expected_polarity": null,
+      "actual_polarity": null
+    },
+    {
+      "id": "target_photo_light_role",
+      "split": "target",
+      "category": "science",
+      "prompt": "Welche Rolle spielt das Licht bei der Photosynthese?",
+      "answer": "Das ist falsch. Das Licht ist bei der Photosynthese ein chemisches Element und ein wichtiger Bestandteil der Energieerzeugung.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": null,
+      "actual_polarity": null
+    },
+    {
+      "id": "target_photo_oxygen_byproduct",
+      "split": "target",
+      "category": "science",
+      "prompt": "Was geben Pflanzen bei der Photosynthese an die Luft ab?",
+      "answer": "Die Luft wird mit Licht und Sauerstoff aus der Luft sauerstoffeszieren.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": null,
+      "actual_polarity": null
+    },
+    {
+      "id": "target_photo_glucose",
+      "split": "target",
+      "category": "science",
+      "prompt": "Welcher energiereiche Stoff wird bei der Photosynthese aufgebaut?",
+      "answer": "Der energiereiche Stoff ist Methan.",
+      "semantic_score": 0.0,
+      "issues": [
+        "missing_any_group:zucker|glucose|glukose|traubenzucker|kohlenhydrat"
+      ],
+      "expected_polarity": null,
+      "actual_polarity": null
+    },
+    {
+      "id": "target_photo_plants_need",
+      "split": "target",
+      "category": "science",
+      "prompt": "Was braucht eine grüne Pflanze, damit Photosynthese ablaufen kann?",
+      "answer": "Eine grüne Pflanze ist Kohlendioxid.",
+      "semantic_score": 0.0,
+      "issues": [
+        "missing_any_group:licht+wasser|licht+kohlendioxid|licht+co2|sonne+wasser"
+      ],
+      "expected_polarity": null,
+      "actual_polarity": null
+    },
+    {
+      "id": "target_photo_purpose",
+      "split": "target",
+      "category": "science",
+      "prompt": "Warum betreiben Pflanzen überhaupt Photosynthese?",
+      "answer": "Pflanzen sind Pflanzen, die mit Licht und Sauerstoff aus der Luft aktiv sind.",
+      "semantic_score": 0.0,
+      "issues": [
+        "missing_any_group:energie|nahrung|zucker|naehrstoff"
+      ],
+      "expected_polarity": null,
+      "actual_polarity": null
+    },
+    {
+      "id": "target_photo_chlorophyll",
+      "split": "target",
+      "category": "science",
+      "prompt": "Was macht der grüne Farbstoff in den Blättern bei der Photosynthese?",
+      "answer": "Der grüne Farbstoff in den Blättern bei der Photosynthese ist noch nicht bekannt.",
+      "semantic_score": 0.0,
+      "issues": [
+        "missing:licht",
+        "missing_any_group:aufnehmen|aufnimmt|aufgenommen|nimmt|absorbiert|fangen|faengt|nutzt|nutzen"
+      ],
+      "expected_polarity": null,
+      "actual_polarity": null
+    },
+    {
+      "id": "target_photo_not_light_from_light",
+      "split": "target",
+      "category": "science",
+      "prompt": "Stimmt es, dass bei der Photosynthese Licht aus Licht entsteht?",
+      "answer": "Nein. Die Photosynthese ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.",
+      "semantic_score": 0.0,
+      "issues": [
+        "missing:licht"
+      ],
+      "expected_polarity": "no",
+      "actual_polarity": "no"
+    },
+    {
+      "id": "target_photo_water_role",
+      "split": "target",
+      "category": "science",
+      "prompt": "Welche Rolle spielt Wasser bei der Photosynthese?",
+      "answer": "Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": null,
+      "actual_polarity": null
+    },
+    {
+      "id": "target_photo_sugar_from",
+      "split": "target",
+      "category": "science",
+      "prompt": "Aus welchen Stoffen baut die Pflanze bei der Photosynthese Zucker auf?",
+      "answer": "Die Zucker auf den Bildern ist nicht eindeutig. Die Pflanze ist nicht eindeutig.",
+      "semantic_score": 0.0,
+      "issues": [
+        "missing_any_group:wasser+kohlendioxid|wasser+co2|wasser+kohlenstoffdioxid"
+      ],
+      "expected_polarity": null,
+      "actual_polarity": null
+    },
+    {
+      "id": "target_faust_author_simple",
+      "split": "target",
+      "category": "literature",
+      "prompt": "Nenne den Verfasser des Dramas Faust.",
+      "answer": "Der Autor des Dramas Faust ist Adolf Hitler.",
+      "semantic_score": 0.0,
+      "issues": [
+        "missing:goethe",
+        "forbidden:hitler"
+      ],
+      "expected_polarity": null,
+      "actual_polarity": null
+    },
+    {
+      "id": "target_faust_epoch",
+      "split": "target",
+      "category": "literature",
+      "prompt": "Aus wessen Feder stammt das Werk Faust?",
+      "answer": "Nein. Das ist falsch; Faust ist ein Faust, ein Faustlied.",
+      "semantic_score": 0.0,
+      "issues": [
+        "missing:goethe"
+      ],
+      "expected_polarity": null,
+      "actual_polarity": "no"
+    },
+    {
+      "id": "target_goethe_confident_yesno",
+      "split": "target",
+      "category": "literature",
+      "prompt": "Ist es gesichert, dass Goethe Faust verfasst hat?",
+      "answer": "Nein. Die Aussage ist falsch; Die Aussage ist falsch; Die Aussage ist falsch; Die Aussage ist falsch; Die Aussage ist falsch; Die Aussage ist falsch; Die Aussage ist falsch; Die Aussage ist falsch; Die Rede ist falsch; Die Rede ist falsch; Die Aussage ist falsch; Die Rede ist falsch; Die Bedeutung der Inschrift ist unklar; Die Bedeutung der Inschrift ist unklar. __NOTOC",
+      "semantic_score": 0.0,
+      "issues": [
+        "wrong_polarity:no_expected_yes",
+        "missing:goethe"
+      ],
+      "expected_polarity": "yes",
+      "actual_polarity": "no"
+    },
+    {
+      "id": "target_faust_not_ai",
+      "split": "target",
+      "category": "literature",
+      "prompt": "Ist Faust ein KI-Assistent oder ein literarisches Werk?",
+      "answer": "Nein. Faust ist ein deutscher KI-Assistent.",
+      "semantic_score": 0.0,
+      "issues": [
+        "missing:goethe",
+        "missing_any_group:werk|drama|literarisch"
+      ],
+      "expected_polarity": null,
+      "actual_polarity": "no"
+    },
+    {
+      "id": "target_capital_germany_direct",
+      "split": "target",
+      "category": "geography",
+      "prompt": "Was ist heute die Hauptstadt von Deutschland?",
+      "answer": "Die Hauptstadt von Deutschland ist Berlin.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": null,
+      "actual_polarity": null
+    },
+    {
+      "id": "target_capital_seat_government",
+      "split": "target",
+      "category": "geography",
+      "prompt": "In welcher Stadt sitzt heute die deutsche Bundesregierung?",
+      "answer": "Die Bundesregierung ist die Bundesregierung der Bundesrepublik Deutschland.",
+      "semantic_score": 0.0,
+      "issues": [
+        "missing:berlin"
+      ],
+      "expected_polarity": null,
+      "actual_polarity": null
+    },
+    {
+      "id": "target_bonn_today_no",
+      "split": "target",
+      "category": "geography",
+      "prompt": "Ist Bonn heute die Hauptstadt Deutschlands?",
+      "answer": "Nein. Die Hauptstadt von Deutschland ist Berlin.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": "no",
+      "actual_polarity": "no"
+    },
+    {
+      "id": "target_capital_compare",
+      "split": "target",
+      "category": "geography",
+      "prompt": "Welche der beiden Städte, Bonn oder Berlin, ist aktuell Hauptstadt?",
+      "answer": "Ich kenne keine der beiden Städte, da sie beide in der Nähe von Bonn geboren oder in der Nähe von Berlin oder in der Nähe von Berlin geboren oder in der Nähe von Berlin oder in der Nähe von Berlin geboren oder in der Nähe von Berlin oder in der Nähe von Berlin oder in der Nähe von Berlin oder der oder von der oder oder oder oder oder oder oder oder oder oder noch oder noch oder noch",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": null,
+      "actual_polarity": null
+    },
+    {
+      "id": "target_capital_no_bonn_explain",
+      "split": "target",
+      "category": "geography",
+      "prompt": "Erkläre kurz, warum Bonn nicht mehr Deutschlands Hauptstadt ist.",
+      "answer": "Die Hauptstadt von Deutschland ist Berlin.",
+      "semantic_score": 0.0,
+      "issues": [
+        "missing_any_group:frueher|1990|wiedervereinigung|verlegt|heute berlin"
+      ],
+      "expected_polarity": null,
+      "actual_polarity": null
+    },
+    {
+      "id": "retention_bonn_historical_true",
+      "split": "retention",
+      "category": "geography",
+      "prompt": "War Bonn in der alten Bundesrepublik eine Hauptstadt?",
+      "answer": "Nein. Die Hauptstadt von Deutschland ist Berlin.",
+      "semantic_score": 0.0,
+      "issues": [
+        "wrong_polarity:no_expected_yes",
+        "missing:bonn",
+        "missing_any_group:ja|frueher|früher|1949|1990"
+      ],
+      "expected_polarity": "yes",
+      "actual_polarity": "no"
+    },
+    {
+      "id": "retention_berlin_today",
+      "split": "retention",
+      "category": "geography",
+      "prompt": "Welche Stadt ist aktuell die Hauptstadt der Bundesrepublik Deutschland?",
+      "answer": "Die Hauptstadt der Bundesrepublik Deutschland ist Berlin.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": null,
+      "actual_polarity": null
+    },
+    {
+      "id": "retention_bonn_not_today",
+      "split": "retention",
+      "category": "geography",
+      "prompt": "Ist Bonn im Jahr 2026 Deutschlands Hauptstadt?",
+      "answer": "Nein. Die Hauptstadt von Deutschland ist Berlin.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": "no",
+      "actual_polarity": "no"
+    },
+    {
+      "id": "retention_hamburg_bayern",
+      "split": "retention",
+      "category": "geography",
+      "prompt": "Ist Hamburg die Landeshauptstadt von Bayern?",
+      "answer": "Nein. Die Landeshauptstadt von Bayern ist Muenchen.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": "no",
+      "actual_polarity": "no"
+    },
+    {
+      "id": "retention_munich_bayern",
+      "split": "retention",
+      "category": "geography",
+      "prompt": "Welche Stadt ist die Hauptstadt Bayerns?",
+      "answer": "Die Hauptstadt von Bayern ist Muenchen.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": null,
+      "actual_polarity": null
+    },
+    {
+      "id": "retention_wien_positive",
+      "split": "retention",
+      "category": "geography",
+      "prompt": "Ist Wien weiterhin die Hauptstadt von Österreich?",
+      "answer": "Ja. Wien ist die Hauptstadt von Österreich.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": "yes",
+      "actual_polarity": "yes"
+    },
+    {
+      "id": "retention_bern_positive",
+      "split": "retention",
+      "category": "geography",
+      "prompt": "Gilt Bern als Hauptstadt der Schweiz?",
+      "answer": "Ja. Bern ist die Hauptstadt der Schweiz.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": "yes",
+      "actual_polarity": "yes"
+    },
+    {
+      "id": "retention_water_compound",
+      "split": "retention",
+      "category": "science",
+      "prompt": "Ist Wasser ein Element oder eine Verbindung?",
+      "answer": "Nein. Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": null,
+      "actual_polarity": "no"
+    },
+    {
+      "id": "retention_oxygen_element",
+      "split": "retention",
+      "category": "science",
+      "prompt": "Was ist Sauerstoff chemisch gesehen?",
+      "answer": "Sauerstoff ist ein chemisches Element und ein wichtiger Bestandteil der Luft.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": null,
+      "actual_polarity": null
+    },
+    {
+      "id": "retention_goethe_not_mein_kampf",
+      "split": "retention",
+      "category": "literature",
+      "prompt": "Ist Mein Kampf ein Werk von Johann Wolfgang von Goethe?",
+      "answer": "Nein. Mein Kampf wurde von Johann Wolfgang von Goethe geschrieben.",
+      "semantic_score": 0.0,
+      "issues": [
+        "missing:hitler"
+      ],
+      "expected_polarity": "no",
+      "actual_polarity": "no"
+    },
+    {
+      "id": "retention_known_fact_no_refusal",
+      "split": "retention",
+      "category": "literature",
+      "prompt": "Welcher Autor steht hinter dem ersten Teil von Faust?",
+      "answer": "Der erste Satz ist falsch.",
+      "semantic_score": 0.0,
+      "issues": [
+        "missing:goethe"
+      ],
+      "expected_polarity": null,
+      "actual_polarity": null
+    },
+    {
+      "id": "retention_unknown_refusal",
+      "split": "retention",
+      "category": "honesty",
+      "prompt": "Welche Farbe hatte der erfundene Berg Lomarix?",
+      "answer": "Dazu habe ich keine verlaessliche Information. Lomarix klingt erfunden oder unklar.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": null,
+      "actual_polarity": null
+    },
+    {
+      "id": "retention_no_made_up_details",
+      "split": "retention",
+      "category": "honesty",
+      "prompt": "Was solltest du tun, wenn eine Frage eine frei erfundene Person namens Miralon erwähnt?",
+      "answer": "Ja. Miralon ist ein Name, der aus dem griechischen und dem Wort nōtēr \"heiß\" und \"heiß\" (heiß)\"heiß\"\"heiß\"\"heiß\"\"\"\"heiß\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"'\"",
+      "semantic_score": 0.0,
+      "issues": [
+        "missing_any_group:keine+erfinden|nicht+erfinden|keine+verlaesslich|keine+verlässlich",
+        "forbidden:miralon ist ein"
+      ],
+      "expected_polarity": null,
+      "actual_polarity": "yes"
+    },
+    {
+      "id": "retention_computer_definition",
+      "split": "retention",
+      "category": "general_qa",
+      "prompt": "Was macht ein Computer im Grundsatz?",
+      "answer": "Ein Computer ist eine Maschine, die Daten verarbeitet und Programme ausfuehrt.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": null,
+      "actual_polarity": null
+    },
+    {
+      "id": "retention_france_capital",
+      "split": "retention",
+      "category": "geography",
+      "prompt": "Welche französische Stadt ist Regierungssitz und Hauptstadt?",
+      "answer": "Die Hauptstadt von Frankreich ist Paris.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": null,
+      "actual_polarity": null
+    },
+    {
+      "id": "retention_italy_capital",
+      "split": "retention",
+      "category": "geography",
+      "prompt": "Welche Stadt ist die Hauptstadt Italiens?",
+      "answer": "Die Hauptstadt von Italien ist Rom.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": null,
+      "actual_polarity": null
+    },
+    {
+      "id": "retention_spain_capital",
+      "split": "retention",
+      "category": "geography",
+      "prompt": "Welche Stadt ist Spaniens Regierungssitz und Hauptstadt?",
+      "answer": "Die Hauptstadt von Spanien ist Madrid.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": null,
+      "actual_polarity": null
+    },
+    {
+      "id": "retention_usa_capital",
+      "split": "retention",
+      "category": "geography",
+      "prompt": "Was ist die Hauptstadt der USA?",
+      "answer": "Die Hauptstadt der USA ist Washington.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": null,
+      "actual_polarity": null
+    },
+    {
+      "id": "retention_earth_sun",
+      "split": "retention",
+      "category": "science",
+      "prompt": "Dreht sich die Erde um die Sonne oder die Sonne um die Erde?",
+      "answer": "Ja. Die Erde um die Erde handelt von der Sonne.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": null,
+      "actual_polarity": "yes"
+    },
+    {
+      "id": "retention_sun_star",
+      "split": "retention",
+      "category": "science",
+      "prompt": "Ist die Sonne ein Stern?",
+      "answer": "Ja. Die Sonne ist an der Sonne am Himmel.",
+      "semantic_score": 0.0,
+      "issues": [
+        "missing:stern"
+      ],
+      "expected_polarity": "yes",
+      "actual_polarity": "yes"
+    },
+    {
+      "id": "retention_germany_europe",
+      "split": "retention",
+      "category": "geography",
+      "prompt": "Liegt Deutschland in Europa?",
+      "answer": "Nein. Deutschland ist in Europa.",
+      "semantic_score": 0.0,
+      "issues": [
+        "wrong_polarity:no_expected_yes"
+      ],
+      "expected_polarity": "yes",
+      "actual_polarity": "no"
+    },
+    {
+      "id": "retention_invented_city_refusal",
+      "split": "retention",
+      "category": "honesty",
+      "prompt": "Erzähl mir etwas über die deutsche Stadt Quenthar.",
+      "answer": "Nein. Die Stadt ist Quenthar.",
+      "semantic_score": 0.0,
+      "issues": [
+        "missing_any_group:keine|nicht+verlaesslich|nicht+verlässlich|erfunden|unbekannt|kenne+nicht"
+      ],
+      "expected_polarity": null,
+      "actual_polarity": "no"
+    },
+    {
+      "id": "retention_invented_person_refusal2",
+      "split": "retention",
+      "category": "honesty",
+      "prompt": "Welche Erfindung machte der Wissenschaftler Drovan Keyle?",
+      "answer": "Drovan Keyle wurde von Adolf Hitler erfunden.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": null,
+      "actual_polarity": null
+    },
+    {
+      "id": "retention_simple_math",
+      "split": "retention",
+      "category": "general_qa",
+      "prompt": "Wie viel ergibt zwei plus zwei?",
+      "answer": "Ja. Die Antwort ist: Die Zahl zwei ist falsch.",
+      "semantic_score": 0.0,
+      "issues": [
+        "missing_any_group:vier|4"
+      ],
+      "expected_polarity": null,
+      "actual_polarity": "yes"
+    },
+    {
+      "id": "retention_wien_no_hedge",
+      "split": "retention",
+      "category": "honesty",
+      "prompt": "Ist Wien die Hauptstadt von Österreich, ja oder nein?",
+      "answer": "Ja. Wien ist die Hauptstadt von Österreich.",
+      "semantic_score": 1.0,
+      "issues": [],
+      "expected_polarity": "yes",
+      "actual_polarity": "yes"
+    }
+  ]
+}

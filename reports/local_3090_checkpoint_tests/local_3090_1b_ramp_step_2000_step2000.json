@@ -1,0 +1,199 @@
+{
+  "tag": "local_3090_1b_ramp_step_2000_step2000",
+  "timestamp_utc": "2026-05-30T11:37:42.732034+00:00",
+  "checkpoint": "/mnt/c/Users/_Michael_/Auralis_3090_Test/checkpoints/pretrain_1b_bilingual_de55_en45_ramp/step_2000_step2000.pt",
+  "model_config": "/mnt/c/Users/_Michael_/Auralis_3090_Test/AuralisV2/configs/model/helix_v2_1b.yaml",
+  "probe_file": "/mnt/c/Users/_Michael_/Auralis_3090_Test/AuralisV2/eval/capability_probes_clean_v2.yaml",
+  "aggregate_score": 0.018750000000000003,
+  "by_category": {
+    "cleanliness": 0.0,
+    "code": 0.0,
+    "facts_de": 0.0,
+    "hallucination_guard": 0.0,
+    "instruction": 0.15000000000000002,
+    "math": 0.0
+  },
+  "num_probes": 16,
+  "results": [
+    {
+      "id": "fact_berlin_capital",
+      "category": "facts_de",
+      "score": 0.0,
+      "prompt": "Frage: Was ist die Hauptstadt von Deutschland?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.1071,
+      "answer": "Die Stadt ist ein Ort, in dem sich die Stadt und die Stadt mit ihren Dörfern und Gemeinden in der Region. Die Stadt ist ein Ort der historischen Stadt und"
+    },
+    {
+      "id": "fact_water_state",
+      "category": "facts_de",
+      "score": 0.0,
+      "prompt": "Frage: Was ist Wasser bei Raumtemperatur?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.4545,
+      "answer": "Die durchschnittliche Größe der durchschnittlichen durchschnittlichen durchschnittlichen durchschnittlichen durchschnittlichen durchschnittlichen durchschnittlichen durchschnittlichen durchschnittlich"
+    },
+    {
+      "id": "fact_goethe_faust",
+      "category": "facts_de",
+      "score": 0.0,
+      "prompt": "Frage: Wer schrieb Faust?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.6364,
+      "answer": "\"Ich bin ein Mann, der in der Schule, in der Schule, in der Schule, in der Schule, in der Schule, in der Schule, in"
+    },
+    {
+      "id": "fact_paris_france",
+      "category": "facts_de",
+      "score": 0.0,
+      "prompt": "Frage: In welchem Land liegt Paris?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.25,
+      "answer": "Das ist das Problem, das ich in meinem Leben als wissenschaftliche Tätigkeit, die ich in meinem Leben als wissenschaftliche Tätigkeit, als wissenschaftliche"
+    },
+    {
+      "id": "math_addition",
+      "category": "math",
+      "score": 0.0,
+      "prompt": "Rechne: 17 + 25 =",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.9286,
+      "answer": "25 + 25 = 25 + 25 = 25 + 25 = 25 + 25 = 25 + 25 = 25 + 25 = 25 + 25 = 25 + 25 ="
+    },
+    {
+      "id": "math_multiplication",
+      "category": "math",
+      "score": 0.0,
+      "prompt": "Rechne: 8 * 7 =",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "48 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *"
+    },
+    {
+      "id": "math_subtraction",
+      "category": "math",
+      "score": 0.0,
+      "prompt": "Rechne: 100 - 37 =",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.7143,
+      "answer": "40 - 40 = 40 - 40 = 40 - 40 = 40 - 5 = 40 - 5 = 40 - 5 = 40 - 5 = 40 - 5 ="
+    },
+    {
+      "id": "code_python_print",
+      "category": "code",
+      "score": 0.0,
+      "prompt": "Schreibe eine Python-Zeile, die Hallo ausgibt:\n",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.7143,
+      "answer": ". Ich habe dies für mich. Ich habe dies für mich. Ich habe dies für mich. Ich habe dies für mich. Ich habe die"
+    },
+    {
+      "id": "code_python_function",
+      "category": "code",
+      "score": 0.0,
+      "prompt": "Vervollständige Python:\ndef add(a, b):\n    ",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": ") ) ) ) ) ) ) ) ) ) ) ) ) ) ) )"
+    },
+    {
+      "id": "code_no_eval",
+      "category": "code",
+      "score": 0.0,
+      "prompt": "Ist eval() in Python für fremde Nutzereingaben sicher? Kurze Antwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.6,
+      "answer": "Die Frage ist, ob die Verantwortlichen der Geschäftsleitung der Geschäftsleitung der Geschäftsleitung der Geschäftsleitung der Geschäftsleitung der Geschäftsleitung der Geschäftsleitung der Geschäftsleitung"
+    },
+    {
+      "id": "instruction_short",
+      "category": "instruction",
+      "score": 0.0,
+      "prompt": "Antworte mit genau einem Wort: Welche Farbe hat der Himmel an einem klaren Tag?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.1667,
+      "answer": "Die durchschnittliche Größe der Welt ist in der Regel ein kleiner Teil der Welt. Die Welt ist in der Regel ein durchschnittlicher, aber auch sehr guter"
+    },
+    {
+      "id": "instruction_language",
+      "category": "instruction",
+      "score": 0.30000000000000004,
+      "prompt": "Antworte auf Deutsch: What is a computer?\nAntwort:",
+      "matched": [
+        "computer"
+      ],
+      "forbidden": [
+        "a computer is"
+      ],
+      "garbage": [],
+      "repetition_ratio": 0.4667,
+      "answer": "A computer is a computer that is used to create a computer system that is used to create a computer system that is used to create a computer system and a computer"
+    },
+    {
+      "id": "garbage_html",
+      "category": "cleanliness",
+      "score": 0.0,
+      "prompt": "Erkläre kurz, was Berlin ist.\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "Die Verantwortlichen der österreichischen Fluggesellschaften haben sich in den vergangenen Tagen mit dem Thema \"Die Fluggesellschaften\" in der österreichischen Fluggesellschaft \"S"
+    },
+    {
+      "id": "garbage_chat_tokens",
+      "category": "cleanliness",
+      "score": 0.0,
+      "prompt": "Sag in einem Satz, was ein Apfel ist.\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.2941,
+      "answer": "Die wissenschaftliche Forschung der wissenschaftlichen Forschung ist die wissenschaftliche Forschung der wissenschaftlichen Forschung und der wissenschaftlichen Forschung. Die wissenschaftliche"
+    },
+    {
+      "id": "consistency_goethe_hitler",
+      "category": "hallucination_guard",
+      "score": 0.0,
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz.\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0417,
+      "answer": "Ich bin nicht der Meinung, dass ich mich mit dem Thema \"Belege\" nicht einverstanden bin. Ich habe den Artikel jetzt mal wieder überarbeitet. Ich habe den"
+    },
+    {
+      "id": "consistency_berlin_location",
+      "category": "hallucination_guard",
+      "score": 0.0,
+      "prompt": "Liegt Berlin in der Nähe von Frankfurt? Antworte vorsichtig in einem Satz.\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.2,
+      "answer": "Die Pressemitteilung der Pressemitteilung der Pressemitteilung der Aufsichtsbehörde für die Aufsichtsbehörde für die Aufsichtsbehörde der Generaldirektion für die Dienstleistungen der Dienstleistungen der"
+    }
+  ]
+}

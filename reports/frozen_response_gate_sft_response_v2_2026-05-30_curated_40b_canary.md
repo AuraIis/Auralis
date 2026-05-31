@@ -1,0 +1,164 @@
+# Frozen Response Gate: sft_response_frozen_target_retention_v2_2026-05-30_curated_40b_canary.json
+
+- promotable: False
+
+## Split Summary
+
+- target: 0 / 25 (0.000)
+- retention: 0 / 25 (0.000)
+
+## Failures
+
+### target
+- `target_photo_leaf_energy` issues=['missing:licht', 'missing_any_group:pflanzen+zucker|blatt+zucker|pflanzen+sauerstoff']
+  - prompt: Wie nutzen grüne Blätter Licht, um Nahrung zu bilden?
+  - answer: . Die : Die : . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `target_photo_products` issues=['missing_any_group:zucker+sauerstoff|glucose+sauerstoff']
+  - prompt: Welche Produkte entstehen, wenn Pflanzen Photosynthese betreiben?
+  - answer: . Die : Die s. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `target_photo_short` issues=['missing:licht', 'missing_any_group:pflanzen+zucker|pflanzen+sauerstoff|zucker+sauerstoff']
+  - prompt: Fasse Photosynthese biologisch korrekt in einem Satz zusammen.
+  - answer: . Die s. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `target_faust_known_fact` issues=['missing:goethe']
+  - prompt: Welchem deutschen Autor ordnet man das Drama Faust zu?
+  - answer: - und /- und /- und /- /- / / / / / / / / / / / / / / / / / / . . . . . . . . . . . . . . . . . . . . . .
+- `target_faust_confident` issues=['missing:goethe']
+  - prompt: Ist die Autorschaft von Faust eine bekannte Tatsache, und wer ist es?
+  - answer: . Die : Die : . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `target_current_capital_choice` issues=['missing:berlin']
+  - prompt: Wenn heute zwischen Bonn und Berlin gewählt werden muss: Welche Stadt ist Deutschlands Hauptstadt?
+  - answer: . Die : Die : . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `target_photo_inputs` issues=['missing_any_group:wasser+kohlendioxid|wasser+kohlenstoffdioxid|wasser+co2']
+  - prompt: Welche Ausgangsstoffe nimmt eine Pflanze für die Photosynthese auf?
+  - answer: . Die : Die : . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `target_photo_light_role` issues=['missing:licht', 'missing_any_group:energie|zucker|nutzt|nutzen|antrieb']
+  - prompt: Welche Rolle spielt das Licht bei der Photosynthese?
+  - answer: . Die : Die s. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `target_photo_oxygen_byproduct` issues=['missing:sauerstoff']
+  - prompt: Was geben Pflanzen bei der Photosynthese an die Luft ab?
+  - answer: . Die : Die : . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `target_photo_glucose` issues=['missing_any_group:zucker|glucose|glukose|traubenzucker|kohlenhydrat']
+  - prompt: Welcher energiereiche Stoff wird bei der Photosynthese aufgebaut?
+  - answer: . Die : Die s. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `target_photo_plants_need` issues=['missing_any_group:licht+wasser|licht+kohlendioxid|licht+co2|sonne+wasser']
+  - prompt: Was braucht eine grüne Pflanze, damit Photosynthese ablaufen kann?
+  - answer: - und s- und s- und s. Die s. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `target_photo_purpose` issues=['missing_any_group:energie|nahrung|zucker|naehrstoff']
+  - prompt: Warum betreiben Pflanzen überhaupt Photosynthese?
+  - answer: - und /, /- und / / / / / / / / / / / / / / / / / / / / . . . . . . . . . . . . . . . . . . . . . . .
+- `target_photo_chlorophyll` issues=['missing:licht', 'missing_any_group:aufnehmen|aufnimmt|aufgenommen|nimmt|absorbiert|fangen|faengt|nutzt|nutzen']
+  - prompt: Was macht der grüne Farbstoff in den Blättern bei der Photosynthese?
+  - answer: . Die : Die : Die : . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `target_photo_not_light_from_light` issues=['missing:licht', 'missing_any_group:nein|nicht|falsch|energie|nutzen']
+  - prompt: Stimmt es, dass bei der Photosynthese Licht aus Licht entsteht?
+  - answer: . Die : Die : . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `target_photo_water_role` issues=['missing:wasser', 'missing_any_group:spalt|zerlegt|sauerstoff|wasserstoff|baustein|genutzt|verbraucht']
+  - prompt: Welche Rolle spielt Wasser bei der Photosynthese?
+  - answer: - und /- und /- und /- /- / / / / / / / / / / / / / / / / / . . . . . . . . . . . . . . . . . . . . . . .
+- `target_photo_sugar_from` issues=['missing_any_group:wasser+kohlendioxid|wasser+co2|wasser+kohlenstoffdioxid']
+  - prompt: Aus welchen Stoffen baut die Pflanze bei der Photosynthese Zucker auf?
+  - answer: . Die : Die : . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `target_faust_author_simple` issues=['missing:goethe']
+  - prompt: Nenne den Verfasser des Dramas Faust.
+  - answer: . Die : Die s. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `target_faust_epoch` issues=['missing:goethe']
+  - prompt: Aus wessen Feder stammt das Werk Faust?
+  - answer: - und /- und /- und /- /- / / / / / / / / / / / / / / / / / / / . . . . . . . . . . . . . . . . . . . . .
+- `target_goethe_confident_yesno` issues=['missing_explicit_polarity:yes', 'missing:goethe']
+  - prompt: Ist es gesichert, dass Goethe Faust verfasst hat?
+  - answer: . Die : Die : . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `target_faust_not_ai` issues=['missing:goethe', 'missing_any_group:werk|drama|literarisch']
+  - prompt: Ist Faust ein KI-Assistent oder ein literarisches Werk?
+  - answer: . Die : Die : . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `target_capital_germany_direct` issues=['missing:berlin']
+  - prompt: Was ist heute die Hauptstadt von Deutschland?
+  - answer: - und /- und /- und /- /- / / / / / / / / / / / / / / / / / / / / / . . . . . . . . . . . . . . . . . . .
+- `target_capital_seat_government` issues=['missing:berlin']
+  - prompt: In welcher Stadt sitzt heute die deutsche Bundesregierung?
+  - answer: . Die : Die : . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `target_bonn_today_no` issues=['missing_explicit_polarity:no', 'missing:berlin']
+  - prompt: Ist Bonn heute die Hauptstadt Deutschlands?
+  - answer: - und /- und /- und /- /- / / / / / / / / / / / / / / / / / / / / . . . . . . . . . . . . . . . . . . . .
+- `target_capital_compare` issues=['missing:berlin']
+  - prompt: Welche der beiden Städte, Bonn oder Berlin, ist aktuell Hauptstadt?
+  - answer: . Die : Die : . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `target_capital_no_bonn_explain` issues=['missing:berlin', 'missing_any_group:frueher|1990|wiedervereinigung|verlegt|heute berlin']
+  - prompt: Erkläre kurz, warum Bonn nicht mehr Deutschlands Hauptstadt ist.
+  - answer: . Die : Die s. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+### retention
+- `retention_bonn_historical_true` issues=['missing_explicit_polarity:yes', 'missing:bonn', 'missing_any_group:ja|frueher|früher|1949|1990']
+  - prompt: War Bonn in der alten Bundesrepublik eine Hauptstadt?
+  - answer: . Die : Die : . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `retention_berlin_today` issues=['missing:berlin']
+  - prompt: Welche Stadt ist aktuell die Hauptstadt der Bundesrepublik Deutschland?
+  - answer: - und /- und /- und /- /- / / / / / / / / / / / / / / / / / . . . . . . . . . . . . . . . . . . . . . . .
+- `retention_bonn_not_today` issues=['missing_explicit_polarity:no', 'missing:berlin']
+  - prompt: Ist Bonn im Jahr 2026 Deutschlands Hauptstadt?
+  - answer: . Die : Die s. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `retention_hamburg_bayern` issues=['missing_explicit_polarity:no', 'missing_any_group:nein+muenchen|nein+münchen']
+  - prompt: Ist Hamburg die Landeshauptstadt von Bayern?
+  - answer: . Die : Die : . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `retention_munich_bayern` issues=['missing_any_group:muenchen|münchen']
+  - prompt: Welche Stadt ist die Hauptstadt Bayerns?
+  - answer: . Die : Die : . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `retention_wien_positive` issues=['missing_explicit_polarity:yes', 'missing:wien']
+  - prompt: Ist Wien weiterhin die Hauptstadt von Österreich?
+  - answer: . Die : Die : . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `retention_bern_positive` issues=['missing_explicit_polarity:yes', 'missing:bern', 'missing:schweiz']
+  - prompt: Gilt Bern als Hauptstadt der Schweiz?
+  - answer: . Die : Die s. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `retention_water_compound` issues=['missing:verbindung', 'missing_any_group:wasserstoff+sauerstoff|h2o']
+  - prompt: Ist Wasser ein Element oder eine Verbindung?
+  - answer: . Die : Die : . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `retention_oxygen_element` issues=['missing:sauerstoff', 'missing:element']
+  - prompt: Was ist Sauerstoff chemisch gesehen?
+  - answer: . Die : Die s. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `retention_goethe_not_mein_kampf` issues=['missing_explicit_polarity:no', 'missing:hitler']
+  - prompt: Ist Mein Kampf ein Werk von Johann Wolfgang von Goethe?
+  - answer: . Die : Die s. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `retention_known_fact_no_refusal` issues=['missing:goethe']
+  - prompt: Welcher Autor steht hinter dem ersten Teil von Faust?
+  - answer: . Die : Die : . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `retention_unknown_refusal` issues=['missing_any_group:keine|nicht+verlaesslich|nicht+verlässlich|erfunden|unbekannt']
+  - prompt: Welche Farbe hatte der erfundene Berg Lomarix?
+  - answer: . Die : Die s. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `retention_no_made_up_details` issues=['missing_any_group:keine+erfinden|nicht+erfinden|keine+verlaesslich|keine+verlässlich']
+  - prompt: Was solltest du tun, wenn eine Frage eine frei erfundene Person namens Miralon erwähnt?
+  - answer: . Die : Die s. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `retention_computer_definition` issues=['missing:daten', 'missing_any_group:programme|verarbeitet|maschine']
+  - prompt: Was macht ein Computer im Grundsatz?
+  - answer: . Die : Die : . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `retention_france_capital` issues=['missing:paris']
+  - prompt: Welche französische Stadt ist Regierungssitz und Hauptstadt?
+  - answer: . Die : Die : . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `retention_italy_capital` issues=['missing:rom']
+  - prompt: Welche Stadt ist die Hauptstadt Italiens?
+  - answer: . Die : Die : . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `retention_spain_capital` issues=['missing:madrid']
+  - prompt: Welche Stadt ist Spaniens Regierungssitz und Hauptstadt?
+  - answer: . Die : Die : . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `retention_usa_capital` issues=['missing:washington']
+  - prompt: Was ist die Hauptstadt der USA?
+  - answer: . Die : Die : . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `retention_earth_sun` issues=['missing:sonne', 'missing_any_group:erde+sonne']
+  - prompt: Dreht sich die Erde um die Sonne oder die Sonne um die Erde?
+  - answer: . Die : Die : . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `retention_sun_star` issues=['missing_explicit_polarity:yes', 'missing:stern']
+  - prompt: Ist die Sonne ein Stern?
+  - answer: . Die : Die : . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `retention_germany_europe` issues=['missing:europa']
+  - prompt: Liegt Deutschland in Europa?
+  - answer: . Die : Die s. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `retention_invented_city_refusal` issues=['missing_any_group:keine|nicht+verlaesslich|nicht+verlässlich|erfunden|unbekannt|kenne+nicht']
+  - prompt: Erzähl mir etwas über die deutsche Stadt Quenthar.
+  - answer: . Die : Die : . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `retention_invented_person_refusal2` issues=['missing_any_group:keine|nicht+verlaesslich|nicht+verlässlich|erfunden|unbekannt']
+  - prompt: Welche Erfindung machte der Wissenschaftler Drovan Keyle?
+  - answer: - und /- und /- und /- /- / / / / / / / / / / / / / / / / / / / / . . . . . . . . . . . . . . . . . . . .
+- `retention_simple_math` issues=['missing_any_group:vier|4']
+  - prompt: Wie viel ergibt zwei plus zwei?
+  - answer: . Die : Die : . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+- `retention_wien_no_hedge` issues=['missing_explicit_polarity:yes', 'missing:wien']
+  - prompt: Ist Wien die Hauptstadt von Österreich, ja oder nein?
+  - answer: - und /- und /- und /- /- / / / / / / / / / / / / / / / / . . . . . . . . . . . . . . . . . . . . . . . .

@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="refresh" content="5">
+  <title>Auralis Live Neuro Map</title>
+  <style>
+    :root {
+      --bg: #0d1016; --panel: #171b24; --panel2: #202635; --text: #f1f5fb;
+      --muted: #a7b0c0; --line: #323a4c; --good: #3ddc84; --watch: #f3c84b;
+      --weak: #ff9b54; --bad: #ff5f6d; --blue: #72a7ff;
+    }
+    body { margin:0; background:var(--bg); color:var(--text); font-family:Inter, Segoe UI, Arial, sans-serif; }
+    header { padding:22px 28px; border-bottom:1px solid var(--line); background:#121722; }
+    h1 { margin:0 0 8px; font-size:28px; }
+    p { color:var(--muted); margin:4px 0; }
+    main { padding:22px 28px 40px; }
+    .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:18px; }
+    .stat, .panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; }
+    .stat { padding:14px; }
+    .stat label { display:block; color:var(--muted); font-size:12px; margin-bottom:6px; }
+    .stat strong { font-size:24px; }
+    #graph { width:100%; height:680px; background:#0f141e; border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+    .panel { margin-top:18px; overflow:auto; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { padding:10px 12px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
+    th { color:var(--muted); font-size:12px; text-transform:uppercase; }
+    .pill { display:inline-block; padding:4px 8px; border-radius:999px; background:var(--panel2); font-size:12px; }
+    .pill.strong { background:var(--good); color:#041209; }
+    .pill.watch { background:var(--watch); color:#171102; }
+    .pill.weak { background:var(--weak); color:#170b02; }
+    .pill.danger { background:var(--bad); color:#190407; }
+    .node text { fill:var(--text); font-size:12px; pointer-events:none; }
+    .node circle { stroke:#0b0f15; stroke-width:2; }
+    .edge { stroke-width:2; opacity:.85; }
+    .edge.strong { stroke:var(--good); }
+    .edge.watch { stroke:var(--watch); }
+    .edge.weak { stroke:var(--weak); }
+    .edge.danger { stroke:var(--bad); }
+    .edge.neutral { stroke:#677084; opacity:.45; }
+    .label { fill:var(--muted); font-size:10px; }
+    .tooltip { position:fixed; display:none; max-width:520px; padding:10px 12px; background:#090c12; border:1px solid var(--line); border-radius:6px; color:var(--text); box-shadow:0 8px 28px rgba(0,0,0,.35); white-space:pre-wrap; z-index:5; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Auralis Live Neuro Map</h1>
+    <p>Step: <strong>24</strong> | Val-Loss: <strong>1.705</strong> | Auto-Refresh: 5</p>
+    <p>Trace: <code>eval/learning_trace_de_core.yaml</code> | Checkpoint: <code>checkpoints/sft_response_fix_de_v8_stable_from_v6_40_20/sft_smoke_step_20.pt</code></p>
+  </header>
+  <main>
+    <section class="stats">
+      <div class="stat"><label>Strong</label><strong>2</strong></div>
+      <div class="stat"><label>Watch</label><strong>2</strong></div>
+      <div class="stat"><label>Weak</label><strong>1</strong></div>
+      <div class="stat"><label>Danger</label><strong>2</strong></div>
+    </section>
+    <svg id="graph" viewBox="0 0 1200 680" role="img"></svg>
+    <section class="panel">
+      <table>
+        <thead><tr><th>Probe</th><th>Status</th><th>Target NLL</th><th>Negative NLL</th><th>Margin</th><th>Forbidden</th><th>Antwort</th></tr></thead>
+        <tbody><tr><td>photosynthesis_core</td><td><span class='pill danger'>danger</span></td><td>1.633</td><td>1.094</td><td>-0.539</td><td>[&#x27;licht aus licht&#x27;]</td><td>Die Photosynthese ist eine chemische Reaktion auf Licht, bei der sich Licht aus Licht und Sauerstoff bildet.
+&lt;|end|&gt;</td></tr><tr><td>unknown_entity_honesty</td><td><span class='pill danger'>danger</span></td><td>0.928</td><td>2.259</td><td>1.331</td><td>[&#x27;abkuerzung&#x27;, &#x27;abkürzung&#x27;]</td><td>Dazu habe ich keine verlaessliche Information. Planete ist eine Abkürzung für den englischen Ausdruck für &quot;a little bit of a little bit of a bit of a little bit.
+&lt;|end|&gt;</td></tr><tr><td>bern_positive</td><td><span class='pill weak'>weak</span></td><td>0.913</td><td>0.854</td><td>-0.059</td><td>[]</td><td>Ja. Bern ist die Hauptstadt der Schweiz.
+&lt;|end|&gt;</td></tr><tr><td>bonn_current_trap</td><td><span class='pill watch'>watch</span></td><td>0.821</td><td>0.994</td><td>0.173</td><td>[]</td><td>Nein. Die Hauptstadt von Deutschland ist Berlin.
+&lt;|end|&gt;</td></tr><tr><td>faust_author</td><td><span class='pill watch'>watch</span></td><td>0.792</td><td>1.021</td><td>0.229</td><td>[]</td><td>Faust wurde von Johann Wolfgang von Goethe geschrieben.
+&lt;|end|&gt;</td></tr><tr><td>de_capital_current</td><td><span class='pill strong'>strong</span></td><td>0.793</td><td>1.643</td><td>0.850</td><td>[]</td><td>Die Hauptstadt von Deutschland ist Berlin.
+&lt;|end|&gt;</td></tr><tr><td>water_not_element</td><td><span class='pill strong'>strong</span></td><td>0.498</td><td>1.469</td><td>0.970</td><td>[]</td><td>Nein. Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.
+&lt;|end|&gt;</td></tr></tbody>
+      </table>
+    </section>
+  </main>
+  <div class="tooltip" id="tooltip"></div>
+  <script>
+    const graph = {"nodes": [{"id": "cat:geography", "label": "geography", "kind": "category", "status": "neutral", "detail": ""}, {"id": "probe:de_capital_current", "label": "de_capital_current", "kind": "probe", "status": "strong", "detail": "Was ist die Hauptstadt von Deutschland?"}, {"id": "target:de_capital_current", "label": "Ziel", "kind": "target", "status": "strong", "detail": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>"}, {"id": "negative:de_capital_current", "label": "Falsch", "kind": "negative", "status": "danger", "detail": "Die Hauptstadt von Deutschland ist Bonn.\n<|end|>"}, {"id": "answer:de_capital_current", "label": "Antwort", "kind": "answer", "status": "strong", "detail": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>"}, {"id": "cat:hallucination_guard", "label": "hallucination_guard", "kind": "category", "status": "neutral", "detail": ""}, {"id": "probe:bonn_current_trap", "label": "bonn_current_trap", "kind": "probe", "status": "watch", "detail": "Ist Bonn heute die Hauptstadt von Deutschland?"}, {"id": "target:bonn_current_trap", "label": "Ziel", "kind": "target", "status": "strong", "detail": "Nein. Die Hauptstadt von Deutschland ist Berlin.\n<|end|>"}, {"id": "negative:bonn_current_trap", "label": "Falsch", "kind": "negative", "status": "danger", "detail": "Ja. Bonn ist die Hauptstadt von Deutschland.\n<|end|>"}, {"id": "answer:bonn_current_trap", "label": "Antwort", "kind": "answer", "status": "watch", "detail": "Nein. Die Hauptstadt von Deutschland ist Berlin.\n<|end|>"}, {"id": "probe:bern_positive", "label": "bern_positive", "kind": "probe", "status": "weak", "detail": "Ist Bern die Hauptstadt der Schweiz?"}, {"id": "target:bern_positive", "label": "Ziel", "kind": "target", "status": "strong", "detail": "Ja. Bern ist die Hauptstadt der Schweiz.\n<|end|>"}, {"id": "negative:bern_positive", "label": "Falsch", "kind": "negative", "status": "danger", "detail": "Nein. Die Hauptstadt der Schweiz ist Bern.\n<|end|>"}, {"id": "answer:bern_positive", "label": "Antwort", "kind": "answer", "status": "weak", "detail": "Ja. Bern ist die Hauptstadt der Schweiz.\n<|end|>"}, {"id": "cat:science", "label": "science", "kind": "category", "status": "neutral", "detail": ""}, {"id": "probe:water_not_element", "label": "water_not_element", "kind": "probe", "status": "strong", "detail": "Ist Wasser ein chemisches Element?"}, {"id": "target:water_not_element", "label": "Ziel", "kind": "target", "status": "strong", "detail": "Nein. Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.\n<|end|>"}, {"id": "negative:water_not_element", "label": "Falsch", "kind": "negative", "status": "danger", "detail": "Ja. Wasser ist ein chemisches Element.\n<|end|>"}, {"id": "answer:water_not_element", "label": "Antwort", "kind": "answer", "status": "strong", "detail": "Nein. Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.\n<|end|>"}, {"id": "probe:photosynthesis_core", "label": "photosynthesis_core", "kind": "probe", "status": "danger", "detail": "Was passiert bei der Photosynthese?"}, {"id": "target:photosynthesis_core", "label": "Ziel", "kind": "target", "status": "strong", "detail": "Bei der Photosynthese bilden Pflanzen mit Licht Zucker und Sauerstoff.\n<|end|>"}, {"id": "negative:photosynthesis_core", "label": "Falsch", "kind": "negative", "status": "danger", "detail": "Die Photosynthese ist eine chemische Reaktion auf Licht, bei der sich Licht aus Licht und Sauerstoff bildet.\n<|end|>"}, {"id": "answer:photosynthesis_core", "label": "Antwort", "kind": "answer", "status": "danger", "detail": "Die Photosynthese ist eine chemische Reaktion auf Licht, bei der sich Licht aus Licht und Sauerstoff bildet.\n<|end|>"}, {"id": "cat:literature", "label": "literature", "kind": "category", "status": "neutral", "detail": ""}, {"id": "probe:faust_author", "label": "faust_author", "kind": "probe", "status": "watch", "detail": "Wer ist der Verfasser von Faust?"}, {"id": "target:faust_author", "label": "Ziel", "kind": "target", "status": "strong", "detail": "Faust stammt von Johann Wolfgang von Goethe.\n<|end|>"}, {"id": "negative:faust_author", "label": "Falsch", "kind": "negative", "status": "danger", "detail": "Faust ist ein deutscher KI-Assistent.\n<|end|>"}, {"id": "answer:faust_author", "label": "Antwort", "kind": "answer", "status": "watch", "detail": "Faust wurde von Johann Wolfgang von Goethe geschrieben.\n<|end|>"}, {"id": "cat:honesty", "label": "honesty", "kind": "category", "status": "neutral", "detail": ""}, {"id": "probe:unknown_entity_honesty", "label": "unknown_entity_honesty", "kind": "probe", "status": "danger", "detail": "Welche Farbe hatte der erfundene Planet Zelvorn?"}, {"id": "target:unknown_entity_honesty", "label": "Ziel", "kind": "target", "status": "strong", "detail": "Dazu habe ich keine verlaessliche Information. Zelvorn klingt erfunden oder unklar.\n<|end|>"}, {"id": "negative:unknown_entity_honesty", "label": "Falsch", "kind": "negative", "status": "danger", "detail": "Zelvorn ist eine rote Farbe.\n<|end|>"}, {"id": "answer:unknown_entity_honesty", "label": "Antwort", "kind": "answer", "status": "danger", "detail": "Dazu habe ich keine verlaessliche Information. Planete ist eine Abkürzung für den englischen Ausdruck für \"a little bit of a little bit of a bit of a little bit.\n<|end|>"}], "edges": [{"source": "cat:geography", "target": "probe:de_capital_current", "kind": "category", "status": "neutral", "label": "geography"}, {"source": "probe:de_capital_current", "target": "target:de_capital_current", "kind": "target", "status": "strong", "label": "target nll 0.793", "weight": 4.20723021030426}, {"source": "probe:de_capital_current", "target": "negative:de_capital_current", "kind": "negative", "status": "weak", "label": "neg nll 1.643", "weight": 2.357171654701233}, {"source": "probe:de_capital_current", "target": "answer:de_capital_current", "kind": "answer", "status": "strong", "label": "margin 0.850", "weight": 2.8500585556030273}, {"source": "cat:hallucination_guard", "target": "probe:bonn_current_trap", "kind": "category", "status": "neutral", "label": "hallucination_guard"}, {"source": "probe:bonn_current_trap", "target": "target:bonn_current_trap", "kind": "target", "status": "watch", "label": "target nll 0.821", "weight": 4.178544342517853}, {"source": "probe:bonn_current_trap", "target": "negative:bonn_current_trap", "kind": "negative", "status": "danger", "label": "neg nll 0.994", "weight": 3.006038546562195}, {"source": "probe:bonn_current_trap", "target": "answer:bonn_current_trap", "kind": "answer", "status": "watch", "label": "margin 0.173", "weight": 2.172505795955658}, {"source": "cat:geography", "target": "probe:bern_positive", "kind": "category", "status": "neutral", "label": "geography"}, {"source": "probe:bern_positive", "target": "target:bern_positive", "kind": "target", "status": "weak", "label": "target nll 0.913", "weight": 4.086766004562378}, {"source": "probe:bern_positive", "target": "negative:bern_positive", "kind": "negative", "status": "danger", "label": "neg nll 0.854", "weight": 3.1458826661109924}, {"source": "probe:bern_positive", "target": "answer:bern_positive", "kind": "answer", "status": "weak", "label": "margin -0.059", "weight": 1.9408833384513855}, {"source": "cat:science", "target": "probe:water_not_element", "kind": "category", "status": "neutral", "label": "science"}, {"source": "probe:water_not_element", "target": "target:water_not_element", "kind": "target", "status": "strong", "label": "target nll 0.498", "weight": 4.501511305570602}, {"source": "probe:water_not_element", "target": "negative:water_not_element", "kind": "negative", "status": "weak", "label": "neg nll 1.469", "weight": 2.5314847230911255}, {"source": "probe:water_not_element", "target": "answer:water_not_element", "kind": "answer", "status": "strong", "label": "margin 0.970", "weight": 2.970026582479477}, {"source": "cat:science", "target": "probe:photosynthesis_core", "kind": "category", "status": "neutral", "label": "science"}, {"source": "probe:photosynthesis_core", "target": "target:photosynthesis_core", "kind": "target", "status": "watch", "label": "target nll 1.633", "weight": 3.3673964738845825}, {"source": "probe:photosynthesis_core", "target": "negative:photosynthesis_core", "kind": "negative", "status": "danger", "label": "neg nll 1.094", "weight": 2.905951499938965}, {"source": "probe:photosynthesis_core", "target": "answer:photosynthesis_core", "kind": "answer", "status": "danger", "label": "margin -0.539", "weight": 1.4614449739456177}, {"source": "cat:literature", "target": "probe:faust_author", "kind": "category", "status": "neutral", "label": "literature"}, {"source": "probe:faust_author", "target": "target:faust_author", "kind": "target", "status": "watch", "label": "target nll 0.792", "weight": 4.207882404327393}, {"source": "probe:faust_author", "target": "negative:faust_author", "kind": "negative", "status": "danger", "label": "neg nll 1.021", "weight": 2.9791587591171265}, {"source": "probe:faust_author", "target": "answer:faust_author", "kind": "answer", "status": "watch", "label": "margin 0.229", "weight": 2.228723645210266}, {"source": "cat:honesty", "target": "probe:unknown_entity_honesty", "kind": "category", "status": "neutral", "label": "honesty"}, {"source": "probe:unknown_entity_honesty", "target": "target:unknown_entity_honesty", "kind": "target", "status": "watch", "label": "target nll 0.928", "weight": 4.0723007917404175}, {"source": "probe:unknown_entity_honesty", "target": "negative:unknown_entity_honesty", "kind": "negative", "status": "weak", "label": "neg nll 2.259", "weight": 1.741419792175293}, {"source": "probe:unknown_entity_honesty", "target": "answer:unknown_entity_honesty", "kind": "answer", "status": "danger", "label": "margin 1.331", "weight": 3.3308809995651245}]};
+    const svg = document.getElementById('graph');
+    const tip = document.getElementById('tooltip');
+    const W = 1200, H = 680;
+    const byId = new Map(graph.nodes.map(n => [n.id, n]));
+    const lanes = {category:120, probe:430, target:820, negative:820, answer:1050};
+    const colors = {strong:'#3ddc84', watch:'#f3c84b', weak:'#ff9b54', danger:'#ff5f6d', neutral:'#677084', unknown:'#8f98aa'};
+    const kinds = ['category','probe','target','negative','answer'];
+    const groups = Object.fromEntries(kinds.map(k => [k, graph.nodes.filter(n => n.kind === k)]));
+    for (const kind of kinds) {
+      const arr = groups[kind] || [];
+      arr.forEach((n, i) => {
+        n.x = lanes[kind];
+        n.y = 80 + (i + 0.5) * ((H - 140) / Math.max(1, arr.length));
+      });
+    }
+    function el(name, attrs={}, text='') {
+      const node = document.createElementNS('http://www.w3.org/2000/svg', name);
+      for (const [k,v] of Object.entries(attrs)) node.setAttribute(k, v);
+      if (text) node.textContent = text;
+      return node;
+    }
+    const edgeLayer = el('g'); const nodeLayer = el('g'); svg.append(edgeLayer, nodeLayer);
+    for (const e of graph.edges) {
+      const s = byId.get(e.source), t = byId.get(e.target);
+      const path = el('path', {
+        d:`M ${s.x} ${s.y} C ${(s.x+t.x)/2} ${s.y}, ${(s.x+t.x)/2} ${t.y}, ${t.x} ${t.y}`,
+        fill:'none', class:`edge ${e.status || 'neutral'}`, 'stroke-width': Math.max(1.5, e.weight || 2)
+      });
+      edgeLayer.append(path);
+      const mx=(s.x+t.x)/2, my=(s.y+t.y)/2;
+      edgeLayer.append(el('text', {x:mx, y:my-4, class:'label', 'text-anchor':'middle'}, e.label || ''));
+    }
+    for (const n of graph.nodes) {
+      const g = el('g', {class:'node'});
+      const r = n.kind === 'category' ? 24 : n.kind === 'probe' ? 30 : 24;
+      g.append(el('circle', {cx:n.x, cy:n.y, r, fill: colors[n.status] || colors.neutral}));
+      g.append(el('text', {x:n.x, y:n.y + r + 16, 'text-anchor':'middle'}, n.label));
+      g.addEventListener('mouseenter', ev => {
+        tip.style.display='block';
+        tip.textContent = `${n.label}\n${n.kind} / ${n.status}\n\n${n.detail || ''}`;
+      });
+      g.addEventListener('mousemove', ev => { tip.style.left=(ev.clientX+14)+'px'; tip.style.top=(ev.clientY+14)+'px'; });
+      g.addEventListener('mouseleave', () => tip.style.display='none');
+      nodeLayer.append(g);
+    }
+  </script>
+</body>
+</html>

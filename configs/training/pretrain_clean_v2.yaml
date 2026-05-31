@@ -1,0 +1,91 @@
+# New clean-v2 base pretraining configuration.
+#
+# Starts from scratch on the strict 35GB / ~7B-token clean mix generated under
+# data/training/pretrain_clean_v2. This is intentionally separate from the old
+# phase1 config so the previous checkpoints remain a rollback anchor.
+
+experiment:
+  name: helix_v2_pretrain_clean_v2
+  version: "1.0"
+  description: "Fresh base pretraining on strict clean-v2 German-first corpus."
+
+model:
+  config_path: "configs/model/helix_v2_1b.yaml"
+
+data:
+  data_dir: "/workspace/v2data/tokenized/pretrain_clean_v2"
+  mix_ratios:
+    german: 1.0
+  seq_length: 2048
+  val_split_bytes: 50_000_000
+  dataloader_seed: 20260509
+
+training:
+  device: "cuda"
+  dtype: "bfloat16"
+  matmul_precision: "high"
+  kernels:
+    enabled: true
+    mamba: true
+    gla: true
+    flash_attention: true
+
+  optimizer:
+    name: adamw
+    lr: 3.0e-4
+    betas: [0.9, 0.95]
+    weight_decay: 0.1
+    eps: 1.0e-8
+    fused: true
+
+  scheduler:
+    type: cosine
+    warmup_steps: 1000
+    min_lr_ratio: 0.1
+
+  batch_size_per_device: 4
+  gradient_accumulation: 32
+  gradient_clip_norm: 1.0
+
+  # ~6.7B effective tokens at seq=2048, batch=4, grad_accum=32.
+  # This should cover the clean-v2 corpus roughly once and is cheaper than
+  # repeating a noisy 21B-token run.
+  total_steps: 26_000
+
+  gradient_checkpointing: true
+  torch_compile: true
+
+logging:
+  log_every: 10
+  eval_every: 500
+  save_every: 1000
+  wandb:
+    enabled: false
+    project: "auralis-v2"
+    tags: ["clean-v2", "pretrain", "fresh-base"]
+
+checkpointing:
+  output_dir: "checkpoints/pretrain_clean_v2"
+  save_last_n: 3
+  save_best: true
+  external_backup:
+    enabled: true
+    path: "/checkpoints/pretrain_clean_v2_backup"
+    interval_steps: 5000
+
+evaluation:
+  max_val_batches: 100
+  per_language_batches: 20
+
+monitoring:
+  health:
+    grad_explosion_threshold: 100.0
+    val_regression_stop_k: 4
+
+smoke_test:
+  model_config: "configs/model/helix_v2_100m.yaml"
+  batch_size: 2
+  gradient_accumulation: 1
+  seq_length: 64
+  total_steps: 20
+  log_every: 5

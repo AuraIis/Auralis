@@ -48,13 +48,15 @@ def _build_attn_sublayer(config: AuralisConfig, layer_cfg: LayerConfig) -> nn.Mo
             d_state=layer_cfg.d_state,
         )
     if t == "sparse_attention":
+        global_tokens = 32 if layer_cfg.global_tokens is None else layer_cfg.global_tokens
         return SparseAttentionLayer(
             d_model=config.d_model,
             n_heads=config.n_heads,
             d_head=config.d_head,
             window_size=layer_cfg.window_size or 1024,
-            global_tokens=layer_cfg.global_tokens or 32,
+            global_tokens=global_tokens,
             use_rope=layer_cfg.use_rope if layer_cfg.use_rope is not None else True,
+            qk_norm=bool(layer_cfg.qk_norm),
         )
     if t == "plain_attention":
         return PlainAttentionLayer(
@@ -94,6 +96,23 @@ class HelixBlock(nn.Module):
         x = x + attn_out
         x = x + self.ffn(self.norm2(x))
         return x
+
+
+class MTPHead(nn.Module):
+    """Small future-token head that reuses the main vocab projection.
+
+    The 200k tokenizer makes independent vocab heads too expensive. This head
+    only learns a hidden-space transformation; logits are projected through the
+    model's normal tied embedding or lm_head.
+    """
+
+    def __init__(self, d_model: int, norm_eps: float):
+        super().__init__()
+        self.norm = RMSNorm(d_model, eps=norm_eps)
+        self.proj = nn.Linear(d_model, d_model, bias=False)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return x + self.proj(self.norm(x))
 
 
 class HelixModel(nn.Module):
@@ -137,6 +156,17 @@ class HelixModel(nn.Module):
         else:
             self.lm_head = nn.Linear(config.d_model, config.vocab_size, bias=False)
 
+        self.mtp_heads = nn.ModuleList()
+        if config.mtp.enabled:
+            if config.mtp.n_heads < 1:
+                raise ValueError("mtp.n_heads must be >= 1 when mtp.enabled=true")
+            if config.mtp.loss_weight <= 0:
+                raise ValueError("mtp.loss_weight must be > 0 when mtp.enabled=true")
+            self.mtp_heads = nn.ModuleList(
+                MTPHead(config.d_model, config.norm_eps)
+                for _ in range(int(config.mtp.n_heads))
+            )
+
         self._init_weights()
 
     # ------------------------------------------------------------------
@@ -163,6 +193,13 @@ class HelixModel(nn.Module):
             output_modules=output_modules,
             output_scale=init.output_init_scale,
         )
+        # Generic init deliberately touches every Linear/Conv. A few sequence
+        # layers carry non-generic bias parameterisations (Mamba dt, GLA decay)
+        # that must be restored after that pass.
+        for blk in self.blocks:
+            reset = getattr(blk.attn, "reset_special_parameters", None)
+            if callable(reset):
+                reset()
 
     # ------------------------------------------------------------------
     # Gradient checkpointing toggles (HF-style API)
@@ -202,15 +239,29 @@ class HelixModel(nn.Module):
 
         x = self.norm_out(x)
 
-        if self.lm_head is not None:
-            logits = self.lm_head(x)
-        else:
-            logits = F.linear(x, self.embedding.weight)
+        logits = self._vocab_projection(x)
 
         loss = None
+        main_loss = None
+        mtp_loss = None
         if labels is not None:
-            loss = self._shift_loss(logits, labels)
-        return {"logits": logits, "loss": loss}
+            main_loss = self._shift_loss(logits, labels)
+            loss = main_loss
+            if self.mtp_heads:
+                mtp_loss = self._mtp_loss(x, labels)
+                if mtp_loss is not None:
+                    loss = main_loss + float(self.config.mtp.loss_weight) * mtp_loss
+        return {
+            "logits": logits,
+            "loss": loss,
+            "loss_main": main_loss,
+            "loss_mtp": mtp_loss,
+        }
+
+    def _vocab_projection(self, hidden: torch.Tensor) -> torch.Tensor:
+        if self.lm_head is not None:
+            return self.lm_head(hidden)
+        return F.linear(hidden, self.embedding.weight)
 
     @staticmethod
     def _shift_loss(logits: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
@@ -222,6 +273,30 @@ class HelixModel(nn.Module):
             shift_labels.view(-1),
             ignore_index=-100,
         )
+
+    def _mtp_loss(self, hidden: torch.Tensor, labels: torch.Tensor) -> torch.Tensor | None:
+        losses: list[torch.Tensor] = []
+        seq_len = hidden.size(1)
+        for head_idx, head in enumerate(self.mtp_heads):
+            # Main LM head predicts t+1. MTP head 0 predicts t+2, head 1 t+3, ...
+            offset = head_idx + 2
+            if seq_len <= offset:
+                continue
+            target = labels[..., offset:].contiguous()
+            if not torch.any(target.ne(-100)):
+                continue
+            mtp_hidden = head(hidden[..., :-offset, :].contiguous())
+            mtp_logits = self._vocab_projection(mtp_hidden)
+            losses.append(
+                F.cross_entropy(
+                    mtp_logits.reshape(-1, mtp_logits.size(-1)),
+                    target.reshape(-1),
+                    ignore_index=-100,
+                )
+            )
+        if not losses:
+            return None
+        return torch.stack(losses).mean()
 
     def count_parameters(self) -> int:
         return sum(p.numel() for p in self.parameters())

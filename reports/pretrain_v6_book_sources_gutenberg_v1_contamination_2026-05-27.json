@@ -1,0 +1,5 @@
+{
+  "train_file": "data/training/pretrain_v6_book_sources_gutenberg_v1/book_sources.txt",
+  "num_hits": 0,
+  "hits": []
+}

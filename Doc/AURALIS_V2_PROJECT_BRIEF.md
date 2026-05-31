@@ -1,5 +1,9 @@
 # Auralis v2 — Projekt-Einweisung für Claude Code
 
+> Current note (2026-05-17): This is the original master brief and still the
+> best source for the Auralis/Helix idea. Some concrete numbers and schedules
+> are historical. For the current run state, use `STATUS.md`.
+
 **Projekt:** Auralis (das System/der Assistent)
 **Modell-Name:** Helix v2 (das LLM darunter)
 **Maintainer:** Michael Speckels

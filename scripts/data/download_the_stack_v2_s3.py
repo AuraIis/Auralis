@@ -234,6 +234,18 @@ def main() -> None:
     )
     parser.add_argument("--workers", type=int, default=16)
     parser.add_argument("--required-free-gb", type=float, default=10.0)
+    parser.add_argument(
+        "--output-name",
+        default="the_stack_v2.txt",
+        help="Output filename inside raw/code (default: the_stack_v2.txt).",
+    )
+    parser.add_argument(
+        "--languages",
+        nargs="+",
+        choices=sorted(LANG_FOLDERS),
+        default=list(LANG_FOLDERS),
+        help="Subset of languages to download, useful for smoke tests.",
+    )
     args = parser.parse_args()
 
     cfg = load_paths(args.config) if args.config else load_paths()
@@ -241,7 +253,7 @@ def main() -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     check_free_space(out_dir, args.required_free_gb)
 
-    output_path = out_dir / "the_stack_v2.txt"
+    output_path = out_dir / args.output_name
     target_bytes = int(args.target_tokens * CODE_BYTES_PER_TOKEN)
     filters = cfg["filters"]["code"]
     s3_client = make_s3_client()
@@ -252,7 +264,12 @@ def main() -> None:
         target_tokens=args.target_tokens,
         estimated_bytes_per_token=CODE_BYTES_PER_TOKEN,
         started_at=now_iso(),
-        filters_applied={**filters, "lang_shares": LANG_SHARES, "workers": args.workers},
+        filters_applied={
+            **filters,
+            "lang_shares": LANG_SHARES,
+            "workers": args.workers,
+            "languages": args.languages,
+        },
     )
 
     print(f"Output:  {output_path}")
@@ -260,7 +277,9 @@ def main() -> None:
     print(f"Workers: {args.workers}", flush=True)
 
     with atomic_text_writer(output_path) as fh:
-        for lang, share in LANG_SHARES.items():
+        selected_share_total = sum(LANG_SHARES[lang] for lang in args.languages)
+        for lang in args.languages:
+            share = LANG_SHARES[lang] / selected_share_total
             lang_folder = LANG_FOLDERS[lang]
             lang_target_bytes = int(target_bytes * share)
             print(

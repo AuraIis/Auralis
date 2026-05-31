@@ -1,0 +1,104 @@
+{
+  "checkpoint": "checkpoints/sft_response_fix_de_v2_core_phase_a2/sft_smoke_step_220.pt",
+  "train": "data/training/sft_response_fix_de_v4/core_train.helix.jsonl",
+  "val": "data/training/sft_response_fix_de_v4/val.helix.jsonl",
+  "steps": 120,
+  "batch_size": 1,
+  "grad_accum": 4,
+  "lr": 3e-07,
+  "warmup_steps": 30,
+  "category_weights": {
+    "facts_de": 1.4,
+    "hallucination_guard": 1.0,
+    "qa_de": 2.0,
+    "honesty": 2.0,
+    "instruction_de": 1.5
+  },
+  "eos_loss_weight": 8.0,
+  "generation_system": "Du bist Auralis, ein hilfreicher deutscher KI-Assistent. Antworte korrekt, knapp und ehrlich. Wenn etwas unsicher oder erfunden ist, sage das deutlich.",
+  "train_by_category": {
+    "hallucination_guard": 180,
+    "facts_de": 156,
+    "qa_de": 15,
+    "honesty": 27,
+    "instruction_de": 6
+  },
+  "val_by_category": {
+    "facts_de": 4,
+    "hallucination_guard": 4,
+    "qa_de": 2,
+    "honesty": 2
+  },
+  "history": [
+    {
+      "step": 1,
+      "train_loss": 4.233222603797913,
+      "val_loss": 4.943881332874298,
+      "val_by_category": {
+        "facts_de": 5.213340640068054,
+        "hallucination_guard": 4.674422025680542,
+        "honesty": 4.8882896900177,
+        "qa_de": 6.055270433425903
+      },
+      "lr": 2e-08,
+      "elapsed_seconds": 12.781767129898071
+    },
+    {
+      "step": 120,
+      "train_loss": 0.8762394487857819,
+      "val_loss": 1.2011032029986382,
+      "val_by_category": {
+        "facts_de": 1.368161991238594,
+        "hallucination_guard": 1.0340444147586823,
+        "honesty": 2.6187011003494263,
+        "qa_de": 2.4572163820266724
+      },
+      "lr": 3e-08,
+      "elapsed_seconds": 322.0901110172272
+    }
+  ],
+  "generations_before": [
+    {
+      "prompt": "Was ist die Hauptstadt von Deutschland?",
+      "answer": "<|end|>"
+    },
+    {
+      "prompt": "Erklaere kurz, was Wasser ist.",
+      "answer": "heides.html, jpeg.png\"Ich habe mich nicht besonders gut zurecht. Die meisten sprechen von \"was ist das denn?\" ist ein schwieriges Problem. Die meisten sprechen von \"was ist das denn?\" Ja, das ist falsch. Die meisten sprechen von \"was ist das denn?\" Ja,"
+    },
+    {
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz und korrekt.",
+      "answer": "ellingen\", \"und\" .\")\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\""
+    },
+    {
+      "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+      "answer": "\", \"L\"-L\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\""
+    }
+  ],
+  "generations_after": [
+    {
+      "prompt": "Was ist die Hauptstadt von Deutschland?",
+      "answer": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>"
+    },
+    {
+      "prompt": "Erklaere kurz, was Wasser ist.",
+      "answer": "Wasser ist Wasser ist ein chemisches Element, das Wasser ist ein chemisches Element, das in der Luft ist.\n<|end|>"
+    },
+    {
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz und korrekt.",
+      "answer": "Das ist falsch. Die Aussage ist falsch. Die Aussage ist falsch. Die Aussage ist falsch. Die Aussage ist falsch. Die Aussage ist falsch. Die Aussage ist falsch. Die Aussage ist falsch. Die Aussage ist falsch. Die Aussage ist eine Abkürzung und der Begriff \"Großschreibung\" ist falsch. Die Abkürzung steht für \"Großschreibung\". Die Großschreibung ist eine Technik, um zu erklären, was die Großschreibung ist. Die Großschreibung ist eine Technik, um zu erklären, dass"
+    },
+    {
+      "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+      "answer": "Ja. Die Hauptstadt von Deutschland ist Berlin.\n<|end|>"
+    }
+  ],
+  "initial_val_loss": 4.948354542255402,
+  "initial_val_by_category": {
+    "facts_de": 5.212602376937866,
+    "hallucination_guard": 4.684106707572937,
+    "honesty": 4.894334554672241,
+    "qa_de": 6.040492057800293
+  },
+  "saved_checkpoint": "checkpoints/sft_response_fix_de_v4_from_a2_sweep_120/sft_smoke_step_120.pt"
+}

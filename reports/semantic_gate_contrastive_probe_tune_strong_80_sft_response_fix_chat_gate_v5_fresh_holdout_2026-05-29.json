@@ -1,0 +1,170 @@
+{
+  "source": "data/eval/checkpoint_tests/contrastive_probe_tune_strong_80/contrastive_probe_tune_strong_80_sft_response_fix_chat_gate_v5_fresh_holdout.json",
+  "summary": {
+    "semantic_score": 0.8333333333333334,
+    "passed": 10,
+    "total": 12,
+    "by_category": {
+      "facts_de": 0.6666666666666666,
+      "hallucination_guard": 0.6666666666666666,
+      "honesty": 1.0,
+      "qa_de": 1.0
+    },
+    "failures": [
+      {
+        "id": "yes_wien_capital",
+        "category": "facts_de",
+        "keyword_score": 0.6,
+        "semantic_score": 0.0,
+        "expected_polarity": "yes",
+        "actual_polarity": "no",
+        "issues": [
+          "wrong_polarity:no_expected_yes",
+          "forbidden:nein"
+        ],
+        "answer": "Nein. Wien ist die Hauptstadt von Österreich."
+      },
+      {
+        "id": "no_hamburg_bavaria",
+        "category": "hallucination_guard",
+        "keyword_score": 0.6,
+        "semantic_score": 0.0,
+        "expected_polarity": "no",
+        "actual_polarity": "no",
+        "issues": [
+          "missing:muenchen",
+          "forbidden:hamburg ist die hauptstadt"
+        ],
+        "answer": "Nein. Hamburg ist die Hauptstadt von Bayern."
+      }
+    ]
+  },
+  "results": [
+    {
+      "id": "yes_wien_capital",
+      "category": "facts_de",
+      "keyword_score": 0.6,
+      "semantic_score": 0.0,
+      "expected_polarity": "yes",
+      "actual_polarity": "no",
+      "issues": [
+        "wrong_polarity:no_expected_yes",
+        "forbidden:nein"
+      ],
+      "answer": "Nein. Wien ist die Hauptstadt von Österreich."
+    },
+    {
+      "id": "yes_bern_capital",
+      "category": "facts_de",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": "yes",
+      "actual_polarity": null,
+      "issues": [],
+      "answer": "Die Hauptstadt von Schweiz ist Bern."
+    },
+    {
+      "id": "no_bonn_current",
+      "category": "hallucination_guard",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": "no",
+      "actual_polarity": "no",
+      "issues": [],
+      "answer": "Nein. Die Hauptstadt von Deutschland ist Berlin."
+    },
+    {
+      "id": "no_hamburg_bavaria",
+      "category": "hallucination_guard",
+      "keyword_score": 0.6,
+      "semantic_score": 0.0,
+      "expected_polarity": "no",
+      "actual_polarity": "no",
+      "issues": [
+        "missing:muenchen",
+        "forbidden:hamburg ist die hauptstadt"
+      ],
+      "answer": "Nein. Hamburg ist die Hauptstadt von Bayern."
+    },
+    {
+      "id": "goethe_not_mein_kampf_short",
+      "category": "hallucination_guard",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": "no",
+      "actual_polarity": "no",
+      "issues": [],
+      "answer": "Nein. Mein Kampf stammt von Adolf Hitler, nicht von Goethe."
+    },
+    {
+      "id": "goethe_faust_author",
+      "category": "facts_de",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [],
+      "answer": "Faust stammt von Johann Wolfgang von Goethe."
+    },
+    {
+      "id": "water_not_element",
+      "category": "qa_de",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": "no",
+      "actual_polarity": "no",
+      "issues": [],
+      "answer": "Nein. Wasser ist eine Verbindung aus Wasserstoff und Sauerstoff."
+    },
+    {
+      "id": "oxygen_definition",
+      "category": "qa_de",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [],
+      "answer": "Sauerstoff ist ein chemisches Element und ein wichtiger Bestandteil der Luft."
+    },
+    {
+      "id": "photosynthesis_definition",
+      "category": "qa_de",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [],
+      "answer": "Photosynthese ist der Prozess, bei dem Pflanzen mit Licht Zucker und Sauerstoff bilden."
+    },
+    {
+      "id": "unknown_source_behavior",
+      "category": "honesty",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [],
+      "answer": "Ich sollte keine Details erfinden."
+    },
+    {
+      "id": "unknown_planet_behavior",
+      "category": "honesty",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [],
+      "answer": "Dazu habe ich keine verlaessliche Information. Maldrin ist eine falsche oder keine Information."
+    },
+    {
+      "id": "computer_definition",
+      "category": "qa_de",
+      "keyword_score": 1.0,
+      "semantic_score": 1.0,
+      "expected_polarity": null,
+      "actual_polarity": null,
+      "issues": [],
+      "answer": "Ein Computer ist eine Maschine, die Daten verarbeitet und Programme ausfuehrt."
+    }
+  ]
+}

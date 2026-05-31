@@ -1,0 +1,16 @@
+{
+  "language": "german",
+  "output_bin": "/workspace/v2data/tokenized/pretrain_v6_expanded_test_mix/german.bin",
+  "output_idx": "/workspace/v2data/tokenized/pretrain_v6_expanded_test_mix/german.idx",
+  "sources": [
+    "/workspace/v2data/data/training/pretrain_v6_expanded_test_mix/mix_full.txt"
+  ],
+  "documents": 47411,
+  "tokens": 16670626,
+  "empty_lines": 0,
+  "bytes_in": 75177275,
+  "tokenizer_sha256": "a24fbea439bc8b78c78653b9febf708d96cf023745199d8f6e7c0b3f6285f2bc",
+  "started_at": "2026-05-27T07:47:16.772740+00:00",
+  "finished_at": "2026-05-27T07:47:28.722331+00:00",
+  "elapsed_seconds": 11.9
+}

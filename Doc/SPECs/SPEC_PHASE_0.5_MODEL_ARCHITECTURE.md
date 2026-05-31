@@ -1,5 +1,10 @@
 # Phase 0.5: Modell-Architektur
 
+> Current note (2026-05-17): This is the main architecture spec for Helix v2.
+> It describes the intended hybrid stack. Some production-size examples
+> mention 2B/3B, while current canary work uses smaller 100M/500M configs.
+> For live run state, use `STATUS.md`.
+
 **Projekt:** Auralis v2 / Helix v2
 **Phase:** 0.5 (zwischen Tokenizer und Pretraining)
 **Dauer:** 1 Woche

@@ -1,0 +1,106 @@
+experiment:
+  name: helix_v2_1b_bilingual_de55_en45_ramp
+  version: "0.1"
+  description: >
+    First recommended foundation ramp after LR2e-4 A/B smoke. This keeps
+    German as the product priority without isolating it from English, preserving
+    cross-lingual transfer while monitoring bpb balance.
+
+model:
+  config_path: "configs/model/helix_v2_1b.yaml"
+
+data:
+  data_dir: "/workspace/v2data/tokenized/curated_40b"
+  mix_ratios:
+    german: 0.55
+    english: 0.45
+  seq_length: 2048
+  val_split_bytes: 8_000_000
+  dataloader_seed: 20260530
+
+training:
+  device: "cuda"
+  dtype: "bfloat16"
+  matmul_precision: "high"
+  kernels:
+    enabled: true
+    mamba: true
+    gla: true
+    flash_attention: true
+
+  optimizer:
+    name: adamw
+    lr: 2.0e-4
+    betas: [0.9, 0.95]
+    weight_decay: 0.05
+    eps: 1.0e-8
+    fused: true
+
+  scheduler:
+    type: cosine
+    warmup_steps: 500
+    min_lr_ratio: 0.15
+
+  batch_size_per_device: 1
+  gradient_accumulation: 32
+  gradient_clip_norm: 1.0
+  total_steps: 5000
+
+  gradient_checkpointing: true
+  torch_compile: false
+
+logging:
+  log_every: 5
+  eval_every: 100
+  save_every: 500
+  wandb:
+    enabled: false
+    project: "auralis-v2"
+    tags: ["1b", "foundation", "bilingual", "de55-en45", "ramp"]
+
+checkpointing:
+  output_dir: "/workspace/v2data/checkpoints/pretrain_1b_bilingual_de55_en45_ramp"
+  save_last_n: 4
+  save_best: true
+  skip_step_save_if_checkpoint_written: true
+  external_backup:
+    enabled: false
+    path: ""
+    interval_steps: 1000
+
+evaluation:
+  max_val_batches: 50
+  per_language_batches: 20
+  tokens_per_byte:
+    english: 0.1990
+    german: 0.2338
+
+monitoring:
+  health:
+    grad_explosion_threshold: 100.0
+    val_regression_stop_k: 3
+    bpb_regression_enabled: true
+    bpb_regression_languages: ["english", "german"]
+    bpb_regression_max_increase: 0.25
+    bpb_regression_k: 2
+    bpb_regression_lookback: 4
+    bpb_regression_warmup_evals: 3
+
+ramp_decision_points:
+  inspect_at_steps:
+    - 100
+    - 250
+    - 500
+    - 1000
+    - 2500
+    - 5000
+  continue_if:
+    - no_nan_inf_oom_or_temperature_alarm
+    - grad_norm_stays_below_threshold
+    - bpb_german_improves_or_stays_stable_after_warmup
+    - bpb_english_does_not_collapse
+    - bpb_gap_max_trends_down_or_stays_controlled
+  stop_and_replan_if:
+    - german_bpb_worsens_for_multiple_evals_after_warmup
+    - english_bpb_collapses_from_low_mix
+    - sample_generation_repetition_increases

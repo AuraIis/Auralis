@@ -1,0 +1,169 @@
+status: finished
+metadata:
+  git_sha: unknown
+  config_sha16: c596644e10a522b7
+  config_path: ''
+  tokenizer_sha16: a24fbea439bc8b78
+  tokenizer_path: /workspace/v2data/tokenizer/helix_v2_tokenizer.model
+  hostname: a4fbb324e4db
+  python_version: 3.11.15
+  torch_version: 2.12.0+cu130
+  cuda_version: '13.0'
+  gpu_name: NVIDIA RTX PRO 5000 Blackwell
+  dtype: bfloat16
+config:
+  experiment:
+    name: helix_v2_500m_pretrain_v6_books_lowratio_from_expanded_best_bitbastion
+    version: '0.1'
+    description: Short BITBASTION smoke on 25% Gutenberg/Open-Books plus 75% v6 expanded
+      German mix, initialized from expanded-test best.pt.
+  model:
+    config_path: configs/model/helix_v2_mid_500m_smart.yaml
+  data:
+    data_dir: /workspace/v2data/tokenized/pretrain_v6_books_augmented_test
+    mix_ratios:
+      english: 0.25
+      german: 0.75
+    seq_length: 2048
+    val_split_bytes: 4000000
+    dataloader_seed: 20260528
+  training:
+    device: cuda
+    dtype: bfloat16
+    matmul_precision: high
+    kernels:
+      enabled: true
+      mamba: true
+      gla: true
+      flash_attention: true
+    optimizer:
+      name: adamw
+      lr: 7.0e-06
+      betas:
+      - 0.9
+      - 0.95
+      weight_decay: 0.05
+      eps: 1.0e-08
+      fused: true
+    scheduler:
+      type: cosine
+      warmup_steps: 10
+      min_lr_ratio: 0.35
+    batch_size_per_device: 1
+    gradient_accumulation: 32
+    gradient_clip_norm: 1.0
+    total_steps: 100
+    gradient_checkpointing: true
+    torch_compile: false
+  logging:
+    log_every: 5
+    eval_every: 50
+    save_every: 100
+    wandb:
+      enabled: false
+      project: auralis-v2
+      tags:
+      - v6-books-lowratio
+      - pretrain
+      - 500m
+      - bitbastion
+  checkpointing:
+    output_dir: /workspace/v2data/checkpoints/pretrain_v6_books_lowratio_500m_from_expanded_best_bitbastion
+    save_last_n: 2
+    save_best: true
+    external_backup:
+      enabled: false
+      path: ''
+      interval_steps: 500
+  evaluation:
+    max_val_batches: 40
+    per_language_batches: 20
+  monitoring:
+    health:
+      grad_explosion_threshold: 100.0
+      val_regression_stop_k: 3
+backends:
+  per_layer:
+  - idx: '0'
+    type: mamba
+    backend: mamba_ssm
+  - idx: '1'
+    type: gla
+    backend: fla
+  - idx: '2'
+    type: gla
+    backend: fla
+  - idx: '3'
+    type: sparse_attention
+    backend: flash_attn
+  - idx: '4'
+    type: gla
+    backend: fla
+  - idx: '5'
+    type: mamba
+    backend: mamba_ssm
+  - idx: '6'
+    type: gla
+    backend: fla
+  - idx: '7'
+    type: sparse_attention
+    backend: flash_attn
+  - idx: '8'
+    type: gla
+    backend: fla
+  - idx: '9'
+    type: gla
+    backend: fla
+  - idx: '10'
+    type: mamba
+    backend: mamba_ssm
+  - idx: '11'
+    type: gla
+    backend: fla
+  - idx: '12'
+    type: sparse_attention
+    backend: flash_attn
+  - idx: '13'
+    type: gla
+    backend: fla
+  - idx: '14'
+    type: gla
+    backend: fla
+  - idx: '15'
+    type: mamba
+    backend: mamba_ssm
+  - idx: '16'
+    type: gla
+    backend: fla
+  - idx: '17'
+    type: gla
+    backend: fla
+  - idx: '18'
+    type: sparse_attention
+    backend: flash_attn
+  - idx: '19'
+    type: gla
+    backend: fla
+  summary:
+    mamba:mamba_ssm: 4
+    gla:fla: 12
+    sparse_attention:flash_attn: 4
+exit_reason: completed
+final_state:
+  step: 100
+  best_val_loss: 2.791636000573635
+  consecutive_val_increases: 1
+  tokens_seen: 6553600
+  wall_clock_seconds: 431.47389340400696
+  alerts: []
+  external_backups_ok: 0
+  external_backups_failed: 0
+  external_backups_consecutive_failed: 0
+health:
+  stop_requested: false
+  stop_reason: ''
+  n_alerts: 0
+  grad_explosion_count: 0
+  grad_collapse_count: 0
+  tps_peak: 17471.79092432707
+  alerts: []

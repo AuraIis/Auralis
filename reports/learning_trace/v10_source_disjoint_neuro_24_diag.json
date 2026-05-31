@@ -1,0 +1,297 @@
+{
+  "checkpoint": "checkpoints/sft_response_fix_de_v8_stable_from_v6_40_20/sft_smoke_step_20.pt",
+  "train": "data/training/sft_response_fix_de_v10_source_disjoint_mix/core_train.helix.jsonl",
+  "val": "data/training/sft_response_fix_de_v10_source_disjoint_mix/val.helix.jsonl",
+  "steps": 24,
+  "batch_size": 1,
+  "grad_accum": 4,
+  "lr": 6e-08,
+  "warmup_steps": 4,
+  "category_weights": {
+    "facts_de": 1.4,
+    "hallucination_guard": 1.4,
+    "qa_de": 1.6,
+    "honesty": 1.6,
+    "honest_refusal": 1.4,
+    "factual_qa": 1.2,
+    "factual_correction": 1.4,
+    "concept_explain": 1.1,
+    "technical_explanation": 1.0,
+    "general_assistant": 0.8,
+    "instruction_de": 0.9
+  },
+  "family_balanced_sampler": true,
+  "eos_loss_weight": 8.0,
+  "generation_system": "Du bist Auralis, ein hilfreicher deutscher KI-Assistent. Antworte korrekt, knapp und ehrlich. Wenn etwas unsicher oder erfunden ist, sage das deutlich.",
+  "train_by_category": {
+    "facts_de": 90,
+    "math_word_problem": 28,
+    "technical_explanation": 50,
+    "factual_qa": 50,
+    "honest_refusal": 50,
+    "factual_correction": 50,
+    "hallucination_guard": 91,
+    "step_by_step_reason": 50,
+    "concept_explain": 50,
+    "format_following": 50,
+    "math_reasoning": 50,
+    "general_assistant": 50,
+    "instruction_de": 7,
+    "translation": 50,
+    "qa_de": 25,
+    "rewrite": 50,
+    "clarify_awareness": 50,
+    "honesty": 30
+  },
+  "val_by_category": {
+    "facts_de": 10,
+    "qa_de": 6,
+    "honesty": 5,
+    "instruction_de": 3,
+    "factual_qa": 19,
+    "technical_explanation": 10,
+    "concept_explain": 2,
+    "general_assistant": 23,
+    "factual_correction": 9,
+    "format_following": 2,
+    "honest_refusal": 4,
+    "math_reasoning": 1,
+    "translation": 1,
+    "step_by_step_reason": 3,
+    "clarify_awareness": 2,
+    "math_word_problem": 1
+  },
+  "history": [
+    {
+      "step": 1,
+      "train_loss": 2.572462249547243,
+      "val_loss": 1.713179829530418,
+      "val_by_category": {
+        "clarify_awareness": 5.143057584762573,
+        "concept_explain": 4.888672590255737,
+        "facts_de": 1.2947636218741536,
+        "factual_correction": 4.866096884012222,
+        "factual_qa": 3.959384173154831,
+        "format_following": 6.535544395446777,
+        "general_assistant": 4.601215124130249,
+        "honest_refusal": 4.759857952594757,
+        "honesty": 1.4378355383872985,
+        "instruction_de": 1.3841613084077835,
+        "math_reasoning": 5.12511682510376,
+        "math_word_problem": 5.43080472946167,
+        "qa_de": 1.6072502322494984,
+        "step_by_step_reason": 6.143527905146281,
+        "technical_explanation": 5.098518788814545,
+        "translation": 3.7149605751037598
+      },
+      "lr": 3e-08,
+      "elapsed_seconds": 21.4418785572052
+    },
+    {
+      "step": 4,
+      "train_loss": 0.21613547392189503,
+      "val_loss": 1.7073093764483929,
+      "val_by_category": {
+        "clarify_awareness": 5.135139465332031,
+        "concept_explain": 4.891790151596069,
+        "facts_de": 1.2890092618763447,
+        "factual_correction": 4.856242328882217,
+        "factual_qa": 3.9565359354019165,
+        "format_following": 6.52633261680603,
+        "general_assistant": 4.599116504192352,
+        "honest_refusal": 4.754494845867157,
+        "honesty": 1.44295494556427,
+        "instruction_de": 1.386516774694125,
+        "math_reasoning": 5.115142822265625,
+        "math_word_problem": 5.413301944732666,
+        "qa_de": 1.6020102029045422,
+        "step_by_step_reason": 6.135205348332723,
+        "technical_explanation": 5.098730623722076,
+        "translation": 3.7151410579681396
+      },
+      "lr": 6e-08,
+      "elapsed_seconds": 54.66598677635193
+    },
+    {
+      "step": 8,
+      "train_loss": 1.2537395674735308,
+      "val_loss": 1.7080212831497192,
+      "val_by_category": {
+        "clarify_awareness": 5.133482933044434,
+        "concept_explain": 4.879403829574585,
+        "facts_de": 1.289575234055519,
+        "factual_correction": 4.851650238037109,
+        "factual_qa": 3.9494179785251617,
+        "format_following": 6.515341520309448,
+        "general_assistant": 4.594595640897751,
+        "honest_refusal": 4.752330958843231,
+        "honesty": 1.4348161399364472,
+        "instruction_de": 1.3866992046435673,
+        "math_reasoning": 5.1087541580200195,
+        "math_word_problem": 5.412201404571533,
+        "qa_de": 1.601282011717558,
+        "step_by_step_reason": 6.122650305430095,
+        "technical_explanation": 5.09022319316864,
+        "translation": 3.7090163230895996
+      },
+      "lr": 5.484345884812357e-08,
+      "elapsed_seconds": 88.29403972625732
+    },
+    {
+      "step": 12,
+      "train_loss": 2.277091782540083,
+      "val_loss": 1.7060664957389235,
+      "val_by_category": {
+        "clarify_awareness": 5.119953155517578,
+        "concept_explain": 4.873436450958252,
+        "facts_de": 1.288799504749477,
+        "factual_correction": 4.8413065969944,
+        "factual_qa": 3.947172611951828,
+        "format_following": 6.504616737365723,
+        "general_assistant": 4.587278872728348,
+        "honest_refusal": 4.739297032356262,
+        "honesty": 1.430146586894989,
+        "instruction_de": 1.384177419046561,
+        "math_reasoning": 5.101790904998779,
+        "math_word_problem": 5.395395278930664,
+        "qa_de": 1.59850117067496,
+        "step_by_step_reason": 6.110356728235881,
+        "technical_explanation": 5.088010668754578,
+        "translation": 3.6978867053985596
+      },
+      "lr": 4.134345884812358e-08,
+      "elapsed_seconds": 125.08187913894653
+    },
+    {
+      "step": 16,
+      "train_loss": 0.5190150905400515,
+      "val_loss": 1.7041656048968434,
+      "val_by_category": {
+        "clarify_awareness": 5.120409727096558,
+        "concept_explain": 4.86545205116272,
+        "facts_de": 1.289127112366259,
+        "factual_correction": 4.839790046215057,
+        "factual_qa": 3.945095956325531,
+        "format_following": 6.489177465438843,
+        "general_assistant": 4.585394650697708,
+        "honest_refusal": 4.733724355697632,
+        "honesty": 1.4278064846992493,
+        "instruction_de": 1.384581632912159,
+        "math_reasoning": 5.1028032302856445,
+        "math_word_problem": 5.393805503845215,
+        "qa_de": 1.5963762079675992,
+        "step_by_step_reason": 6.106283664703369,
+        "technical_explanation": 5.080199956893921,
+        "translation": 3.68658185005188
+      },
+      "lr": 2.4656541151876422e-08,
+      "elapsed_seconds": 161.43183016777039
+    },
+    {
+      "step": 20,
+      "train_loss": 1.5208636168390512,
+      "val_loss": 1.7028954746201634,
+      "val_by_category": {
+        "clarify_awareness": 5.115800380706787,
+        "concept_explain": 4.8695714473724365,
+        "facts_de": 1.2865729676559567,
+        "factual_correction": 4.828686028718948,
+        "factual_qa": 3.940176844596863,
+        "format_following": 6.481183767318726,
+        "general_assistant": 4.584047943353653,
+        "honest_refusal": 4.72822630405426,
+        "honesty": 1.4240685820579528,
+        "instruction_de": 1.3813223441441853,
+        "math_reasoning": 5.102950572967529,
+        "math_word_problem": 5.394592761993408,
+        "qa_de": 1.5938418085376422,
+        "step_by_step_reason": 6.10956605275472,
+        "technical_explanation": 5.077827274799347,
+        "translation": 3.6641898155212402
+      },
+      "lr": 1.1156541151876423e-08,
+      "elapsed_seconds": 194.98632669448853
+    },
+    {
+      "step": 24,
+      "train_loss": 1.6215238943696022,
+      "val_loss": 1.7045312253758311,
+      "val_by_category": {
+        "clarify_awareness": 5.1195642948150635,
+        "concept_explain": 4.864319562911987,
+        "facts_de": 1.2881087446585298,
+        "factual_correction": 4.83154171705246,
+        "factual_qa": 3.9418864846229553,
+        "format_following": 6.47126841545105,
+        "general_assistant": 4.582079499959946,
+        "honest_refusal": 4.72442227602005,
+        "honesty": 1.423673039674759,
+        "instruction_de": 1.3849007959167163,
+        "math_reasoning": 5.095579624176025,
+        "math_word_problem": 5.390895366668701,
+        "qa_de": 1.5911757027109463,
+        "step_by_step_reason": 6.103945016860962,
+        "technical_explanation": 5.076062381267548,
+        "translation": 3.6620986461639404
+      },
+      "lr": 6e-09,
+      "elapsed_seconds": 229.6670320034027
+    }
+  ],
+  "generations_before": [
+    {
+      "prompt": "Was ist die Hauptstadt von Deutschland?",
+      "answer": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>"
+    },
+    {
+      "prompt": "Erklaere kurz, was Wasser ist.",
+      "answer": "Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.\n<|end|>"
+    },
+    {
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz und korrekt.",
+      "answer": "Nein. Mein Kampf stammt von Adolf Hitler, nicht von Goethe.\n<|end|>"
+    },
+    {
+      "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+      "answer": "Nein. Die Hauptstadt von Deutschland ist Berlin.\n<|end|>"
+    }
+  ],
+  "generations_after": [
+    {
+      "prompt": "Was ist die Hauptstadt von Deutschland?",
+      "answer": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>"
+    },
+    {
+      "prompt": "Erklaere kurz, was Wasser ist.",
+      "answer": "Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.\n<|end|>"
+    },
+    {
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz und korrekt.",
+      "answer": "Nein. Mein Kampf stammt von Adolf Hitler, nicht von Goethe.\n<|end|>"
+    },
+    {
+      "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+      "answer": "Nein. Die Hauptstadt von Deutschland ist Berlin.\n<|end|>"
+    }
+  ],
+  "initial_val_loss": 1.7151576215401292,
+  "initial_val_by_category": {
+    "clarify_awareness": 5.14046049118042,
+    "concept_explain": 4.894229888916016,
+    "facts_de": 1.2961496645584702,
+    "factual_correction": 4.871982634067535,
+    "factual_qa": 3.9570262134075165,
+    "format_following": 6.54095458984375,
+    "general_assistant": 4.598173946142197,
+    "honest_refusal": 4.755840003490448,
+    "honesty": 1.4404611527919768,
+    "instruction_de": 1.3908035705486934,
+    "math_reasoning": 5.125009059906006,
+    "math_word_problem": 5.427674770355225,
+    "qa_de": 1.6097276856501896,
+    "step_by_step_reason": 6.141799529393514,
+    "technical_explanation": 5.0990148186683655,
+    "translation": 3.7205703258514404
+  },
+  "saved_checkpoint": "checkpoints/v10_source_disjoint_neuro_24/sft_smoke_step_24.pt"
+}

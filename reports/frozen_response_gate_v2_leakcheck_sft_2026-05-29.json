@@ -1,0 +1,14 @@
+{
+  "probe_file": "eval/sft_response_frozen_target_retention_v2.yaml",
+  "train_files": [
+    "data/training/sft_clean_de_v1/train.helix.jsonl",
+    "data/training/sft_response_fix_de_v8_stable_mix/core_train.helix.jsonl",
+    "data/training/sft_response_fix_de_v10_source_disjoint_mix/core_train.helix.jsonl",
+    "data/training/sft_response_fix_de_v11_contrastive_corrections/core_train.helix.jsonl",
+    "data/training/sft_response_fix_de_v12_photo_faust_bridge/core_train.helix.jsonl"
+  ],
+  "eval_prompts": 50,
+  "train_prompts": 13397,
+  "collisions": [],
+  "passed": true
+}

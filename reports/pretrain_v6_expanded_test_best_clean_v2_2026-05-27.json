@@ -1,0 +1,216 @@
+{
+  "tag": "expanded_test_best_clean_v2",
+  "timestamp_utc": "2026-05-27T07:58:14.502588+00:00",
+  "checkpoint": "checkpoints/pretrain_v6_expanded_test_500m_from_v5_best_bitbastion/best.pt",
+  "model_config": "configs/model/helix_v2_mid_500m_smart.yaml",
+  "probe_file": "eval/capability_probes_clean_v2.yaml",
+  "aggregate_score": 0.47500000000000003,
+  "by_category": {
+    "cleanliness": 0.35,
+    "code": 0.06666666666666667,
+    "facts_de": 0.75,
+    "hallucination_guard": 0.5,
+    "instruction": 0.5,
+    "math": 0.5666666666666667
+  },
+  "num_probes": 16,
+  "results": [
+    {
+      "id": "fact_berlin_capital",
+      "category": "facts_de",
+      "score": 1.0,
+      "prompt": "Frage: Was ist die Hauptstadt von Deutschland?\nAntwort:",
+      "matched": [
+        "berlin"
+      ],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "Antwort: Die Hauptstadt von Deutschland ist Berlin."
+    },
+    {
+      "id": "fact_water_state",
+      "category": "facts_de",
+      "score": 0.0,
+      "prompt": "Frage: Was ist Wasser bei Raumtemperatur?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.4286,
+      "answer": "Wasser ist ein chemisches Element, das in Wasser gelöst ist. Es ist ein Element, das in Wasser gelöst ist. Antwort: Wasser ist ein chemisches Element, das in Wasser gelöst ist."
+    },
+    {
+      "id": "fact_goethe_faust",
+      "category": "facts_de",
+      "score": 1.0,
+      "prompt": "Frage: Wer schrieb Faust?\nAntwort:",
+      "matched": [
+        "goethe"
+      ],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "Antwort: \"Faust\" ist ein fiktives Gedicht von Goethe, das er im Jahr 1799 veröffentlichte. Es handelt von einem jungen Mann namens Faust, der in einem kleinen Dorf in der Nähe von Paris lebt. Er ist ein leidenschaftlicher Dichter"
+    },
+    {
+      "id": "fact_paris_france",
+      "category": "facts_de",
+      "score": 1.0,
+      "prompt": "Frage: In welchem Land liegt Paris?\nAntwort:",
+      "matched": [
+        "frankreich"
+      ],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "Antwort: Paris ist ein Land, das sich in Frankreich befindet."
+    },
+    {
+      "id": "math_addition",
+      "category": "math",
+      "score": 1.0,
+      "prompt": "Rechne: 17 + 25 =",
+      "matched": [
+        "42"
+      ],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "42 + 25 = 67 + 17 = 84 + 17 = 97 + 17 = 100 + 17 = 107 + 17 = 114 + 17 = 119 + 17 = 132 + 17 = 133 + 17 = 140 + 17 = 147 + 17 ="
+    },
+    {
+      "id": "math_multiplication",
+      "category": "math",
+      "score": 0.7,
+      "prompt": "Rechne: 8 * 7 =",
+      "matched": [
+        "56"
+      ],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.6111,
+      "answer": "56 * 8 = 448 * 7 = 2448 * 8 = 2688 * 8 = 2688 * 8 = 2688 * 8 = 2688 * 8 = 2688 * 8 = 2688 * 8 = 2688 * 8 ="
+    },
+    {
+      "id": "math_subtraction",
+      "category": "math",
+      "score": 0.0,
+      "prompt": "Rechne: 100 - 37 =",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "53 - 37 = 18 - 17 = 5 - 8 = 2 - 9 = 3 - 10 = 2 - 11 = 3 - 12 = 2 - 13 = 3 - 14 = 2 - 15 = 3 - 16 = 2 - 17 ="
+    },
+    {
+      "id": "code_python_print",
+      "category": "code",
+      "score": 0.2,
+      "prompt": "Schreibe eine Python-Zeile, die Hallo ausgibt:\n",
+      "matched": [
+        "hallo"
+      ],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.7857,
+      "answer": "(name='Hallo', 'Hello', 'Hello', 'Hello', 'Hello', 'Hello', 'Hello', 'Hello', 'Hello', 'Hello', 'Hello', 'Hello', 'Hello', 'Hello', 'Hello', '"
+    },
+    {
+      "id": "code_python_function",
+      "category": "code",
+      "score": 0.0,
+      "prompt": "Vervollständige Python:\ndef add(a, b):\n    ",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.6667,
+      "answer": "def add(a, b): django.contrib.add(a, b) def add(a, b): django.contrib.add(a, b) def add(a, b): django.contrib.add(a"
+    },
+    {
+      "id": "code_no_eval",
+      "category": "code",
+      "score": 0.0,
+      "prompt": "Ist eval() in Python für fremde Nutzereingaben sicher? Kurze Antwort:",
+      "matched": [],
+      "forbidden": [
+        "ja",
+        "sicher"
+      ],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "Ja, eval() ist in Python für fremde Nutzereingaben sicher."
+    },
+    {
+      "id": "instruction_short",
+      "category": "instruction",
+      "score": 0.0,
+      "prompt": "Antworte mit genau einem Wort: Welche Farbe hat der Himmel an einem klaren Tag?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "Antwort: Antwort: Die Farbe des Himmels an einem klaren Tag ist weiß."
+    },
+    {
+      "id": "instruction_language",
+      "category": "instruction",
+      "score": 1.0,
+      "prompt": "Antworte auf Deutsch: What is a computer?\nAntwort:",
+      "matched": [
+        "computer"
+      ],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "Antwort: Ein Computer ist ein Gerät, das Daten verarbeitet, speichert und verarbeitet, um sie auf einem Computer zu speichern und zu analysieren."
+    },
+    {
+      "id": "garbage_html",
+      "category": "cleanliness",
+      "score": 0.0,
+      "prompt": "Erkläre kurz, was Berlin ist.\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "Antwort: Antwort: Berlin ist ein Land, das in Europa liegt."
+    },
+    {
+      "id": "garbage_chat_tokens",
+      "category": "cleanliness",
+      "score": 0.7,
+      "prompt": "Sag in einem Satz, was ein Apfel ist.\nAntwort:",
+      "matched": [
+        "apfel"
+      ],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.4,
+      "answer": "Antwort: Apfel ist ein Symbol, das in der Mathematik verwendet wird, um die Anzahl der möglichen Kombinationen von Elementen eines Elements zu beschreiben. Es ist ein Symbol, das in der Mathematik verwendet wird, um die Anzahl der möglichen Kombinationen von Elementen eines"
+    },
+    {
+      "id": "consistency_goethe_hitler",
+      "category": "hallucination_guard",
+      "score": 0.0,
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz.\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.2,
+      "answer": "Antwort: Antwort: \"Mein Kampf\" Antwort: \"Mein Kampf\""
+    },
+    {
+      "id": "consistency_berlin_location",
+      "category": "hallucination_guard",
+      "score": 1.0,
+      "prompt": "Liegt Berlin in der Nähe von Frankfurt? Antworte vorsichtig in einem Satz.\nAntwort:",
+      "matched": [
+        "nicht"
+      ],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "Antwort: Antwort: Es ist wichtig, dass du dich an die Regeln des Spiels hältst, um Fehler zu vermeiden. Hier sind einige Tipps, die dir helfen können: 1. Vermeide das Spiel, wenn du nicht sicher bist, ob du es spielen"
+    }
+  ]
+}

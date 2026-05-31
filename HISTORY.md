@@ -109,3 +109,51 @@ Chronologisch, Milestones. Append-Only.
 - **WSL2 + RTX 3090 Inference-Setup:** Komplette Linux-Inference-Umgebung lokal für regelmäßige Phase-1/2/3-Iterationen ohne Server-Disruption. Stack: WSL2 Ubuntu 24.04, Python 3.12, torch 2.11.0+cu128, mamba_ssm 2.3.1, causal-conv1d 1.6.1, flash-linear-attention 0.5.0 (alle Linux-only-Libs ohne Probleme). flash-attn nicht installiert (Server-Trainer nutzt sparse_attention:native, brauchen wir nicht). best.pt via scp lokal kopiert. Inference-Script lädt 0.90B in 5.6s, generiert mit **30-40 tok/s auf 3090**, peak GPU-mem 2.10 GB. Erste Outputs bei step 7000: classic Pretrain-state Verhalten — DE/EN-Grammatik perfekt, Faktenwissen unzuverlässig, Topic-Drift bei längerer Generation. Erwartet bei nur 8.75% des Hauptlaufs.
 - **Cost-Bilanz Phase-3-Daten heute:** $2.37 von ~$11 OpenRouter-Budget, 7188 SFT-Examples in Pipeline (980 + 5598 + 300 v1 + 310 v2 honest_refusal), production-quality validiert.
 - **Doku-Updates:** [LESSONS.md](LESSONS.md) L-017 (Helpful-Elaboration-Trap), [STATUS.md](STATUS.md) Phase-3-Daten-Status pending.
+
+## 2026-04-30 → 2026-05-30 — Zwischenstand (rekonstruiert aus git-Log + `reports/`)
+
+> Diese ~29 Tage waren nicht im HISTORY erfasst. **Rekonstruiert** aus dem git-Commit-Log (bis HEAD `0cfe26f`, 2026-05-04 — danach wurde nichts mehr committet) und den datierten Dateien in `reports/` und `docs/` (05-24 .. 05-30). Keine Erfindung — wo Lauf-Metriken fehlen, steht nur das, was die Artefakte belegen.
+
+**~04-24 → 05-04 — Phase-2-Prep + industrielle Daten-Pipeline (git-belegt):**
+- `feat: Phase-2 prep, DE-Chain, Politik-Korpus, infra hardening` + drei Codex-Review-Pässe (P1-P3, 6 Findings, 2 Edge-Cases).
+- **Industry-standard Daten- + Eval-Pipeline** verdrahtet, **Track-2-Benchmark-Suite** (`feat(eval)`), opt-in Speed-Knobs für Phase-2+ (`feat(perf)`).
+- Referenz-Docs: Attention-Varianten + Positional Encoding, MoRA-Integrationsplan, Daten-Pipeline/Framework-Evaluation (Tier-1 getestet), `data_pipeline_v1.md`.
+- **Ask-LLM-Quality-Scorer** (Nemotron-CC-Stil): `rewrite_low_quality.py`, `ask_llm_code.py`, `ask_llm_local.py` (direct-HTTP für LocalAI/vLLM), chunked streaming + `--resume`, `--min/--max-chars`-Prefilter.
+- **Scorer-Modell-Debugging:** DeepSeek-Garbage-Loop → temperature 0→0.05 → Default `llama-3.3-70b` → später `qwen3.6-35b-a3b` (lokales bitbastion-Modell). Deckt sich mit der späteren Judge-Lektion **L-019**.
+- **RunPod:** phase1-resume-Config + Pod-Setup-Script.
+
+**~05-24 → 05-26 — 500M-v5-Forensik + v6-Datenplan:**
+- `500m_step6000_sft_gate` (05-24); `pretrain_v5_500m_a100_root_cause` (05-26) — Ursachenanalyse des schwachen v5-500M.
+- `pretrain_v6_data_eval_plan`, `candidates_audit` / `manifest_combined`, `canary_500m_bitbastion` (05-26): neuer v6-Datenkandidaten-Pool definiert + auditiert.
+
+**~05-27 — v6-Daten-Mixes gebaut + kontaminationsgeprüft:**
+- Gutenberg-Books clean_v2/v1 (contamination + manifests + tokenized manifests), `books_augmented` / `books_lowratio` / `expanded_test`-500M-Mixes, `strict_mix`, `instruction_pool` / `instruction_de_strict`, extra candidates.
+- Erste `sft_response_fix_de` v1/v2 (microfit, curriculum-mixed, diag eos/weighted, guard/core-only, stabilize-from-core).
+
+**~05-28 — großer SFT-Reparatur-Sweep (500M):**
+- `sft_response_fix_de` **v3 → v9** mit dutzenden Varianten (anchor, balance/guard-patch, family-from-v4best, bridge, bonn_photo, stable-from-v6/v8) gegen die Interferenz-Achsen (Bonn/Berlin, Photosynthese, Faust/Goethe).
+- Semantic-Gate-Sweeps (a2, v3..v9, contrastive/balanced/strong-probe-tune) über die `sft_response_fix_chat_gate`-v2..v6-Holdouts.
+
+**~05-29 — Pivot auf 1B-Readiness + Frozen/Live-Gates:**
+- `1b_readiness_plan`, `staged_training_plan`, `codex_handoff_1b_readiness_v2`; **1B-Preflight** (v2 + curated_40b_v2) → `ready_to_launch: False`.
+- **Frozen-Response-Gate v2** über die 500M-Checkpoints (v8_safe, hybrid_v1_40, hybrid_v12_bridge_60, hybrid_v12_repair_v2_80) + Leak-Checks → **kein Checkpoint promotable** (Target schwach, Retention bricht).
+- **Adaptive Live-Bridge** (Frozen-Gate live im Training), `learning_neuro_map` + `learning_trace_system`, v10 (source-disjoint) / v11 (contrastive) SFT.
+- STATUS-Snapshot 05-29: 500M nicht produktionsnah; Diagnose = **Interferenz**, Weg = sauber gewichteter 1B-Mix statt weiterer 500M-Mini-Patches.
+
+**~05-30 — curated_40b-Canary / 1B-Mix-A/B (Übergang zu dieser Session):**
+- `1b_language_tree_plan`, `1b_lr2e4_mix_ab_smoke`, `1b_readiness_preflight_curated_40b_canary`, `frozen_response_gate sft_response_v2 curated_40b_canary`.
+- Übergang in den bilingualen **1B-Ramp (de55/en45)**, der in dieser Session bei Step ~3400 analysiert wurde (siehe nächster Eintrag).
+
+## 2026-05-30/31 — Deutsch-Edu-Filter (FineWeb-Edu-Methodik) + Multi-GPU/DDP
+
+- **Ausgangslage:** Bilingualer 1B-Ramp (de55/en45) bis Step ~3400 (best.pt), Lernverhalten enttäuschend. **Saubere Diagnose:** nicht die Eval (Qwen-2.5 auf den Probes 37/50 = sinnvoll, nicht kaputt), nicht die Architektur (All-Plain-Attention-Kontrolle ~ gleichauf mit Helix bis Step 300), sondern **Under-Training** (~3.4B Tok ~16% Chinchilla) **+ qualitäts-invertierter DE-Mix** (schwächste Quelle = größtes Budget).
+- **Deutsch-Daten-Audit:** Heuristik-Refilter sinnlos (Daten nicht vermüllt, ~0.01% Drops). Echter Hebel = **Bildungswert-Filter** wie fineweb_edu (Englisch hatte Edu-Score, Deutsch nie).
+- **Edu-Annotation gebaut** (`scripts/data/score_german_edu.py`, OpenAI-kompatibel): erst **gemini-3.5-flash** getestet → **€24 Kosten-Schock** (Thinking-Tokens fressen `max_tokens` + werden als teurer Output berechnet) → Lauf gekillt. Umgestellt auf **`qwen/qwen3-235b-a22b-2507` via OpenRouter** (non-thinking, ~40× billiger, **strenger UND genauer** auf Web-Text — Gemini war zu lasch auf EuroParl-Fragmenten). 12k Labels, **~€1**.
+- **Verteilungen (Qwen, ≥3):** wikipedia_de 85 % · fineweb2_de 25 % · german_commons **4.8 %** (fast nur Parlaments-/OCR-Fragmente).
+- **Cheap Klassifikator** (`edu_embed.py` frozen multilingual-e5-large + `train_edu_classifier.py` Ridge-Kopf + Schwellen-Kalibrierung): val **Pearson 0.866, Keep-F1 0.872**; reproduziert das LLM-Urteil auf Held-out (294 docs/s). `score_corpus_edu.py` filtert den Vollkorpus.
+- **German-v2:** fineweb2_de @≥2.0 (~38 % Keep) + wikipedia_de ganz, **german_commons gedroppt** → ~2.0B hochwertige DE-Tokens (`configs/data_paths.curated_v2_german.yaml`). Reicht für den ~1.8B-DE-Bedarf des Foundation-Runs ohne Wiederholung.
+- **Multi-GPU/DDP** in den Trainer eingebaut (`trainer.py`, `train_phase1.py`, `scripts/ops/run_pretrain_multigpu.sh`), strikt `WORLD_SIZE>1`-gated → Single-GPU bit-identisch (verifiziert). DDP-agnostische Checkpoints, `no_sync`, Rank-0-Eval+Barrier, globaler Stop. **Gemessen: 12.9k tok/s/GPU** → volles 1B (~20B Tok) ~18 Tage (1 GPU) / ~5 Tage (4 GPU). Noch nicht auf echter Multi-GPU validiert (Testbox = 1 GPU).
+- **Dataset-Review** (vier User-Vorschläge): RedPajama-V2-de = echter Modern-DE-Skalierungshebel (3T, Quality-Signals); **german-commons verworfen** (Stream front-loaded mit OCR-Historik — BLBooks/DiBiLit/GermanPD, ppl 500-1000+; verstärkt L-004 → L-020); babylm-german zu klein; **multitask_german_32k** als SFT-Daten nach `raw/sft/` gesichert.
+- **Infra:** Colab vs RunPod analysiert → RunPod billiger + praxistauglicher für Mehrtage-Läufe (Spot dank Resume); Colab ungeeignet. 1B-Foundation läuft gratis auf BITBASTION (1 GPU).
+- **Versionierung:** zwei fokussierte Commits auf `feat/multigpu-ddp` (DDP `eb4f833`, Edu-Pipeline `95d71ba`), gepusht, **PR #1** offen.
+- **Neue Lessons:** L-018..L-022.

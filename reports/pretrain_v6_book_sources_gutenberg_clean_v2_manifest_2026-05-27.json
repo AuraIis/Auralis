@@ -1,0 +1,32 @@
+{
+  "bytes_written_text": 1460573853,
+  "docs_in": 334952,
+  "docs_written": 323794,
+  "dropped": {
+    "all_caps": 231,
+    "front_back_matter": 250,
+    "gutenberg_boilerplate": 6333,
+    "index_glossary": 450,
+    "license_block": 83,
+    "license_short": 143,
+    "mixed_gutenberg_bundle": 1,
+    "page_list": 3478,
+    "table_of_contents": 119,
+    "too_few_words": 61,
+    "too_short": 9
+  },
+  "finished_at": "2026-05-27 09:41:32",
+  "input_jsonl": "data/training/pretrain_v6_book_sources_gutenberg_v1/book_sources.jsonl",
+  "languages": {
+    "de": 3264,
+    "en": 320530
+  },
+  "output_jsonl": "data/training/pretrain_v6_book_sources_gutenberg_v1/book_sources.clean_v2.jsonl",
+  "output_text": "data/training/pretrain_v6_book_sources_gutenberg_v1/book_sources.clean_v2.txt",
+  "sources": {
+    "common_pile_project_gutenberg": 321550,
+    "zkeown_gutenberg_books": 2244
+  },
+  "started_at": "2026-05-27 09:27:16",
+  "unique_hashes": 323794
+}

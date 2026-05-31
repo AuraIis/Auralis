@@ -1,0 +1,16 @@
+{
+  "language": "english",
+  "output_bin": "/workspace/v2data/tokenized/pretrain_v6_book_sources_gutenberg_clean_v2/english.bin",
+  "output_idx": "/workspace/v2data/tokenized/pretrain_v6_book_sources_gutenberg_clean_v2/english.idx",
+  "sources": [
+    "/workspace/v2data/data/training/pretrain_v6_book_sources_gutenberg_v1/book_sources.clean_v2.txt"
+  ],
+  "documents": 323794,
+  "tokens": 337649654,
+  "empty_lines": 0,
+  "bytes_in": 1460573853,
+  "tokenizer_sha256": "a24fbea439bc8b78c78653b9febf708d96cf023745199d8f6e7c0b3f6285f2bc",
+  "started_at": "2026-05-27T09:45:13.864096+00:00",
+  "finished_at": "2026-05-27T09:47:11.921997+00:00",
+  "elapsed_seconds": 118.1
+}

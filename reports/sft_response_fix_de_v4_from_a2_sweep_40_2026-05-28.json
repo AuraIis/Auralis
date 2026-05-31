@@ -1,0 +1,104 @@
+{
+  "checkpoint": "checkpoints/sft_response_fix_de_v2_core_phase_a2/sft_smoke_step_220.pt",
+  "train": "data/training/sft_response_fix_de_v4/core_train.helix.jsonl",
+  "val": "data/training/sft_response_fix_de_v4/val.helix.jsonl",
+  "steps": 40,
+  "batch_size": 1,
+  "grad_accum": 4,
+  "lr": 3e-07,
+  "warmup_steps": 30,
+  "category_weights": {
+    "facts_de": 1.4,
+    "hallucination_guard": 1.0,
+    "qa_de": 2.0,
+    "honesty": 2.0,
+    "instruction_de": 1.5
+  },
+  "eos_loss_weight": 8.0,
+  "generation_system": "Du bist Auralis, ein hilfreicher deutscher KI-Assistent. Antworte korrekt, knapp und ehrlich. Wenn etwas unsicher oder erfunden ist, sage das deutlich.",
+  "train_by_category": {
+    "hallucination_guard": 180,
+    "facts_de": 156,
+    "qa_de": 15,
+    "honesty": 27,
+    "instruction_de": 6
+  },
+  "val_by_category": {
+    "facts_de": 4,
+    "hallucination_guard": 4,
+    "qa_de": 2,
+    "honesty": 2
+  },
+  "history": [
+    {
+      "step": 1,
+      "train_loss": 4.233222603797913,
+      "val_loss": 4.943881332874298,
+      "val_by_category": {
+        "facts_de": 5.213340640068054,
+        "hallucination_guard": 4.674422025680542,
+        "honesty": 4.8882896900177,
+        "qa_de": 6.055270433425903
+      },
+      "lr": 2e-08,
+      "elapsed_seconds": 13.527185201644897
+    },
+    {
+      "step": 40,
+      "train_loss": 1.950056552886963,
+      "val_loss": 3.007435441017151,
+      "val_by_category": {
+        "facts_de": 3.2491994500160217,
+        "hallucination_guard": 2.76567143201828,
+        "honesty": 3.8834961652755737,
+        "qa_de": 4.4719133377075195
+      },
+      "lr": 3e-08,
+      "elapsed_seconds": 118.74698495864868
+    }
+  ],
+  "generations_before": [
+    {
+      "prompt": "Was ist die Hauptstadt von Deutschland?",
+      "answer": "<|end|>"
+    },
+    {
+      "prompt": "Erklaere kurz, was Wasser ist.",
+      "answer": "heides.html, jpeg.png\"Ich habe mich nicht besonders gut zurecht. Die meisten sprechen von \"was ist das denn?\" ist ein schwieriges Problem. Die meisten sprechen von \"was ist das denn?\" Ja, das ist falsch. Die meisten sprechen von \"was ist das denn?\" Ja,"
+    },
+    {
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz und korrekt.",
+      "answer": "ellingen\", \"und\" .\")\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\""
+    },
+    {
+      "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+      "answer": "\", \"L\"-L\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\""
+    }
+  ],
+  "generations_after": [
+    {
+      "prompt": "Was ist die Hauptstadt von Deutschland?",
+      "answer": "Nein. Die Hauptstadt von Deutschland ist Berlin. System: Du bist Auralis, ein hilfreicher deutscher KI-Assistent. Die Stadt von Deutschland ist in der Regel eine Stadt mit vielen kleinen Städten. Die Hauptstadt von Deutschland ist in der Regel eine Stadt. Die Hauptstadt von Deutschland ist die Hauptstadt von Deutschland. Die Hauptstadt von Deutschland ist das Land der Städte. Die Hauptstadt von Deutschland ist das Land der größten Städte. Die Hauptstadt von Nordrhein-Westfalen ist das Nordrhein-Westfalen. Die"
+    },
+    {
+      "prompt": "Erklaere kurz, was Wasser ist.",
+      "answer": "Nein. Die Antwort ist: \"Das ist falsch. Die Antwort ist: \"Das ist falsch. Die Entwicklung der Technik ist eine Erfindung der Informatik. Die Entwicklung der Technik ist eine Erfindung der Politik. Die Technik ist eine Erfindung der Politik. Die Technik ist eine Erfindung der deutschen Sprache. Die meisten Menschen sind sich einig, dass dies eine sehr große Zahl von Menschen ist, die die meisten von ihnen. Die meisten von ihnen haben dies mit dem Gedanken an die Idee der Geschichte"
+    },
+    {
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz und korrekt.",
+      "answer": "\", \"und\" .. \"und\" .. \"und\" .. \"und\" .. \"und\" .. \"und\" .. \"und\" .. \"und\" .. \"und\" .. \"und\" . .. \"und\" .. \"und\" .. \"und\" .. \"und\" .. \"und\" .. \"und"
+    },
+    {
+      "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+      "answer": "Nein. Die Hauptstadt von Deutschland ist Berlin. System: Du bist Auralis, ein hilfreicher deutscher KI-Assistent. Ich habe keine Ahnung, wie ich die Stadt von Deutschland ausradieren. Ich habe keine Ahnung, wie ich die Zukunft von Deutschland ausradieren. Ich habe keine Ahnung, wie ich die Zukunft von Deutschland ausradieren. Ich habe keine Ahnung, wie ich die Zukunft von der Stadt von Deutschland ausradieren. Die Stadt von Deutschland ist ein ausfall"
+    }
+  ],
+  "initial_val_loss": 4.948354542255402,
+  "initial_val_by_category": {
+    "facts_de": 5.212602376937866,
+    "hallucination_guard": 4.684106707572937,
+    "honesty": 4.894334554672241,
+    "qa_de": 6.040492057800293
+  },
+  "saved_checkpoint": "checkpoints/sft_response_fix_de_v4_from_a2_sweep_40/sft_smoke_step_40.pt"
+}

@@ -1,0 +1,154 @@
+{
+  "config": "configs/eval/auralis_1b_readiness_preflight.yaml",
+  "model_config": "configs/model/helix_v2_1b.yaml",
+  "policy": {
+    "max_eval_prompt_collisions": 0,
+    "max_retention_regressions": 0,
+    "require_cleaned_data_paths": true,
+    "require_source_disjoint_manifest": true,
+    "stop_if_target_not_improving": true,
+    "stop_if_retention_regresses": true
+  },
+  "ready_to_launch": true,
+  "blocking_issues": [],
+  "train_files": [
+    {
+      "path": "/workspace/v2data/data/training/curated_40b/english.txt",
+      "exists": true,
+      "bytes": 56895440970
+    },
+    {
+      "path": "/workspace/v2data/data/training/curated_40b/german.txt",
+      "exists": true,
+      "bytes": 29662112686
+    },
+    {
+      "path": "/workspace/v2data/data/training/sft_clean_de_v1/train.helix.jsonl",
+      "exists": true,
+      "bytes": 26493815
+    },
+    {
+      "path": "/workspace/v2data/data/training/sft_response_fix_de_v8_stable_mix/core_train.helix.jsonl",
+      "exists": true,
+      "bytes": 290485
+    }
+  ],
+  "data_path_configs": [
+    {
+      "path": "/workspace/v2data/configs/data_paths_1b_samples_container.yaml",
+      "exists": true,
+      "data_root": "/workspace/v2data",
+      "cleaned_counts": {
+        "english": 1,
+        "german": 1,
+        "code": 0
+      },
+      "tokenized_count": 2,
+      "cleaned_paths": [
+        {
+          "group": "english",
+          "path": "/workspace/v2data/data/training/curated_40b/english.txt",
+          "exists": true,
+          "bytes": 56895440970
+        },
+        {
+          "group": "german",
+          "path": "/workspace/v2data/data/training/curated_40b/german.txt",
+          "exists": true,
+          "bytes": 29662112686
+        }
+      ],
+      "tokenized_paths": [
+        {
+          "name": "curated_1b_english",
+          "path": "/workspace/v2data/tokenized/curated_40b/english.bin",
+          "exists": true,
+          "bytes": 47171417636,
+          "idx_path": "/workspace/v2data/tokenized/curated_40b/english.idx",
+          "idx_exists": true
+        },
+        {
+          "name": "curated_1b_german",
+          "path": "/workspace/v2data/tokenized/curated_40b/german.bin",
+          "exists": true,
+          "bytes": 22404435912,
+          "idx_path": "/workspace/v2data/tokenized/curated_40b/german.idx",
+          "idx_exists": true
+        }
+      ],
+      "issues": []
+    }
+  ],
+  "source_disjoint_manifests": [
+    {
+      "path": "/workspace/v2data/data/training/pretrain_v6_candidates/source_disjoint_manifest_v2.jsonl",
+      "exists": true,
+      "bytes": 12961067,
+      "rows": 41478,
+      "issues": []
+    },
+    {
+      "path": "/workspace/v2data/data/training/pretrain_v6_extra_candidates/source_disjoint_manifest.jsonl",
+      "exists": true,
+      "bytes": 11017610,
+      "rows": 28550,
+      "issues": []
+    },
+    {
+      "path": "/workspace/v2data/data/training/pretrain_v6_book_sources_gutenberg_v1/source_disjoint_manifest_clean_v2.jsonl",
+      "exists": true,
+      "bytes": 115918856,
+      "rows": 323794,
+      "issues": []
+    }
+  ],
+  "collision_check": {
+    "eval_prompts": 70,
+    "train_files_scanned": 4,
+    "train_units_scanned": 11558,
+    "fast_text_files_scanned": [
+      {
+        "path": "/workspace/v2data/data/training/curated_40b/english.txt",
+        "bytes": 56895440970,
+        "mode": "large_text_literal_grep"
+      },
+      {
+        "path": "/workspace/v2data/data/training/curated_40b/german.txt",
+        "bytes": 29662112686,
+        "mode": "large_text_literal_grep"
+      }
+    ],
+    "hash_collisions": [],
+    "substring_hits": [],
+    "passed": true
+  },
+  "must_have_concepts": {
+    "confident_facts": [
+      "Berlin heute Hauptstadt Deutschlands",
+      "Bonn historisch 1949 bis 1990/frueher",
+      "Faust von Johann Wolfgang von Goethe",
+      "Photosynthese: Licht + Wasser + CO2 -> Zucker/Glucose + Sauerstoff",
+      "Wasser ist Verbindung, Sauerstoff ist Element"
+    ],
+    "refusal_only_when_unknown": [
+      "erfundene Personen/Planeten/Orte nicht ausmalen",
+      "bekannte Fakten nicht verweigern"
+    ]
+  },
+  "canary_checkpoints": {
+    "schedule": [
+      {
+        "step": 100,
+        "action": "run readiness gate, source PPL, manual probes; stop on retention regression"
+      },
+      {
+        "step": 500,
+        "action": "repeat readiness gate; compare target and retention separately"
+      },
+      {
+        "step": 1000,
+        "action": "promote only if target improves and retention has zero regressions"
+      }
+    ]
+  }
+}

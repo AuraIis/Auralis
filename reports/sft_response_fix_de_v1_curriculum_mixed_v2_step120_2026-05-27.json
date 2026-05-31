@@ -1,0 +1,119 @@
+{
+  "checkpoint": "checkpoints/sft_response_fix_de_v1_guard_only_microfit_v2/sft_smoke_step_100.pt",
+  "train": "data/training/sft_response_fix_de_v1/train.helix.jsonl",
+  "val": "data/training/sft_response_fix_de_v1/val.helix.jsonl",
+  "steps": 120,
+  "batch_size": 1,
+  "grad_accum": 8,
+  "lr": 2.5e-06,
+  "warmup_steps": 25,
+  "category_weights": {
+    "hallucination_guard": 180.0,
+    "qa_de": 8.0,
+    "instruction_de": 6.0,
+    "response_de": 0.2
+  },
+  "eos_loss_weight": 7.0,
+  "train_by_category": {
+    "instruction_de": 4958,
+    "response_de": 14608,
+    "qa_de": 7661,
+    "hallucination_guard": 68
+  },
+  "val_by_category": {
+    "source_disjoint_eval": 20
+  },
+  "history": [
+    {
+      "step": 1,
+      "train_loss": 3.0663712471723557,
+      "val_loss": 2.3252682387828827,
+      "val_by_category": {
+        "source_disjoint_eval": 2.3252682387828827
+      },
+      "lr": 2.0000000000000002e-07,
+      "elapsed_seconds": 9.1949622631073
+    },
+    {
+      "step": 30,
+      "train_loss": 2.6652869656682014,
+      "val_loss": 2.1984569132328033,
+      "val_by_category": {
+        "source_disjoint_eval": 2.1984569132328033
+      },
+      "lr": 2.484656466328063e-06,
+      "elapsed_seconds": 35.39209318161011
+    },
+    {
+      "step": 60,
+      "train_loss": 3.017085075378418,
+      "val_loss": 2.0224502980709076,
+      "val_by_category": {
+        "source_disjoint_eval": 2.0224502980709076
+      },
+      "lr": 1.826907352734591e-06,
+      "elapsed_seconds": 62.08421325683594
+    },
+    {
+      "step": 90,
+      "train_loss": 2.1985185835510492,
+      "val_loss": 1.987738087773323,
+      "val_by_category": {
+        "source_disjoint_eval": 1.987738087773323
+      },
+      "lr": 7.596833221122702e-07,
+      "elapsed_seconds": 88.70398235321045
+    },
+    {
+      "step": 120,
+      "train_loss": 1.845703937113285,
+      "val_loss": 1.9673111587762833,
+      "val_by_category": {
+        "source_disjoint_eval": 1.9673111587762833
+      },
+      "lr": 2.5000000000000004e-07,
+      "elapsed_seconds": 115.27052640914917
+    }
+  ],
+  "generations_before": [
+    {
+      "prompt": "Was ist die Hauptstadt von Deutschland?",
+      "answer": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>"
+    },
+    {
+      "prompt": "Erklaere kurz, was Wasser ist.",
+      "answer": "Ich bin Auralis.\n<|end|>"
+    },
+    {
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz und korrekt.",
+      "answer": "Nein. Goethe schrieb das nicht; Mein Kampf stammt von Adolf Hitler.\n<|end|>"
+    },
+    {
+      "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+      "answer": "Nein. Heute ist Berlin die Hauptstadt Deutschlands.\n<|end|>"
+    }
+  ],
+  "generations_after": [
+    {
+      "prompt": "Was ist die Hauptstadt von Deutschland?",
+      "answer": "Berlin liegt im Bundesland Berlin. Die Hauptstadt von Deutschland ist Berlin. Die Hauptstadt von Deutschland ist Berlin. Die Hauptstadt von Deutschland ist Berlin. Die Hauptstadt von Deutschland ist Berlin. Die Hauptstadt von Deutschland ist Berlin. Die Hauptstadt von Deutschland ist Berlin. Die Hauptstadt von Deutschland ist Berlin. Die Hauptstadt von Deutschland ist Berlin. Die Hauptstadt von Deutschland ist Berlin. Die Hauptstadt von Deutschland ist Berlin. Die Hauptstadt von Deutschland ist Berlin. Die Hauptstadt von Deutschland ist Berlin. Die Hauptstadt von Deutschland ist Berlin"
+    },
+    {
+      "prompt": "Erklaere kurz, was Wasser ist.",
+      "answer": "Das Wasser ist Wasser.\n<|end|>"
+    },
+    {
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz und korrekt.",
+      "answer": "Nein. Goethe schrieb das nicht; Mein Kampf stammt von Adolf Hitler.\n<|end|>"
+    },
+    {
+      "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+      "answer": "Nein. Heute ist Berlin die Hauptstadt Deutschlands.\n<|end|>"
+    }
+  ],
+  "initial_val_loss": 2.327696070075035,
+  "initial_val_by_category": {
+    "source_disjoint_eval": 2.327696070075035
+  },
+  "saved_checkpoint": "checkpoints/sft_response_fix_de_v1_curriculum_mixed_v2_step120/sft_smoke_step_120.pt"
+}

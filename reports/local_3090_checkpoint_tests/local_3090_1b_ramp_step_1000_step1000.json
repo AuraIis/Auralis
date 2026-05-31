@@ -1,0 +1,195 @@
+{
+  "tag": "local_3090_1b_ramp_step_1000_step1000",
+  "timestamp_utc": "2026-05-30T11:24:33.348515+00:00",
+  "checkpoint": "/mnt/c/Users/_Michael_/Auralis_3090_Test/checkpoints/pretrain_1b_bilingual_de55_en45_ramp/step_1000_step1000.pt",
+  "model_config": "/mnt/c/Users/_Michael_/Auralis_3090_Test/AuralisV2/configs/model/helix_v2_1b.yaml",
+  "probe_file": "/mnt/c/Users/_Michael_/Auralis_3090_Test/AuralisV2/eval/capability_probes_clean_v2.yaml",
+  "aggregate_score": 0.0,
+  "by_category": {
+    "cleanliness": 0.0,
+    "code": 0.0,
+    "facts_de": 0.0,
+    "hallucination_guard": 0.0,
+    "instruction": 0.0,
+    "math": 0.0
+  },
+  "num_probes": 16,
+  "results": [
+    {
+      "id": "fact_berlin_capital",
+      "category": "facts_de",
+      "score": 0.0,
+      "prompt": "Frage: Was ist die Hauptstadt von Deutschland?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.3158,
+      "answer": "Die Veröffentlichung der Veröffentlichung ist nicht der Veröffentlichung des Berichterstatters. Die Veröffentlichung der Veröffentlichung ist nicht veröffentlicht. Die Veröffentlichung der Veröffentlichung"
+    },
+    {
+      "id": "fact_water_state",
+      "category": "facts_de",
+      "score": 0.0,
+      "prompt": "Frage: Was ist Wasser bei Raumtemperatur?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.2143,
+      "answer": "Die Pressemitteilung hat in der Veröffentlichung des Berichterstatters (im Folgenden: ) ) Die Veröffentlichung des Berichterstatters (im Folgenden:"
+    },
+    {
+      "id": "fact_goethe_faust",
+      "category": "facts_de",
+      "score": 0.0,
+      "prompt": "Frage: Wer schrieb Faust?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.7333,
+      "answer": "Die Veröffentlichung der Veröffentlichungen der Veröffentlichungen der Veröffentlichungen der Veröffentlichungen der Veröffentlichungen der Veröffentlichungen der Veröffentlichungen der"
+    },
+    {
+      "id": "fact_paris_france",
+      "category": "facts_de",
+      "score": 0.0,
+      "prompt": "Frage: In welchem Land liegt Paris?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "Die Veröffentlichung der Veröffentlichung ist in der Veröffentlichung des Veröffentlichungs des Österreichischen Abgeordnetenhauses vom 11. Juni 2011 (BGBl I S."
+    },
+    {
+      "id": "math_addition",
+      "category": "math",
+      "score": 0.0,
+      "prompt": "Rechne: 17 + 25 =",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.8571,
+      "answer": "18 + 5 = 18 + 5 = 18 + 5 = 18 + 5 = 18 + 5 = 18 + 5 = 18 + 5 = 18 + 5 ="
+    },
+    {
+      "id": "math_multiplication",
+      "category": "math",
+      "score": 0.0,
+      "prompt": "Rechne: 8 * 7 =",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.9286,
+      "answer": "2 * 2 = 2 * 2 = 2 * 2 = 2 * 2 = 2 * 2 = 2 * 2 = 2 * 2 = 2 * 2 ="
+    },
+    {
+      "id": "math_subtraction",
+      "category": "math",
+      "score": 0.0,
+      "prompt": "Rechne: 100 - 37 =",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.8235,
+      "answer": "2 \\times 3 = 2 \\times 3 = 2 \\times 3 = 2 \\times 3 = 2 \\times 3 = 2 \\times 3 = 2 \\"
+    },
+    {
+      "id": "code_python_print",
+      "category": "code",
+      "score": 0.0,
+      "prompt": "Schreibe eine Python-Zeile, die Hallo ausgibt:\n",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.3077,
+      "answer": ", die ich mir in der Rubrik \"Die Welt\" habe ich mir in der letzten Woche in der ersten Woche, die ich mir in der ersten Woche in der"
+    },
+    {
+      "id": "code_python_function",
+      "category": "code",
+      "score": 0.0,
+      "prompt": "Vervollständige Python:\ndef add(a, b):\n    ",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": ", , , , , , , , , , , , , , , ,"
+    },
+    {
+      "id": "code_no_eval",
+      "category": "code",
+      "score": 0.0,
+      "prompt": "Ist eval() in Python für fremde Nutzereingaben sicher? Kurze Antwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "Die Frage ist, ob die Frage, ob die Veröffentlichung der Veröffentlichungen in der Veröffentlichung der Veröffentlichung im Amtsblatt der Europäischen Union veröffentlicht wurde, die"
+    },
+    {
+      "id": "instruction_short",
+      "category": "instruction",
+      "score": 0.0,
+      "prompt": "Antworte mit genau einem Wort: Welche Farbe hat der Himmel an einem klaren Tag?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "Die Frage ist, ob die Frage, ob dies ein oder andere, die sich auf die Frage der Veröffentlichung des Gleichbehandlungsausschusses des Abgeordnetenhauses vom"
+    },
+    {
+      "id": "instruction_language",
+      "category": "instruction",
+      "score": 0.0,
+      "prompt": "Antworte auf Deutsch: What is a computer?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.3214,
+      "answer": "The first thing you need to do is to do it? The first thing you need to do is to do it is to make a difference. The first step"
+    },
+    {
+      "id": "garbage_html",
+      "category": "cleanliness",
+      "score": 0.0,
+      "prompt": "Erkläre kurz, was Berlin ist.\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.125,
+      "answer": "Die Veröffentlichung der Veröffentlichung des Veröffentlichungs des Österreichischen Abgeordnetenhauses (I. M. Bl.) wird durch die Veröffentlichung der Veröffentlichung"
+    },
+    {
+      "id": "garbage_chat_tokens",
+      "category": "cleanliness",
+      "score": 0.0,
+      "prompt": "Sag in einem Satz, was ein Apfel ist.\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.5333,
+      "answer": "\"Die Veröffentlichung des Berichterstatters ist die Veröffentlichung des Berichterstatters, die Veröffentlichung des Berichterstatters, die Veröffentlichung des Berichterstatters"
+    },
+    {
+      "id": "consistency_goethe_hitler",
+      "category": "hallucination_guard",
+      "score": 0.0,
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz.\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.3529,
+      "answer": "Die Frage ist, ob die Frage, ob die Veröffentlichung der Veröffentlichungen der Veröffentlichungen der Veröffentlichungen der Veröffentlichungen der Veröffentlichungen"
+    },
+    {
+      "id": "consistency_berlin_location",
+      "category": "hallucination_guard",
+      "score": 0.0,
+      "prompt": "Liegt Berlin in der Nähe von Frankfurt? Antworte vorsichtig in einem Satz.\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0909,
+      "answer": "Die Frage ist, ob die Frage, ob die Frage, ob dies ein oder andere Personen, die sich in der Lage sind, dies zu erreichen,"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "gpu": "NVIDIA RTX PRO 5000 Blackwell",
+  "model_config": "configs/model/helix_v2_mid_500m_smart.yaml",
+  "checkpoint": "checkpoints/runpod_import/pretrain_mix_v5_boosted_500m_a100_best_step9000/best.pt",
+  "batch_size": 1,
+  "seq_length": 1024,
+  "grad_accum": 1,
+  "profile_steps": 1,
+  "tokens_profiled": 1024,
+  "elapsed_seconds": 0.30663596400700044,
+  "tokens_per_second": 3339.4647732078233,
+  "peak_alloc_gb": 11.189126656,
+  "kernels": true,
+  "compile": false,
+  "compile_mode": null,
+  "gradient_checkpointing": false,
+  "clip_grad": false
+}

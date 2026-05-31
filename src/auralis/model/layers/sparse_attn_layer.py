@@ -20,6 +20,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from auralis.model.layers.norm import RMSNorm
 from auralis.model.utils.rotary import apply_rotary_pos_emb
 
 try:
@@ -49,6 +50,7 @@ class SparseAttentionLayer(nn.Module):
         window_size: int = 1024,
         global_tokens: int = 32,
         use_rope: bool = True,
+        qk_norm: bool = False,
     ):
         super().__init__()
         self.d_model = d_model
@@ -57,11 +59,14 @@ class SparseAttentionLayer(nn.Module):
         self.window_size = window_size
         self.global_tokens = global_tokens
         self.use_rope = use_rope
+        self.qk_norm_enabled = qk_norm
 
         self.q_proj = nn.Linear(d_model, n_heads * d_head, bias=False)
         self.k_proj = nn.Linear(d_model, n_heads * d_head, bias=False)
         self.v_proj = nn.Linear(d_model, n_heads * d_head, bias=False)
         self.out_proj = nn.Linear(n_heads * d_head, d_model, bias=False)
+        self.q_norm = RMSNorm(d_head) if qk_norm else nn.Identity()
+        self.k_norm = RMSNorm(d_head) if qk_norm else nn.Identity()
 
     def forward(self, x, rope=None):
         B, L, _ = x.shape
@@ -70,10 +75,21 @@ class SparseAttentionLayer(nn.Module):
         q = self.q_proj(x).view(B, L, H, D)
         k = self.k_proj(x).view(B, L, H, D)
         v = self.v_proj(x).view(B, L, H, D)
+        q = self.q_norm(q)
+        k = self.k_norm(k)
         if self.use_rope and rope is not None:
             q, k = apply_rotary_pos_emb(q, k, rope[0], rope[1])
 
         if _use_flash(x.is_cuda, self.global_tokens):
+            if q.dtype not in (torch.float16, torch.bfloat16):
+                target_dtype = (
+                    torch.get_autocast_dtype("cuda")
+                    if torch.is_autocast_enabled("cuda")
+                    else torch.bfloat16
+                )
+                q = q.to(target_dtype)
+                k = k.to(target_dtype)
+                v = v.to(target_dtype)
             # flash_attn expects [B, L, H, D] and takes window_size=(left, right)
             out = _flash_attn_func(
                 q, k, v,

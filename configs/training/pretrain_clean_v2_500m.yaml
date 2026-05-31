@@ -1,0 +1,95 @@
+# Clean-v2 fresh base pretraining - 500M first run.
+#
+# Use this before the 1B config: it exercises the same cleaned corpus and
+# hybrid Helix stack at roughly half the model size, with the sparse layers
+# configured for the flash-attention path.
+
+experiment:
+  name: helix_v2_500m_pretrain_clean_v2
+  version: "1.0"
+  description: "Fresh 500M base pretraining on strict clean-v2 German-first corpus."
+
+model:
+  config_path: "configs/model/helix_v2_mid_500m_smart.yaml"
+
+data:
+  data_dir: "/workspace/v2data/tokenized/pretrain_clean_v2"
+  mix_ratios:
+    german: 1.0
+  seq_length: 2048
+  val_split_bytes: 50_000_000
+  dataloader_seed: 20260509
+
+training:
+  device: "cuda"
+  dtype: "bfloat16"
+  matmul_precision: "high"
+  kernels:
+    enabled: true
+    mamba: true
+    gla: true
+    flash_attention: true
+
+  optimizer:
+    name: adamw
+    lr: 3.0e-4
+    betas: [0.9, 0.95]
+    weight_decay: 0.1
+    eps: 1.0e-8
+    fused: true
+
+  scheduler:
+    type: cosine
+    warmup_steps: 800
+    min_lr_ratio: 0.1
+
+  # 200k vocab makes the logits/CE tensor large at seq=2048. Microbatch 8
+  # OOMs on the 48GB Blackwell card; keep the same effective batch via
+  # accumulation instead.
+  batch_size_per_device: 2
+  gradient_accumulation: 64
+  gradient_clip_norm: 1.0
+
+  # 2 * 64 * 2048 * 26000 ~= 6.8B tokens.
+  total_steps: 26_000
+
+  gradient_checkpointing: true
+  # Disabled on bitbastion's current PyTorch/Triton combo:
+  # torch.compile/inductor fails importing triton.compiler.compiler.triton_key.
+  # Fused Mamba, FLA, and flash-attn kernels remain enabled.
+  torch_compile: false
+
+logging:
+  log_every: 10
+  eval_every: 500
+  save_every: 1000
+  wandb:
+    enabled: false
+    project: "auralis-v2"
+    tags: ["clean-v2", "pretrain", "fresh-base", "500m"]
+
+checkpointing:
+  output_dir: "checkpoints/pretrain_clean_v2_500m"
+  save_last_n: 3
+  save_best: true
+  external_backup:
+    enabled: true
+    path: "/checkpoints/pretrain_clean_v2_500m_backup"
+    interval_steps: 5000
+
+evaluation:
+  max_val_batches: 100
+  per_language_batches: 20
+
+monitoring:
+  health:
+    grad_explosion_threshold: 100.0
+    val_regression_stop_k: 4
+
+smoke_test:
+  model_config: "configs/model/helix_v2_100m.yaml"
+  batch_size: 2
+  gradient_accumulation: 1
+  seq_length: 64
+  total_steps: 20
+  log_every: 5

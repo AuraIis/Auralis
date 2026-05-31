@@ -1,231 +1,233 @@
 # STATUS - Auralis v2
 
-Stand: 2026-04-26
+Stand: 2026-05-31
 
-Aktive Phase: Phase 1 ist code-seitig fertig, review-validiert und per canary + 1B sweep abgesichert.
-Modellgroesse: 1B final (`helix_v2_1b.yaml`, ~954M Params).
-Phase-1-Token-Budget: 25B geplant, ~21B aktuell bereitgestellt (84% Deckung; Rest kann in Phase 2 geschlossen werden).
+Dies ist die aktuelle Kurz-Wahrheit fuer das Repo. Wenn alte Phasenplaene,
+April-/Mai-Statusstaende oder Specs widersprechen, gilt zuerst diese Datei,
+dann die Reports vom 2026-05-29, dann die jeweilige Arbeitsdoku.
 
-## Kurzstatus
+## Update 2026-05-31 — Edu-Daten-Filter (Deutsch) + Multi-GPU
 
-- Tokenizer fertig und byte-exakt validiert.
-- Modell-Architektur fertig.
-- Pretraining-Pipeline fertig.
-- Blackwell-GPU-Validation PASS.
-- Canary-Runden abgeschlossen.
-- Code-Review-Findings vom 2026-04-26 komplett behoben.
-- Server-Status: **105/105 Tests gruen**.
-- 1B batch-size sweep abgeschlossen.
-- Empfohlene Hauptlauf-Config: **seq=2048, batch=4, gradient_checkpointing=on**.
-- **🚀 1B Phase-1 Hauptlauf läuft seit 2026-04-26 ~18:18 lokal** (PID 225, ETA ~12-19 Tage). Logs: `logs/phase1_pretrain.log`. Mix 70/25/5, --no-wandb, Token-Reads von NVMe-cache, Checkpoints auf disk6.
+Dieser Block ist der neueste Stand und geht den aelteren 1B-Canary-/500M-
+Abschnitten unten vor.
 
-## Phase 0 - Tokenizer
+Kontext: Der bilinguale 1B-Ramp (de55/en45) lief bis Step ~3400 (best.pt),
+das Lernverhalten war enttaeuschend. Saubere Diagnose (nicht aus dem Bauch):
 
-Artefakte in `tokenizer/`:
-- `helix_v2_tokenizer.model`
-- `helix_v2_tokenizer.vocab`
-- `training_manifest.yaml`
-- `quality_report.md`
+- NICHT die Eval (Qwen-2.5 auf denselben Probes = sinnvoll, 37/50).
+- NICHT die Architektur (All-Plain-Attention-Kontrolle ~ gleichauf mit Helix
+  bis Step 300).
+- Sondern: Under-Training (~3.4B Tokens ~ 16% Chinchilla) UND ein
+  qualitaets-invertierter deutscher Mix (die schwaechste Quelle bekam das
+  meiste Budget).
 
-Qualitaetsprofil:
+Daten-Qualitaet (FineWeb-Edu-Methodik fuer Deutsch, neu gebaut):
 
-| Sprache | Tokens/100 Woerter | Tokens/KB | Unknown-Rate | Ziel |
-|---|--:|--:|--:|---|
-| EN | 123.0 | 203.4 | 0% | <=135 |
-| DE | 133.8 | 188.7 | 0% | <=150 |
-| Code | 272.2 | 313.6 | 0% | <=350 tok/KB |
+- LLM-Annotation 0-5 auf Bildungswert. Judge: `qwen3-235b-a22b-2507` via
+  OpenRouter (non-thinking, ~40x billiger als gemini-3.5-flash, strenger und
+  genauer auf Web-Text). 12k Labels, ~1 EUR.
+- Cheap Klassifikator: frozen multilingual-e5-large + Ridge-Kopf + kalibrierte
+  Schwelle. Val Pearson 0.866, Keep-F1 0.872.
+- Korpus-Filter @ Schwelle 2.0: fineweb2_de ~38% behalten, wikipedia_de ganz,
+  german_commons GEDROPPT (~2-5% Keep, EuroParl/OCR-Fragmente).
+- German-v2 = edu-gefiltertes fineweb2_de + wikipedia_de ~ 2.0B hochwertige
+  Tokens (reicht den ~1.8B-DE-Bedarf des Foundation-Runs ohne Wiederholung).
+- Config: `configs/data_paths.curated_v2_german.yaml` (re-tokenisiert nur DE).
 
-Chat-template roundtrip: byte-exakt PASS.
+Multi-GPU / DDP (neu, PR #1, Branch `feat/multigpu-ddp`):
 
-## Phase-1 Datenlage
+- DistributedDataParallel im Trainer, strikt auf `WORLD_SIZE>1` gegated ->
+  Single-GPU-Pfad bit-identisch (verifiziert: py_compile + dry-run).
+- DDP-agnostische Checkpoints (kein `module.`-Prefix -> single-GPU-ladbar),
+  no_sync bei Grad-Accum, Rank-0-Eval+Barrier, globaler Stop via all_reduce.
+- torchrun-Launcher: `scripts/ops/run_pretrain_multigpu.sh`.
+- Gemessener Durchsatz: 12.9k tok/s/GPU (1B, Blackwell). Volles 1B (~20B Tok):
+  ~18 Tage 1 GPU, ~5 Tage 4 GPU. Noch nicht auf echter Multi-GPU validiert
+  (Testbox hat 1 GPU) -> kurzer 2-GPU-Run auf RunPod vor langer Strecke.
 
-Root: `//BITBASTION/Auralis/AuralisV2/`
+Infra-Entscheidung: Training bleibt auf BITBASTION (1 GPU, gratis) fuer den
+Foundation-Run; fuer schnelle/grosse Laeufe RunPod-Multi-GPU (Spot, dank
+Resume), NICHT Colab (Compute-Units + Session-Limits ungeeignet).
 
-| Datei | Groesse | Tokens est. | Quelle |
-|---|--:|--:|---|
-| `cleaned/german.txt` | 23.70 GB | ~4.7B | v1 reuse |
-| `raw/english/fineweb_edu.txt` | 40.00 GB | ~10.0B | FineWeb-Edu |
-| `raw/english/wikipedia_en.txt` | 12.00 GB | ~3.0B | Wikipedia EN |
-| `raw/english/openmath.txt` | 8.00 GB | ~2.0B | OpenMathInstruct-2 |
-| `raw/code/starcoderdata.txt` | 3.50 GB | ~1.0B | StarCoderData |
-| `raw/code/open_web_math.txt` | 0.88 GB | ~0.25B | open-web-math |
-| **Total** | **88.08 GB** | **~21B** | |
+Skalierungs-Quellen (wenn mehr Deutsch noetig): RedPajama-V2-de (3T modern,
+mit Quality-Signals) + mehr fineweb2_de, edu-gefiltert. german-commons
+verworfen (OCR-historisch, siehe L-020). multitask_german_32k fuer die
+spaetere SFT-Phase gesichert.
 
-Nicht eingeflossen:
-- SlimPajama
-- Dolma
-- Proof-Pile-2
+Offen / als naechstes:
 
-Tokenizer-Korpus: `tokenizer_corpus/corpus_clean.txt` mit 15.5 GB im Mix 50/40/10 EN/DE/Code.
+1. fineweb2_de-Voll-Scoring laeuft (~38% Keep) -> dann German-v2 tokenisieren
+   (altes `german.bin` sichern, nur DE neu via `curated_v2_german.yaml`).
+2. Danach Foundation-Warmstart von ramp `best.pt` auf den besseren Daten.
 
-## Phase 0.5 - Modell
+## Kurzentscheidung
 
-Implementiert in `src/auralis/model/`:
-- Config + layer stack
-- RMSNorm
-- SwiGLU FFN
-- Mamba-2 Referenz
-- GLA Referenz
-- Sparse Attention
-- RoPE
-- Scaled-normal init
-- KV cache dataclass
-- `HelixModel` + `build_model()`
+1B wird noch nicht gestartet.
 
-Model configs:
-- `configs/model/helix_v2_100m.yaml`
-- `configs/model/helix_v2_100m_ref.yaml`
-- `configs/model/helix_v2_250m.yaml`
-- `configs/model/helix_v2_mid_500m.yaml`
-- `configs/model/helix_v2_1b.yaml`
+Der Sicherheitsrahmen fuer einen 1B-Canary ist jetzt gebaut, aber der Preflight
+ist noch nicht gruen. Der naechste echte Schritt ist kein weiterer 500M-SFT-
+Patch, sondern der finale, auditierte 1B-Clean/Tokenized-Mix.
 
-Frueher CPU-Referenzstand:
-- 100M forward-loss bei frischer Initialisierung: ~12.37, nahe `ln(200000)=12.20`
-- Keine NaN/Inf in Logits oder Gradienten
+Aktueller 1B-Preflight:
 
-## Phase 1 - Pretraining-Pipeline
+- Report: `reports/auralis_1b_readiness_preflight_v2_2026-05-29.md`
+- Ergebnis: `ready_to_launch: False`
+- Eval-Prompts: 70
+- Trainings-Einheiten gescannt: 382,763
+- Hash-Kollisionen: 0
+- Substring-Hits: 0
 
-Wichtige Scripts:
-- [scripts/data/tokenize_for_pretraining.py](/BITBASTION/Auralis/AuralisV2/scripts/data/tokenize_for_pretraining.py)
-- [scripts/pretrain/train_phase1.py](/BITBASTION/Auralis/AuralisV2/scripts/pretrain/train_phase1.py)
-- [scripts/pretrain/smoke_test.py](/BITBASTION/Auralis/AuralisV2/scripts/pretrain/smoke_test.py)
-- [scripts/utils/batch_size_sweep.py](/BITBASTION/Auralis/AuralisV2/scripts/utils/batch_size_sweep.py)
+Interpretation:
 
-Wichtige Training-Module:
-- [dataset.py](/BITBASTION/Auralis/AuralisV2/src/auralis/training/dataset.py)
-- [optimizer.py](/BITBASTION/Auralis/AuralisV2/src/auralis/training/optimizer.py)
-- [trainer.py](/BITBASTION/Auralis/AuralisV2/src/auralis/training/trainer.py)
-- [utils.py](/BITBASTION/Auralis/AuralisV2/src/auralis/training/utils.py)
+- Die Leak-/Disjunktheitsseite ist aktuell sauber.
+- Der Start ist blockiert, weil der finale 1B-Datenmix noch nicht belastbar
+  als Clean/Tokenized-Mix eingetragen und per Preflight freigegeben ist.
+- `configs/data_paths_1b_samples_container.yaml` muss vor Start auf echte,
+  existierende 1B-Clean- und Tokenized-Pfade zeigen. `.bin`-Tokenfiles brauchen
+  die passende `.idx`.
 
-Validation:
-- CPU smoke test PASS
-- Blackwell validation PASS
-- Canary Runde 2 und Runde 3 abgeschlossen
-- Review-Fixes regressionsicher abgesichert
-- Server: **105/105 Tests gruen**
+## Verbindliche 1B-Policy
 
-Neue Regressionen decken jetzt ab:
-- emergency checkpoint rotation
-- plain-attention RoPE build
-- sampler last-valid-window
-- gradient-checkpointing override
-- explizites disable im sweep
+Der 1B-Lauf darf erst starten, wenn Daten und Gates vorher gruen sind.
 
-## Blackwell Status
+Verbindliche Dateien:
 
-GPU: RTX PRO 5000 Blackwell, 47 GB VRAM.
+- 1B Readiness Gate: `eval/auralis_1b_readiness_gate_v1.yaml`
+- Frozen Target/Retention Gate: `eval/sft_response_frozen_target_retention_v2.yaml`
+- 1B Preflight Config: `configs/eval/auralis_1b_readiness_preflight.yaml`
+- 1B Preflight Script: `scripts/eval/one_b_readiness_preflight.py`
+- Guarded Canary Config: `configs/training/pretrain_1b_canary_readiness.yaml`
+- Guarded Canary Runner: `scripts/ops/run_pretrain_1b_canary_readiness.sh`
 
-Validiert:
-- native backend stabil
-- kernel swap numerisch korrekt
-- `TRITON_OVERRIDE_ARCH=sm89` als funktionierender Workaround
+Promotion-Regel:
 
-Fruehere Messpunkte mit allen Kernels aktiv:
-- seq=256, batch=4 -> 220 tok/s, 6.68 GB
-- seq=512, batch=8 -> 1928 tok/s, 16.36 GB
-- seq=1024, batch=4 -> 3628 tok/s, 16.84 GB
-- seq=2048, batch=2 -> 2713 tok/s, 17.74 GB
+- Target muss bestehen.
+- Retention muss 0 Regressionen haben.
+- Eine einzige Retention-Regression bedeutet: nicht promotable.
+- Eval-Probes werden nicht gelockert, um einen Lauf gruen zu machen.
+- Neue Probes nur append-only ergaenzen.
 
-## Canary und 1B Sweep
+Wichtige Target-/Retention-Achsen:
 
-Canary:
-- Baseline-Mix bleibt overall der beste Kandidat fuer den 1B-Hauptlauf.
-- DE-heavy verbessert DE etwas, verliert aber overall.
-- `de_medium_b16` brachte keinen zusaetzlichen Gewinn gegenueber DE-heavy.
+- Photosynthese als echtes Konzept, nicht nur Keyword-Treffer.
+- Faust/Goethe als confident known fact.
+- Bonn frueher vs. Berlin heute.
+- Bekannte Fakten beantworten, erfundene Entitaeten verweigern.
+- Goethe nicht mit `Mein Kampf` verwechseln.
+- Faust I nicht wegen ueberdominantem Honesty-Training verweigern.
 
-1B batch sweep:
-- seq=1024: batch bis 12 OK
-- seq=2048: batch bis 8 OK, batch 12 OOM
-- top throughput: **seq=2048, batch=4 -> ~11.3k tok/s bei 23.3 GB peak**
-- batch=8 liefert nur kleinen tok/s-Gewinn bei stark hoeherem VRAM-Verbrauch
+## 500M-Stand
 
-Empfehlung fuer den 1B Phase-1-Hauptlauf:
-- `seq=2048`
-- `batch=4`
-- `gradient_checkpointing=on`
+Kein getesteter 500M-Checkpoint ist promotable.
 
-Siehe auch:
-- [HISTORY.md](/BITBASTION/Auralis/AuralisV2/HISTORY.md)
-- [docs/PHASE_1_LAUNCH.md](/BITBASTION/Auralis/AuralisV2/docs/PHASE_1_LAUNCH.md)
+Frozen-Gate-v2-Ergebnisse:
 
-## Offene Blocker vor Hauptlauf
+| Checkpoint | Target | Retention | Promotable |
+|---|---:|---:|---:|
+| `v8_safe` | 8/25 | 18/25 | nein |
+| `hybrid_v1_40` | 9/25 | 17/25 | nein |
+| `hybrid_v12_bridge_60` | 10/25 | 17/25 | nein |
+| `hybrid_v12_repair_v2_80` | 9/25 | 17/25 | nein |
 
-1. RunPod- oder Zielhost-Setup final ausfuehren.
-2. Go/No-Go fuer den 1B-Phase-1-Hauptlauf treffen.
-3. Zielhardware final festlegen: `1xH200`, `4xA40` oder lokaler Blackwell-Run.
+Aktuelle Schlussfolgerung:
 
-## Naechster Schritt nach Phase 1
+- `v8_safe` bleibt nur relativ am stabilsten, weil Retention am wenigsten
+  kaputtgeht.
+- Hybrid/v12 bewegt Photosynthese/Faust teilweise, verliert aber Retention.
+- Weitere 500M-Mini-Patches sind Diagnose-Arbeit, keine Promotion-Arbeit.
+- 500M darf nicht als geloest oder produktionsnah behandelt werden.
 
-Phase 2:
-- bilingual continued pretraining
-- KL distillation
-- Teacher Phase-1-Checkpoint einfrieren
-- Student auf 60/30/10 DE/EN/Code weitertrainieren
+## Diagnose
 
-Siehe:
-- [SPEC_PHASE_2_CONTINUED_BILINGUAL.md](/BITBASTION/Auralis/AuralisV2/Doc/SPECs/SPEC_PHASE_2_CONTINUED_BILINGUAL.md)
+Die aktuellen Fehler sind keine simplen Prompt-, Score- oder Loss-Probleme.
+Das Modell zeigt Interferenz:
 
-## Offene Entscheidungen
+- Photosynthese/Faust lassen sich lokal verbessern.
+- Dabei kippen Bonn/Berlin, Known-Fact-Retention oder sichere Gegenfakten.
+- Honesty/Refusal ist bei manchen bekannten Fakten zu dominant.
+- Erfundenen Entitaeten werden teilweise trotzdem Details angedichtet.
 
-- Multi-GPU Setup fuer Phase 1
-- Phase-2-Daten-Ergaenzung fuer die fehlenden EN-Tokens
-- Open-weights vs. proprietaerer Release
+Das spricht gegen weitere kleine Reparatur-SFTs auf 500M und fuer einen sauber
+gewichteten 1B-Pretrain/SFT-Mix.
 
-## Technische Schulden
+## Adaptive / Live-Gates
 
-Aus dem Review-Pass vom 2026-04-26 sind aktuell keine offenen Findings mehr uebrig.
-Die geschlossenen P1/P2/P3-Punkte sind in [HISTORY.md](/BITBASTION/Auralis/AuralisV2/HISTORY.md) dokumentiert.
+Die adaptive Trainingsschicht kann das v2-Frozen-Gate live mitlaufen lassen:
 
-## Daten-Qualitaet — Phase-2-Vorbereitung
+- Adaptive Frozen-Gate Bridge: `src/auralis/adaptive/frozen_gate.py`
+- Adaptive Trainer CLI: `scripts/train/adaptive_curriculum.py`
+- Live-Trace: `<output-dir>/frozen_gate_trace.jsonl`
 
-Stichproben-Audit der aktiven Trainings-Daten (`tokenized/curated_40b/`, 2026-04-26):
+Neue Live-Metriken:
 
-- **EN: gruen.** Mix sauber (fineweb_edu 53%, dolma 20%, wikipedia 17%, openmath 10%). Web-/Wissens-/Tutorial-Text, kein Alarmierendes.
-- **DE: gruen.** Mix sauber (german_commons 46%, fineweb2_de 39%, wikipedia 15%). Sauberes allgemeines Deutsch.
-- **Code: gelb.** Effektiv StarCoder + OpenWebMath als Fallback. Mittlere Doc-Laenge 85 Bytes/Zeile (vs EN/DE 2.4 KB) deutet auf snippets/fragments statt File-Korpus.
+- `frozen_target_pass`
+- `frozen_retention_pass`
+- `frozen_target_failures`
+- `frozen_retention_failures`
+- `frozen_promotable`
 
-Zwei silent-Drops im aktiven Snapshot (siehe `training/curated_40b/mix_manifest.json`):
+Teststatus laut Handoff:
 
-- **`fineweb2_en` = 0 Bytes** — sollte Teil des EN-Mixes sein, hat aber 0 beigetragen.
-- **`the_stack_v2` = 0 Bytes** — der primaere Code-Korpus, komplett gedroppt → Code-Schwaeche.
+- lokale adaptive Tests: gruen
+- Container-Smoke fuer Frozen-Gate-Live-Bridge: gruen
+- Mini-Smoke mit 500M-v8 pruefte nur Verdrahtung, nicht inhaltliche Scores.
 
-Fuer **Phase 1** kein Blocker (1B-Hauptlauf laeuft mit gegebener Datenbasis, Code wird "leicht familiarisiert"). Fuer **Phase 2 (60/30/10 DE/EN/Code, doppelter Code-Anteil)** muss vorher geklaert werden:
+## Naechste Schritte
 
-1. **Root-cause-Analyse warum `fineweb2_en` und `the_stack_v2` auf 0 gelandet sind.** Vermutlich filter_quality.py-Threshold oder download/tokenize-Pipeline-Issue.
-2. **Code-Korpus haerten:** mehr echte Multi-Line-Dateien, weniger Kommentare/Strings/Docs-Fragmente.
-3. **Optional Code-Filter:** extrem kurze oder offensichtlich nicht-codeartige Zeilen rausfiltern.
+1. Finalen 1B-Clean-Mix bauen.
+   - `cleaned.german`, `cleaned.english`, `cleaned.code` mit echten Pfaden
+     befuellen.
+   - Tokenized-Pfade eintragen.
+   - Existenz von `.bin` und passender `.idx` sicherstellen.
 
-Bewertung passt zu Smoke-Eval-Loss-Trajektorien (Code-Eval-Loss konvergiert deutlich schlechter als EN/DE).
+2. Datenmix vor dem Tokenisieren auditen.
+   - moderne deutsche QA/Fakten staerker als beim 500M.
+   - Refusal/Honesty deckeln, nicht dominieren lassen.
+   - confident-correct Fakten explizit einplanen.
+   - Books niedrig dosieren, nicht als Hauptwissenstraeger verwenden.
 
-## Phase-2-Backlog (Architektur + Optimizer)
+3. Preflight erneut laufen lassen:
 
-### Muon Optimizer Evaluation für Phase 2 (TODO 2026-04-29)
+```bash
+python scripts/eval/one_b_readiness_preflight.py \
+  --config configs/eval/auralis_1b_readiness_preflight.yaml \
+  --output-json reports/auralis_1b_readiness_preflight_v2_$(date -u +%F).json \
+  --output-md reports/auralis_1b_readiness_preflight_v2_$(date -u +%F).md
+```
 
-**Hintergrund:** DeepSeek V4 (Apr 2026) nutzt Muon-Optimizer fuer 25-40% Wallclock-Speedup vs AdamW. Architektur-orthogonal — kein Modell-Aenderung notwendig.
+4. Erst wenn `ready_to_launch: true`, Canary starten:
 
-**Was ist Muon:** "MomentUm Orthogonalized by Newton-schulz" (Keller Jordan et al., 2024). Standard-Pattern: Muon fuer 2D-Matrix-Parameter (Linear, Attention), AdamW als Fallback fuer 1D-Parameter (biases, norms, embeddings). Newton-Schulz orthogonalisiert die Momentum-Update-Matrix → alle Update-Richtungen werden gleichgewichtet, schnellere Konvergenz.
+```bash
+bash scripts/ops/run_pretrain_1b_canary_readiness.sh
+```
 
-**Empfohlener Adoption-Slot:** Phase 2 (Continued Pretraining) — Phase 2 startet mit frischem Optimizer-State von Phase-1-best.pt, also kein State-Inkompatibilitaets-Issue. Mid-Phase-1-switch ist NICHT empfohlen.
+## Stop-Kriterien im 1B-Canary
 
-**Action-Items:**
-1. Vor Phase-2-Start: kleine Ablation (250M-Canary, ~5k steps Muon vs AdamW) um Konvergenz auf der Helix-Hybrid-Architektur (Mamba+GLA+Sparse) zu verifizieren — die meisten Muon-Validierungen sind auf Standard-Transformern, nicht Hybrid-Stacks.
-2. Falls Ablation positiv: Muon in `scripts/pretrain/train_phase1.py` als Optional-Backend hinter env-flag (`AURALIS_USE_MUON=1`) einbauen.
-3. Hyperparameter-Tuning: Muon LR ~5-10x hoeher als AdamW-LR (z.B. 0.02 statt 3e-4 fuer Matrix-Params, AdamW-Default fuer Rest).
-4. Implementation-Referenz: [github.com/KellerJordan/Muon](https://github.com/KellerJordan/Muon).
-5. Memory-Vorteil: Muon braucht nur `m` (momentum), kein `v` (variance) — ~33% weniger Optimizer-State pro Matrix-Parameter. Bei 1B-Modell relevant.
+Sofort stoppen oder nicht promoten, wenn:
 
-**Erwarteter Gain bei Phase 2:** falls Ablation +30% Wallclock confirms, sparen wir bei Phase-2 (10-15B Tokens auf RTX PRO 5000) ca. 2-4 Tage.
+- Retention auch nur einen Fehler bekommt.
+- Bonn historisch wegfaellt.
+- Berlin heute kippt.
+- Goethe/Faust verweigert oder falsch wird.
+- Photosynthese nur gut klingt, aber Zucker/Sauerstoff/Pflanzen/Licht falsch
+  verbindet.
+- erfundene Entitaeten ausgeschmueckt werden.
+- Target nicht besser wird, obwohl Loss sinkt.
 
-### CSA / HCA / mHC — Architektur-Innovationen aus DeepSeek V4 (Backlog v3)
+## Aktuelle Referenzen
 
-**Nicht fuer Auralis v2.** Architektur-Wechsel mid-version waere Run-zerstoerend.
+- `reports/auralis_1b_readiness_plan_2026-05-29.md`
+- `reports/codex_handoff_1b_readiness_v2_2026-05-29.md`
+- `reports/auralis_1b_readiness_preflight_v2_2026-05-29.md`
+- `reports/learning_neuro_hybrid_v12_2026-05-29.md`
+- `docs/DOCS_INDEX.md`
+- `eval/README.md`
 
-- **CSA (Compressed Sparse Attention):** KV-Cache-Kompression entlang Sequenz-Dimension + DeepSeek Sparse Attention. Macht lange Kontexte (>32k) effizient.
-- **HCA (Heavily Compressed Attention):** aggressivere KV-Cache-Kompression als CSA, fuer extrem lange Kontexte (>128k).
-- **mHC (Manifold-Constrained Hyper-Connections):** Replacement fuer klassische residual connections.
+## Was nicht mehr als aktueller Stand gilt
 
-**Auralis-spezifischer Reality-Check:** Auralis v2 hat bereits 22 von 28 Layern in linear-time Formaten (6 Mamba + 16 GLA), die O(1)-Speicher pro Token haben. CSA/HCA loesen das Problem von Standard-Transformern, Auralis loest es schon ueber andere Theorie. CSA/HCA waeren nur relevant wenn:
-- echte 1M+ Token-Kontexte Use-Case-Priority werden
-- Skalierung > 10B Params (dann sind die 6 Sparse-Attention-Layer teurer)
-
-**Action fuer v3-Planning:** evaluieren ob v3 Architektur-Refresh komplett-V4-style (CSA/HCA/mHC) machen sollte ODER bei Hybrid-Stack mit eigenem Long-Context-Approach bleiben. Entscheidung NACH Phase-1/2/3 Auralis-v2 Abschluss, basierend auf konkreten Long-Context-Anforderungen.
+- `STATUS.md` Stand 2026-05-17 als Run-Plan.
+- Der alte `pretrain_mix_v4_boosted_500m` als aktueller Hauptpfad.
+- Der April-Plan `curated_40b` als aktiver Hauptmix.
+- Alte Pfade wie `tokenized/phase1` oder `checkpoints/phase1_pretrain` als
+  Default fuer neue Runs.
+- SFT als Reparatur fuer ein schwaches/noisy Base-Modell.

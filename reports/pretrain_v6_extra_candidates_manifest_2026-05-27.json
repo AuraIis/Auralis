@@ -1,0 +1,288 @@
+{
+  "created_at": "2026-05-27T07:39:00+00:00",
+  "finished_at": "2026-05-27T07:45:02+00:00",
+  "notes": {
+    "avemio": "CC-BY-SA-4.0; keep source-separated until license policy is accepted.",
+    "german_commons": "ODC-By dataset with row-level source license metadata.",
+    "natural_questions_german": "CC-BY-SA-3.0; keep source-separated until license policy is accepted."
+  },
+  "output_dir": "data/training/pretrain_v6_extra_candidates",
+  "sources": [
+    {
+      "bytes_jsonl": 8382920,
+      "bytes_txt": 7585709,
+      "char_length": {
+        "max": 10767,
+        "median": 1857,
+        "min": 501,
+        "p95": 6806
+      },
+      "elapsed_seconds": 20.33,
+      "exact_duplicate_records": 0,
+      "jsonl": "data/training/pretrain_v6_extra_candidates/german_commons_web_wikipedia/german_commons_web_wikipedia.jsonl",
+      "name": "german_commons_web_wikipedia",
+      "ok": true,
+      "reject_samples": "data/training/pretrain_v6_extra_candidates/german_commons_web_wikipedia/german_commons_web_wikipedia.reject_samples.jsonl",
+      "stats": {
+        "reject_bad_marker": 90,
+        "reject_boilerplate": 12,
+        "reject_commerce": 256,
+        "reject_high_perplexity": 132,
+        "reject_html": 2,
+        "reject_list_table": 4671,
+        "reject_low_ocr": 16188,
+        "reject_too_many_tokens": 1296,
+        "reject_too_short": 1468,
+        "reject_weak_de_signal": 1,
+        "seen": 27116,
+        "written": 3000
+      },
+      "txt": "data/training/pretrain_v6_extra_candidates/german_commons_web_wikipedia/german_commons_web_wikipedia.txt",
+      "unique_hashes": 3000
+    },
+    {
+      "bytes_jsonl": 1801201,
+      "bytes_txt": 1335723,
+      "char_length": {
+        "max": 4846,
+        "median": 699,
+        "min": 500,
+        "p95": 1574
+      },
+      "elapsed_seconds": 16.83,
+      "exact_duplicate_records": 0,
+      "jsonl": "data/training/pretrain_v6_extra_candidates/german_commons_web_wikidiscussions/german_commons_web_wikidiscussions.jsonl",
+      "name": "german_commons_web_wikidiscussions",
+      "ok": true,
+      "reject_samples": "data/training/pretrain_v6_extra_candidates/german_commons_web_wikidiscussions/german_commons_web_wikidiscussions.reject_samples.jsonl",
+      "stats": {
+        "reject_bad_marker": 31,
+        "reject_boilerplate": 10,
+        "reject_commerce": 116,
+        "reject_high_perplexity": 3574,
+        "reject_list_table": 10977,
+        "reject_low_ocr": 15546,
+        "reject_too_many_tokens": 6,
+        "reject_too_short": 48116,
+        "reject_url_dense": 70,
+        "seen": 80023,
+        "written": 1577
+      },
+      "txt": "data/training/pretrain_v6_extra_candidates/german_commons_web_wikidiscussions/german_commons_web_wikidiscussions.txt",
+      "unique_hashes": 1577
+    },
+    {
+      "bytes_jsonl": 8374360,
+      "bytes_txt": 7545605,
+      "char_length": {
+        "max": 10836,
+        "median": 1789,
+        "min": 500,
+        "p95": 6862
+      },
+      "elapsed_seconds": 13.72,
+      "exact_duplicate_records": 0,
+      "jsonl": "data/training/pretrain_v6_extra_candidates/german_commons_scientific_wikibooks/german_commons_scientific_wikibooks.jsonl",
+      "name": "german_commons_scientific_wikibooks",
+      "ok": true,
+      "reject_samples": "data/training/pretrain_v6_extra_candidates/german_commons_scientific_wikibooks/german_commons_scientific_wikibooks.reject_samples.jsonl",
+      "stats": {
+        "reject_bad_marker": 26,
+        "reject_boilerplate": 37,
+        "reject_commerce": 222,
+        "reject_high_perplexity": 1413,
+        "reject_html": 23,
+        "reject_list_table": 2414,
+        "reject_low_ocr": 12147,
+        "reject_too_many_tokens": 1014,
+        "reject_too_short": 1828,
+        "reject_url_dense": 34,
+        "reject_weak_de_signal": 2,
+        "seen": 22160,
+        "written": 3000
+      },
+      "txt": "data/training/pretrain_v6_extra_candidates/german_commons_scientific_wikibooks/german_commons_scientific_wikibooks.txt",
+      "unique_hashes": 3000
+    },
+    {
+      "bytes_jsonl": 2344778,
+      "bytes_txt": 2078407,
+      "char_length": {
+        "max": 10459,
+        "median": 1456,
+        "min": 500,
+        "p95": 5704
+      },
+      "elapsed_seconds": 8.11,
+      "exact_duplicate_records": 0,
+      "jsonl": "data/training/pretrain_v6_extra_candidates/german_commons_scientific_wikiversity/german_commons_scientific_wikiversity.jsonl",
+      "name": "german_commons_scientific_wikiversity",
+      "ok": true,
+      "reject_samples": "data/training/pretrain_v6_extra_candidates/german_commons_scientific_wikiversity/german_commons_scientific_wikiversity.reject_samples.jsonl",
+      "stats": {
+        "reject_bad_marker": 21,
+        "reject_boilerplate": 32,
+        "reject_commerce": 62,
+        "reject_high_perplexity": 3818,
+        "reject_html": 104,
+        "reject_list_table": 1550,
+        "reject_low_ocr": 6525,
+        "reject_too_many_tokens": 756,
+        "reject_too_short": 2358,
+        "reject_url_dense": 169,
+        "reject_weak_de_signal": 3,
+        "seen": 16371,
+        "written": 973
+      },
+      "txt": "data/training/pretrain_v6_extra_candidates/german_commons_scientific_wikiversity/german_commons_scientific_wikiversity.txt",
+      "unique_hashes": 973
+    },
+    {
+      "bytes_jsonl": 12175606,
+      "bytes_txt": 5906822,
+      "char_length": {
+        "max": 4274,
+        "median": 662,
+        "min": 112,
+        "p95": 1405
+      },
+      "exact_duplicate_records": 2,
+      "jsonl": "data/training/pretrain_v6_extra_candidates/natural_questions_german/natural_questions_german.jsonl",
+      "name": "natural_questions_german",
+      "ok": true,
+      "reject_samples": "data/training/pretrain_v6_extra_candidates/natural_questions_german/natural_questions_german.reject_samples.jsonl",
+      "stats": {
+        "reject_bad_marker": 39,
+        "reject_boilerplate": 2,
+        "reject_commerce": 143,
+        "reject_english_answer": 3,
+        "reject_list_table": 4057,
+        "reject_url_dense": 1,
+        "seen": 12245,
+        "written": 8000
+      },
+      "txt": "data/training/pretrain_v6_extra_candidates/natural_questions_german/natural_questions_german.txt",
+      "unique_hashes": 7998
+    },
+    {
+      "bytes_jsonl": 7031198,
+      "bytes_txt": 6721617,
+      "char_length": {
+        "max": 8987,
+        "median": 3121,
+        "min": 1566,
+        "p95": 5157
+      },
+      "exact_duplicate_records": 0,
+      "jsonl": "data/training/pretrain_v6_extra_candidates/avemio_german_rag_sft_qa_without_timedifference/avemio_german_rag_sft_qa_without_timedifference.jsonl",
+      "name": "avemio_german_rag_sft_qa_without_timedifference",
+      "ok": true,
+      "reject_samples": "data/training/pretrain_v6_extra_candidates/avemio_german_rag_sft_qa_without_timedifference/avemio_german_rag_sft_qa_without_timedifference.reject_samples.jsonl",
+      "stats": {
+        "reject_bad_marker": 24,
+        "reject_boilerplate": 4,
+        "reject_commerce": 114,
+        "reject_list_table": 1753,
+        "reject_too_long": 11,
+        "seen": 3906,
+        "written": 2000
+      },
+      "txt": "data/training/pretrain_v6_extra_candidates/avemio_german_rag_sft_qa_without_timedifference/avemio_german_rag_sft_qa_without_timedifference.txt",
+      "unique_hashes": 2000
+    },
+    {
+      "bytes_jsonl": 9812689,
+      "bytes_txt": 9516181,
+      "char_length": {
+        "max": 8983,
+        "median": 4316,
+        "min": 1855,
+        "p95": 8124
+      },
+      "exact_duplicate_records": 0,
+      "jsonl": "data/training/pretrain_v6_extra_candidates/avemio_german_rag_sft_summarizations/avemio_german_rag_sft_summarizations.jsonl",
+      "name": "avemio_german_rag_sft_summarizations",
+      "ok": true,
+      "reject_samples": "data/training/pretrain_v6_extra_candidates/avemio_german_rag_sft_summarizations/avemio_german_rag_sft_summarizations.reject_samples.jsonl",
+      "stats": {
+        "reject_bad_marker": 102,
+        "reject_boilerplate": 10,
+        "reject_commerce": 375,
+        "reject_list_table": 3964,
+        "reject_too_long": 2595,
+        "seen": 9046,
+        "written": 2000
+      },
+      "txt": "data/training/pretrain_v6_extra_candidates/avemio_german_rag_sft_summarizations/avemio_german_rag_sft_summarizations.txt",
+      "unique_hashes": 2000
+    },
+    {
+      "bytes_jsonl": 0,
+      "bytes_txt": 0,
+      "char_length": {
+        "max": 0,
+        "median": 0,
+        "min": 0,
+        "p95": 0
+      },
+      "exact_duplicate_records": 0,
+      "jsonl": "data/training/pretrain_v6_extra_candidates/avemio_german_rag_sft_questions/avemio_german_rag_sft_questions.jsonl",
+      "name": "avemio_german_rag_sft_questions",
+      "ok": true,
+      "reject_samples": "data/training/pretrain_v6_extra_candidates/avemio_german_rag_sft_questions/avemio_german_rag_sft_questions.reject_samples.jsonl",
+      "stats": {
+        "reject_bad_marker": 225,
+        "reject_boilerplate": 66,
+        "reject_commerce": 831,
+        "reject_list_table": 96170,
+        "seen": 97292
+      },
+      "txt": "data/training/pretrain_v6_extra_candidates/avemio_german_rag_sft_questions/avemio_german_rag_sft_questions.txt",
+      "unique_hashes": 0
+    },
+    {
+      "bytes_jsonl": 23919705,
+      "bytes_txt": 22525696,
+      "char_length": {
+        "max": 30001,
+        "median": 1862,
+        "min": 733,
+        "p95": 7812
+      },
+      "exact_duplicate_records": 0,
+      "jsonl": "data/training/pretrain_v6_extra_candidates/codeparrot_clean_python_permissive_plus/codeparrot_clean_python_permissive_plus.jsonl",
+      "licenses_seen_top20": {
+        "agpl-3.0": 12591,
+        "apache-2.0": 33848,
+        "artistic-2.0": 83,
+        "bsd-2-clause": 2597,
+        "bsd-3-clause": 22789,
+        "cc0-1.0": 262,
+        "epl-1.0": 218,
+        "gpl-2.0": 14179,
+        "gpl-3.0": 26925,
+        "isc": 260,
+        "lgpl-2.1": 1949,
+        "lgpl-3.0": 2264,
+        "mit": 26695,
+        "mpl-2.0": 1957,
+        "unlicense": 1217
+      },
+      "name": "codeparrot_clean_python_permissive_plus",
+      "ok": true,
+      "reject_samples": "data/training/pretrain_v6_extra_candidates/codeparrot_clean_python_permissive_plus/codeparrot_clean_python_permissive_plus.reject_samples.jsonl",
+      "stats": {
+        "reject_generated": 5118,
+        "reject_license_not_allowed": 60166,
+        "reject_possible_secret": 412,
+        "reject_python_syntax_error": 131045,
+        "reject_too_long": 7047,
+        "reject_vendor_path": 10408,
+        "seen": 147834,
+        "written": 8000
+      },
+      "txt": "data/training/pretrain_v6_extra_candidates/codeparrot_clean_python_permissive_plus/codeparrot_clean_python_permissive_plus.txt",
+      "unique_hashes": 8000
+    }
+  ]
+}

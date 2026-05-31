@@ -1,0 +1,117 @@
+{
+  "config": "configs/eval/auralis_1b_readiness_preflight.yaml",
+  "model_config": "configs/model/helix_v2_1b.yaml",
+  "policy": {
+    "max_eval_prompt_collisions": 0,
+    "max_retention_regressions": 0,
+    "require_cleaned_data_paths": true,
+    "require_source_disjoint_manifest": true,
+    "stop_if_target_not_improving": true,
+    "stop_if_retention_regresses": true
+  },
+  "ready_to_launch": false,
+  "blocking_issues": [
+    "data_path_config_not_ready:/workspace/v2data/configs/data_paths_1b_samples_container.yaml:['cleaned_paths_empty', 'tokenized_paths_empty']"
+  ],
+  "train_files": [
+    {
+      "path": "/workspace/v2data/data/training/pretrain_v6_expanded_test_mix/mix_full.txt",
+      "exists": true,
+      "bytes": 75177275
+    },
+    {
+      "path": "/workspace/v2data/data/training/pretrain_v6_book_sources_gutenberg_v1/book_sources.clean_v2.txt",
+      "exists": true,
+      "bytes": 1460573853
+    },
+    {
+      "path": "/workspace/v2data/data/training/sft_clean_de_v1/train.helix.jsonl",
+      "exists": true,
+      "bytes": 26493815
+    },
+    {
+      "path": "/workspace/v2data/data/training/sft_response_fix_de_v8_stable_mix/core_train.helix.jsonl",
+      "exists": true,
+      "bytes": 290485
+    }
+  ],
+  "data_path_configs": [
+    {
+      "path": "/workspace/v2data/configs/data_paths_1b_samples_container.yaml",
+      "exists": true,
+      "data_root": "/disk5v2data/data/pretrain_1b_sources_v1",
+      "cleaned_counts": {
+        "english": 0,
+        "german": 0,
+        "code": 0
+      },
+      "tokenized_count": 0,
+      "cleaned_paths": [],
+      "tokenized_paths": [],
+      "issues": [
+        "cleaned_paths_empty",
+        "tokenized_paths_empty"
+      ]
+    }
+  ],
+  "source_disjoint_manifests": [
+    {
+      "path": "/workspace/v2data/data/training/pretrain_v6_candidates/source_disjoint_manifest_v2.jsonl",
+      "exists": true,
+      "bytes": 12961067,
+      "rows": 41478,
+      "issues": []
+    },
+    {
+      "path": "/workspace/v2data/data/training/pretrain_v6_extra_candidates/source_disjoint_manifest.jsonl",
+      "exists": true,
+      "bytes": 11017610,
+      "rows": 28550,
+      "issues": []
+    },
+    {
+      "path": "/workspace/v2data/data/training/pretrain_v6_book_sources_gutenberg_v1/source_disjoint_manifest_clean_v2.jsonl",
+      "exists": true,
+      "bytes": 115918856,
+      "rows": 323794,
+      "issues": []
+    }
+  ],
+  "collision_check": {
+    "eval_prompts": 70,
+    "train_files_scanned": 4,
+    "train_units_scanned": 382763,
+    "hash_collisions": [],
+    "substring_hits": [],
+    "passed": true
+  },
+  "must_have_concepts": {
+    "confident_facts": [
+      "Berlin heute Hauptstadt Deutschlands",
+      "Bonn historisch 1949 bis 1990/frueher",
+      "Faust von Johann Wolfgang von Goethe",
+      "Photosynthese: Licht + Wasser + CO2 -> Zucker/Glucose + Sauerstoff",
+      "Wasser ist Verbindung, Sauerstoff ist Element"
+    ],
+    "refusal_only_when_unknown": [
+      "erfundene Personen/Planeten/Orte nicht ausmalen",
+      "bekannte Fakten nicht verweigern"
+    ]
+  },
+  "canary_checkpoints": {
+    "schedule": [
+      {
+        "step": 100,
+        "action": "run readiness gate, source PPL, manual probes; stop on retention regression"
+      },
+      {
+        "step": 500,
+        "action": "repeat readiness gate; compare target and retention separately"
+      },
+      {
+        "step": 1000,
+        "action": "promote only if target improves and retention has zero regressions"
+      }
+    ]
+  }
+}

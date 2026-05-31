@@ -1,0 +1,155 @@
+{
+  "tag": "books_lowratio_best_v4v5_gate",
+  "timestamp_utc": "2026-05-27T08:46:38.280232+00:00",
+  "checkpoint": "checkpoints/pretrain_v6_books_lowratio_500m_from_expanded_best_bitbastion/best.pt",
+  "model_config": "configs/model/helix_v2_mid_500m_smart.yaml",
+  "probe_file": "eval/capability_probes_v4_v5_gate.yaml",
+  "aggregate_score": 0.49090909090909096,
+  "by_category": {
+    "cleanliness": 1.0,
+    "code": 0.5,
+    "facts_de": 1.0,
+    "hallucination_guard": 0.0,
+    "longform_de": 0.35,
+    "math": 0.35,
+    "qa": 0.0
+  },
+  "num_probes": 11,
+  "results": [
+    {
+      "id": "de_fact_berlin_capital",
+      "category": "facts_de",
+      "score": 1.0,
+      "prompt": "Frage: Was ist die Hauptstadt von Deutschland?\nAntwort:",
+      "matched": [
+        "berlin"
+      ],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "Antwort: Die Hauptstadt von Deutschland ist Berlin."
+    },
+    {
+      "id": "de_fact_goethe_not_mein_kampf",
+      "category": "hallucination_guard",
+      "score": 0.0,
+      "prompt": "Frage: Schrieb Goethe Mein Kampf? Antworte kurz und korrekt.\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.8361,
+      "answer": "Antwort: \"Ich habe mein Leben in der Welt verloren, aber ich habe mein Leben in der Welt verloren, aber ich habe mein Leben in der Welt verloren, aber ich habe mein Leben in der Welt verloren, aber ich habe mein Leben in der Welt verloren, aber ich habe mein Leben in der Welt verloren, aber ich habe mein Leben in der Welt verloren,"
+    },
+    {
+      "id": "de_definition_photosynthese",
+      "category": "longform_de",
+      "score": 0.0,
+      "prompt": "Erklaere in zwei Saetzen, was Photosynthese ist.\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.04,
+      "answer": "Antwort: Es ist wichtig zu beachten, dass die Verwendung von JavaScript in der Programmierung eine der Hauptanforderungen ist, die erfüllt werden müssen, um JavaScript zu verwenden. Hier sind einige Schritte, die Sie befolgen sollten, um JavaScript in der Programmierung zu verwenden: 1. Verwenden Sie JavaScript: JavaScript ist ein plattformunabhängiges, plattformunabhängiges und plattformunabhängiges"
+    },
+    {
+      "id": "de_continuation_clean_prose",
+      "category": "longform_de",
+      "score": 0.7,
+      "prompt": "Vervollstaendige sachlich: Die Donau ist ein Fluss in Europa. Sie",
+      "matched": [
+        "donau",
+        "fluss"
+      ],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.7895,
+      "answer": "ist ein Fluss, der in der Donau liegt. Sie ist ein Fluss, der in der Donau mündet. Sie ist ein Fluss, der in der Donau mündet. Sie ist ein Fluss, der in der Donau mündet. Sie ist ein Fluss, der in der Donau mündet. Sie ist ein Fluss, der in der Donau mündet. Sie ist ein Fluss, der in"
+    },
+    {
+      "id": "math_simple_addition",
+      "category": "math",
+      "score": 0.7,
+      "prompt": "Rechne exakt: 17 + 25 =",
+      "matched": [
+        "42"
+      ],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.3824,
+      "answer": "42 + 25 = 67 + 17 = 84 + 17 = 97 + 17 = 100 + 17 = 117 + 17 = 128 + 17 = 165 + 17 = 178 + 17 = 189 + 17 = 188 + 17 = 189 + 17 = 188 + 17 = 189 + 17 = 188 + 17 = 189 + 17 = 188 + 17 = 189 + 17 ="
+    },
+    {
+      "id": "math_word_problem",
+      "category": "math",
+      "score": 0.0,
+      "prompt": "Anna hat 5 Kekse und bekommt 5 weitere Kekse. Wie viele Kekse hat sie dann?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "Antwort: 5"
+    },
+    {
+      "id": "qa_open_domain_style",
+      "category": "qa",
+      "score": 0.0,
+      "prompt": "Frage: Warum verdunstet Wasser schneller, wenn es warm ist?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.3913,
+      "answer": "Antwort: Verdunstung ist ein Prozess, bei dem Wasser verdunstet, wenn es warm ist. Es ist ein Prozess, bei dem Wasser verdunstet, wenn es warm ist."
+    },
+    {
+      "id": "code_python_function",
+      "category": "code",
+      "score": 1.0,
+      "prompt": "Vervollstaendige Python:\ndef add(a, b):\n    ",
+      "matched": [
+        "return a + b"
+      ],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "return a + b def test_a_test_a_test_a_test_a_test_a_test_a_test_a_test_a_test_a_test_a_test_a_test_a_test_a_test_a_test_a_test_a_test_a"
+    },
+    {
+      "id": "code_safety_eval",
+      "category": "code",
+      "score": 0.0,
+      "prompt": "Ist eval() in Python fuer fremde Nutzereingaben sicher? Kurze Antwort:\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.5946,
+      "answer": "def eval(a, b): return a + b def eval_a(a, b): return a + b def eval_b(a, b): return a + b def eval_c(a, b): return a + b def eval_c(a, b): return a + b def eval_c(a, b):"
+    },
+    {
+      "id": "cleanliness_no_web_garbage",
+      "category": "cleanliness",
+      "score": 1.0,
+      "prompt": "Erklaere kurz, was Berlin ist.\nAntwort:",
+      "matched": [
+        "berlin",
+        "stadt"
+      ],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.25,
+      "answer": "Antwort: Antwort: Es war einmal in Berlin, ein kleines, aber feines Land, das sich in der Mitte der Stadt befand. Hier lebten Menschen, die sich für die Schönheit und die Schönheit Berlins interessierten. Hier lebten Menschen, die sich für die Schönheit und die Schönheit Berlins interessierten."
+    },
+    {
+      "id": "cleanliness_no_chatml",
+      "category": "cleanliness",
+      "score": 1.0,
+      "prompt": "Sag in einem Satz, was ein Apfel ist.\nAntwort:",
+      "matched": [
+        "apfel"
+      ],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.2326,
+      "answer": "Antwort: Apfel ist ein Symbol, das in der Mathematik verwendet wird, um die Anzahl der möglichen Kombinationen von Elementen eines Elements zu beschreiben. Es wird verwendet, um die Anzahl der möglichen Kombinationen von Elementen eines Elements zu beschreiben, die in einem gegebenen Element enthalten sind."
+    }
+  ]
+}

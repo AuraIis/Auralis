@@ -1,0 +1,209 @@
+{
+  "tag": "books_augmented_best_clean_v2",
+  "timestamp_utc": "2026-05-27T08:36:20.051517+00:00",
+  "checkpoint": "checkpoints/pretrain_v6_books_augmented_500m_from_v5_best_bitbastion/best.pt",
+  "model_config": "configs/model/helix_v2_mid_500m_smart.yaml",
+  "probe_file": "eval/capability_probes_clean_v2.yaml",
+  "aggregate_score": 0.25,
+  "by_category": {
+    "cleanliness": 0.5,
+    "code": 0.0,
+    "facts_de": 0.25,
+    "hallucination_guard": 0.0,
+    "instruction": 0.3,
+    "math": 0.4666666666666666
+  },
+  "num_probes": 16,
+  "results": [
+    {
+      "id": "fact_berlin_capital",
+      "category": "facts_de",
+      "score": 1.0,
+      "prompt": "Frage: Was ist die Hauptstadt von Deutschland?\nAntwort:",
+      "matched": [
+        "berlin"
+      ],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "Antwort: Die Hauptstadt von Deutschland ist Berlin."
+    },
+    {
+      "id": "fact_water_state",
+      "category": "facts_de",
+      "score": 0.0,
+      "prompt": "Frage: Was ist Wasser bei Raumtemperatur?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.4286,
+      "answer": "Wasser ist ein chemisches Element, das in Wasser gelöst ist. Es ist ein Element, das in Wasser gelöst ist. Antwort: Wasser ist ein chemisches Element, das in Wasser gelöst ist."
+    },
+    {
+      "id": "fact_goethe_faust",
+      "category": "facts_de",
+      "score": 0.0,
+      "prompt": "Frage: Wer schrieb Faust?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "Antwort: \"Faust\" ist ein Roman von Friedrich Schiller. Er wurde im Jahr 1800 veröffentlicht und gilt als einer der bedeutendsten deutschen Romane. Der Roman handelt von einem jungen Mann, der sich in die junge Frau verliebt, die er jedoch nicht erkennt"
+    },
+    {
+      "id": "fact_paris_france",
+      "category": "facts_de",
+      "score": 0.0,
+      "prompt": "Frage: In welchem Land liegt Paris?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "Antwort: In welchem Land liegt Paris?"
+    },
+    {
+      "id": "math_addition",
+      "category": "math",
+      "score": 0.7,
+      "prompt": "Rechne: 17 + 25 =",
+      "matched": [
+        "42"
+      ],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.3182,
+      "answer": "42 + 25 = 67 + 17 = 84 + 17 = 97 + 17 = 100 + 17 = 117 + 17 = 118 + 17 = 119 + 17 = 118 + 17 = 119 + 17 = 118 + 17 = 119 + 17 ="
+    },
+    {
+      "id": "math_multiplication",
+      "category": "math",
+      "score": 0.7,
+      "prompt": "Rechne: 8 * 7 =",
+      "matched": [
+        "56"
+      ],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.3333,
+      "answer": "56 * 6 = 336 * 7 = 2744 * 8 = 2688 * 9 = 2688 * 9 = 2688 * 2 = 4896 * 2 = 4896 * 2 = 4896 * 2 = 4896 * 2 ="
+    },
+    {
+      "id": "math_subtraction",
+      "category": "math",
+      "score": 0.0,
+      "prompt": "Rechne: 100 - 37 =",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "53 - 37 = 18 - 17 = 5 - 8 = 2 - 9 = 3 - 10 = 2 - 11 = 3 - 12 = 2 - 13 = 3 - 14 = 2 - 15 = 3 - 16 = 2 - 17 ="
+    },
+    {
+      "id": "code_python_print",
+      "category": "code",
+      "score": 0.0,
+      "prompt": "Schreibe eine Python-Zeile, die Hallo ausgibt:\n",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.9545,
+      "answer": ".class.class.class.class.class.class.class.class.class.class.class.class.class.class.class.class.class.class.class.class.class.class.class.class"
+    },
+    {
+      "id": "code_python_function",
+      "category": "code",
+      "score": 0.0,
+      "prompt": "Vervollständige Python:\ndef add(a, b):\n    ",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.7143,
+      "answer": ": a : b : b : a : b : b : b : b : b : b : b : b : b : b : b : b"
+    },
+    {
+      "id": "code_no_eval",
+      "category": "code",
+      "score": 0.0,
+      "prompt": "Ist eval() in Python für fremde Nutzereingaben sicher? Kurze Antwort:",
+      "matched": [],
+      "forbidden": [
+        "sicher"
+      ],
+      "garbage": [],
+      "repetition_ratio": 0.1892,
+      "answer": "eval() ist eine Funktion, die in Python für fremde Nutzereingaben sicher ist. Sie ist in Python in der Version 2.0 enthalten und kann in Python-Code verwendet werden. eval() ist eine Funktion, die in Python für fremde Nutzereingabe"
+    },
+    {
+      "id": "instruction_short",
+      "category": "instruction",
+      "score": 0.0,
+      "prompt": "Antworte mit genau einem Wort: Welche Farbe hat der Himmel an einem klaren Tag?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "Antwort: Antwort: Antwort: \"Der Himmel an einem klaren Tag\""
+    },
+    {
+      "id": "instruction_language",
+      "category": "instruction",
+      "score": 0.6,
+      "prompt": "Antworte auf Deutsch: What is a computer?\nAntwort:",
+      "matched": [
+        "computer"
+      ],
+      "forbidden": [
+        "a computer is"
+      ],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "Antwort: A computer is a computer that is designed to perform tasks, such as reading, writing, and processing data."
+    },
+    {
+      "id": "garbage_html",
+      "category": "cleanliness",
+      "score": 0.0,
+      "prompt": "Erkläre kurz, was Berlin ist.\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "Antwort: Antwort: \"Berlin ist Berlin\""
+    },
+    {
+      "id": "garbage_chat_tokens",
+      "category": "cleanliness",
+      "score": 1.0,
+      "prompt": "Sag in einem Satz, was ein Apfel ist.\nAntwort:",
+      "matched": [
+        "apfel"
+      ],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "Antwort: \"Apfel ist ein Apfel.\""
+    },
+    {
+      "id": "consistency_goethe_hitler",
+      "category": "hallucination_guard",
+      "score": 0.0,
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz.\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "Antworte kurz Antwort: Antwort: Antwort: \"Was ist der Unterschied zwischen einem leidenschaftlichen und einem leidenschaftlichen Menschen?\""
+    },
+    {
+      "id": "consistency_berlin_location",
+      "category": "hallucination_guard",
+      "score": 0.0,
+      "prompt": "Liegt Berlin in der Nähe von Frankfurt? Antworte vorsichtig in einem Satz.\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.05,
+      "answer": "Antwort: Antwort: Antwort: In order to determine the most likely answer to the question \"What is the name of the city in the United States?\" based on the given information, I will analyze the information provided and identify the most likely answer"
+    }
+  ]
+}

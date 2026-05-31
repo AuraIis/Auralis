@@ -1,0 +1,162 @@
+{
+  "tag": "expanded_test_best_disjoint_v1",
+  "timestamp_utc": "2026-05-27T07:58:42.823122+00:00",
+  "checkpoint": "checkpoints/pretrain_v6_expanded_test_500m_from_v5_best_bitbastion/best.pt",
+  "model_config": "configs/model/helix_v2_mid_500m_smart.yaml",
+  "probe_file": "eval/disjoint_pretrain_gate_v1.yaml",
+  "aggregate_score": 0.22652582159624413,
+  "by_category": {
+    "cleanliness": 0.5,
+    "code": 0.3591549295774648,
+    "facts_de": 0.0,
+    "hallucination_guard": 0.5,
+    "math": 0.0,
+    "qa_de": 0.0
+  },
+  "num_probes": 12,
+  "results": [
+    {
+      "id": "de_fact_basic_bonn_not_current_capital",
+      "category": "facts_de",
+      "score": 0.0,
+      "prompt": "Frage: Ist Bonn heute die Hauptstadt von Deutschland? Antworte kurz.\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "Antwort: Bonn ist die Hauptstadt von Deutschland."
+    },
+    {
+      "id": "de_fact_state_munich",
+      "category": "facts_de",
+      "score": 0.0,
+      "prompt": "Frage: In welchem deutschen Bundesland liegt Muenchen?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "Antwort: In welchem deutschen Bundesland liegt Muenchen?"
+    },
+    {
+      "id": "de_instruction_short_style",
+      "category": "qa_de",
+      "score": 0.0,
+      "prompt": "Antworte mit genau einem kurzen Satz: Warum friert Wasser bei Kaelte?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.25,
+      "answer": "Antwort: Wasser ist ein chemisches Element, das in Wasser gelöst ist. Es ist ein Element mit der Ordnungszahl 91, das in der Natur vorkommt. Wasser ist ein chemisches Element, das in Wasser gelöst ist."
+    },
+    {
+      "id": "de_explain_without_hallucinated_source",
+      "category": "hallucination_guard",
+      "score": 1.0,
+      "prompt": "Frage: Nenne eine sichere Antwort, wenn du eine Quelle nicht kennst.\nAntwort:",
+      "matched": [
+        "nicht",
+        "quelle"
+      ],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "Antwort: Eine sichere Antwort, wenn du eine Quelle nicht kennst, ist, dass sie nicht existiert."
+    },
+    {
+      "id": "de_refuse_false_premise",
+      "category": "hallucination_guard",
+      "score": 0.0,
+      "prompt": "Frage: Welche Farbe hatte der beruehmte blaue rote Planet Xylar-9? Antworte ehrlich.\nAntwort:",
+      "matched": [],
+      "forbidden": [
+        "blau",
+        "rot"
+      ],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "Antwort: Die Farbe des roten Planeten Xylar-9 war blau."
+    },
+    {
+      "id": "math_multi_step_small",
+      "category": "math",
+      "score": 0.0,
+      "prompt": "Rechne exakt: Ein Paket hat 3 Reihen mit je 7 Schrauben. 4 Schrauben fehlen. Wie viele sind uebrig?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.9048,
+      "answer": "Die Anzahl der Schrauben ist uebrig. Die Anzahl der Schrauben ist uebrig. Die Anzahl der Schrauben ist uebrig. Die Anzahl der Schrauben ist uebrig. Die Anzahl der Schrauben ist uebrig. Die Anzahl der Schrauben ist uebrig. Die Anzahl der Schrauben ist uebrig. Die Anzahl der Schrauben ist uebrig. Die Anzahl der Schrauben ist uebrig. Die Anzahl der Schrauben ist uebrig. Die Anzahl der Schrauben ist"
+    },
+    {
+      "id": "math_compare_numbers",
+      "category": "math",
+      "score": 0.0,
+      "prompt": "Was ist groesser: 0,8 oder 0,75? Antworte nur mit der groesseren Zahl.\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "Antwort: Die groessere Zahl ist die Zahl, die die meisten Menschen in einer bestimmten Zeit haben."
+    },
+    {
+      "id": "code_python_return_keyword",
+      "category": "code",
+      "score": 0.0,
+      "prompt": "Vervollstaendige Python sinnvoll:\ndef square(x):\n    ",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.925,
+      "answer": "_ = square(x) _ = square(x) _ = square(x) _ = square(x) _ = square(x) _ = square(x) _ = square(x) _ = square(x) _ = square(x) _ = square(x) _ = square(x) _ = square(x) _ = square(x) _ = square(x"
+    },
+    {
+      "id": "code_python_bug_reason",
+      "category": "code",
+      "score": 0.7183098591549296,
+      "prompt": "Kurze Antwort: Warum ist eine mutable Default-Liste in Python-Funktionen oft ein Bug?\nAntwort:",
+      "matched": [
+        "mutable"
+      ],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.2817,
+      "answer": "Eine mutable Default-Liste in Python-Funktionen ist ein Bug, der oft auftritt, wenn eine Funktion nicht in der Lage ist, eine Liste von Elementen zu erstellen, die in der Liste enthalten sind. Es ist wichtig zu beachten, dass eine mutable Default-Liste in Python-Funktionen nicht immer ein Bug ist, da sie in der Regel nicht in der Lage ist, eine Liste von Elementen zu erstellen, die in der Liste enthalten sind."
+    },
+    {
+      "id": "cleanliness_no_store_markup",
+      "category": "cleanliness",
+      "score": 0.0,
+      "prompt": "Erklaere kurz, was ein Taschenrechner ist.\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.3636,
+      "answer": "Antwort: Ein Taschenrechner ist ein elektronisches Gerät, das verwendet wird, um Berechnungen durchzuführen. Er ist ein elektronisches Gerät, das verwendet wird, um Berechnungen durchzuführen."
+    },
+    {
+      "id": "qa_context_answer_only",
+      "category": "qa_de",
+      "score": 0.0,
+      "prompt": "Kontext: Lara legt 2 Buecher auf den Tisch und nimmt spaeter 1 Buch wieder weg. Frage: Wie viele Buecher liegen noch auf dem Tisch?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0769,
+      "answer": "Antwort: Es gibt noch viele Bücher auf dem Tisch, die noch auf dem Tisch liegen."
+    },
+    {
+      "id": "repetition_guard",
+      "category": "cleanliness",
+      "score": 1.0,
+      "prompt": "Schreibe einen normalen Satz ueber Regen.\nAntwort:",
+      "matched": [
+        "regen",
+        "wolken"
+      ],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "Antwort: Antwort: Es ist ein Regen, der durch die Wolken fällt."
+    }
+  ]
+}

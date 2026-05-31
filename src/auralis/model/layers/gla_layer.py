@@ -14,6 +14,7 @@ Only the inner scan math differs.
 
 from __future__ import annotations
 
+import math
 import os
 
 import torch
@@ -55,13 +56,22 @@ class GLALayer(nn.Module):
         self.v_proj = nn.Linear(d_model, n_heads * d_head, bias=False)
         self.g_proj = nn.Linear(d_model, n_heads * d_head, bias=False)
         # Per-head-per-dim log-decay projection. fla's ``chunk_gla`` expects g
-        # shaped [B, L, H, D] in log-space; we parameterise with a logistic
-        # bias that puts init decay near 0.9 (log(0.9)≈-0.105).
+        # shaped [B, L, H, D] in log-space. The forward uses
+        # ``log_alpha = -softplus(-raw)``; initialise raw so exp(log_alpha)
+        # starts near 0.9 instead of the generic-init default 0.5.
         self.alpha_proj = nn.Linear(d_model, n_heads * d_head, bias=True)
-        with torch.no_grad():
-            self.alpha_proj.bias.fill_(-0.105)  # decay ≈ 0.9 per channel
+        self._target_decay = 0.9
+        self.reset_special_parameters()
 
         self.out_proj = nn.Linear(n_heads * d_head, d_model, bias=False)
+
+    def reset_special_parameters(self) -> None:
+        """Restore the GLA decay bias after generic model init."""
+        decay_lambda = -math.log(self._target_decay)
+        # For log_alpha = -softplus(-bias), solve softplus(-bias)=lambda.
+        bias = -math.log(math.expm1(decay_lambda))
+        with torch.no_grad():
+            self.alpha_proj.bias.fill_(bias)
 
     def forward(self, x, state=None):
         B, L, _ = x.shape

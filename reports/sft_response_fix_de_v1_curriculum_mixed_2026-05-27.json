@@ -1,0 +1,159 @@
+{
+  "checkpoint": "checkpoints/sft_response_fix_de_v1_guard_only_microfit/sft_smoke_step_120.pt",
+  "train": "data/training/sft_response_fix_de_v1/train.helix.jsonl",
+  "val": "data/training/sft_response_fix_de_v1/val.helix.jsonl",
+  "steps": 160,
+  "batch_size": 1,
+  "grad_accum": 8,
+  "lr": 3e-06,
+  "warmup_steps": 20,
+  "category_weights": {
+    "hallucination_guard": 120.0,
+    "qa_de": 5.0,
+    "instruction_de": 5.0,
+    "response_de": 0.5
+  },
+  "eos_loss_weight": 6.0,
+  "train_by_category": {
+    "response_de": 15118,
+    "qa_de": 8544,
+    "instruction_de": 5464,
+    "hallucination_guard": 62
+  },
+  "val_by_category": {
+    "source_disjoint_eval": 16
+  },
+  "history": [
+    {
+      "step": 1,
+      "train_loss": 3.3798700273036957,
+      "val_loss": 2.1924434900283813,
+      "val_by_category": {
+        "source_disjoint_eval": 2.1924434900283813
+      },
+      "lr": 3.0000000000000004e-07,
+      "elapsed_seconds": 9.14119267463684
+    },
+    {
+      "step": 20,
+      "train_loss": 3.1429894268512726,
+      "val_loss": 1.9419228583574295,
+      "val_by_category": {
+        "source_disjoint_eval": 1.9419228583574295
+      },
+      "lr": 3e-06,
+      "elapsed_seconds": 26.344446420669556
+    },
+    {
+      "step": 40,
+      "train_loss": 2.5780292749404907,
+      "val_loss": 1.8978602290153503,
+      "val_by_category": {
+        "source_disjoint_eval": 1.8978602290153503
+      },
+      "lr": 2.8663079716682656e-06,
+      "elapsed_seconds": 44.261067628860474
+    },
+    {
+      "step": 60,
+      "train_loss": 2.840551435947418,
+      "val_loss": 1.9304509162902832,
+      "val_by_category": {
+        "source_disjoint_eval": 1.9304509162902832
+      },
+      "lr": 2.4917112325092903e-06,
+      "elapsed_seconds": 62.16768264770508
+    },
+    {
+      "step": 80,
+      "train_loss": 2.297131348401308,
+      "val_loss": 1.866391658782959,
+      "val_by_category": {
+        "source_disjoint_eval": 1.866391658782959
+      },
+      "lr": 1.9504032608410245e-06,
+      "elapsed_seconds": 80.09719157218933
+    },
+    {
+      "step": 100,
+      "train_loss": 2.2021236773580313,
+      "val_loss": 1.8346303701400757,
+      "val_by_category": {
+        "source_disjoint_eval": 1.8346303701400757
+      },
+      "lr": 1.3495967391589757e-06,
+      "elapsed_seconds": 98.22685074806213
+    },
+    {
+      "step": 120,
+      "train_loss": 2.5608787685632706,
+      "val_loss": 1.8488014489412308,
+      "val_by_category": {
+        "source_disjoint_eval": 1.8488014489412308
+      },
+      "lr": 8.082887674907099e-07,
+      "elapsed_seconds": 116.13237380981445
+    },
+    {
+      "step": 140,
+      "train_loss": 2.571718469262123,
+      "val_loss": 1.8080283775925636,
+      "val_by_category": {
+        "source_disjoint_eval": 1.8080283775925636
+      },
+      "lr": 4.336920283317344e-07,
+      "elapsed_seconds": 134.02007365226746
+    },
+    {
+      "step": 160,
+      "train_loss": 2.8602452874183655,
+      "val_loss": 1.8113710060715675,
+      "val_by_category": {
+        "source_disjoint_eval": 1.8113710060715675
+      },
+      "lr": 3.0000000000000004e-07,
+      "elapsed_seconds": 152.26297092437744
+    }
+  ],
+  "generations_before": [
+    {
+      "prompt": "Was ist die Hauptstadt von Deutschland?",
+      "answer": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>"
+    },
+    {
+      "prompt": "Erklaere kurz, was Wasser ist.",
+      "answer": "Ich bin Auralis.\n<|end|>"
+    },
+    {
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz und korrekt.",
+      "answer": "Nein. Goethe schrieb das nicht; Mein Kampf stammt von Adolf Hitler.\n<|end|>"
+    },
+    {
+      "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+      "answer": "Nein. Heute ist Berlin die Hauptstadt Deutschlands.\n<|end|>"
+    }
+  ],
+  "generations_after": [
+    {
+      "prompt": "Was ist die Hauptstadt von Deutschland?",
+      "answer": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>"
+    },
+    {
+      "prompt": "Erklaere kurz, was Wasser ist.",
+      "answer": "Das Wasser ist Wasser.\n<|end|>"
+    },
+    {
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz und korrekt.",
+      "answer": "Nein. Goethe schrieb das nicht; Mein Kampf stammt von Adolf Hitler.\n<|end|>"
+    },
+    {
+      "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+      "answer": "Nein. Heute ist Berlin die Hauptstadt Deutschlands.\n<|end|>"
+    }
+  ],
+  "initial_val_loss": 2.199138879776001,
+  "initial_val_by_category": {
+    "source_disjoint_eval": 2.199138879776001
+  },
+  "saved_checkpoint": "checkpoints/sft_response_fix_de_v1_curriculum_mixed/sft_smoke_step_160.pt"
+}

@@ -42,10 +42,11 @@ Design choices:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
-import random
 import re
 import sys
+import tempfile
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -206,22 +207,47 @@ def _process_file(in_path: Path, out_path: Path, fn, stats: Stats) -> None:
     print(f"  {in_path.stem}: {n_in} in -> {n_out} out", flush=True)
 
 
-def _shuffle_combine(out_paths: list, combined_path: Path, seed: int) -> int:
-    """Concatenate all per-source SFT files, shuffle deterministically, write."""
-    rng = random.Random(seed)
+def _shuffle_key(line: str, seed: int) -> str:
+    h = hashlib.blake2b(digest_size=16, person=b"auralis-qa-sft")
+    h.update(str(seed).encode("ascii"))
+    h.update(b"\0")
+    h.update(line.encode("utf-8", errors="ignore"))
+    return h.hexdigest()
+
+
+def _shuffle_combine(out_paths: list, combined_path: Path, seed: int, bucket_count: int) -> int:
+    """Concatenate and deterministically shuffle without loading all lines."""
     print(f"\n--- combining {len(out_paths)} files into {combined_path.name} (seed={seed}) ---",
           flush=True)
-    all_lines: list[str] = []
-    for p in out_paths:
-        if not p.exists():
-            continue
-        with p.open("r", encoding="utf-8") as f:
-            all_lines.extend(f.readlines())
-    rng.shuffle(all_lines)
-    with atomic_text_writer(combined_path) as fout:
-        for line in all_lines:
-            fout.write(line)
-    return len(all_lines)
+    bucket_count = max(16, bucket_count)
+    count = 0
+    with tempfile.TemporaryDirectory(prefix="qa_shuffle_", dir=combined_path.parent) as tmp:
+        tmp_dir = Path(tmp)
+        buckets = [
+            (tmp_dir / f"bucket_{idx:04d}.tmp").open("w", encoding="utf-8", newline="\n")
+            for idx in range(bucket_count)
+        ]
+        try:
+            for p in out_paths:
+                if not p.exists():
+                    continue
+                with p.open("r", encoding="utf-8") as f:
+                    for line in f:
+                        key = _shuffle_key(line, seed)
+                        buckets[int(key[:8], 16) % bucket_count].write(key + "\t" + line)
+                        count += 1
+        finally:
+            for fh in buckets:
+                fh.close()
+        with atomic_text_writer(combined_path) as fout:
+            for bucket in sorted(tmp_dir.glob("bucket_*.tmp")):
+                with bucket.open("r", encoding="utf-8") as fh:
+                    keyed_lines = fh.readlines()
+                keyed_lines.sort()
+                for keyed in keyed_lines:
+                    _, line = keyed.split("\t", 1)
+                    fout.write(line)
+    return count
 
 
 def main() -> None:
@@ -233,6 +259,8 @@ def main() -> None:
                    help="Shuffle seed for the combined file.")
     p.add_argument("--no-combine", action="store_true",
                    help="Skip the combined-and-shuffled output.")
+    p.add_argument("--shuffle-buckets", type=int, default=256,
+                   help="Temporary buckets for memory-safe deterministic combine.")
     args = p.parse_args()
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
@@ -258,7 +286,7 @@ def main() -> None:
 
     if not args.no_combine and out_paths:
         combined = args.out_dir / "qa_combined.sft.jsonl"
-        n = _shuffle_combine(out_paths, combined, args.seed)
+        n = _shuffle_combine(out_paths, combined, args.seed, args.shuffle_buckets)
         print(f"  combined: {n} records -> {combined}", flush=True)
 
     stats.finished_at = now_iso()

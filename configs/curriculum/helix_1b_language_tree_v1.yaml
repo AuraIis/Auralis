@@ -1,0 +1,237 @@
+name: helix_1b_language_tree_v1
+description: >
+  Staged language-first curriculum for Auralis 1B. The goal is to build a
+  stable German language trunk first, introduce English under retention
+  guards, and only then move into instruction, reasoning, and later code.
+
+principles:
+  - Do not mix every capability from the beginning.
+  - Do not train German-only long enough to erase English priors.
+  - Advance stages only when language quality, bpb, and retention gates agree.
+  - Treat SFT and repair as later stages, not as a cure for weak foundation text.
+  - Keep code data out until general text generation is coherent.
+
+global_metrics:
+  primary:
+    - bpb_german
+    - bpb_english
+    - bpb_gap_max
+    - val_loss_german
+    - val_loss_english
+  qualitative:
+    - german_free_generation
+    - english_free_generation
+    - repetition_rate
+    - punctuation_quality
+    - sentence_completion_quality
+  frozen_gate:
+    probes: eval/sft_response_frozen_target_retention_v2.yaml
+    cadence: milestone_only
+    rule: target_and_retention_must_not_regress
+
+stages:
+  - id: s0_preflight
+    name: Preflight and Measurement
+    objective: Verify data, tokenizer, sharding, bpb logging, and smoke training before burning GPU.
+    training: none
+    required_checks:
+      - tokenizer_fertility_measured_for_english_and_german
+      - bpb_logging_present_in_foundation_trainer
+      - rank_aware_sharding_smoke_passed_before_multigpu
+      - sample_generation_baseline_recorded
+    promote_when:
+      - all_required_checks_green
+
+  - id: s1_german_language_stem
+    name: German Language Stem
+    objective: Learn German sentence structure, punctuation, orthography, and stable prose before task behavior.
+    data_style:
+      - clean_german_prose
+      - simple_german_explanatory_text
+      - curated_books_without_front_matter_indexes_or_license_boilerplate
+    mix:
+      german: 0.92
+      english_anchor: 0.08
+    avoid:
+      - instruction_sft
+      - repair_sets
+      - code
+      - synthetic_overtemplated_qa
+    monitor:
+      eval_every_steps: 500
+      sample_every_steps: 1000
+      frozen_gate: false
+    promote_when:
+      - german_generation_no_longer_degenerates
+      - bpb_german_falls_consistently
+      - repetition_rate_is_stable_or_falling
+      - english_anchor_does_not_collapse
+    stop_or_hold_if:
+      - bpb_german_plateaus_for_multiple_evals
+      - repetition_or_looping_increases
+      - english_anchor_loss_spikes_strongly
+
+  - id: s2_german_knowledge_foundation
+    name: German Knowledge Foundation
+    objective: Add factual German prose and broad knowledge while preserving language coherence.
+    data_style:
+      - german_encyclopedic_text
+      - cleaned_gutenberg_de
+      - german_qa_as_plain_prose
+      - german_history_science_culture_text
+    mix:
+      german_knowledge: 0.82
+      german_language_replay: 0.10
+      english_anchor: 0.08
+    avoid:
+      - brittle_fact_repair_sft
+      - high_refusal_honesty_sets
+      - code
+    monitor:
+      eval_every_steps: 500
+      sample_every_steps: 1000
+      frozen_gate: milestone_only
+    promote_when:
+      - german_samples_answer_simple_known_facts_without_refusal
+      - bpb_german_keeps_falling_or_holds_without_regression
+      - retention_probe_subset_has_no_new_erasure
+
+  - id: s3_english_introduction
+    name: English Introduction Under German Retention
+    objective: Introduce English strongly enough to learn it, but keep German as the trunk.
+    data_style:
+      - clean_english_prose
+      - simple_english_explanatory_text
+      - english_knowledge_text
+      - german_replay
+    mix:
+      german_replay_and_knowledge: 0.62
+      english_language_and_knowledge: 0.38
+    monitor:
+      eval_every_steps: 500
+      sample_every_steps: 1000
+      frozen_gate: milestone_only
+    promote_when:
+      - bpb_english_falls_consistently
+      - bpb_german_does_not_regress
+      - bpb_gap_max_moves_toward_balance
+      - german_samples_remain_coherent
+    stop_or_hold_if:
+      - german_bpb_regresses_materially
+      - german_free_generation_becomes_english_mixed
+
+  - id: s4_balanced_bilingual_foundation
+    name: Balanced Bilingual Foundation
+    objective: Stabilize both languages before any assistant-style SFT dominates behavior.
+    data_style:
+      - clean_german_prose
+      - clean_english_prose
+      - factual_text_in_both_languages
+      - light_non_template_qa_as_plain_text
+    mix_policy:
+      type: adaptive_by_bpb
+      start:
+        german: 0.55
+        english: 0.45
+      adjust:
+        if_bpb_german_lags: increase_german_by_up_to_0.10
+        if_bpb_english_lags: increase_english_by_up_to_0.10
+      clamp:
+        min_per_language: 0.35
+        max_per_language: 0.65
+    monitor:
+      eval_every_steps: 500
+      sample_every_steps: 1000
+      frozen_gate: milestone_only
+    promote_when:
+      - both_languages_generate_coherent_paragraphs
+      - bpb_gap_max_is_trending_down
+      - frozen_retention_subset_does_not_regress
+
+  - id: s5_german_instruction_format
+    name: German Instruction Format
+    objective: Teach assistant formatting and direct answers in German without overtraining refusal.
+    data_style:
+      - german_instruction_simple
+      - german_confident_correct_facts
+      - german_short_qa
+      - german_honesty_only_for_unknown_or_false_entities
+    mix:
+      german_instruction: 0.70
+      german_foundation_replay: 0.20
+      english_anchor: 0.10
+    guardrails:
+      - refusal_share_must_be_capped
+      - confident_correct_examples_must_balance_honesty
+      - target_and_retention_eval_must_be_source_disjoint
+    monitor:
+      eval_every_steps: 250
+      frozen_gate: true
+    promote_when:
+      - target_pass_improves
+      - retention_pass_has_zero_regression
+      - known_fact_refusal_rate_falls
+
+  - id: s6_bilingual_instruction
+    name: Bilingual Instruction
+    objective: Add English instruction behavior while preserving German assistant quality.
+    data_style:
+      - german_instruction
+      - english_instruction
+      - bilingual_qa
+      - confidence_calibration
+    mix_policy:
+      type: guarded_balanced
+      start:
+        german_instruction: 0.50
+        english_instruction: 0.35
+        foundation_replay: 0.15
+    monitor:
+      eval_every_steps: 250
+      frozen_gate: true
+    promote_when:
+      - bilingual_instruction_quality_is_stable
+      - target_pass_improves
+      - retention_pass_has_zero_regression
+
+  - id: s7_reasoning_and_difficulty_ramp
+    name: Reasoning and Difficulty Ramp
+    objective: Increase task difficulty only after base language and instruction behavior are stable.
+    data_style:
+      - multi_step_qa
+      - math_reasoning
+      - long_context_reading
+      - error_correction
+      - controlled_chain_of_thought_or_solution_traces
+    mix:
+      reasoning: 0.45
+      bilingual_instruction_replay: 0.35
+      foundation_replay: 0.20
+    monitor:
+      eval_every_steps: 250
+      frozen_gate: true
+    promote_when:
+      - reasoning_scores_improve
+      - language_quality_does_not_regress
+      - frozen_retention_has_zero_regression
+
+  - id: s8_code_later
+    name: Code Later
+    objective: Add code only after general German/English assistant behavior is stable.
+    status: deferred
+    reason: The current priority is coherent writing and answering, not code imitation.
+    prerequisites:
+      - s6_bilingual_instruction_promoted
+      - source_disjoint_code_eval_ready
+      - executable_code_tests_ready
+
+notes:
+  why_not_german_only_then_english_only: >
+    A hard German-only phase can make the model locally better at German while
+    silently weakening English and later causing interference when English is
+    reintroduced. A small English anchor keeps the representation bilingual
+    enough to avoid a later shock, while still letting German dominate early.
+  why_bpb: >
+    Per-token loss is not comparable between German and English because the
+    tokenizer produces different token densities. Bits-per-byte is the fairer
+    language-balance metric.

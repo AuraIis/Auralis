@@ -1,0 +1,125 @@
+{
+  "version": 1,
+  "started_at": "2026-05-27T08:08:05.932839+00:00",
+  "output_text": "data/training/pretrain_v6_book_sources_gutenberg_v1/book_sources.txt",
+  "output_jsonl": "data/training/pretrain_v6_book_sources_gutenberg_v1/book_sources.jsonl",
+  "languages": [
+    "de",
+    "en"
+  ],
+  "sources": [
+    {
+      "name": "common_pile_project_gutenberg",
+      "dataset": "common-pile/project_gutenberg",
+      "config": null,
+      "split": "train",
+      "rows_seen": 4894,
+      "rows_kept": 4250,
+      "chunks_written": 332643,
+      "bytes_text": 1500002657,
+      "skipped": {
+        "repetitive": 217,
+        "hard_noise": 7083,
+        "language": 620,
+        "ocr_mojibake": 8845,
+        "boilerplate": 790,
+        "low_alpha": 2352,
+        "toc_or_index": 736,
+        "list_heavy": 251,
+        "duplicate": 4655,
+        "too_long": 17,
+        "too_few_words": 239,
+        "too_short": 2
+      },
+      "languages": {
+        "en": 4226,
+        "de": 48
+      },
+      "titles_sample": [
+        "The Declaration of Independence of the United States of America",
+        "The King James Version of the Bible",
+        "The Complete Works of William Shakespeare",
+        "The Magna Carta",
+        "Apocolocyntosis",
+        "The House on the Borderland",
+        "My First Years as a Frenchwoman, 1876-1879",
+        "The Warriors",
+        "A Voyage to the Moon\r\nWith Some Account of the Manners and Customs, Science and Philosophy, of the People of Morosofia, and Other Lunarians",
+        "La Fiammetta",
+        "Carmilla",
+        "The Mystery",
+        "Wild Northern Scenes; Or, Sporting Adventures with the Rifle and the Rod",
+        "Divine Comedy, Longfellow's Translation, Hell",
+        "The Eulogies of Howard: A Vision",
+        "365 Foreign Dishes\r\nA Foreign Dish for Every Day in the Year",
+        "The Mountains of California",
+        "Punchinello, Volume 1, No. 09, May 28, 1870",
+        "Punchinello, Volume 1, No. 18, July 30, 1870",
+        "Punchinello, Volume 1, No. 19, August 6, 1870"
+      ]
+    },
+    {
+      "name": "zkeown_gutenberg_books",
+      "dataset": "zkeown/gutenberg-corpus",
+      "config": "books",
+      "split": "train",
+      "rows_seen": 49,
+      "rows_kept": 40,
+      "chunks_written": 2309,
+      "bytes_text": 10735933,
+      "skipped": {
+        "hard_noise": 93,
+        "list_heavy": 8,
+        "toc_or_index": 4,
+        "low_alpha": 14,
+        "ocr_mojibake": 64,
+        "language": 8,
+        "too_few_words": 7
+      },
+      "languages": {
+        "en": 40,
+        "de": 1
+      },
+      "titles_sample": [
+        "The hen-punchers of Piperock",
+        "A fisher girl of France",
+        "Nerves of iron",
+        "The biography and typography of William Caxton, England's first printer",
+        "The scarab murder case : $b A Philo Vance story",
+        "Duologues and scenes from the novels of Jane Austen : $b Arranged and adapted for drawing-room performance",
+        "Bransford in Arcadia : $b or, The little eohippus",
+        "Pompeii",
+        "The misdeal",
+        "Knight-errant",
+        "Heather's mistress",
+        "The type-writer girl",
+        "The whistle : $b Extract from a letter written by Franklin to Madame Brillon November, 1779",
+        "The adventures of Pony Dexter",
+        "Gran Cañon : $b Mein Besuch im amerikanischen Wunderland",
+        "When Canada was New France",
+        "Memories of my life",
+        "The first philosophers of Greece : $b An edition and translation of the remaining fragments of the pre-Sokratic philosophers, together with a translation of the more important acco",
+        "Honest to Doughgod",
+        "Kulóskap the master, and other Algonkin poems"
+      ]
+    }
+  ],
+  "documents": 334952,
+  "bytes_text": 1510738590,
+  "elapsed_seconds": 652.9,
+  "finished_at": "2026-05-27T08:18:58.790311+00:00",
+  "top_skips": {
+    "ocr_mojibake": 8909,
+    "hard_noise": 7176,
+    "duplicate": 4655,
+    "low_alpha": 2366,
+    "boilerplate": 790,
+    "toc_or_index": 740,
+    "language": 628,
+    "list_heavy": 259,
+    "too_few_words": 246,
+    "repetitive": 217,
+    "too_long": 17,
+    "too_short": 2
+  }
+}

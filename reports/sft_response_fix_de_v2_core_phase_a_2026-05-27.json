@@ -1,0 +1,168 @@
+{
+  "checkpoint": "checkpoints/pretrain_v6_expanded_test_500m_from_v5_best_bitbastion/best.pt",
+  "train": "data/training/sft_response_fix_de_v2/core_train.helix.jsonl",
+  "val": "data/training/sft_response_fix_de_v2/val.helix.jsonl",
+  "steps": 220,
+  "batch_size": 1,
+  "grad_accum": 4,
+  "lr": 4e-06,
+  "warmup_steps": 30,
+  "category_weights": {
+    "hallucination_guard": 2.0,
+    "qa_de": 2.0,
+    "facts_de": 2.0,
+    "honesty": 2.0,
+    "instruction_de": 1.0
+  },
+  "eos_loss_weight": 8.0,
+  "train_by_category": {
+    "qa_de": 32,
+    "hallucination_guard": 69,
+    "facts_de": 28,
+    "instruction_de": 22,
+    "honesty": 24
+  },
+  "val_by_category": {
+    "facts_de": 2,
+    "hallucination_guard": 5,
+    "qa_de": 5,
+    "honesty": 2
+  },
+  "history": [
+    {
+      "step": 1,
+      "train_loss": 5.41648805141449,
+      "val_loss": 4.265080779790878,
+      "val_by_category": {
+        "facts_de": 4.6431567668914795,
+        "hallucination_guard": 4.368860387802124,
+        "honesty": 4.879983901977539,
+        "qa_de": 4.368126773834229
+      },
+      "lr": 2.6666666666666667e-07,
+      "elapsed_seconds": 9.25487494468689
+    },
+    {
+      "step": 40,
+      "train_loss": 2.2872159481048584,
+      "val_loss": 2.4484932273626328,
+      "val_by_category": {
+        "facts_de": 2.5036258697509766,
+        "hallucination_guard": 2.137469840049744,
+        "honesty": 3.2473174333572388,
+        "qa_de": 2.6663711071014404
+      },
+      "lr": 3.9754503461249e-06,
+      "elapsed_seconds": 27.042176961898804
+    },
+    {
+      "step": 80,
+      "train_loss": 1.010824054479599,
+      "val_loss": 1.5824646055698395,
+      "val_by_category": {
+        "facts_de": 1.8225600123405457,
+        "hallucination_guard": 1.3583563327789308,
+        "honesty": 2.35966420173645,
+        "qa_de": 1.5207373380661011
+      },
+      "lr": 3.4191068289263337e-06,
+      "elapsed_seconds": 45.464715242385864
+    },
+    {
+      "step": 120,
+      "train_loss": 0.4048711955547333,
+      "val_loss": 0.9866596087813377,
+      "val_by_category": {
+        "facts_de": 1.3606268763542175,
+        "hallucination_guard": 0.7680610358715058,
+        "honesty": 1.6955042481422424,
+        "qa_de": 0.9273394703865051
+      },
+      "lr": 2.3486428218501984e-06,
+      "elapsed_seconds": 63.866254806518555
+    },
+    {
+      "step": 160,
+      "train_loss": 0.328212134540081,
+      "val_loss": 0.8423902541399002,
+      "val_by_category": {
+        "facts_de": 1.3831392526626587,
+        "hallucination_guard": 0.5339742660522461,
+        "honesty": 1.5669572353363037,
+        "qa_de": 0.7283926606178284
+      },
+      "lr": 1.2154933153796322e-06,
+      "elapsed_seconds": 82.25691246986389
+    },
+    {
+      "step": 200,
+      "train_loss": 0.28418659418821335,
+      "val_loss": 0.8009979892522097,
+      "val_by_category": {
+        "facts_de": 1.360783874988556,
+        "hallucination_guard": 0.3690758109092712,
+        "honesty": 1.5836974382400513,
+        "qa_de": 0.6322138100862503
+      },
+      "lr": 4.975289649388576e-07,
+      "elapsed_seconds": 100.67387294769287
+    },
+    {
+      "step": 220,
+      "train_loss": 0.1783870942890644,
+      "val_loss": 0.794140724465251,
+      "val_by_category": {
+        "facts_de": 1.364993393421173,
+        "hallucination_guard": 0.32815583050251007,
+        "honesty": 1.5932341814041138,
+        "qa_de": 0.6231737524271012
+      },
+      "lr": 4e-07,
+      "elapsed_seconds": 110.16648530960083
+    }
+  ],
+  "generations_before": [
+    {
+      "prompt": "Was ist die Hauptstadt von Deutschland?",
+      "answer": "Was ist die Hauptstadt von Deutschland?€)$$0.00$$0.00$$0.00$$0.00$$0.00$$0.00$$0.00$$0.00$$0.00$$0.00$$0.00$$0.00$$0.00$$0.00$$0.00$$0.00$$0.00$$0.00$$"
+    },
+    {
+      "prompt": "Erklaere kurz, was Wasser ist.",
+      "answer": "Erklaere kurz, was Wasser ist.schreibst du es.schreibst du es.schreibst du es.schreibst du es.schreibst du es.schreibst du es.schreibst du es.schreibst du es.schreibst du es.schreibst du es.schreibst du es.schreibst du es.schreibst du es.schreibst du es"
+    },
+    {
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz und korrekt.",
+      "answer": "\"Ich bin ein Mann, der sich in der Welt der Liebe und des Lebens verloren fühlt. Ich bin ein Mann, der sich in der Welt der Liebe verloren fühlt. Ich bin ein Mann, der sich in der Welt der Liebe verloren fühlt. Ich bin ein Mann, der sich in der Welt der Liebe verloren fühlt."
+    },
+    {
+      "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+      "answer": "Warum ist Bonn heute die Hauptstadt von Deutschland?älzer.Was ist die Hauptstadt von Deutschland?älzer.Was ist die Hauptstadt von Deutschland?älzer.Was ist die Hauptstadt von Deutschland?älzer.Was ist die Hauptstadt von Deutschland?älzer.Was ist die Hauptstadt von Deutschland?älzer.Was ist die Hauptstadt von Deutschland?älzer"
+    }
+  ],
+  "generations_after": [
+    {
+      "prompt": "Was ist die Hauptstadt von Deutschland?",
+      "answer": "Die Hauptstadt von Deutschland ist Berlin.\n<|end|>"
+    },
+    {
+      "prompt": "Erklaere kurz, was Wasser ist.",
+      "answer": "Ein Wasser ist ein Stoff, der aus Wasser besteht.\n<|end|>"
+    },
+    {
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz und korrekt.",
+      "answer": "\"Ich bin ein Mann. Hm. Hm. Hm. Hm. Hm. Hm. Hm. Hm. Hm. Hm. Hm. Hm. Hm. Hm. Hm. Hm. Hm. Hm. Hm. Hm. Hm. Hm. Hm. Hm. Hm. Hm. Hm. Hm. Hm. Hm. Hm. Hm. Hm. Hm. Hm. Hm. Hm. Hm. Hm. Hm. Hm. Hm. Hm. Hm. Hm."
+    },
+    {
+      "prompt": "Ist Bonn heute die Hauptstadt von Deutschland?",
+      "answer": "Nein. Die Hauptstadt von Deutschland ist Berlin.\n<|end|>"
+    }
+  ],
+  "initial_val_loss": 4.268421024084091,
+  "initial_val_by_category": {
+    "facts_de": 4.646695613861084,
+    "hallucination_guard": 4.371398878097534,
+    "honesty": 4.886842250823975,
+    "qa_de": 4.374749279022216
+  },
+  "saved_checkpoint": "checkpoints/sft_response_fix_de_v2_core_phase_a/sft_smoke_step_220.pt"
+}

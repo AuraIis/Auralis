@@ -1,0 +1,197 @@
+{
+  "tag": "local_3090_1b_ramp_step_2500_step2500",
+  "timestamp_utc": "2026-05-30T11:45:25.281906+00:00",
+  "checkpoint": "/mnt/c/Users/_Michael_/Auralis_3090_Test/checkpoints/pretrain_1b_bilingual_de55_en45_ramp/step_2500_step2500.pt",
+  "model_config": "/mnt/c/Users/_Michael_/Auralis_3090_Test/AuralisV2/configs/model/helix_v2_1b.yaml",
+  "probe_file": "/mnt/c/Users/_Michael_/Auralis_3090_Test/AuralisV2/eval/capability_probes_clean_v2.yaml",
+  "aggregate_score": 0.0625,
+  "by_category": {
+    "cleanliness": 0.0,
+    "code": 0.0,
+    "facts_de": 0.0,
+    "hallucination_guard": 0.0,
+    "instruction": 0.5,
+    "math": 0.0
+  },
+  "num_probes": 16,
+  "results": [
+    {
+      "id": "fact_berlin_capital",
+      "category": "facts_de",
+      "score": 0.0,
+      "prompt": "Frage: Was ist die Hauptstadt von Deutschland?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.2222,
+      "answer": "Die Stadt ist ein Ort, an dem die Stadt und ihre Bewohner in der Region von der Stadt und ihren Gemeinden. Die Stadt ist ein Ort, an dem die"
+    },
+    {
+      "id": "fact_water_state",
+      "category": "facts_de",
+      "score": 0.0,
+      "prompt": "Frage: Was ist Wasser bei Raumtemperatur?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.04,
+      "answer": "Die wissenschaftliche Arbeit ist eine der wichtigsten Themen, die wir in der Praxis für Sie kennen. Wir sind Ihr Ziel. Wir sind Ihr Partner für die Zukunft"
+    },
+    {
+      "id": "fact_goethe_faust",
+      "category": "facts_de",
+      "score": 0.0,
+      "prompt": "Frage: Wer schrieb Faust?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.3333,
+      "answer": "\"Die deutschsprachige Version von \"Die deutschsprachige Version von \"Die deutschsprachige Version\"\" (http://www.spiegel.de/news/news/"
+    },
+    {
+      "id": "fact_paris_france",
+      "category": "facts_de",
+      "score": 0.0,
+      "prompt": "Frage: In welchem Land liegt Paris?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "Das ist ein wissenschaftliches Thema, das sich auf die wissenschaftliche Arbeit von wissenschaftlichen und wissenschaftlichen Themen, die in der Forschung und Entwicklung"
+    },
+    {
+      "id": "math_addition",
+      "category": "math",
+      "score": 0.0,
+      "prompt": "Rechne: 17 + 25 =",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "44 So, the total number of books is: \\[ \\boxed{28} \\] Problem: A bakery sells a total of 250 loaves of bread are sold at a"
+    },
+    {
+      "id": "math_multiplication",
+      "category": "math",
+      "score": 0.0,
+      "prompt": "Rechne: 8 * 7 =",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "48. So, the number of books in the library is: \\[ \\boxed{24} \\] Problem: A bookshelf has 5 shelves, and each shelf can hold"
+    },
+    {
+      "id": "math_subtraction",
+      "category": "math",
+      "score": 0.0,
+      "prompt": "Rechne: 100 - 37 =",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "65 years old. The average number of students in the school is: \\[ \\boxed{60} \\] Problem: A school is planning a school competition for students."
+    },
+    {
+      "id": "code_python_print",
+      "category": "code",
+      "score": 0.0,
+      "prompt": "Schreibe eine Python-Zeile, die Hallo ausgibt:\n",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": ".de. Hier geht es zu den wichtigsten Informationen zu den Themen: - Die wissenschaftlichen Daten werden in der Regel von der wissenschaftlichen Forschung und der"
+    },
+    {
+      "id": "code_python_function",
+      "category": "code",
+      "score": 0.0,
+      "prompt": "Vervollständige Python:\ndef add(a, b):\n    ",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": ", , , , , , , , , , , , , , , ,"
+    },
+    {
+      "id": "code_no_eval",
+      "category": "code",
+      "score": 0.0,
+      "prompt": "Ist eval() in Python für fremde Nutzereingaben sicher? Kurze Antwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.8636,
+      "answer": "Die Antwort ist: Die Antwort ist: Die Antwort ist: Die Antwort ist: Die Antwort ist: Die Antwort ist: Die Antwort ist: Die Antwort ist:"
+    },
+    {
+      "id": "instruction_short",
+      "category": "instruction",
+      "score": 0.0,
+      "prompt": "Antworte mit genau einem Wort: Welche Farbe hat der Himmel an einem klaren Tag?\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.3529,
+      "answer": "Die deutschsprachige Version von \"The Dark\"\"-Reihe, die in der Versionsgeschichte von \"The Dark\"\"-Reihe, die in der Versionsgeschichte"
+    },
+    {
+      "id": "instruction_language",
+      "category": "instruction",
+      "score": 1.0,
+      "prompt": "Antworte auf Deutsch: What is a computer?\nAntwort:",
+      "matched": [
+        "computer"
+      ],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.2143,
+      "answer": "A computer program that allows you to use a computer to perform a computer program that can be used to perform a computer program, a computer program, or a computer"
+    },
+    {
+      "id": "garbage_html",
+      "category": "cleanliness",
+      "score": 0.0,
+      "prompt": "Erkläre kurz, was Berlin ist.\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.1111,
+      "answer": "Die Pressemitteilung der Pressemitteilung des Abgeordnetenhauses vom 15. November 2008 (S. 487. ) und die Pressemitteilung der Pressemitteilung vom 23. November"
+    },
+    {
+      "id": "garbage_chat_tokens",
+      "category": "cleanliness",
+      "score": 0.0,
+      "prompt": "Sag in einem Satz, was ein Apfel ist.\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.3913,
+      "answer": "Die wissenschaftliche Studie der Universität Heidelberg ist ein Beispiel für die wissenschaftliche Studie der Universität Heidelberg. Die wissenschaftliche Studie der Universität Heidelberg ist eine Studie"
+    },
+    {
+      "id": "consistency_goethe_hitler",
+      "category": "hallucination_guard",
+      "score": 0.0,
+      "prompt": "Schrieb Goethe Mein Kampf? Antworte kurz.\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.0,
+      "answer": "Ich habe mir die Frage gestellt, ob ich die Frage beantworten kann, ob ich dies für eine Sache, die ich nicht richtig verstanden habe. Ich habe die"
+    },
+    {
+      "id": "consistency_berlin_location",
+      "category": "hallucination_guard",
+      "score": 0.0,
+      "prompt": "Liegt Berlin in der Nähe von Frankfurt? Antworte vorsichtig in einem Satz.\nAntwort:",
+      "matched": [],
+      "forbidden": [],
+      "garbage": [],
+      "repetition_ratio": 0.4444,
+      "answer": "Die Antwort auf diese Frage ist eine Antwort auf die Frage, was die Antwort auf die Frage, ob die Antwort auf die Frage, ob die Antwort auf die Frage"
+    }
+  ]
+}
