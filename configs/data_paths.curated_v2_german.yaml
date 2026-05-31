@@ -2,10 +2,15 @@
 #
 # Identical to data_paths.curated_container.yaml EXCEPT cleaned.german, which now
 # points at the edu-filtered German (FineWeb-Edu-style, judged by qwen3-235b-2507):
-#   - fineweb2_de.edu.txt    : fineweb2_de filtered at classifier score >= 2.0
-#                              (drops the 0-1 ads/forum/review/fragment junk)
-#   - wikipedia_de.filtered  : kept as-is (~85%+ already high edu value)
-# german_commons is DROPPED entirely (~2% keep rate; mostly EuroParl fragments).
+#   - fineweb2_de.edu.txt     : slice 1, 4.1M scored -> 1.55M kept (thr 2.0, legacy)
+#   - fineweb2_de_v2.edu.txt  : slice 2 (skip 5M), 9.9M raw -> ~2.3M kept (thr 2.45)
+#   - german_commons.edu.txt  : 7.0M scored -> 2.13M kept (30%!, thr 2.45). The edu
+#                               classifier SALVAGED it — NOT the ~2% the old prose
+#                               heuristic claimed. (v1 comment here was wrong.)
+#   - wikipedia_de.filtered   : kept as-is (~85%+ already high edu value)
+# Pool: ~1.8B -> ~4.5-5B unique German tokens; cuts the de55 repetition 12x -> ~4x.
+# (Mixed thresholds: v1 at 2.0, v2/commons at the calibrated 2.45 — fine, more
+#  unique German aids fluency + cuts repetition, which was the binding limit.)
 #
 # Use to re-tokenize ONLY German into tokenized/curated_40b/:
 #   python scripts/data/tokenize_for_pretraining.py \
@@ -28,6 +33,8 @@ cleaned:
     - "training/curated_40b/english.txt"
   german:
     - "cleaned/edu/fineweb2_de.edu.txt"
+    - "cleaned/edu/fineweb2_de_v2.edu.txt"
+    - "cleaned/edu/german_commons.edu.txt"
     - "cleaned/wikipedia_de.filtered.txt"
   code:
     - "training/curated_40b/code.txt"
