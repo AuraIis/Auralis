@@ -725,7 +725,7 @@ const tagNames = ["keep", "edu", "fact", "german", "style", "boilerplate", "dupl
 const tagLabels = {
   keep: "behalten", edu: "Bildungswert", fact: "Faktenwissen", german: "gutes Deutsch",
   style: "guter Stil", boilerplate: "Boilerplate/Werbung", duplicate: "Dublette",
-  needs_rewrite: "umschreiben", unsafe: "unsicher", too_shallow: "zu seicht",
+  needs_rewrite: "umschreiben", unsafe: "unsicher", too_shallow: "oberflächlich",
 };
 let mode = "quality";
 let current = null;
