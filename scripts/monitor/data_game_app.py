@@ -810,35 +810,41 @@ async function nextTask() {
   setStatus("");
 }
 
+let submitting = false;
 async function submit(extra={}) {
-  if (!current || current.empty) return;
-  const payload = {
-    task_id: current.task_id,
-    mode,
-    score: selectedScore,
-    label: selectedLabel,
-    tags: Array.from(tags),
-    question: $("question").value.trim(),
-    answer: $("answer").value.trim(),
-    wrong_answer: $("wrongAnswer").value.trim(),
-    correction: $("correction").value.trim(),
-    rewrite: $("rewrite").value.trim(),
-    notes: $("notes").value.trim(),
-    ...extra
-  };
-  const res = await fetch("/api/submit", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify(payload)
-  });
-  const body = await res.json();
-  if (!res.ok) {
-    setStatus(body.error || "Speichern fehlgeschlagen", true);
-    return;
+  if (!current || current.empty || submitting) return;   // re-entrancy guard: no double-save / key-autorepeat race
+  submitting = true;
+  try {
+    const payload = {
+      task_id: current.task_id,
+      mode,
+      score: selectedScore,
+      label: selectedLabel,
+      tags: Array.from(tags),
+      question: $("question").value.trim(),
+      answer: $("answer").value.trim(),
+      wrong_answer: $("wrongAnswer").value.trim(),
+      correction: $("correction").value.trim(),
+      rewrite: $("rewrite").value.trim(),
+      notes: $("notes").value.trim(),
+      ...extra
+    };
+    const res = await fetch("/api/submit", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(payload)
+    });
+    const body = await res.json();
+    if (!res.ok) {
+      setStatus(body.error || "Speichern fehlgeschlagen", true);
+      return;
+    }
+    $("last").textContent = JSON.stringify(body.saved, null, 2);
+    setStatus("Gespeichert.");
+    await nextTask();
+  } finally {
+    submitting = false;
   }
-  $("last").textContent = JSON.stringify(body.saved, null, 2);
-  setStatus("Gespeichert.");
-  await nextTask();
 }
 
 async function skip() {
