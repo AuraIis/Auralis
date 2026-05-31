@@ -33,7 +33,22 @@ dieser Index, dann die jeweilige aktuelle Arbeitsdoku.
 - [../data/eval/pretrain_clean_v2_audit_v3.md](../data/eval/pretrain_clean_v2_audit_v3.md) -
   wichtiges Daten-Audit aus der Rettungsphase.
 - [../data/eval/training_data_cleaning_report.md](../data/eval/training_data_cleaning_report.md) -
-  Cleaning-Report.
+  Cleaning-Report (lokal; data/eval ist gitignored).
+- German Edu-Filter (FineWeb-Edu-Methodik, 2026-05-31): LLM-Annotation
+  `scripts/data/score_german_edu.py` -> billiger Klassifikator
+  `scripts/data/train_edu_classifier.py` (+ `scripts/data/edu_embed.py`) ->
+  Korpus-Filter `scripts/data/score_corpus_edu.py`. Quell-Mix der gefilterten
+  deutschen v2-Daten: `configs/data_paths.curated_v2_german.yaml`. Judge:
+  `qwen3-235b-2507` via OpenRouter; siehe LESSONS L-018..L-021.
+
+## Training / Multi-GPU
+
+- DDP / Multi-GPU: `scripts/ops/run_pretrain_multigpu.sh` (torchrun-Launcher).
+  Der Trainer (`src/auralis/training/trainer.py`) ist single-process by default
+  und aktiviert DDP nur bei `WORLD_SIZE>1` -> Single-GPU-Pfad unveraendert
+  (siehe LESSONS L-022). Spec:
+  [../Doc/SPECs/SPEC_MULTI_GPU_TRAINING.md](../Doc/SPECs/SPEC_MULTI_GPU_TRAINING.md)
+  und der "Update 2026-05-31"-Block in [../STATUS.md](../STATUS.md).
 
 ## Experiments
 

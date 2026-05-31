@@ -20,16 +20,24 @@ technische Architektur-Spec steht in
 - [Lessons](LESSONS.md)
 - [History](HISTORY.md)
 
-## Aktueller Fokus
+## Aktueller Fokus (Stand 2026-05-31)
 
-Der alte Base-Run hat gezeigt: Pipeline, Checkpointing, Tokenizer-Roundtrip
-und Training funktionieren, aber die damaligen Trainingsdaten waren zu noisy.
-Der Fokus liegt deshalb jetzt auf:
+Pipeline, Checkpointing, Tokenizer-Roundtrip und Training funktionieren. Der
+bilinguale 1B-Ramp (de55/en45) lief bis Step ~3400; das Lernen war schwach.
+Saubere Diagnose: nicht die Eval, nicht die Architektur, sondern
+Under-Training plus ein qualitaets-invertierter deutscher Mix (die schwaechste
+Quelle bekam das meiste Budget). Aktueller Fokus:
 
-1. sauberen Pretraining-Daten statt roher Web-/Archiv-Fragmente,
-2. kleinen Canary-Runs vor teuren 1B-Runs,
-3. klaren Capability-Evals statt nur Loss,
-4. optionalen Boostern wie Knowledge-DNA nur nach messbarem Signal.
+1. Deutsche Daten nach Bildungswert filtern (FineWeb-Edu-Methodik): LLM-Judge
+   `qwen3-235b-2507`, billiger Klassifikator (e5-large + Ridge, Keep-F1 0.872),
+   German-v2 = edu-gefiltertes fineweb2_de + wikipedia (german_commons gedroppt).
+2. Foundation-Warmstart von Step ~3400 auf den besseren Daten.
+3. Multi-GPU (DDP) fuer RunPod bereit; der Single-GPU-Pfad bleibt unveraendert.
+4. Klare Capability-Evals statt nur Loss; Booster nur nach messbarem Signal.
+
+Details: der "Update 2026-05-31"-Block in [STATUS.md](STATUS.md), der Verlauf
+in [HISTORY.md](HISTORY.md), die Lehren (inkl. L-018..L-022) in
+[LESSONS.md](LESSONS.md).
 
 ## Projekt-Struktur
 
