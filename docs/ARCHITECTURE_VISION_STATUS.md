@@ -140,6 +140,31 @@ fastest + most stable path. The only real perf_lab win is **Liger RMSNorm** (~1.
 3090-tested); worth a Blackwell head-to-head confirm, nothing more. Do NOT swap the
 CE kernels into training — it would regress.
 
+## Deployment / serving (later — where C++ actually earns its keep)
+
+Reminder on the recurring "should we write it in C++" question: **training stays
+Python/PyTorch** (the compute is already C++/CUDA under the hood; a C++ rewrite of
+the training buys ~nothing and hurts maintainability + community). The real C++
+payoff is **inference/serving**, not training — and it belongs to the "go public"
+phase:
+
+- **Goal:** let people *run* the model easily — fast, on consumer hardware, ideally
+  a single binary with no Python install. That's what wins a public demo.
+- **Tools:** `llama.cpp` / **GGUF** (C++, CPU + consumer-GPU, single binary),
+  TensorRT / ONNX Runtime (server-side fast inference).
+- **HONEST caveat:** our architecture is a **non-standard hybrid** (Mamba-2 + GLA +
+  sparse attention). llama.cpp/GGUF target standard transformers (+ some Mamba), so
+  it will **not** "just work" — supporting our stack needs custom C++ architecture
+  code (real effort), or a runtime that handles it.
+- **Sequencing (pragmatic):**
+  1. **First public demo = PyTorch** (a HF Space or a tiny server) — works day-one,
+     no C++, no architecture port. Simplest path to "look, try it".
+  2. **Later:** a C++/GGUF runtime for efficient, easy, no-Python distribution —
+     the real C++ project, after there is a model worth shipping.
+
+So the C++ instinct is correct — just for the **serving phase**, after a good model,
+and likely after a first PyTorch demo. Not for training.
+
 ## Honest bottom line
 
 - The vision is **coherent and largely scaffolded** — the tokenizer reserves slots for
