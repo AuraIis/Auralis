@@ -108,6 +108,38 @@ knows**, spends learning on the gaps, and does not forget. What is real vs not:
 
 Placement: Phase 5+, on the aligned base; `src/auralis/adaptive/` is the natural home.
 
+## Learning levers beyond data (PARKED — one at a time, gated on a baseline)
+
+The discipline: **change ONE thing at a time, measured against a stable baseline.**
+Changing several at once = you cannot attribute the result. Finish the base
+relaunch first (it gives the baseline), then run these as separate, measured
+experiments — in priority order:
+
+1. **Knowledge distillation** (biggest lever for a small model) — train the 1B to
+   mimic a strong teacher's output distribution instead of only raw text. Needs a
+   teacher (strong German/multilingual model) + its logits/outputs. The single most
+   effective "beyond data" technique at this size.
+2. **LR schedule + optimizer** — WSD (warmup-stable-decay) schedule; optionally a
+   modern optimizer (Muon, promising but newer). Cheap, no new data.
+3. **Data mixture / curriculum** — ratios (de/en/code) + ordering (clean/easy →
+   complex). Better *use* of data, not more data.
+4. **Multi-Token Prediction (MTP)** — NOT a switch: needs MTP heads + a changed
+   objective = an architecture change = a NEW model (v3). Tokens are reserved; not
+   activatable mid-run.
+5. **muP / FP8 / fancy optimizers** — efficiency or single-digit-% gains; low
+   priority for a solo run, high complexity.
+
+Already in the current design (not missing): RMSNorm, SwiGLU, RoPE, bf16.
+
+### Correction: perf_lab kernels are NOT a training lever
+A natural assumption is "use the perf_lab CUDA/Triton kernels to make training
+faster/more stable." The clean-GPU study found the **opposite**: the custom fused
+CE is **18–117× slower** than PyTorch full-logits **and** drifts more. Conclusion
+(already in `perf_lab/docs/`): **keep full-logits** — the training already uses the
+fastest + most stable path. The only real perf_lab win is **Liger RMSNorm** (~1.2–4×,
+3090-tested); worth a Blackwell head-to-head confirm, nothing more. Do NOT swap the
+CE kernels into training — it would regress.
+
 ## Honest bottom line
 
 - The vision is **coherent and largely scaffolded** — the tokenizer reserves slots for
