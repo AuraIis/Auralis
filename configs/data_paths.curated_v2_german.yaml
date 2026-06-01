@@ -4,13 +4,13 @@
 # points at the edu-filtered German (FineWeb-Edu-style, judged by qwen3-235b-2507):
 #   - fineweb2_de.edu.txt     : slice 1, 4.1M scored -> 1.55M kept (thr 2.0, legacy)
 #   - fineweb2_de_v2.edu.txt  : slice 2 (skip 5M), 9.9M raw -> ~2.3M kept (thr 2.45)
-#   - german_commons.edu.txt  : 7.0M scored -> 2.13M kept (30%!, thr 2.45). The edu
-#                               classifier SALVAGED it — NOT the ~2% the old prose
-#                               heuristic claimed. (v1 comment here was wrong.)
+#   - german_commons.edu.txt  : DROPPED 2026-06-01 (QC: OCR-historical survived the
+#                               edu filter — v1 style-poisoning trap, L-020).
 #   - wikipedia_de.filtered   : kept as-is (~85%+ already high edu value)
-# Pool: ~1.8B -> ~4.5-5B unique German tokens; cuts the de55 repetition 12x -> ~4x.
-# (Mixed thresholds: v1 at 2.0, v2/commons at the calibrated 2.45 — fine, more
-#  unique German aids fluency + cuts repetition, which was the binding limit.)
+# Pool: ~1.8B -> ~3.3B unique German tokens (v1+v2+wiki); cuts de55 repetition 12x
+# -> ~6-7x. (RPv2/HPLT, once edu-scored, push it further in a later cycle.)
+# (Mixed thresholds: v1 at 2.0, v2 at the calibrated 2.45 — fine, more unique
+#  German aids fluency + cuts repetition, which was the binding limit.)
 #
 # Use to re-tokenize ONLY German into tokenized/curated_40b/:
 #   python scripts/data/tokenize_for_pretraining.py \
@@ -34,7 +34,11 @@ cleaned:
   german:
     - "cleaned/edu/fineweb2_de.edu.txt"
     - "cleaned/edu/fineweb2_de_v2.edu.txt"
-    - "cleaned/edu/german_commons.edu.txt"
+    # german_commons.edu.txt DROPPED 2026-06-01 after a QC sample: even post edu-filter
+    # it is OCR-historical (garbled words, embedded page numbers, old "Fig. X" refs) —
+    # the v1 style-poisoning trap (L-020). The edu classifier scores lexicon/scientific
+    # text high but cannot detect OCR age/style. We have ample clean modern German
+    # (fineweb2 v1+v2 + wiki, soon RPv2/HPLT), so commons is not worth the style risk.
     - "cleaned/wikipedia_de.filtered.txt"
   code:
     - "training/curated_40b/code.txt"
