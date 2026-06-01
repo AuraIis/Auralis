@@ -174,10 +174,16 @@ class MixedDataLoader:
         # Dedicated RNG for batch-row shuffling inside __next__, so
         # reproducibility is independent of global torch state.
         rank_seed_offset = self.rank * 1_000_000_007
-        self._shuffle_rng = np.random.default_rng((seed + rank_seed_offset) ^ 0xC0FFEE)
+        self._shuffle_seed = (seed + rank_seed_offset) ^ 0xC0FFEE
+        self._shuffle_rng = np.random.default_rng(self._shuffle_seed)
 
         # Per-language RNGs (distinct seeds so draws do not correlate).
         # Val gets its own offset in the seed so train and val do not align.
+        # Seeds are remembered so ``reset_rngs()`` can rewind the val loader to
+        # an identical token stream for every eval (see _evaluate): otherwise
+        # the stateful RNG advances and each eval samples DIFFERENT val tokens,
+        # turning the val trajectory into model-change + sampling-noise.
+        self._lang_rng_seeds: dict[str, int] = {}
         self.datasets: dict[str, PretrainDataset] = {}
         for i, lang in enumerate(sorted(self.mix_ratios)):
             bin_path = self.data_dir / f"{lang}.bin"
@@ -212,7 +218,8 @@ class MixedDataLoader:
                     world_size=self.world_size,
                     name=f"{lang}.bin train",
                 )
-                rng = np.random.default_rng(seed + i * 7919 + rank_seed_offset)
+                rng_seed = seed + i * 7919 + rank_seed_offset
+                rng = np.random.default_rng(rng_seed)
             else:
                 train_start, train_end = _rank_shard_window(
                     train_window,
@@ -227,7 +234,9 @@ class MixedDataLoader:
                         f"val split for {lang} too small: {train_end - train_start} tokens "
                         f"(need >= seq_length+1={seq_length+1}). Increase val_split_bytes."
                     )
-                rng = np.random.default_rng(seed + i * 7919 + rank_seed_offset + 1_000_003)
+                rng_seed = seed + i * 7919 + rank_seed_offset + 1_000_003
+                rng = np.random.default_rng(rng_seed)
+            self._lang_rng_seeds[lang] = rng_seed
 
             # Invariant: train/val windows must be disjoint. With train_end ==
             # train_window == val_start this is exactly adjacency, no overlap.
@@ -243,6 +252,21 @@ class MixedDataLoader:
         self._expected_rows_per_lang = {
             lang: self.batch_size * self.mix_ratios[lang] for lang in self._lang_order
         }
+        self._row_credit = {lang: 0.0 for lang in self._lang_order}
+
+    def reset_rngs(self) -> None:
+        """Rewind every RNG to its construction seed.
+
+        Call this at the START of each evaluation so the val loader yields the
+        IDENTICAL token stream every time. Without it, ``sample()`` advances a
+        stateful RNG, so eval@250 and eval@500 see different val tokens and the
+        loss trajectory mixes real model change with ~1σ sampling noise. With
+        it, the trajectory is apples-to-apples. Harmless on the train loader,
+        but only ever called on the val loader.
+        """
+        self._shuffle_rng = np.random.default_rng(self._shuffle_seed)
+        for lang, ds in self.datasets.items():
+            ds.rng = np.random.default_rng(self._lang_rng_seeds[lang])
         self._row_credit = {lang: 0.0 for lang in self._lang_order}
 
     def _allocate_rows_for_batch(self) -> dict[str, int]:

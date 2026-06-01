@@ -51,6 +51,7 @@ class TokenizeStats:
     empty_lines: int = 0
     bytes_in: int = 0
     tokenizer_sha256: str = ""
+    tokens_per_byte: float = 0.0   # measured from the written bin (for bpb)
     started_at: str = ""
     finished_at: str = ""
     elapsed_seconds: float = 0.0
@@ -166,6 +167,22 @@ def _tokenize_language(
         for t in (tmp_bin, tmp_idx):
             if t.exists():
                 t.unlink()
+
+    # Measure tokens/byte from the middle of the finished bin (the honest value
+    # for bits-per-byte — decode tokens back to text, count UTF-8 bytes). The
+    # config previously carried a hand-guessed 0.2338 for German which inflated
+    # bpb ~30%; record the real number here so configs can use it.
+    try:
+        mm = np.memmap(out_bin, dtype=np.uint32, mode="r")
+        n = int(mm.shape[0])
+        take = min(300_000, n)
+        lo = max(0, (n - take) // 2)
+        sample_ids = [int(x) for x in mm[lo : lo + take]]
+        sample_bytes = len(sp.decode(sample_ids).encode("utf-8"))
+        stats.tokens_per_byte = round(take / max(1, sample_bytes), 6)
+        del mm
+    except Exception as exc:  # measurement is diagnostic; never fail the run
+        print(f"  warn: tokens/byte measurement failed for {lang}: {exc}")
 
     stats.elapsed_seconds = round(time.time() - t0, 1)
     stats.finished_at = now_iso()

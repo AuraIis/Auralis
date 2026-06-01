@@ -87,6 +87,10 @@ class TrainerState:
     step: int = 0
     best_val_loss: float = float("inf")
     consecutive_val_increases: int = 0
+    # Previous eval's val_loss — lets the guard count TRUE consecutive rises
+    # (val higher than the eval before it) rather than "failed to beat best".
+    # inf = no prior eval yet (first eval never counts as a rise).
+    last_val_loss: float = float("inf")
     tokens_seen: int = 0
     wall_clock_seconds: float = 0.0
     alerts: list[str] = field(default_factory=list)
@@ -237,6 +241,10 @@ class PretrainTrainer:
         self.health = HealthMonitor(HealthConfig(
             **{k: v for k, v in mon_cfg.items() if k in HealthConfig.__dataclass_fields__}
         ))
+        # Tolerance (nats) below which a val change is treated as noise, not a
+        # real improvement OR a real rise. Stops the guard tripping on the
+        # normal sub-noise wobble of a converged checkpoint. 0.0 = exact.
+        self._val_min_delta = float(mon_cfg.get("val_min_delta", 0.0))
 
         # ---- Cost tracker ----
         cost_cfg = config.get("cost") or {}
@@ -334,8 +342,15 @@ class PretrainTrainer:
             # Clip + step (unscale first if fp16 + GradScaler)
             if self._scaler is not None:
                 self._scaler.unscale_(self.optimizer)
+            # error_if_nonfinite=True: a NaN/Inf gradient (e.g. a destabilised
+            # warm-start, a bad bf16 accumulation) raises instead of silently
+            # producing a non-finite update that quietly poisons the weights.
+            # fp16+GradScaler is the documented exception (it expects infs and
+            # skips the step), so only arm it on the bf16/fp32 path.
             grad_norm = torch.nn.utils.clip_grad_norm_(
-                self.model.parameters(), max_norm=self._clip_norm
+                self.model.parameters(),
+                max_norm=self._clip_norm,
+                error_if_nonfinite=(self._scaler is None),
             )
             if self._scaler is not None:
                 self._scaler.step(self.optimizer)
@@ -485,6 +500,13 @@ class PretrainTrainer:
         """
         self.model.eval()
         assert self.val_dataloader is not None
+        # Rewind the val RNGs so EVERY eval sees the identical token stream.
+        # Otherwise the stateful sampler advances and each eval draws different
+        # val tokens — turning the val trajectory into model-change + sampling
+        # noise (the confound the five-AI review flagged and we confirmed).
+        reset = getattr(self.val_dataloader, "reset_rngs", None)
+        if callable(reset):
+            reset()
         eval_cfg = self.config.get("evaluation", {})
         max_batches = int(eval_cfg.get("max_val_batches", 50))
         per_lang_batches = int(eval_cfg.get("per_language_batches", 8))
@@ -551,21 +573,40 @@ class PretrainTrainer:
         return val
 
     def _track_val(self, val_loss: float) -> None:
-        if val_loss < self.state.best_val_loss:
+        """Update best-checkpoint + the consecutive-rise guard.
+
+        Two SEPARATE decisions, previously conflated into one bug:
+
+        * best.pt is written only on a real improvement (beat best by more than
+          ``min_delta``), so sub-noise wobble doesn't churn the checkpoint.
+        * ``consecutive_val_increases`` counts TRUE consecutive rises — val_loss
+          higher than the PREVIOUS eval by more than ``min_delta`` — not "failed
+          to beat the all-time best". The old code incremented on every eval
+          that wasn't a new best, so a model sitting just above its optimum (the
+          normal case) looked like a runaway regression and tripped the stop.
+        """
+        delta = self._val_min_delta
+        # best tracking (checkpoint) — real improvement only
+        if val_loss < self.state.best_val_loss - delta:
             self.state.best_val_loss = val_loss
-            self.state.consecutive_val_increases = 0
-            # Codex P5: only write best.pt if the config asks for it.
             if self._save_best:
                 self.save_checkpoint("best")
-        else:
+
+        # true consecutive-rise detection vs the previous eval
+        prev = self.state.last_val_loss
+        if prev != float("inf") and val_loss > prev + delta:
             self.state.consecutive_val_increases += 1
-            if self.state.consecutive_val_increases >= 3:
-                msg = (
-                    f"val_loss rose {self.state.consecutive_val_increases} evals in a row; "
-                    f"best={self.state.best_val_loss:.4f} now={val_loss:.4f}"
-                )
-                self.state.alerts.append(msg)
-                print(f"  ALERT: {msg}", flush=True)
+        else:
+            self.state.consecutive_val_increases = 0
+        self.state.last_val_loss = val_loss
+
+        if self.state.consecutive_val_increases >= 3:
+            msg = (
+                f"val_loss rose {self.state.consecutive_val_increases} evals in a row; "
+                f"best={self.state.best_val_loss:.4f} now={val_loss:.4f}"
+            )
+            self.state.alerts.append(msg)
+            print(f"  ALERT: {msg}", flush=True)
 
     # ------------------------------------------------------------------
     def _save_step_checkpoint_if_needed(self, name: str) -> Path | None:
@@ -762,6 +803,19 @@ class PretrainTrainer:
         short to resume for a longer foundation run.
         """
         payload = torch.load(path, map_location="cpu", weights_only=False)
+        # Hard tokenizer-identity check: warm-starting weights trained under a
+        # different tokenizer means the embedding/lm_head rows no longer map to
+        # the same token IDs — a silent corpus-level corruption. Fail loudly.
+        src_meta = payload.get("metadata") or {}
+        src_tok = src_meta.get("tokenizer_sha16")
+        cur_tok = self.metadata.tokenizer_sha16
+        if src_tok and cur_tok and src_tok != cur_tok:
+            raise RuntimeError(
+                f"warm-start tokenizer mismatch: checkpoint was trained with "
+                f"tokenizer sha {src_tok} but this run uses {cur_tok}. Token IDs "
+                f"would not align — refusing to warm-start. Re-tokenize with the "
+                f"matching tokenizer or warm-start from a matching checkpoint."
+            )
         state = _align_model_state_for_load(self._core_model, payload["model"])
         missing, extra = self._core_model.load_state_dict(state, strict=strict)
         if missing or extra:
