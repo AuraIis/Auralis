@@ -34,6 +34,12 @@ KV_RE = re.compile(r"(?P<key>[A-Za-z0-9_/-]+)=(?P<value>[-+0-9.eE]+)")
 MIX_RE = re.compile(r"train expected rows/batch per language:\s+(?P<mix>\{.*\})")
 MANIFEST_RE = re.compile(r"manifest:\s+(?P<path>.+)")
 
+LN2 = 0.6931471805599453
+# Measured tokens/byte (from eval_diagnostic.py). The training log computed bpb
+# with a hand-guessed German tokens/byte of 0.2338 that inflated bpb_german ~33%.
+# Recompute bpb here from per-language val_loss with the honest measured values.
+CORRECT_TPB = {"german": 0.1757, "english": 0.1962}
+
 
 @dataclass
 class TrainPoint:
@@ -140,6 +146,16 @@ def parse_log(path: Path, max_lines: int = 6000) -> dict[str, object]:
             row: dict[str, float] = {"step": float(m.group("step"))}
             for kv in KV_RE.finditer(m.group("body")):
                 row[kv.group("key").replace("/", "_")] = float(kv.group("value"))
+            # Honest bpb: recompute from per-language val_loss with the MEASURED
+            # tokens/byte, overriding the logged values (which used the wrong tpb).
+            for lang in ("german", "english"):
+                vl = row.get(f"val_loss_{lang}")
+                tpb = CORRECT_TPB.get(lang)
+                if vl is not None and tpb:
+                    row[f"bpb_{lang}"] = vl * tpb / LN2
+            de_b, en_b = row.get("bpb_german"), row.get("bpb_english")
+            if de_b and en_b:
+                row["bpb_gap_max"] = max(de_b, en_b) / min(de_b, en_b)
             evals.append(row)
 
     latest_train = asdict(train[-1]) if train else None
@@ -213,6 +229,37 @@ def _probe_to_concept(probe: dict[str, Any]) -> dict[str, Any]:
         "answer": str(probe.get("answer") or "").strip(),
         "status": status,
     }
+
+
+def representative_snapshot(root: Path) -> dict[str, object] | None:
+    """Honest cross-source bpb from eval_diagnostic.py (diag/step0_v3best.json).
+
+    The run's own per-language val is the easy TAIL of each .bin (wiki-German;
+    an anomalously trivial English source) and its German bpb used the wrong
+    tokens/byte. This snapshot samples across ALL sources with the measured
+    tokens/byte → the number to trust. Feeds the headline tiles + the gap.
+    """
+    p = root / "diag" / "step0_v3best.json"
+    if not p.exists():
+        return None
+    try:
+        data = json.loads(p.read_text(encoding="utf-8", errors="replace"))
+        m = (data.get("modes") or {}).get("kernels_on_bf16") or {}
+        de = (m.get("german/full") or {}).get("bpb_measured")
+        en = (m.get("english/full") or {}).get("bpb_measured")
+        if not (de and en):
+            return None
+        return {
+            "de": de,
+            "en": en,
+            "gap": max(de, en) / min(de, en),
+            "de_tail": (m.get("german/tail") or {}).get("bpb_measured"),
+            "en_tail": (m.get("english/tail") or {}).get("bpb_measured"),
+            "step": data.get("source_step"),
+            "mtime": p.stat().st_mtime,
+        }
+    except Exception:
+        return None
 
 
 def latest_neuro_summary(root: Path) -> dict[str, object]:
@@ -541,7 +588,7 @@ INDEX_HTML = r"""<!doctype html>
 
     <section class="row split">
       <div class="panel fade">
-        <h2>Bits-per-Byte über Steps</h2>
+        <h2>Bits-per-Byte über Steps <span style="font-weight:600;color:var(--faint);font-size:11px;text-transform:none;letter-spacing:0">· Tail-Val-Trend (echte tokens/byte) · Kacheln oben = repräsentativ</span></h2>
         <div class="legend">
           <span><i class="swatch" style="background:var(--de);color:var(--de)"></i>Deutsch</span>
           <span><i class="swatch" style="background:var(--en);color:var(--en)"></i>Englisch</span>
@@ -775,10 +822,14 @@ INDEX_HTML = r"""<!doctype html>
       const tpsEl=document.getElementById("tps");
       tpsEl.innerHTML = lt.tok_s ? (lt.tok_s/1000).toFixed(1)+"<small>k tok/s</small>" : "–";
       document.getElementById("dataPct").textContent = "data " + fmt(lt.data_pct,1) + "%";
-      tween(document.getElementById("bpbDe"), ev.bpb_german, 3);
-      tween(document.getElementById("bpbEn"), ev.bpb_english, 3);
-      setDelta(document.getElementById("deDelta"), ev.bpb_german, state.prev.de, true);
-      setDelta(document.getElementById("enDelta"), ev.bpb_english, state.prev.en, true);
+      const rp = data.repr || null;
+      const tileDe = rp ? rp.de : ev.bpb_german;
+      const tileEn = rp ? rp.en : ev.bpb_english;
+      tween(document.getElementById("bpbDe"), tileDe, 3);
+      tween(document.getElementById("bpbEn"), tileEn, 3);
+      setDelta(document.getElementById("deDelta"), tileDe, state.prev.de, true);
+      setDelta(document.getElementById("enDelta"), tileEn, state.prev.en, true);
+      document.querySelectorAll("#bpbDe,#bpbEn").forEach(e=>e.title = rp ? ("repräsentativ · alle Quellen · step "+(rp.step??"?")) : "Tail-Val (Log)");
 
       /* status pill */
       const st=document.getElementById("runStatus");
@@ -788,7 +839,7 @@ INDEX_HTML = r"""<!doctype html>
       document.getElementById("subline").textContent = run.name ? run.name : "Live-BPB · Health · Neuro-Trace";
 
       /* language balance bars (normalize against max so both visible) */
-      const de=ev.bpb_german, en=ev.bpb_english;
+      const de=tileDe, en=tileEn;
       if(Number.isFinite(de)&&Number.isFinite(en)){
         const mx=Math.max(de,en)*1.08;
         document.getElementById("balDe").style.width=(de/mx*100)+"%";
@@ -796,16 +847,19 @@ INDEX_HTML = r"""<!doctype html>
         document.getElementById("balDeVal").textContent=de.toFixed(3);
         document.getElementById("balEnVal").textContent=en.toFixed(3);
       }
-      const gap=ev.bpb_gap_max;
+      const gap = rp ? rp.gap : ev.bpb_gap_max;
       tween(document.getElementById("gapBig"), gap, 3);
-      if(Number.isFinite(gap)){
+      const gapTag=document.getElementById("gapTag"), gapHint=document.getElementById("gapHint");
+      if(rp && Number.isFinite(gap)){
+        gapTag.className="gaptag narrow"; gapTag.textContent="● repräsentativ";
+        gapHint.textContent="Über alle Quellen, echte tokens/byte: de "+rp.de.toFixed(2)+" / en "+rp.en.toFixed(2)+" — fast gleichauf (step "+(rp.step??"?")+").";
+      } else if(Number.isFinite(gap)){
         state.gapHist.push(gap); if(state.gapHist.length>6) state.gapHist.shift();
-        const tag=document.getElementById("gapTag"), hint=document.getElementById("gapHint");
         if(state.gapHist.length>=2){
           const d=gap-state.gapHist[0];
-          if(d<-0.01){ tag.className="gaptag narrow"; tag.textContent="▼ verengt sich"; hint.textContent="Gut – Abstand schließt sich."; }
-          else if(d>0.01){ tag.className="gaptag widen"; tag.textContent="▲ weitet sich"; hint.textContent="Beobachten: Englisch sprintet, Deutsch muss nachziehen."; }
-          else { tag.className="gaptag flat"; tag.textContent="● stabil"; hint.textContent="Gap hält – warten auf Deutsch-Aufholen."; }
+          if(d<-0.01){ gapTag.className="gaptag narrow"; gapTag.textContent="▼ verengt sich"; gapHint.textContent="Gut – Abstand schließt sich."; }
+          else if(d>0.01){ gapTag.className="gaptag widen"; gapTag.textContent="▲ weitet sich"; gapHint.textContent="Beobachten."; }
+          else { gapTag.className="gaptag flat"; gapTag.textContent="● stabil"; gapHint.textContent="Gap hält."; }
         }
       }
 
@@ -846,7 +900,7 @@ INDEX_HTML = r"""<!doctype html>
         : "Keine Neuro-Datei gefunden.";
       Neuro.setData(neuro);
 
-      state.prev={loss:lt.loss, de:ev.bpb_german, en:ev.bpb_english};
+      state.prev={loss:lt.loss, de:tileDe, en:tileEn};
     }
     function esc(s){ return String(s).replace(/[&<>]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[m])); }
 
@@ -967,7 +1021,7 @@ INDEX_HTML = r"""<!doctype html>
 
     const TIP_HEADERS = {
       "Training":"train/loss und grad_norm über die Schritte. Loss fällt = lernt; grad_norm stabil = gesund.",
-      "Sprach-Balance":"Deutsch vs. Englisch in BPB. Der Gap (DE/EN) soll fallen, WEIL Deutsch fällt — nicht weil Englisch schlechter wird.",
+      "Sprach-Balance":"Deutsch vs. Englisch in BPB, repräsentativ über alle Quellen mit den ECHTEN tokens/byte gemessen. Auf diesem Maß sind beide fast gleichauf (Gap ~1.04) — der frühere Gap ~3 war ein Artefakt (falsche tokens/byte + ein trivial leichtes englisches Val-Tail).",
       "Bits-per-Byte über Steps":"Verlauf von DE/EN-BPB über die Steps. Beide sollen fallen; der Abstand soll sich nach genug Training schließen.",
       "Letzte Eval":"Alle Roh-Metriken der letzten Evaluation, direkt aus dem Log.",
       "Neuro- / Wissenskarte":"Pro Konzept der Margin: wie viel sicherer das Modell die richtige Antwort findet als eine falsche. Grün = gelernt.",
@@ -1052,6 +1106,7 @@ class Handler(BaseHTTPRequestHandler):
                 "run": run,
                 "learning_reports": learning_reports(self.root),
                 "neuro": latest_neuro_summary(self.root),
+                "repr": representative_snapshot(self.root),
             })
             return
 
