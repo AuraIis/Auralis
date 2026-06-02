@@ -159,6 +159,7 @@ def normalize_text(text: str) -> str:
     text = EMAIL_RE.sub(" ", text)
     text = text.replace("“", '"').replace("”", '"').replace("„", '"')
     text = text.replace("’", "'").replace("‘", "'").replace("`", "'")
+    text = text.replace("�", " ")  # drop stray Unicode replacement chars (encoding damage)
     text = re.sub(r"\n{3,}", "\n\n", text)
     return "\n".join(SPACE_RE.sub(" ", line).strip() for line in text.splitlines()).strip()
 
@@ -177,10 +178,58 @@ def _line_is_noise(line: str) -> bool:
     return False
 
 
+_CRUMB_LABELS = (
+    "sie befinden sich hier", "sie sind hier", "aktuelle seite",
+    "you are here", "navigation:", "startseite", "you are at",
+)
+# On a line we already KNOW starts with a nav label, these separators reliably
+# delimit crumbs, so cutting at the last one in the head is safe.
+_CRUMB_SEP_RE = re.compile(r"\s*(?:>>|>|//|/|›|»|·|\|)\s*")
+
+
+def _cut_at_duplicated_phrase(text: str, window: int = 30) -> str:
+    """Breadcrumb pages typically end the trail with the page title, then repeat
+    it as the article heading ('... Entropie Isothermer Prozess Isothermer
+    Prozess Zustand...'). Cut at the second occurrence of the first back-to-back
+    repeated phrase in the head, keeping the content. Longer repeats win."""
+    toks = text.split()
+    n = min(len(toks), window)
+    for k in range(6, 0, -1):
+        for i in range(0, n - 2 * k + 1):
+            if toks[i:i + k] == toks[i + k:i + 2 * k]:
+                return " ".join(toks[i + k:])
+    return text
+
+
+def strip_breadcrumbs(line: str) -> str:
+    """Remove a leading breadcrumb/navigation trail that sits on the same line
+    as real content, e.g. 'Home | A | B | Echter Text' or 'Sie befinden sich
+    hier: Startseite > X > Echter Text'. Conservative on un-labeled lines (only
+    stacked '|'), more aggressive once a nav label is matched."""
+    head = line[:160]
+    low = head.lower()
+    if low.startswith(_CRUMB_LABELS):
+        seps = list(_CRUMB_SEP_RE.finditer(head))
+        if seps:
+            return line[seps[-1].end():].strip()
+        # no nav separator (space-separated crumbs): drop the label, then cut
+        # at the duplicated page-title that breadcrumb pages repeat as the H1.
+        colon = head.find(":")
+        rest = line[colon + 1:].strip() if 0 <= colon <= 24 else line
+        return _cut_at_duplicated_phrase(rest)
+    # bare pipe trail: 'X | Y | Z | content' with short crumb segments
+    if head.count("|") >= 2:
+        cut = head.rfind("|") + 1
+        segs = [s.strip() for s in head[:cut].split("|") if s.strip()]
+        if segs and all(len(s) <= 40 for s in segs):
+            return line[cut:].strip()
+    return line
+
+
 def remove_boilerplate_lines(text: str) -> str:
     kept: list[str] = []
     for raw in text.splitlines():
-        line = raw.strip()
+        line = strip_breadcrumbs(raw.strip())
         if _line_is_noise(line):
             continue
         kept.append(LIST_PREFIX_RE.sub("", line))
