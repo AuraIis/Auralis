@@ -238,3 +238,23 @@ that the representation cost may be biting where it matters (fact recall).
 data*, treat that as evidence the body is capacity-starved → prioritise freeing the
 256M (Tier C if staying universal, Tier A ~128k if going focused). Re-measure fertility
 at 128k vs 200k first (cheap, tokenizer-only) before committing.
+
+### Scaling intent — this largely RESOLVES the fraction concern
+Explicit architect intent: **1B is the foundation, not the target — the base is meant to
+grow** (~3B → ~7B+ later). That directly dissolves the "27% in embeddings" caveat,
+because the embedding (`vocab × d_model`) grows only *linearly* while the body grows
+*quadratically in width / linearly in depth*. So the **vocab fraction shrinks as the
+model scales**: roughly **27% @ 1B → ~13% @ 3B → ~10% @ 7B+**. The 200k is therefore
+"pre-paid" universality that pays off *precisely when* the base is scaled — which is the
+plan. This reframes the GPT/Gemini critique: their "200k is big" is true *at 1B*, but
+1B is explicitly a stepping stone.
+
+Corollaries already in motion (the threads are one coherent plan, not separate detours):
+- Scaling needs **much more data** (Chinchilla ~20 tok/param → 3B≈60B, 7B≈140B tokens)
+  → exactly why the RedPajama/HPLT cleaning pipeline matters now.
+- Scaling needs **multi-GPU** → the DDP/torchrun support is already built.
+- Scaling keeps the **universal vocab + adapter ecosystem** intact (no tokenizer churn).
+
+So the honest v3 question narrows: not "is 200k too big?" but "at the *target* scale, is
+token-200k or byte-level (Tier C) the better universal representation?" — decided by the
+§6 bpb probe.

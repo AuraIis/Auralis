@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1320 810" font-family="Consolas, 'Courier New', monospace">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1320 910" font-family="Consolas, 'Courier New', monospace">
   <defs>
     <filter id="g" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="2.1" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
     <filter id="bg2" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="4.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
@@ -8,13 +8,13 @@
     <marker id="ac" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#38d9ff"/></marker>
   </defs>
 
-  <rect width="1320" height="810" fill="#06120b"/>
-  <rect width="1320" height="810" fill="url(#grid)"/>
+  <rect width="1320" height="910" fill="#06120b"/>
+  <rect width="1320" height="910" fill="url(#grid)"/>
   <g fill="#1bd06a" opacity="0.09" font-size="15">
     <text x="60" y="150">1<tspan x="60" dy="20">0</tspan><tspan x="60" dy="20">L</tspan><tspan x="60" dy="20">o</tspan><tspan x="60" dy="20">R</tspan><tspan x="60" dy="20">A</tspan></text>
     <text x="835" y="640">0<tspan x="835" dy="20">1</tspan><tspan x="835" dy="20">D</tspan><tspan x="835" dy="20">o</tspan><tspan x="835" dy="20">R</tspan><tspan x="835" dy="20">A</tspan></text>
   </g>
-  <g stroke="#2f7d52" stroke-width="1.4"><path d="M18,18 h22 M18,18 v22"/><path d="M1302,18 h-22 M1302,18 v22"/><path d="M18,792 h22 M18,792 v-22"/><path d="M1302,792 h-22 M1302,792 v-22"/></g>
+  <g stroke="#2f7d52" stroke-width="1.4"><path d="M18,18 h22 M18,18 v22"/><path d="M1302,18 h-22 M1302,18 v22"/><path d="M18,888 h22 M18,888 v-22"/><path d="M1302,888 h-22 M1302,888 v-22"/></g>
 
   <text x="40" y="48" font-size="25" font-weight="700" fill="#36f58c" filter="url(#bg2)">AURALIS — BAUPLAN DER SYSTEMVISION</text>
   <text x="42" y="72" font-size="13" fill="#38d9ff">Eine universelle, eingefrorene Basis + Wissen &amp; Skills als DoRA/LoRA-Adapter obendrauf — und warum das ein grosses Vokab braucht</text>
@@ -114,6 +114,16 @@
     <rect x="380" y="755" width="13" height="13" fill="#06232b" stroke="#38d9ff" stroke-width="2"/><text x="398" y="766" fill="#9fb0bf">Wissen</text>
     <rect x="480" y="755" width="13" height="13" fill="#21071a" stroke="#ff5fb0" stroke-width="2"/><text x="498" y="766" fill="#9fb0bf">Skills (Adapter)</text>
   </g>
+
+  <!-- ===== SCALING roadmap ===== -->
+  <rect x="40" y="786" width="1250" height="104" rx="5" fill="#08231a" stroke="#36f58c" stroke-width="2.2" filter="url(#g)"/>
+  <text x="58" y="810" font-size="14.5" font-weight="700" fill="#36f58c" filter="url(#g)">⑤  SKALIERUNG — die Basis soll WACHSEN (1B ist das Fundament, nicht das Ziel)</text>
+  <rect x="60" y="824" width="180" height="48" rx="3" fill="#0c3a26" stroke="#36f58c" stroke-width="1.6"/><text x="150" text-anchor="middle" fill="#bff5cf"><tspan x="150" y="845" font-size="12.5" font-weight="700">Helix v2 · ~1B</tspan><tspan x="150" y="863" font-size="10.5">Vokab-Anteil ~27%</tspan></text>
+  <rect x="300" y="824" width="180" height="48" rx="3" fill="#0c3a26" stroke="#36f58c" stroke-width="1.6"/><text x="390" text-anchor="middle" fill="#bff5cf"><tspan x="390" y="845" font-size="12.5" font-weight="700">~3B</tspan><tspan x="390" y="863" font-size="10.5">Vokab-Anteil ~13%</tspan></text>
+  <rect x="540" y="824" width="180" height="48" rx="3" fill="#0c3a26" stroke="#36f58c" stroke-width="1.6"/><text x="630" text-anchor="middle" fill="#bff5cf"><tspan x="630" y="845" font-size="12.5" font-weight="700">~7B+</tspan><tspan x="630" y="863" font-size="10.5">Vokab-Anteil ~10%</tspan></text>
+  <line x1="240" y1="848" x2="299" y2="848" stroke="#36f58c" stroke-width="2.2" marker-end="url(#ag)"/>
+  <line x1="480" y1="848" x2="539" y2="848" stroke="#36f58c" stroke-width="2.2" marker-end="url(#ag)"/>
+  <text x="748" fill="#cdf7da" font-size="11.5"><tspan x="748" y="838">Vokab bleibt fix bei 200k → der Anteil SINKT, je grösser die Basis</tspan><tspan x="748" y="856">→ die 200k-Wette zahlt sich GENAU beim Skalieren aus.</tspan><tspan x="748" y="874">Mehr Modell braucht mehr Daten (→ Pipeline) + mehr GPUs (→ DDP, schon gebaut).</tspan></text>
 
   <!-- title block -->
   <rect x="985" y="630" width="305" height="138" rx="3" fill="#081a12" stroke="#36f58c" stroke-width="1.8"/>
