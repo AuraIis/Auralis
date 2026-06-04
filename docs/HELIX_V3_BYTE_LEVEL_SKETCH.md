@@ -153,3 +153,51 @@ This is days of small-model work, fully isolated from the production run.
 a **Helix v3 experiment for after** the current run and the German-data scale-up, not
 a mid-run change. Capture now, test cheap later, build only if the tiny-model bpb
 probe says byte-level beats tokens on German.
+
+---
+
+## 8. Addendum (2026-06): external review + v2 capacity evidence
+
+Trigger: the v2 architecture diagram was reviewed by two external models (GPT 5.5,
+Gemini). Both validated the hybrid design and both independently flagged the **same**
+point — the **200k vocab is large for a sub-1B model**. This doesn't change the §4
+verdict (naive shrink = Tier A conflicts with the universal-base goal; byte-level =
+Tier C is the aligned param-freeing path), but it adds hard numbers + a real v2
+datapoint, so capture it.
+
+### Hard cost numbers (confirms §4's Tier-A premise)
+- Embedding / LM-head = `200_000 × 1280 ≈ 256M` params (tied → counted once).
+- That is **~27% of the ~954M total**. The actual mixer "thinking body" is only **~700M**.
+- So v2's *reasoning capacity* is ~700M-class, not 954M-class — the headline oversells
+  the compute body by a quarter. (GPT's exact point; it stands.)
+
+### The benefit that justifies it (why 200k, not a blunder)
+- **Measured fertility is good:** tokens/byte ≈ **0.176 (de) / 0.196 (en)**
+  (`eval_diagnostic.py`). A 64k vocab raises tokens/text → shorter effective context,
+  slower per-char gen. This is real and on the FOR side.
+- German morphology/compounds + multilingual + code ambition all favour a larger vocab.
+- Precedent: Gemma uses 256k. 200k is high-end, not exotic.
+
+### NEW empirical signal from v2 (concrete)
+The step 9k→15k→25k generation probes show **language fluent, facts bind slowly /
+flip-flop** ("capital of Germany" = Munich→Berlin→Munich across checkpoints). That is
+*consistent with a capacity-limited thinking body* — the 256M spent on embeddings is
+capacity the knowledge layers never get. Not proof, but the first concrete datapoint
+that the representation cost may be biting where it matters (fact recall).
+
+### What this changes for v3 (tie-in to the tiers above)
+- It **raises the priority of the §6 tiny-model bpb probe** — we now have a motive
+  (capacity), not just curiosity.
+- The *aligned* param-freeing fix remains **Tier C (byte/patched)**, which frees the
+  256M without the "can't add vocab back" wall and keeps universal coverage.
+- **Tier A (~100–128k) is valid ONLY if the universal-base ambition is dropped** to a
+  pure DE/EN(+code) model — which is, in practice, exactly what v2 *is* today. So the
+  reviewers' "use 128k" is correct *under that narrower scope*; it's a real fork:
+  universal base (→ Tier C) vs. focused DE/EN+code model (→ Tier A ~128k).
+- **Locked for v2:** tokenizer + tied embeddings + the live run cannot change vocab
+  mid-stream. From-scratch v3 decision only.
+
+**Decision rule for v3:** if v2's final fact-recall stays weak *despite enough clean
+data*, treat that as evidence the body is capacity-starved → prioritise freeing the
+256M (Tier C if staying universal, Tier A ~128k if going focused). Re-measure fertility
+at 128k vs 200k first (cheap, tokenizer-only) before committing.
