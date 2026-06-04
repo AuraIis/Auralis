@@ -165,6 +165,43 @@ verdict (naive shrink = Tier A conflicts with the universal-base goal; byte-leve
 Tier C is the aligned param-freeing path), but it adds hard numbers + a real v2
 datapoint, so capture it.
 
+### Architect's rationale — why 200k follows from the vision (capture, in the architect's own logic)
+The 200k vocab is **not** an accident of fertility tuning. It follows directly from the
+core Auralis design intent:
+
+1. **ONE broad, frozen BASE model** that is *universal* — broadly capable across many
+   languages, code, and domains — rather than a narrow specialist.
+2. **Knowledge and skills are NOT baked into the base.** They are loaded *on top* as
+   **DoRA/LoRA adapters** (the §0 "Skills" layer via `<lora>`/`<route>`) plus the
+   knowledge_dna/kernel track for facts. The base = the substrate; adapters = the
+   specialization. You ship one base and many small adapters, not many full models.
+3. **Therefore the base must cover the token space of everything an adapter might ever
+   target.** A large vocab (200k: en/de/code + adapter/route/memory special tokens) is
+   the *universal substrate* so a future adapter for any language/domain "fits" without
+   vocab gaps or heavy fragmentation.
+
+The decisive constraint that makes this a *deliberate* choice, not waste:
+> **A LoRA/DoRA adapter changes weights, not the token table.** You can add a *skill*
+> with an adapter; you cannot add *vocabulary* with one. A small vocab is therefore a
+> permanent ceiling — you'd be locked out of efficiently representing anything the small
+> vocab didn't anticipate, with no fix short of a full retrain. A large vocab now
+> *future-proofs* the universal base for the whole adapter ecosystem.
+
+Under this goal the 200k is an **intentional investment in extensibility**. It is also
+exactly why §4 rates Tier A (shrink to ~128k) as *off-goal* for a universal base, and
+byte-level (Tier C) as the *aligned* param-freeing path — Tier C keeps universal
+coverage (any script/code) *and* frees the 256M, with no "can't add vocab" wall.
+
+**Honest caveat (the filter's job):** the universal-vocab bet pays off *more* at larger
+base sizes. At ~954M (~700M body) the base is small, so 27% on embeddings is a steep tax
+paid *now* for universality exploited *later* — and the adapter-knowledge thesis
+(knowledge_dna/kernel) is itself still UNPROVEN. So the philosophy is coherent and 200k
+follows from it logically; the open v3 question is whether a sub-1B base is large enough
+to "afford" universality, or whether v3 should (a) grow the base so 256M embeddings are
+a smaller fraction, or (b) go byte-level (Tier C) to get universality *and* the params
+back. **The vision picks the destination (universal base + adapters); v2's evidence +
+base-size pick the route.**
+
 ### Hard cost numbers (confirms §4's Tier-A premise)
 - Embedding / LM-head = `200_000 × 1280 ≈ 256M` params (tied → counted once).
 - That is **~27% of the ~954M total**. The actual mixer "thinking body" is only **~700M**.
