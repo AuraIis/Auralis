@@ -1,0 +1,153 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1340 700" font-family="Consolas, 'Courier New', monospace">
+  <defs>
+    <filter id="g" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="2.1" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="bg2" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="4.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0 H0 V40" fill="none" stroke="#0e3b25" stroke-width="1" opacity="0.5"/></pattern>
+    <marker id="ag" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#36f58c"/></marker>
+    <marker id="ap" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#9a86c9"/></marker>
+    <marker id="ac" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#38d9ff"/></marker>
+  </defs>
+
+  <rect width="1340" height="700" fill="#06120b"/>
+  <rect width="1340" height="700" fill="url(#grid)"/>
+  <g fill="#1bd06a" opacity="0.08" font-size="15">
+    <text x="60" y="430">V<tspan x="60" dy="20">E</tspan><tspan x="60" dy="20">R</tspan><tspan x="60" dy="20">I</tspan><tspan x="60" dy="20">F</tspan><tspan x="60" dy="20">Y</tspan></text>
+  </g>
+  <g stroke="#2f7d52" stroke-width="1.4"><path d="M18,18 h22 M18,18 v22"/><path d="M1322,18 h-22 M1322,18 v22"/><path d="M18,682 h22 M18,682 v-22"/><path d="M1322,682 h-22 M1322,682 v-22"/></g>
+
+  <text x="40" y="48" font-size="25" font-weight="700" fill="#36f58c" filter="url(#bg2)">AURALIS — ROADMAP &amp; STATUS BLUEPRINT</text>
+  <text x="42" y="72" font-size="13" fill="#38d9ff">From a frozen base to a behaving assistant that VERIFIES instead of guessing  ·  Helix v2 (~0.9B hybrid)  ·  June 2026</text>
+  <line x1="40" y1="82" x2="1300" y2="82" stroke="#1f7d4d" stroke-width="1" stroke-dasharray="3 5"/>
+
+  <!-- ============ ROW A — DONE / RUNNING ============ -->
+  <text x="40" y="104" font-size="12.5" font-weight="700" fill="#7fe0ff">TRAINED  ·  the path so far</text>
+
+  <!-- (1) Foundation -->
+  <rect x="40" y="110" width="230" height="88" rx="4" fill="#08231a" stroke="#36f58c" stroke-width="2.2" filter="url(#g)"/>
+  <text text-anchor="middle" fill="#bff5cf"><tspan x="155" y="137" font-size="14" font-weight="700">①  Foundation</tspan><tspan x="155" y="158" font-size="11.5" fill="#cdf7da">1B · de55 / en45</tspan></text>
+  <text x="155" y="180" text-anchor="middle" font-size="11" fill="#36f58c">✓ step 50k · lang + facts</text>
+
+  <!-- (2) SFT v1 -->
+  <rect x="360" y="110" width="230" height="88" rx="4" fill="#08231a" stroke="#36f58c" stroke-width="2.2" filter="url(#g)"/>
+  <text text-anchor="middle" fill="#bff5cf"><tspan x="475" y="137" font-size="14" font-weight="700">②  SFT v1</tspan><tspan x="475" y="158" font-size="11.5" fill="#cdf7da">form, not knowledge</tspan></text>
+  <text x="475" y="180" text-anchor="middle" font-size="11" fill="#36f58c">✓ answering assistant</text>
+
+  <!-- (3) Reasoning slice -->
+  <rect x="680" y="110" width="230" height="88" rx="4" fill="#08231a" stroke="#36f58c" stroke-width="2.2" filter="url(#g)"/>
+  <text text-anchor="middle" fill="#bff5cf"><tspan x="795" y="137" font-size="14" font-weight="700">③  Reasoning slice</tspan><tspan x="795" y="158" font-size="11.5" fill="#cdf7da">2.5k DE + 2.5k EN (GSM8K)</tspan></text>
+  <text x="795" y="180" text-anchor="middle" font-size="11" fill="#36f58c">✓ gpt-4o math-verified</text>
+
+  <!-- (4) SFT v2 — RUNNING -->
+  <rect x="1000" y="110" width="230" height="88" rx="4" fill="#06232b" stroke="#38d9ff" stroke-width="2.6" filter="url(#bg2)"/>
+  <text text-anchor="middle" fill="#bdf3ff"><tspan x="1115" y="137" font-size="14" font-weight="700">④  SFT v2</tspan><tspan x="1115" y="158" font-size="11.5" fill="#cdeeff">36.6k · incl. reasoning</tspan></text>
+  <text x="1115" y="180" text-anchor="middle" font-size="11" fill="#38d9ff">⚗ val 2.580 · best @2100</text>
+  <text x="1115" y="100" text-anchor="middle" font-size="11" font-weight="700" fill="#7fe0ff">◀ YOU ARE HERE</text>
+
+  <!-- row A flow arrows -->
+  <g stroke="#36f58c" stroke-width="2.2">
+    <line x1="270" y1="154" x2="358" y2="154" marker-end="url(#ag)"/>
+    <line x1="590" y1="154" x2="678" y2="154" marker-end="url(#ag)"/>
+    <line x1="910" y1="154" x2="998" y2="154" marker-end="url(#ac)"/>
+  </g>
+
+  <!-- connector A -> B : decided next phase -->
+  <path d="M1115,198 V224 H160 V250" fill="none" stroke="#9a86c9" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#ap)"/>
+  <text x="640" y="218" text-anchor="middle" font-size="11.5" font-weight="700" fill="#c3b3f0">▷ decided next phase — order is gated, not optional</text>
+
+  <!-- ============ ROW B — PLANNED (gated) ============ -->
+  <text x="40" y="244" font-size="12.5" font-weight="700" fill="#c3b3f0">PLANNED  ·  gated on the step before it</text>
+
+  <!-- (5) Tool-Use -->
+  <rect x="40" y="250" width="230" height="88" rx="4" fill="#21071a" stroke="#ff5fb0" stroke-width="2.4" filter="url(#g)"/>
+  <text text-anchor="middle" fill="#ffd0ea"><tspan x="155" y="277" font-size="14" font-weight="700">⑤  Tool-Use</tspan><tspan x="155" y="298" font-size="11.5" fill="#ffc6e6">math-tool FIRST</tspan></text>
+  <text x="155" y="320" text-anchor="middle" font-size="11" fill="#ff8ccb">▷ verify, don't guess</text>
+
+  <!-- (6) Annealing + Code -->
+  <rect x="360" y="250" width="230" height="88" rx="4" fill="#1a1405" stroke="#ffb454" stroke-width="2.4" filter="url(#g)"/>
+  <text text-anchor="middle" fill="#ffe6c7"><tspan x="475" y="277" font-size="14" font-weight="700">⑥  Annealing + Code</tspan><tspan x="475" y="298" font-size="11.5" fill="#ffd9a0">polish base · Python-Edu</tspan></text>
+  <text x="475" y="320" text-anchor="middle" font-size="11" fill="#ffb454">▷ latent code into base</text>
+
+  <!-- (7) DoRA -->
+  <rect x="680" y="250" width="230" height="88" rx="4" fill="#1d1233" stroke="#b483ff" stroke-width="2.4" filter="url(#g)"/>
+  <text text-anchor="middle" fill="#dcc9ff"><tspan x="795" y="277" font-size="14" font-weight="700">⑦  DoRA skills</tspan><tspan x="795" y="298" font-size="11.5" fill="#cdb8ff">math · logic · code</tspan></text>
+  <text x="795" y="320" text-anchor="middle" font-size="11" fill="#b483ff">▷ gated on annealing</text>
+
+  <!-- (8) Scaling -->
+  <rect x="1000" y="250" width="230" height="88" rx="4" fill="#0a1c14" stroke="#2f7d52" stroke-width="2.2" filter="url(#g)"/>
+  <text text-anchor="middle" fill="#9fe9bd"><tspan x="1115" y="277" font-size="14" font-weight="700">⑧  Scaling</tspan><tspan x="1115" y="298" font-size="11.5" fill="#8fd9af">3B → 7B+</tspan></text>
+  <text x="1115" y="320" text-anchor="middle" font-size="11" fill="#5fb487">▷ vocab share 27→10%</text>
+
+  <!-- row B flow arrows (planned, dashed) -->
+  <g stroke="#9a86c9" stroke-width="2" stroke-dasharray="7 5">
+    <line x1="270" y1="294" x2="358" y2="294" marker-end="url(#ap)"/>
+    <line x1="590" y1="294" x2="678" y2="294" marker-end="url(#ap)"/>
+    <line x1="910" y1="294" x2="998" y2="294" marker-end="url(#ap)"/>
+  </g>
+
+  <!-- ============ CALLOUTS ============ -->
+  <!-- A: Benchmark signal -->
+  <rect x="40" y="372" width="400" height="132" rx="5" fill="#08231a" stroke="#38d9ff" stroke-width="2" filter="url(#g)"/>
+  <text x="56" y="395" font-size="13.5" font-weight="700" fill="#7fe0ff">BENCHMARK SIGNAL  ·  German strength</text>
+  <text fill="#c7eeff" font-size="12">
+    <tspan x="56" y="418">Helix-SFT (own MC-loglikelihood runner, n=300):</tspan>
+    <tspan x="56" y="438" fill="#bdf3ff">• beats SmolLM2-360M + TinyLlama-1.1B on mmlu_de</tspan>
+    <tspan x="56" y="458" fill="#bdf3ff">• Qwen's MMLU lead shrinks  22 (EN) → 7 (DE)</tspan>
+    <tspan x="56" y="482" fill="#8fe6ff">→ the de55/en45 + 200k-vocab bet is measurable.</tspan>
+    <tspan x="56" y="499" fill="#7f93a1" font-size="11">Absolute scores low = under-training / size signal, not failure.</tspan>
+  </text>
+
+  <!-- B: Guiding principle -->
+  <rect x="460" y="372" width="400" height="132" rx="5" fill="#21071a" stroke="#ff5fb0" stroke-width="2" filter="url(#g)"/>
+  <text x="476" y="395" font-size="13.5" font-weight="700" fill="#ff8ccb">GUIDING PRINCIPLE  ·  verify-first</text>
+  <text fill="#ffd0ea" font-size="12.5">
+    <tspan x="476" y="420" font-size="13" font-weight="700" fill="#ffc6e6">A small model shouldn't know everything.</tspan>
+    <tspan x="476" y="440" font-size="13" font-weight="700" fill="#ffc6e6">It should learn WHEN to check.</tspan>
+    <tspan x="476" y="464" font-size="12">Verify OUTSIDE the model (calculator / code-runner),</tspan>
+    <tspan x="476" y="482" font-size="12">not guess inside it.</tspan>
+    <tspan x="476" y="500" fill="#ff9ed1" font-size="11.5">= the anti-hallucination USP, taken to its conclusion.</tspan>
+  </text>
+
+  <!-- C: The gating rule -->
+  <rect x="880" y="372" width="420" height="132" rx="5" fill="#1d1233" stroke="#b483ff" stroke-width="2" filter="url(#g)"/>
+  <text x="896" y="395" font-size="13.5" font-weight="700" fill="#cdb8ff">THE GATING RULE  ·  why order matters</text>
+  <text fill="#dcc9ff" font-size="12.5">
+    <tspan x="896" y="420" font-size="13" font-weight="700">An adapter AMPLIFIES latent ability —</tspan>
+    <tspan x="896" y="440" font-size="13" font-weight="700">it does NOT install new ability.</tspan>
+    <tspan x="896" y="464" font-size="12">Helix saw 0% real code → a code-DoRA is blocked</tspan>
+    <tspan x="896" y="482" font-size="12">until code-annealing gives it something to amplify.</tspan>
+    <tspan x="896" y="500" fill="#c3b3f0" font-size="11.5">Order isn't style — it's "layer before foundation = junk".</tspan>
+  </text>
+
+  <!-- ============ BOTTOM STRIP ============ -->
+  <text x="40" y="534" font-size="11.5" fill="#9fb0bf">Status markers:  ✓ trained / measured   ⚗ running now   ▷ planned (gated)   ❄ frozen   ·   full specs → BLUEPRINT_TOOL_USE_VERIFIER · BLUEPRINT_DOMAIN_ADAPTERS_DORA</text>
+
+  <!-- legend -->
+  <g font-size="11">
+    <rect x="40" y="548" width="13" height="13" fill="#08231a" stroke="#36f58c" stroke-width="2"/><text x="58" y="559" fill="#9fb0bf">done</text>
+    <rect x="120" y="548" width="13" height="13" fill="#06232b" stroke="#38d9ff" stroke-width="2"/><text x="138" y="559" fill="#9fb0bf">running</text>
+    <rect x="222" y="548" width="13" height="13" fill="#21071a" stroke="#ff5fb0" stroke-width="2"/><text x="240" y="559" fill="#9fb0bf">tool-use (next)</text>
+    <rect x="372" y="548" width="13" height="13" fill="#1a1405" stroke="#ffb454" stroke-width="2"/><text x="390" y="559" fill="#9fb0bf">annealing</text>
+    <rect x="486" y="548" width="13" height="13" fill="#1d1233" stroke="#b483ff" stroke-width="2"/><text x="504" y="559" fill="#9fb0bf">adapters</text>
+    <rect x="586" y="548" width="13" height="13" fill="#0a1c14" stroke="#2f7d52" stroke-width="2"/><text x="604" y="559" fill="#9fb0bf">scaling</text>
+  </g>
+
+  <!-- what SFT did / did not -->
+  <rect x="40" y="578" width="820" height="96" rx="5" fill="#0a1c14" stroke="#36f58c" stroke-width="1.8"/>
+  <text x="56" y="600" font-size="12.5" font-weight="700" fill="#36f58c">WHAT SFT CHANGED (honest read)</text>
+  <text font-size="12" fill="#bff5cf">
+    <tspan x="56" y="622">✓ FORM: base that couldn't say "Berlin" → assistant that answers &amp; stops cleanly (Wien/Madrid ✓, eos-weight 2.0).</tspan>
+    <tspan x="56" y="642" fill="#cdf7da">⚠ NOT KNOWLEDGE: confident hallucination on niche facts remains — that's the BASE's quality, not the format.</tspan>
+    <tspan x="56" y="662" fill="#7fe0ff">→ next levers fix the base (annealing) &amp; add verification (tools), not "more blind SFT".</tspan>
+  </text>
+
+  <!-- title block -->
+  <rect x="980" y="578" width="320" height="96" rx="3" fill="#081a12" stroke="#36f58c" stroke-width="1.8"/>
+  <line x1="980" y1="602" x2="1300" y2="602" stroke="#1f7d4d" stroke-width="1"/>
+  <text x="994" y="596" font-size="12.5" font-weight="700" fill="#36f58c">AURALIS — TITLE BLOCK</text>
+  <text fill="#9fe9bd" font-size="11">
+    <tspan x="994" y="620">SHEET · ROADMAP &amp; STATUS</tspan>
+    <tspan x="994" y="637">NOW   · SFT v2 (reasoning) running</tspan>
+    <tspan x="994" y="654">NEXT  · Tool-Use · math-tool harness</tspan>
+    <tspan x="994" y="671">RULE  · amplify latent, don't install · 2026-06-06</tspan>
+  </text>
+</svg>

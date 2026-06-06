@@ -214,6 +214,7 @@ def batches(
     rng: random.Random,
     category_weights: dict[str, float] | None = None,
     family_balanced: bool = False,
+    bucket: bool = False,
 ) -> Iterable[list[SFTExample]]:
     if family_balanced:
         by_family: dict[str, list[SFTExample]] = {}
@@ -237,6 +238,16 @@ def batches(
         weights = [category_weights.get(ex.category, 1.0) for ex in examples]
         while True:
             yield rng.choices(examples, weights=weights, k=batch_size)
+
+    if bucket:
+        # length-bucketed: sort by length, fixed-size batches of similar length
+        # (minimal padding, NO cross-example contamination), shuffle batch order
+        sorted_idx = sorted(range(len(examples)), key=lambda j: len(examples[j].input_ids))
+        groups = [sorted_idx[i : i + batch_size] for i in range(0, len(sorted_idx), batch_size)]
+        while True:
+            rng.shuffle(groups)
+            for g in groups:
+                yield [examples[j] for j in g]
 
     order = list(range(len(examples)))
     while True:
@@ -542,6 +553,9 @@ def main() -> None:
     ap.add_argument("--warmup-steps", type=int, default=5)
     ap.add_argument("--eval-every", type=int, default=10)
     ap.add_argument("--save-final", action="store_true")
+    ap.add_argument("--grad-ckpt", action="store_true", help="enable gradient checkpointing (slower, less VRAM)")
+    ap.add_argument("--save-every", type=int, default=0, help="save checkpoint every N steps (0=off)")
+    ap.add_argument("--bucket", action="store_true", help="length-bucketed batching (minimal padding, no contamination)")
     ap.add_argument(
         "--category-weights",
         default="",
@@ -661,7 +675,7 @@ def main() -> None:
 
     print(f"building model: {args.model_config}", flush=True)
     model = build_model(args.model_config).to(device)
-    apply_gradient_checkpointing(model, enabled=(device.type == "cuda"))
+    apply_gradient_checkpointing(model, enabled=args.grad_ckpt)
     loaded_step = load_checkpoint_weights(model, args.checkpoint, device)
     print(f"loaded checkpoint: {args.checkpoint} (pretrain step={loaded_step})", flush=True)
     print(f"mamba backend: {'mamba_ssm' if _KERNEL_ACTIVE else 'native'}", flush=True)
@@ -758,6 +772,7 @@ def main() -> None:
         rng,
         category_weights=category_weights,
         family_balanced=args.family_balanced_sampler,
+        bucket=args.bucket,
     )
     t0 = time.time()
     optimizer.zero_grad(set_to_none=True)
@@ -781,6 +796,10 @@ def main() -> None:
         optimizer.step()
         scheduler.step()
         optimizer.zero_grad(set_to_none=True)
+
+        if args.save_every and step % args.save_every == 0:
+            sp_path = save_sft_checkpoint(model, optimizer, scheduler, step, args.output_dir)
+            print(f"  [checkpoint] step {step} -> {sp_path}", flush=True)
 
         if step == 1 or step % args.eval_every == 0 or step == args.steps:
             val = eval_loss(model, val_examples, pad_id, device, max_batches=8, batch_size=args.batch_size)

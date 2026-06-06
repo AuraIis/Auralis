@@ -1,0 +1,123 @@
+Menu="Utilities"
+Title="Auralis Fan Control"
+Icon="fan"
+---
+<?php
+$BASE = "/boot/config/plugins/auralis-fan";
+$CONF = "$BASE/fan.conf";
+$cfg  = ['MODE'=>'observe','INTERVAL'=>5,'DEADBAND'=>6,'GPU_CRIT'=>87,'CPU_CRIT'=>88,'DISK_CRIT'=>48,'NVME_CRIT'=>78];
+$chan = [];
+for($i=1;$i<=5;$i++) $chan[$i] = ['src'=>'max','curve'=>'45:70 60:120 72:185 83:255','floor'=>60];
+if(is_readable($CONF)){
+  foreach(file($CONF) as $l){
+    $l = trim(preg_replace('/#.*/','',$l)); if($l===''||strpos($l,'=')===false) continue;
+    list($k,$v) = explode('=',$l,2); $k=trim($k); $v=trim($v);
+    if(preg_match('/^CHAN(\d)$/',$k,$m)){ $p=explode(';',$v); $chan[(int)$m[1]]=['src'=>$p[0]??'max','curve'=>$p[1]??'','floor'=>$p[2]??60]; }
+    else $cfg[$k]=$v;
+  }
+}
+function sel($a,$b){ return $a===$b?'selected':''; }
+?>
+<style>
+.af-wrap{max-width:980px}
+.af-tiles{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0 14px}
+.af-tile{flex:1;min-width:120px;background:#1c1c1c;border:1px solid #333;border-radius:8px;padding:10px 12px}
+.af-tile .lbl{font-size:11px;color:#9aa;text-transform:uppercase;letter-spacing:.5px}
+.af-tile .val{font-size:24px;font-weight:700;color:#e8e8e8}
+.af-tile.gpu .val{color:#36f58c}.af-tile.cpu .val{color:#7fd0ff}
+.af-run{display:inline-block;padding:3px 10px;border-radius:12px;font-weight:700;font-size:12px}
+.af-on{background:#16432a;color:#36f58c}.af-off{background:#4a1f1f;color:#ff8c8c}
+table.af{width:100%;border-collapse:collapse;margin:8px 0}
+table.af th,table.af td{padding:6px 8px;border-bottom:1px solid #2a2a2a;text-align:left;font-size:13px}
+table.af th{color:#9aa;font-weight:600}
+table.af input[type=text]{width:230px}table.af input[type=number]{width:64px}
+.af-warn{background:#3a2a0a;border:1px solid #7a5a1a;color:#ffd98a;padding:8px 12px;border-radius:6px;margin:8px 0;font-size:13px}
+.af-btn{margin-right:8px}
+.af-bad{color:#ff8c8c;font-weight:700}.af-good{color:#36f58c}
+</style>
+
+<div class="af-wrap">
+  <p>Status: <span id="af-running" class="af-run af-off">…</span> &nbsp; <span id="af-ts" style="color:#888"></span></p>
+
+  <div class="af-tiles">
+    <div class="af-tile gpu"><div class="lbl">GPU</div><div class="val"><span id="t-gpu">–</span>°C</div></div>
+    <div class="af-tile cpu"><div class="lbl">CPU</div><div class="val"><span id="t-cpu">–</span>°C</div></div>
+    <div class="af-tile"><div class="lbl">Disk max</div><div class="val"><span id="t-disk">–</span>°C</div></div>
+    <div class="af-tile"><div class="lbl">NVMe</div><div class="val"><span id="t-nvme">–</span>°C</div></div>
+  </div>
+
+  <form id="af-form">
+  <table class="af">
+    <tr><th>Fan</th><th>Quelle</th><th>Kurve  (°C:pwm  …, pwm 0–255)</th><th>Min</th>
+        <th>Quelltemp</th><th>PWM jetzt</th><th>RPM</th><th>Soll</th></tr>
+    <?php for($i=1;$i<=5;$i++){ $c=$chan[$i]; ?>
+    <tr>
+      <td><b>pwm<?=$i?></b></td>
+      <td><select name="src<?=$i?>">
+        <?php foreach(['cpu','gpu','nvme','disks','max'] as $o){ echo "<option ".sel($o,$c['src']).">$o</option>"; } ?>
+      </select></td>
+      <td><input type="text" name="curve<?=$i?>" value="<?=htmlspecialchars($c['curve'])?>"></td>
+      <td><input type="number" name="floor<?=$i?>" min="0" max="255" value="<?=(int)$c['floor']?>"></td>
+      <td id="st<?=$i?>">–</td><td id="pw<?=$i?>">–</td><td id="rp<?=$i?>">–</td><td id="wt<?=$i?>">–</td>
+    </tr>
+    <?php } ?>
+  </table>
+
+  <h3>Modus</h3>
+  <label><input type="radio" name="mode" value="off"     <?=$cfg['MODE']=='off'?'checked':''?>> Aus (BIOS steuert)</label> &nbsp;
+  <label><input type="radio" name="mode" value="observe" <?=$cfg['MODE']=='observe'?'checked':''?>> Observe (nur anzeigen, schreibt nichts)</label> &nbsp;
+  <label><input type="radio" name="mode" value="live"    <?=$cfg['MODE']=='live'?'checked':''?>> <b>Live</b> (steuert Lüfter)</label>
+
+  <div class="af-warn">⚠️ <b>Live</b> übernimmt die Lüftersteuerung. Stelle sicher, dass die Kurven-Zuordnung (pwm↔Header) geprüft ist.
+     Bei Übertemperatur/Sensorfehler schaltet der Regler automatisch auf 100 %. Deaktiviere zuvor „Settings → Auto Fan Control" (dynamix), sonst kämpfen zwei Regler.</div>
+
+  <h3>Allgemein</h3>
+  <table class="af" style="max-width:520px">
+    <tr><td>Intervall (s)</td><td><input type="number" name="interval" min="2" value="<?=(int)$cfg['INTERVAL']?>"></td>
+        <td>Deadband (PWM)</td><td><input type="number" name="deadband" min="1" value="<?=(int)$cfg['DEADBAND']?>"></td></tr>
+    <tr><td>GPU crit °C</td><td><input type="number" name="gpu_crit" value="<?=(int)$cfg['GPU_CRIT']?>"></td>
+        <td>CPU crit °C</td><td><input type="number" name="cpu_crit" value="<?=(int)$cfg['CPU_CRIT']?>"></td></tr>
+    <tr><td>Disk crit °C</td><td><input type="number" name="disk_crit" value="<?=(int)$cfg['DISK_CRIT']?>"></td>
+        <td>NVMe crit °C</td><td><input type="number" name="nvme_crit" value="<?=(int)$cfg['NVME_CRIT']?>"></td></tr>
+  </table>
+
+  <p>
+    <input type="button" class="af-btn" value="Speichern & Anwenden" onclick="afSave()">
+    <input type="button" class="af-btn" value="Start" onclick="afCmd('start')">
+    <input type="button" class="af-btn" value="Stop"  onclick="afCmd('stop')">
+    <span id="af-msg" style="margin-left:10px"></span>
+  </p>
+  </form>
+</div>
+
+<script>
+const AFU = "/plugins/auralis-fan/auralis-fan.php";
+function afShow(id,v,unit){ const e=document.getElementById(id); if(e) e.textContent=(v===null||v===undefined?'–':v)+(unit||''); }
+function afPoll(){
+  fetch(AFU+"?action=status").then(r=>r.json()).then(d=>{
+    if(!d.ok) return;
+    const r=document.getElementById('af-running');
+    r.textContent = d.running?'läuft':'gestoppt'; r.className='af-run '+(d.running?'af-on':'af-off');
+    afShow('t-gpu',d.temps.gpu); afShow('t-cpu',d.temps.cpu); afShow('t-disk',d.temps.disk); afShow('t-nvme',d.temps.nvme);
+    (d.fans||[]).forEach(f=>{ afShow('pw'+f.ch, f.pct, '%'); afShow('rp'+f.ch, f.rpm); });
+    if(d.daemon){ document.getElementById('af-ts').textContent='Daemon: '+d.daemon.ts+(d.daemon.failsafe==1?'  ⚠ FAILSAFE 100%':'');
+      (d.daemon.fans||[]).forEach(f=>{ afShow('st'+f.ch, f.srctemp,'°C'); afShow('wt'+f.ch, Math.round(f.want*100/255),'%'); }); }
+  }).catch(()=>{});
+}
+function afSave(){
+  const fd=new FormData(document.getElementById('af-form'));
+  if(fd.get('mode')==='live' && !confirm('Live-Modus: der Regler steuert jetzt die Lüfter. Fortfahren?')){ return; }
+  fd.append('action','save');
+  fetch(AFU,{method:'POST',body:fd}).then(r=>r.json()).then(d=>{
+    document.getElementById('af-msg').innerHTML = d.ok?'<span class=af-good>gespeichert ('+d.saved+')</span>':'<span class=af-bad>Fehler</span>';
+    afPoll();
+  });
+}
+function afCmd(a){
+  fetch(AFU+"?action="+a).then(r=>r.json()).then(d=>{
+    document.getElementById('af-msg').innerHTML = d.ok?'<span class=af-good>'+a+' ok</span>':'<span class=af-bad>'+a+' fehlgeschlagen</span>';
+    setTimeout(afPoll,600);
+  });
+}
+afPoll(); setInterval(afPoll,3000);
+</script>

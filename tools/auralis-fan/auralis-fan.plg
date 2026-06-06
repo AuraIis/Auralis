@@ -1,0 +1,41 @@
+<?xml version='1.0' standalone='yes'?>
+<!DOCTYPE PLUGIN [
+<!ENTITY name      "auralis-fan">
+<!ENTITY author    "Auralis">
+<!ENTITY version   "2026.06.05">
+<!ENTITY base      "/boot/config/plugins/auralis-fan">
+<!ENTITY emhttp    "/usr/local/emhttp/plugins/auralis-fan">
+]>
+
+<PLUGIN name="&name;" author="&author;" version="&version;" launch="Settings/AuralisFanControl">
+
+<CHANGES>
+###2026.06.05
+- Erste Version: Engine (bash) + GUI (Live-Temps/PWM/RPM, Kurven, Modus off/observe/live, Failsafe).
+</CHANGES>
+
+<!-- Deployment: GUI-Dateien aus /boot (persistent) nach emhttp (RAM) kopieren + Daemon (neu)starten.
+     Laeuft bei Installation UND bei jedem Boot (Unraid reinstalliert .plg aus /boot/config/plugins). -->
+<FILE Run="/bin/bash">
+<INLINE>
+mkdir -p &emhttp;
+cp -f &base;/auralis-fan.page &emhttp;/auralis-fan.page
+cp -f &base;/auralis-fan.php  &emhttp;/auralis-fan.php
+chmod +x &base;/auralis_fan.sh 2>/dev/null
+# Daemon (re)start — liest MODE aus fan.conf; Default "observe" = sicher
+if [ -f /var/run/auralis-fan.pid ]; then kill -TERM "$(cat /var/run/auralis-fan.pid 2>/dev/null)" 2>/dev/null; sleep 1; fi
+nohup bash &base;/auralis_fan.sh >/dev/null 2>&1 &
+echo "auralis-fan: installiert / gestartet"
+</INLINE>
+</FILE>
+
+<!-- Deinstallation: Daemon stoppen (stellt BIOS-Modi wieder her), GUI entfernen -->
+<FILE Run="/bin/bash" Method="remove">
+<INLINE>
+[ -f /var/run/auralis-fan.pid ] &amp;&amp; kill -TERM "$(cat /var/run/auralis-fan.pid 2>/dev/null)" 2>/dev/null
+rm -rf &emhttp;
+echo "auralis-fan: entfernt (Config unter &base; bleibt erhalten)"
+</INLINE>
+</FILE>
+
+</PLUGIN>

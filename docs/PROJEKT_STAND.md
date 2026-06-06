@@ -51,6 +51,36 @@ v1 lieferte ~23,7 GB dedupliziertes deutsches Pretraining-Material (~4,7B Tokens
 - ⚠️ Wissenschaft + Übersetzung schwächer · ⚠️ freies Decoding noch roh
 - ▷ offen: Instruction-Following (SFT) · Skalierung 3B+ · knowledge_dna/kernel (unbewiesen, optionaler Boost)
 
+## SFT-Meilenstein + Benchmarks (Juni 2026)
+**SFT erfolgreich:** Erster echter SFT-Lauf (~32k diverse DE+EN, fakten-geprüft via gpt-4o-Verify
+[269 Halluzinationen gefangen], dekontaminiert; ~1 Epoche optimal, früh gestoppt bei val-Plateau).
+Helix wurde vom Base, der nicht mal „Berlin" sagen konnte, zu einem **antwortenden Assistenten**:
+Wien ✅, Madrid ✅ (EN!), sauberes Stoppen (Loopen weg, `eos-loss-weight 2.0`). Aber: auf
+spezifischen Fakten **confident-Halluzination** (Glühbirne→Goethe), Mathe unzuverlässig.
+> **Log-Satz:** SFT hat das *Verhalten* erfolgreich transformiert. Die größte verbleibende Schwäche
+> liegt nicht mehr im Antwortformat, sondern in der **Wissensqualität des Basismodells**
+> (fleckig, ~5–6/10; confident-Halluzination → Kalibrierung + besserer Base, Reihenfolge Annealing→3B).
+
+**Benchmarks (eigener MC-Loglikelihood-Runner, n=300, acc/acc_norm):**
+```
+ENGLISCH         MMLU  ARC-C HellaSw     DEUTSCH(*übersetzt)  mmlu_de arc_de hellaswag_de
+Helix-SFT        26,3  21,3  29,3        Helix-SFT            27,7    22,7   29,0
+Qwen2.5-0.5B     48,3  32,3  50,0        Qwen2.5-0.5B         34,3    26,0   38,0
+SmolLM2-360M     26,3  39,3  52,0        SmolLM2-360M         24,3    25,3   27,7
+TinyLlama-1.1B   28,3  34,3  61,7        TinyLlama-1.1B       25,3    27,0   38,0
+```
+**Eigentliche Aussage (nicht „27,7 %"):** Helix zeigt auf **deutschen** Benchmarks einen deutlich
+kleineren Rückstand als auf englischen und **schlägt mehrere englisch-zentrierte Small Models** —
+konkret SmolLM2-360M + TinyLlama auf **mmlu_de**, SmolLM2 auf **hellaswag_de** (auf **arc_de** ist
+Helix letzter). Qwens MMLU-Vorsprung schrumpft von ~22 (EN) auf ~7 (DE). → **Die Sprachstrategie
+(200k Vokab, de55/en45, eigener Tokenizer) zahlt sich messbar aus.** Absolute Werte alle niedrig
+(~Zufall–38 %) = Untertrainings-/Größen-Signal. EN 26–29 % widerlegt „kann nur Deutsch".
+
+**Stand kompakt:** Sprachmodell ✅ · Deutschkompetenz ✅ · Assistentenformat ✅ ·
+Wissen ⚠️ · Commonsense ⚠️ · Reasoning ⚠️ · Skalierung 🚧.
+**Nächste Hebel (gated, gemessen):** Annealing (FineWeb-2-DE/Cosmopedia/Code — schon geladen) →
+Kalibrierungs-SFT (Ehrlichkeit) → 3B. Erst messen, dann entscheiden.
+
 ## Leitsatz
 > Datensammlung erfolgt auf Basis von **Wissensprofilen**, nicht des Gesamt-Val-Loss.
 > Und: bevor eine schlechte Zahl „die Daten" sind — prüfe, ob die Zahl überhaupt misst, was du glaubst.

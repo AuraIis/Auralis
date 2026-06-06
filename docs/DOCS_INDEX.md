@@ -50,6 +50,17 @@ dieser Index, dann die jeweilige aktuelle Arbeitsdoku.
   [../Doc/SPECs/SPEC_MULTI_GPU_TRAINING.md](../Doc/SPECs/SPEC_MULTI_GPU_TRAINING.md)
   und der "Update 2026-05-31"-Block in [../STATUS.md](../STATUS.md).
 
+## Blueprints (beschlossene Zukunft, gegated)
+
+- [BLUEPRINT_TOOL_USE_VERIFIER.md](BLUEPRINT_TOOL_USE_VERIFIER.md) - Tool-Use &
+  Selbst-Verifikation: Mathe-Tool zuerst, Harness (Stop-Sequenz/Sandbox/Loop),
+  Hidden-Tests als Daten-Gate, Code-DoRA zuletzt. Dreifach trianguliert
+  (Michael + GPT + Claude, Juni 2026). Reihenfolge in `ZUKUNFT_BACKLOG.md` Phase 3-4.
+- [BLUEPRINT_DOMAIN_ADAPTERS_DORA.md](BLUEPRINT_DOMAIN_ADAPTERS_DORA.md) - DoRA-
+  Domänen-Adapter (Mathe/Logik/Code) auf eingefrorenem Base. Kernprinzip: Adapter
+  verstärkt latente Fähigkeit, installiert keine neue → Code-DoRA gesperrt bis
+  Code-Annealing. Targeting auf Hybrid-Arch, Multi-Adapter, Gates. (Phase 5)
+
 ## Experiments
 
 - [experimental/knowledge_dna_v2.md](experimental/knowledge_dna_v2.md) -

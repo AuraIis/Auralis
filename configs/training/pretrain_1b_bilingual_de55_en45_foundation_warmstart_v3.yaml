@@ -78,13 +78,17 @@ evaluation:
   max_val_batches: 50
   per_language_batches: 20
   tokens_per_byte:
-    english: 0.1990
-    german: 0.2338
+    english: 0.1962   # measured from english.bin (was 0.1990)
+    german: 0.1757    # measured from german.bin (was 0.2338 — inflated bpb_de ~33%)
 
 monitoring:
   health:
     grad_explosion_threshold: 100.0
     val_regression_stop_k: 5
+    # Tolerance (nats): a val change below this is noise, not a real rise.
+    # With the now-deterministic eval the val curve is smooth, so a genuine
+    # rise is a real signal; this guards against tripping on sub-noise wobble.
+    val_min_delta: 0.01
     bpb_regression_enabled: true
     bpb_regression_languages: ["english", "german"]
     bpb_regression_max_increase: 0.25

@@ -1,10 +1,58 @@
 # STATUS - Auralis v2
 
-Stand: 2026-05-31
+Stand: 2026-06-06
 
 Dies ist die aktuelle Kurz-Wahrheit fuer das Repo. Wenn alte Phasenplaene,
 April-/Mai-Statusstaende oder Specs widersprechen, gilt zuerst diese Datei,
 dann die Reports vom 2026-05-29, dann die jeweilige Arbeitsdoku.
+
+## Update 2026-06-06 — 1B-Foundation gelaufen + SFT (Verhalten) + Reasoning-Slice
+
+NEUESTER STAND. Geht ALLEN Abschnitten darunter vor (inkl. 2026-05-31). Die
+1B-Policy/Preflight-Gates weiter unten sind erfuellt und damit historisch — der
+Foundation-Run IST gelaufen.
+
+Wo wir stehen:
+
+- 1B-Foundation-Warmstart v3 GELAUFEN bis step 50000
+  (`checkpoints/pretrain_1b_bilingual_de55_en45_foundation_warmstart_v3/step_50000.pt`).
+  Gesundes Training, Sprache + Faktenbindung nachgewiesen (Wissensprofil n=57:
+  Geschichte/Geografie stark, Wissenschaft/Uebersetzung schwaecher).
+
+- SFT v1 (~32k diverse DE+EN, gpt-4o-verifiziert [269 Halluzinationen gefangen],
+  dekontaminiert) GELAUFEN. Aus dem Base, der kaum antworten konnte, wurde ein
+  ANTWORTENDER Assistent (Wien/Madrid korrekt, sauberes Stoppen via
+  eos-loss-weight 2.0). SFT lehrt FORM, nicht WISSEN — durch Benchmarks bestaetigt.
+
+- Benchmarks (eigener MC-Loglikelihood-Runner, n=300): Helix-SFT schlaegt auf
+  mmlu_de SmolLM2-360M + TinyLlama-1.1B; Qwens MMLU-Vorsprung schrumpft von ~22
+  (EN) auf ~7 (DE). Sprachstrategie (200k Vokab, de55/en45) zahlt sich messbar
+  aus. Absolutwerte niedrig (Untertrainings-/Groessen-Signal). Details:
+  `docs/PROJEKT_STAND.md`.
+
+- Reasoning-Slice gebaut + verifiziert: 2500 DE (nativ generiert) + 2500 EN
+  (GSM8K konvertiert). gpt-4o-Verify zu 100% auf Mathe -> ~9.4% falsche Mathe
+  gefangen/korrigiert. Sauber im Helix-Format.
+
+- SFT v2 LAEUFT (36.6k = SFT v1 + Reasoning-Slice, ~13.5% Reasoning, 1 Epoche,
+  bucket+grad-ckpt). val-Tiefpunkt bei step 2100 (val 2.580 — besser als v1 ~2.81),
+  danach Overfit-Uptick. Keeper: `checkpoints/sft_v2/sft_smoke_step_2100.pt`.
+  Quicktest + Re-Benchmark als naechstes.
+
+Entschiedene Richtung danach (dreifach trianguliert Michael+GPT+Claude):
+
+1. Tool-Use ZUERST (Mathe-Tool-Harness): kleines Modell lernt PRUEFEN statt raten.
+   Spec: `docs/BLUEPRINT_TOOL_USE_VERIFIER.md`.
+2. Annealing (FineWeb-2-DE/Cosmopedia/Python-Edu schon geladen) inkl. Code.
+3. DoRA Mathe/Logik/Code auf annealtem Base. Spec:
+   `docs/BLUEPRINT_DOMAIN_ADAPTERS_DORA.md`.
+
+Reihenfolge gegated (`ZUKUNFT_BACKLOG.md`). Kernprinzip: Adapter verstaerkt
+Latentes, installiert nichts -> Code-DoRA gesperrt bis Code-Annealing.
+
+Infra-Hinweis: `data/` und `checkpoints/` liegen NUR auf BITBASTION
+(`/workspace/v2data`, 36T), nicht auf der Windows-Box (gitignored, zu gross).
+Nur Code synct (U:\ <-> Container). Das ist gewollt, kein Daten-Verlust.
 
 ## Update 2026-05-31 — Edu-Daten-Filter (Deutsch) + Multi-GPU
 

@@ -1,5 +1,10 @@
 # Auralis v2 / Helix v2
 
+<p align="center">
+  <img src="docs/auralis_logo_512.png" width="200" alt="Auralis logo"><br>
+  <em>Ein from-scratch, deutsch-primaeres ~0.9B-Hybrid-LLM (Mamba-2 / GLA / Sparse-Attention).</em>
+</p>
+
 Auralis ist das Assistenz-System. Helix v2 ist das eigene LLM darunter.
 
 Der aktuelle Arbeitsstand steht in [STATUS.md](STATUS.md). Die grosse
@@ -11,6 +16,10 @@ technische Architektur-Spec steht in
 ## Quick Links
 
 - [Aktueller Stand](STATUS.md)
+- [Roadmap & Status (Blueprint)](docs/auralis_roadmap_blueprint_en.svg)
+- [Blueprint: Tool-Use & Verifier](docs/BLUEPRINT_TOOL_USE_VERIFIER.md)
+- [Blueprint: DoRA-Domaenen-Adapter](docs/BLUEPRINT_DOMAIN_ADAPTERS_DORA.md)
+- [Zukunft-Backlog](docs/ZUKUNFT_BACKLOG.md)
 - [Doku-Index](docs/DOCS_INDEX.md)
 - [Projekt-Brief / Grundidee](Doc/AURALIS_V2_PROJECT_BRIEF.md)
 - [Modell-Architektur](Doc/SPECs/SPEC_PHASE_0.5_MODEL_ARCHITECTURE.md)
@@ -20,22 +29,33 @@ technische Architektur-Spec steht in
 - [Lessons](LESSONS.md)
 - [History](HISTORY.md)
 
-## Aktueller Fokus (Stand 2026-05-31)
+## Aktueller Fokus (Stand 2026-06-06)
 
-Pipeline, Checkpointing, Tokenizer-Roundtrip und Training funktionieren. Der
-bilinguale 1B-Ramp (de55/en45) lief bis Step ~3400; das Lernen war schwach.
-Saubere Diagnose: nicht die Eval, nicht die Architektur, sondern
-Under-Training plus ein qualitaets-invertierter deutscher Mix (die schwaechste
-Quelle bekam das meiste Budget). Aktueller Fokus:
+Pipeline, Checkpointing, Tokenizer und Training laufen stabil. Seit dem
+deutschen Edu-Daten-Filter ist viel passiert:
 
-1. Deutsche Daten nach Bildungswert filtern (FineWeb-Edu-Methodik): LLM-Judge
-   `qwen3-235b-2507`, billiger Klassifikator (e5-large + Ridge, Keep-F1 0.872),
-   German-v2 = edu-gefiltertes fineweb2_de + wikipedia (german_commons gedroppt).
-2. Foundation-Warmstart von Step ~3400 auf den besseren Daten.
-3. Multi-GPU (DDP) fuer RunPod bereit; der Single-GPU-Pfad bleibt unveraendert.
-4. Klare Capability-Evals statt nur Loss; Booster nur nach messbarem Signal.
+1. **Foundation-Run gelaufen** (1B, de55/en45, Warmstart v3 bis Step 50k):
+   gesundes Training, Sprache + Faktenbindung nachgewiesen.
+2. **SFT (Instruction-Tuning):** aus dem Base, der kaum antworten konnte, wurde
+   ein antwortender Assistent. v1 (~32k diverse DE+EN, gpt-4o-verifiziert,
+   dekontaminiert) + v2 (+ deutscher Reasoning-Slice, gpt-4o-mathgeprueft).
+   **SFT lehrt FORM, nicht WISSEN** — durch Benchmarks bestaetigt.
+3. **Benchmarks** (eigener MC-Loglikelihood-Runner, n=300): Helix-SFT schlaegt
+   auf `mmlu_de` SmolLM2-360M + TinyLlama-1.1B; Qwens MMLU-Vorsprung schrumpft
+   von ~22 (EN) auf ~7 (DE). Die Sprachstrategie (200k Vokab, de55/en45) zahlt
+   sich messbar aus. Absolutwerte niedrig = Untertrainings-/Groessen-Signal.
+4. **Naechste Richtung** (dreifach abgestimmt, Reihenfolge gegated): Tool-Use
+   zuerst (kleines Modell lernt PRUEFEN statt raten) -> Annealing inkl. Code
+   -> DoRA-Domaenen-Adapter. Specs:
+   [Tool-Use](docs/BLUEPRINT_TOOL_USE_VERIFIER.md),
+   [DoRA](docs/BLUEPRINT_DOMAIN_ADAPTERS_DORA.md),
+   [Backlog](docs/ZUKUNFT_BACKLOG.md).
 
-Details: der "Update 2026-05-31"-Block in [STATUS.md](STATUS.md), der Verlauf
+Roadmap auf einen Blick:
+
+![Roadmap & Status](docs/auralis_roadmap_blueprint_en.svg)
+
+Details: der "Update 2026-06-06"-Block in [STATUS.md](STATUS.md), der Verlauf
 in [HISTORY.md](HISTORY.md), die Lehren (inkl. L-018..L-022) in
 [LESSONS.md](LESSONS.md).
 

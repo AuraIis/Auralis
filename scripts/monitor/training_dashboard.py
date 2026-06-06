@@ -262,6 +262,48 @@ def representative_snapshot(root: Path) -> dict[str, object] | None:
         return None
 
 
+def parse_sft_log(root: Path) -> dict[str, object]:
+    """Parse the SFT run log (diag/sft_v1.log) — different format from pretrain."""
+    import time
+    path = root / "diag" / "sft_v1.log"
+    out: dict[str, object] = {"present": False}
+    if not path.exists():
+        return out
+    out["present"] = True
+    step_re = re.compile(
+        r"^step\s+(\d+)\s+\|\s+train_loss=([-\d.]+)\s+\|\s+val_loss=([-\d.]+)\s+\|\s+lr=([-\d.eE+]+)\s+\|\s+([\d.]+)s"
+    )
+    steps: list[dict[str, float]] = []
+    ckpts: list[int] = []
+    last_elapsed = 0.0
+    try:
+        text = path.read_text(errors="ignore")
+    except Exception:
+        return out
+    for line in text.splitlines():
+        m = step_re.match(line.strip())
+        if m:
+            steps.append({"step": int(m.group(1)), "train": float(m.group(2)),
+                          "val": float(m.group(3)), "lr": float(m.group(4))})
+            last_elapsed = float(m.group(5))
+        elif "[checkpoint] step" in line:
+            cm = re.search(r"step (\d+)", line)
+            if cm:
+                ckpts.append(int(cm.group(1)))
+    if not steps:
+        return out
+    cur = int(steps[-1]["step"]); total = 6000
+    out.update({"current_step": cur, "total_steps": total,
+                "train": steps[-1]["train"], "val": steps[-1]["val"], "lr": steps[-1]["lr"],
+                "checkpoints": ckpts, "recent": steps[-12:],
+                "age_min": round((time.time() - path.stat().st_mtime) / 60, 1)})
+    if cur > 0 and last_elapsed > 0:
+        rate = last_elapsed / cur
+        out["sec_per_step"] = round(rate, 2)
+        out["eta_min"] = round((total - cur) * rate / 60, 1)
+    return out
+
+
 def latest_neuro_summary(root: Path) -> dict[str, object]:
     reports = learning_reports(root)
     json_rel = None
@@ -543,6 +585,14 @@ INDEX_HTML = r"""<!doctype html>
   </header>
 
   <main>
+    <section class="row" id="sftRow" style="display:none">
+      <div class="panel" style="flex:1;border-left:3px solid #36f58c">
+        <div class="label">🤖 SFT-Lauf · Instruction-Tuning (Helix → Assistent)</div>
+        <div id="sftLine" class="value" style="font-size:19px">–</div>
+        <div class="foot" id="sftFoot">–</div>
+        <div class="foot" id="sftTrend" style="margin-top:6px;color:#8ca0a8"></div>
+      </div>
+    </section>
     <section class="row cards stagger" id="cards">
       <div class="panel card"><div class="label" data-tip="Trainingsschritt. 1 Schritt = 1 Optimizer-Update (hier ~65k Tokens).">Step</div><div id="step" class="value">–</div><div class="foot" id="mix">–</div></div>
       <div class="panel card"><div class="label" data-tip="Überraschung des Modells über das nächste Token (nats). Start ≈ 12,2 = reines Raten. Niedriger = besser.">Train Loss</div><div id="loss" class="value">–</div><div class="foot"><span id="lossDelta" class="delta flat">–</span><span id="lr">lr –</span></div></div>
@@ -812,6 +862,16 @@ INDEX_HTML = r"""<!doctype html>
       for(const log of (data.logs||[])){ const o=document.createElement("option"); o.value=log.path; o.textContent=log.name; sel.appendChild(o); }
       if(data.selected_log){ state.selectedLog=data.selected_log; sel.value=data.selected_log; } else if(prevSel){ sel.value=prevSel; }
 
+      const sft=data.sft||{};
+      const sftRow=document.getElementById("sftRow");
+      if(sft.present && sft.current_step){
+        sftRow.style.display="";
+        const pct=Math.round(100*sft.current_step/(sft.total_steps||6000));
+        document.getElementById("sftLine").innerHTML = `Step <b>${sft.current_step}</b>/${sft.total_steps} (${pct}%) · val <b>${(sft.val||0).toFixed(3)}</b> · train ${(sft.train||0).toFixed(3)}`;
+        let eta="?"; if(sft.eta_min!=null){ eta = sft.eta_min>60 ? (sft.eta_min/60).toFixed(1)+" h" : Math.round(sft.eta_min)+" min"; }
+        document.getElementById("sftFoot").textContent = `~${sft.sec_per_step||"?"}s/Step · ETA ${eta} · letzter Eval vor ${sft.age_min}min · Checkpoints: ${(sft.checkpoints||[]).join(", ")||"–"}`;
+        document.getElementById("sftTrend").textContent = "val-Trend:  " + (sft.recent||[]).map(p=>`${p.step}:${p.val.toFixed(2)}`).join("  →  ");
+      } else { sftRow.style.display="none"; }
       const run=data.run||{}, lt=run.latest_train||{}, ev=run.latest_eval||{};
       document.getElementById("step").textContent = lt.step ?? ev.step ?? "–";
       document.getElementById("mix").textContent = run.mix || run.name || "–";
@@ -1107,6 +1167,7 @@ class Handler(BaseHTTPRequestHandler):
                 "learning_reports": learning_reports(self.root),
                 "neuro": latest_neuro_summary(self.root),
                 "repr": representative_snapshot(self.root),
+                "sft": parse_sft_log(self.root),
             })
             return
 
