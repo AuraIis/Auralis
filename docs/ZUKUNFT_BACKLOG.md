@@ -151,6 +151,19 @@
   pre-SFT), NICHT von step_600. Danach SFT/Tool/Honesty NEU auf Base v2. Output-`.bin` nach
   `tokenized/<anneal>/` (gleiches uint32+idx-Format wie `curated_40b`).
 
+**Track-B Ausführungsplan (Michael, nächste Session):**
+1. **Echtes Python-Korpus beschaffen** — Code-TEXT, keine Metadaten/READMEs. Optionen:
+   `the-stack-smol` (klein, lizenz-gefiltert → Sample/Test), `starcoderdata`-Python (größer, echter
+   Anneal), `codeparrot/github-code-clean`. ODER Python-Edu-Blobs nachladen (blob_ids da, aber
+   gated+Auth-Reibung). **Lizenz-Caveat:** nur permissiv-gefilterte Subsets (OpenRAIL-M/Apache).
+2. **Sample prüfen (100–500)** — wirklich Code? Sprache der Kommentare? Qualität/Längen?
+3. **Filterpipeline:** `.py` extrahieren → **`py_compile`** (= "Executor=Wahrheit" für Code) →
+   Längen-Filter → Dedupe (exact + minhash) → ggf. Edu-Klassifikator → jsonl → Tokenizer (Newline-Pfad).
+4. **Code-Eval ZUERST bauen** (größte Lücke — sonst blind): Mini-Code-Probes (Funktion vervollständigen /
+   Mini-HumanEval / Held-out-Code-Perplexity) + **Retention-Probes** (degradiert DE/Allgemein?).
+5. **Kleiner Anneal-Testlauf** (nicht riesig) von foundation step_50000 → messen: Code-Probes ↑? Retention ok?
+6. **Erst dann** Code-DoRA (Skill) + API/Library-MoRA (Wissen) — gated auf gemessener Code-Verbesserung.
+
 ### 💸 Billige Verbesserungen (sofort/günstig, nach dem Lauf)
 - **Substring-Dekontamination** (SmolLM2): nicht nur exakte Eval-Probes filtern, auch
   *umformulierte* (substring/fuzzy). ~20 Zeilen → wasserdichte Eval-Ehrlichkeit.
