@@ -164,6 +164,16 @@
 5. **Kleiner Anneal-Testlauf** (nicht riesig) von foundation step_50000 → messen: Code-Probes ↑? Retention ok?
 6. **Erst dann** Code-DoRA (Skill) + API/Library-MoRA (Wissen) — gated auf gemessener Code-Verbesserung.
 
+**FORTSCHRITT (2026-06-07, Branch `code_math_anneal`):**
+- ✅ Schritt 1–3: `codeparrot/github-code-clean` (ungated) Shard-0 → 8.028 Python →
+  `filter_code_corpus.py` (Längen + **py_compile**-Gate + Dedup) → **6.496 saubere Python-3-Dateien**.
+- ✅ Schritt 4: `scripts/eval/eval_code_ppl.py` (Code + DE/EN-Retention-Perplexity). **BASELINE
+  foundation step_50000:** `code ppl 31.725 · de 295 · en 238` → Modell ist ~100× schlechter bei
+  Code als Sprache (= 0%-Code-Realität, beziffert). **Die Messlatte steht.**
+- ▷ Schritt 5: jsonl-Tokenize (`tokenize_anneal.py`, Newline-Pfad) → code/math/DE → .bin →
+  kleiner Anneal von foundation step_50000 → eval_code_ppl erneut (code-ppl muss fallen, de/en halten).
+- Daten: `data/training/code_anneal/train_code.jsonl` (6.296) · Eval-Sets `data/training/code_eval/`.
+
 ### 💸 Billige Verbesserungen (sofort/günstig, nach dem Lauf)
 - **Substring-Dekontamination** (SmolLM2): nicht nur exakte Eval-Probes filtern, auch
   *umformulierte* (substring/fuzzy). ~20 Zeilen → wasserdichte Eval-Ehrlichkeit.
