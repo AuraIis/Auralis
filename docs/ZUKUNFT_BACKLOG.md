@@ -22,6 +22,48 @@
   ⚠️ Vorsicht, ❗ definitionsabhängig); falsche Prämisse korrigieren; kein Fake-Live-Check.
 - Status: **Generator + Verify-Pass gebaut & validiert.** Kommt als Slice in die Haupt-SFT.
 
+### Helix-R-Tuning v1 (Self-Labeling, KEY-FREI) — Quelle: R-Tuning (arXiv 2311.09677)
+> Befund des Papers = exakt unser Problem: klassisches Instruction-Tuning **zwingt** zu einer
+> Antwort → das Modell rät bei Unbekanntem. Lösung: Fragen in „im Modellwissen / nicht sicher"
+> trennen und Unsicherheit bewusst trainieren. Refusal ist eine **generalisierende Meta-Skill**.
+>
+> **WICHTIG — Self-Labeling heißt NICHT „Helix beurteilt sich selbst".** Es heißt: Helix beantwortet
+> Fragen mit BEKANNTER Lösung, ein **Script** vergleicht gegen Gold/MC/Regex/Executor:
+> ```
+> richtig beantwortet  -> confident-answer (BEHALTEN, Retention-Anker)
+> falsch beantwortet   -> uncertainty/refusal trainieren ("kann ich nicht zuverlässig beantworten")
+> Rechnung             -> tool-needed (Tool rufen, nicht raten)
+> ```
+> **Key-frei machbar** bei verifizierbaren Antworten: MC (MMLU-DE/ARC-DE), Faktenfragen mit
+> eindeutiger Antwort, Mathe (Executor), Übersetzung mit klarem Ziel. **Nicht** key-frei bei
+> offenen Antworten ("Erkläre einen Vulkan") → später Teacher/Rule-Checks/lokaler Judge.
+>
+> **Rezept Helix-R-Tuning v1:** (1) Gold-Label-Fragenbank (MMLU-DE/ARC-DE + eigene Faktenbatterie
+> + kontrastive Fälle Bonn/Berlin, Pluto). (2) Helix antworten lassen. (3) Auto-labeln (s.o.).
+> (4) SFT: bekannt→korrekt antworten, unbekannt→nicht erfinden, Rechnung→Tool.
+>
+> **R-Tuning-R (Replacement)** = bei Unsicherem die richtige Antwort NICHT zeigen, sondern echtes
+> „weiß ich nicht" trainieren → höchste Refusal-Rate, aber **Über-Verweigerungs-Gefahr**.
+> → **PFLICHT-Retention-Gate** (Wien/Madrid/Berlin/Pluto müssen beantwortet bleiben; erfundene
+> Entitäten dürfen NICHT ausgeschmückt werden; `12+15`→Tool). Eine Retention-Regression = nicht
+> promotable. Abstention moderat dosieren (RLVR-Humility-Befund: zu viel = Verweigerungs-Bot).
+
+## Leitprinzip — besserer Entwicklungs-Loop, NICHT rekursive Selbstverbesserung
+> Quelle: Anthropic, "Recursive Self-Improvement". Helix wird **nicht durch „mehr Modell"** besser,
+> sondern durch einen **besseren Loop um das Modell**: Modell + Tools + Tests + Mensch.
+- **Mensch = Direction-Setter** (was testen? was ist Erfolg/Fail? welche Richtung?). Modell/Tools
+  führen aus (Daten erzeugen, Tests laufen, Fehler suchen, Reports) — aber **kein Auto-Promote**.
+- **Neuer Engpass = Review/Verifikation**, nicht Generierung. Darum harte Gates überall:
+  ```
+  kein Gate     -> kein Promote
+  kein Verify   -> kein Datensatz
+  kein Benchmark-> keine Behauptung
+  kein Sandbox  -> kein Tool-Use
+  ```
+- **Kein** „Helix trainiert sich selbst und wir lassen laufen" (bei 0.9B technisch Unsinn + gefährlich).
+- Später optional: Auto-Experiment-Loop (kleiner Lauf → Gate → Report → promote/reject/retry),
+  weiterhin mit Mensch an den Zielen.
+
 ## Phase 3–4 — Tool-Nutzung / Verifier (NACH solidem SFT)  ⭐ BESCHLOSSEN (Michael + GPT + Claude, Juni 2026)
 > **Dreifach trianguliert.** Tool-Use ist der nächste *große* Schritt nach dem SFT — DoRA kommt
 > erst später. Begründung: ein 0.9B rechnet `347×892` zuverlässig falsch, kann aber lernen,

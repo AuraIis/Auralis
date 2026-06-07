@@ -81,6 +81,36 @@ Wissen ⚠️ · Commonsense ⚠️ · Reasoning ⚠️ · Skalierung 🚧.
 **Nächste Hebel (gated, gemessen):** Annealing (FineWeb-2-DE/Cosmopedia/Code — schon geladen) →
 Kalibrierungs-SFT (Ehrlichkeit) → 3B. Erst messen, dann entscheiden.
 
+## Tool-Use-Meilenstein — verifiziertes Rechnen (Juni 2026)
+**Der Übergang von „raten" zu „prüfen" für Mathe ist gelungen.** Helix erkennt eine
+Rechenaufgabe, ruft einen sicheren externen Rechner (AST-Whitelist, kein RCE), übernimmt
+das Ergebnis und beantwortet Faktenfragen ohne Tool. System-Fortschritt (Modell + Harness +
+Rechner), nicht „ein Prompt hat geklappt".
+
+**Vorher → Nachher (gleiche Fragen, ein Tag Abstand):**
+```
+12 + 15      Quicktest: "12"          → step_600: print(12+15)→27 → "12 + 15 ergibt 27."
+15% von 240  Quicktest: Müll          → step_600: print(240*15/100)→36 → "Das sind 36."
+80€ −20%     —                        → step_600: print(80-80*20/100)→64 → "Er kostet dann 64 Euro."
+Wien/Faust   confident-Halluzination  → step_600: direkt korrekt, KEIN Tool
+```
+
+**Methodik (3 gated Phasen, best-by-GATE — val_loss war nachweislich irreführend):**
+Phase 1 (call_only) → 1.1 (Sprache→Formel) → 2 (Result-Injektion, `<result>` loss-maskiert).
+Promoted: `checkpoints/tool_sft_v12/sft_smoke_step_600.pt`.
+
+**Harte Zahlen (eigenes duales End-to-End-Gate, n=100 Mathe + 51 Fakten):**
+```
+correct 94% · parse 100% · fake_result 0% · false_tool 0% · answer_match 85%
+Buckets: percent 24/24 · word 21/21 · speed 10/10 · english 7/7 · time_unit 16/17 · simple 16/21 (76%)
+```
+Kern-Beweise: `false_tool 0%` (kein Missbrauch) · `fake_result 0%` (keine gefälschten Ergebnisse,
+dank `<result>`-Masking) · `parse 100%` (Harness führt zuverlässig aus). Szene bestätigt es:
+Toolformer (wann Tool rufen), Qwen2.5-Math TIR (1,5B+Python→MATH 80).
+
+**Grenzen (ehrlich):** in-distribution (trainierte Typen, neue Zahlen); `simple` schwach wegen
+sqrt/`hoch 2`; answer_match konservativ (Komma/Punkt). Tool-Use fügt **kein Wissen** hinzu.
+
 ## Leitsatz
 > Datensammlung erfolgt auf Basis von **Wissensprofilen**, nicht des Gesamt-Val-Loss.
 > Und: bevor eine schlechte Zahl „die Daten" sind — prüfe, ob die Zahl überhaupt misst, was du glaubst.

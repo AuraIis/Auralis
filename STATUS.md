@@ -1,10 +1,43 @@
 # STATUS - Auralis v2
 
-Stand: 2026-06-06
+Stand: 2026-06-07
 
 Dies ist die aktuelle Kurz-Wahrheit fuer das Repo. Wenn alte Phasenplaene,
 April-/Mai-Statusstaende oder Specs widersprechen, gilt zuerst diese Datei,
 dann die Reports vom 2026-05-29, dann die jeweilige Arbeitsdoku.
+
+## Update 2026-06-07 — Tool-Use Mathe END-TO-END (verifiziertes Rechnen statt Raten)
+
+NEUESTER STAND. Helix loest Arithmetik jetzt ueber ein verifiziertes externes Tool,
+statt im Kopf zu raten. Strukturell geloest: aus "12 + 15 = 12" (raten) wird
+`<tool:python>print(12+15)</tool>` -> Executor 27 -> "12 + 15 ergibt 27."
+
+Gebaut (alles KEY-FREI / self-generating; der Rechner ist die Ground Truth):
+- `scripts/sft/tool_harness.py` — AST-Whitelist-Rechner (kein RCE, Selftest 14/14) +
+  Generierungs-Loop mit `</tool>`-Stop-Sequenz + Result-Injektion + Resume.
+- `scripts/sft/gen_tool_traces.py` — Tool-SFT-Traces (modes call_only/full, --simple-rebump).
+- `scripts/sft/tool_gate.py` — DUALES Gate (Mathe->Tool, Fakten->kein Tool) + End-to-End
+  (`--mode full`: result_usage_rate, answer_numeric_match), Typ-Breakdown, best-by-GATE.
+- `smoke_sft_de.py` — `<result>`-Block aus dem Loss MASKIERT (token-genau verifiziert) ->
+  Modell lernt NICHT, Ergebnisse zu faelschen.
+
+Phasen (jede gated, best-by-Gate statt val_loss — val_loss war hier nachweislich irrefuehrend):
+- Phase 1 (call_only): Tool-Call + Stop. step_400: tool 100% · false_tool 0% · parse 97% · correct 68%.
+- Phase 1.1 (enrichte Uebersetzungs-Traces, Sprache->Formel). step_500: correct 93%.
+- Phase 2 (full, Result-Injektion -> finale Antwort).
+
+PROMOTED: **`checkpoints/tool_sft_v12/sft_smoke_step_600.pt`**
+  correct **94%** · parse **100%** · fake_result **0%** · false_tool **0%** · answer_match **85%**
+  Buckets: percent 24/24 · word 21/21 · speed 10/10 · english 7/7 · time_unit 16/17 · simple 16/21 (76%)
+
+Ehrliche Grenzen: in-distribution (trainierte Aufgabentypen, neue Zahlen; frei formulierte
+Fragen ungetestet); `simple`-Bucket schwach wegen sqrt/`hoch 2` (= Operator-Mapping, nicht +-*/);
+answer_match konservativ gemessen (deutsches Dezimalkomma "59,5" vs Executor "59.5" zaehlt als
+Mismatch). Tool-Use fuegt KEIN Wissen hinzu — Wissensluecken bleiben (Annealing/Skalierung).
+
+Naechste Session (NICHT vorgezogen): (1) Gate-Zahlenvergleich normalisieren (Komma/Punkt/Trailing-0),
+(2) simple-Bucket in basic/advanced splitten + Fehlerfaelle extrahieren, (3) gezielte sqrt/power-Traces,
+(4) dann Kalibrierung/R-Tuning (key-frei, Self-Labeling gegen Gold/MC/Executor).
 
 ## Update 2026-06-06 — 1B-Foundation gelaufen + SFT (Verhalten) + Reasoning-Slice
 

@@ -111,6 +111,7 @@ def encode_helix_sft(sp: spm.SentencePieceProcessor, text: str, max_length: int)
     """Encode one canonical Helix prompt with assistant-only labels."""
     pos = 0
     assistant_ranges: list[tuple[int, int]] = []
+    result_ranges: list[tuple[int, int]] = []
     saw_assistant = False
 
     for match in HELIX_TURN_RE.finditer(text):
@@ -123,7 +124,15 @@ def encode_helix_sft(sp: spm.SentencePieceProcessor, text: str, max_length: int)
             # Mask only the assistant's content plus its closing <|end|>. The
             # assistant-open tag remains prompt context, which matches
             # inference where generation starts right after that tag.
-            assistant_ranges.append((match.start() + len(header), match.end()))
+            astart, aend = match.start() + len(header), match.end()
+            assistant_ranges.append((astart, aend))
+            # Tool-Use Phase 2: the <result>...</result> block is INJECTED by the
+            # harness at inference (the model stops at </tool> and never writes it).
+            # Exclude it (plus surrounding newlines) from the loss, else the model
+            # learns to fabricate results -> exactly the fake-<result> failure the
+            # tool-gate forbids. (No-op for call_only traces with no <result>.)
+            for m in re.finditer(r"\n?<result>.*?</result>\n?", text[astart:aend], re.DOTALL):
+                result_ranges.append((astart + m.start(), astart + m.end()))
         pos = match.end()
 
     if pos != len(text) or not saw_assistant:
@@ -133,13 +142,12 @@ def encode_helix_sft(sp: spm.SentencePieceProcessor, text: str, max_length: int)
     ids = [piece.id for piece in proto.pieces]
     labels: list[int] = []
     for piece in proto.pieces:
-        in_assistant = any(
-            piece.end > piece.begin
-            and piece.begin >= start
-            and piece.end <= end
-            for start, end in assistant_ranges
-        )
-        labels.append(piece.id if in_assistant else -100)
+        if piece.end <= piece.begin:
+            labels.append(-100)
+            continue
+        in_assistant = any(piece.begin >= s and piece.end <= e for s, e in assistant_ranges)
+        in_result = any(piece.begin >= s and piece.end <= e for s, e in result_ranges)
+        labels.append(piece.id if (in_assistant and not in_result) else -100)
 
     if len(ids) < 8:
         return None

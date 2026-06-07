@@ -135,6 +135,41 @@ Klassen) — **keine großen Projekte**.
 - **Echter User:** es gibt **keine** Hidden Tests (der User *ist* die Spec). Da bleibt nur
   „eigene Tests schreiben + ausführen". Nicht verwechseln.
 
+## 6b) STAND: Mathe-Harness MVP gebaut (Juni 2026)
+`scripts/sft/tool_harness.py` — gebaut + getestet:
+- **Sicherer Rechner** (AST-Whitelist, kein RCE): Selftest 14/14, lehnt `import`,
+  `__import__/system`, `open`, Compute-Bombe `9**9**9`, Zuweisung, /0 ab.
+- **Loop bewiesen** (`--selftest-only`, gescriptetes Fake-Modell): Stop@`</tool>`
+  → Executor → `<result>`-Injektion → Resume. Transcript korrekt, Result vom
+  Executor (nicht Modell).
+- **Offen:** Modell *emittiert* noch keine Tool-Calls → braucht Tool-SFT.
+- **Self-generating-Daten:** Mathe-Tool-Traces brauchen KEINEN Teacher/Key — der
+  Rechner IST die Ground Truth (Problem → kanonischer Call → Executor-Result →
+  Antwort-Template). Damit ist Tool-SFT-Daten auch ohne OpenRouter-Key baubar.
+
+### Hartes Tool-Gate (vor Promotion eines tool-SFT-Checkpoints)
+```
+✗ Modell-Tokenstrom enthält selbst "<result>"  → Stop-Sequenz versagt → FAIL
+✗ kein parsebarer <tool:python>…</tool>          → FAIL
+✗ finale Antwort-Zahl ≠ Executor-Zahl            → Result nicht übernommen → FAIL
+✓ stoppt @</tool> · Executor rechnet · Antwort == Executor-Zahl
+```
+(Im Harness kann das Modell `<result>` gar nicht schreiben — die Generierung stoppt
+bei `</tool>`. „Fake-result" = Stop-Sequenz hat versagt. Genau das prüft das Gate.)
+
+**Stand:** Phase-1 (call_only) bestanden — best step_400: tool_rate 100%, false_tool 0%,
+fake_result 0%, parse 97%, correct **68%**. Phase 1.1 (enrichte Übersetzungs-Traces) zielt
+auf correct ≥80% bevor Phase 2. Trainer-`<result>`-Masking gebaut + token-genau verifiziert.
+
+### Phase-2-End-to-End-Gate (zusätzlich — misst Result-NUTZUNG)
+Phase 2 kann auf 3 Arten scheitern → 3 Metriken:
+```
+result_usage_rate    : nutzt die finale Antwort die Executor-Zahl ueberhaupt?  (Fail 1: ignoriert <result>)
+answer_numeric_match : steht EXAKT die Executor-Zahl in der Antwort?           (Fail 2: Zahl falsch abgeschrieben)
+fake_result_rate     : hat das Modell trotzdem selbst <result> geschrieben?    (Fail 3: halluziniert Block) -> MUSS 0
+```
+Plus weiterhin: false_tool 0 · parse >95% · correct (gedeckelt durch Phase 1.1). Promotion nur wenn alle grün.
+
 ## 7) Erfolgskriterien (messbar, nicht „sieht gut aus")
 - **Stufe 1/2:** auf einem Mathe-Probe-Set (n≥200): Tool-Call-Trefferquote ↑, End-Antwort-
   Korrektheit deutlich > Base-ohne-Tool (Ziel: Korrektheit folgt dem Rechner, nicht dem Raten).
