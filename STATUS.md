@@ -40,6 +40,11 @@ alpha   inv-abstain (honesty)   people-answer   math-tool
 Damit ist die modulare Roadmap validiert: Honesty-LoRA jetzt, Code-LoRA nach Annealing,
 Wissens-MoRA spaeter. Offen (naechste Session): Inferenz-Pfad Base+Adapter@0.5 (deploybar).
 
+Track B (Branch `code_math_anneal` angelegt) — Prep-Befund: Python-Edu-Parquet ist METADATEN
+(blob_id, kein Code-Text) -> echter erster Schritt = Code-Korpus beschaffen (Stack-Blobs
+nachladen ODER the-stack-smol/starcoderdata). Cosmopedia + FineWeb2-DE sind nutzbar (haben text).
+Annealing geht vom FOUNDATION step_50000 aus. Details: ZUKUNFT_BACKLOG -> Track-B Prep-Befunde.
+
 ## Update 2026-06-07 — Tool-Use Mathe END-TO-END (verifiziertes Rechnen statt Raten)
 
 NEUESTER STAND. Helix loest Arithmetik jetzt ueber ein verifiziertes externes Tool,

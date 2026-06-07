@@ -135,6 +135,22 @@
 - Bild: letzte Lern-Woche vor der Prüfung nur aus dem besten Lehrbuch.
 - Aufwand: mittel (Anneal-Mix + kurzer Lauf). Bei 0.9B evtl. kleiner als +7. Gated auf SFT-Ergebnis.
 
+### Track-B Prep-Befunde (2026-06-07, Branch `code_math_anneal` angelegt)
+> Prep aufgedeckt: ein zentraler Blocker + Format-Detail. Nächste Session startet hier.
+- **🛑 Python-Edu ist METADATEN, kein Code-Text.** `python_edu_*.parquet` hat nur
+  `blob_id/repo_name/path/length_bytes/score` — KEINE `text`-Spalte. Der Code muss erst
+  per blob_id aus dem Stack/S3 **nachgeladen** werden. → ECHTER erster Schritt = Code-Korpus
+  beschaffen: (a) Python-Edu-Blobs fetchen ODER (b) text-tragenden Python-Korpus laden
+  (`the-stack-smol` / `starcoderdata`-Sample). Ohne echten Code → kein latentes Code-Verständnis
+  → Code-DoRA sinnlos.
+- **Nutzbar (haben `text`):** `cosmopedia_v2.parquet` (376k, Mathe/Reasoning/Lehrbuch) +
+  `fineweb2_de.parquet` (3,3M, DE-Retention) + Codex' deutsche Python-Jsonl (~116k tok, winzig).
+- **Format:** `tokenize_for_pretraining.py` liest **eine Zeile = ein Dokument** (Web-Text). Code
+  braucht jsonl-Lesen (Newlines erhalten) → kleine Tokenize-Adaption (parquet→jsonl + `--jsonl`).
+- **Sequenz-Korrektur:** Annealing geht vom **FOUNDATION** `step_50000` aus (continued-pretrain,
+  pre-SFT), NICHT von step_600. Danach SFT/Tool/Honesty NEU auf Base v2. Output-`.bin` nach
+  `tokenized/<anneal>/` (gleiches uint32+idx-Format wie `curated_40b`).
+
 ### 💸 Billige Verbesserungen (sofort/günstig, nach dem Lauf)
 - **Substring-Dekontamination** (SmolLM2): nicht nur exakte Eval-Probes filtern, auch
   *umformulierte* (substring/fuzzy). ~20 Zeilen → wasserdichte Eval-Ehrlichkeit.
