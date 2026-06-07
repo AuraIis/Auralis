@@ -54,6 +54,7 @@ def _maybe_enable_mamba_kernel() -> bool:
 _KERNEL_ACTIVE = _maybe_enable_mamba_kernel()
 
 from auralis.model import build_model  # noqa: E402
+from auralis.adapters import inject_adapters, freeze_base, adapter_state_dict, enable_input_require_grads  # noqa: E402
 from auralis.tokenizer.chat_template import build_inference_prompt  # noqa: E402
 from auralis.training.optimizer import build_optimizer, build_scheduler  # noqa: E402
 
@@ -496,8 +497,13 @@ def load_checkpoint_weights(model, checkpoint: Path, device: torch.device) -> in
     return payload.get("state", {}).get("step")
 
 
-def save_sft_checkpoint(model, optimizer, scheduler, step: int, output_dir: Path) -> Path:
+def save_sft_checkpoint(model, optimizer, scheduler, step: int, output_dir: Path,
+                        adapter_only: bool = False) -> Path:
     output_dir.mkdir(parents=True, exist_ok=True)
+    if adapter_only:
+        path = output_dir / f"adapter_step_{step}.pt"
+        torch.save({"adapter": adapter_state_dict(model), "step": step, "kind": "adapter"}, path)
+        return path
     path = output_dir / f"sft_smoke_step_{step}.pt"
     torch.save(
         {
@@ -564,6 +570,9 @@ def main() -> None:
     ap.add_argument("--grad-ckpt", action="store_true", help="enable gradient checkpointing (slower, less VRAM)")
     ap.add_argument("--save-every", type=int, default=0, help="save checkpoint every N steps (0=off)")
     ap.add_argument("--bucket", action="store_true", help="length-bucketed batching (minimal padding, no contamination)")
+    ap.add_argument("--adapter-r", type=int, default=0, help="LoRA/DoRA rank (0=off -> full fine-tune). Freezes base, trains adapter only.")
+    ap.add_argument("--adapter-alpha", type=float, default=32.0, help="adapter scaling alpha")
+    ap.add_argument("--adapter-kind", choices=["dora", "lora"], default="dora")
     ap.add_argument(
         "--category-weights",
         default="",
@@ -688,6 +697,18 @@ def main() -> None:
     print(f"loaded checkpoint: {args.checkpoint} (pretrain step={loaded_step})", flush=True)
     print(f"mamba backend: {'mamba_ssm' if _KERNEL_ACTIVE else 'native'}", flush=True)
 
+    # Adapter mode: inject AFTER loading the base (so the base load stays clean),
+    # then freeze base -> build_optimizer picks up only the adapter params.
+    if args.adapter_r > 0:
+        inj = inject_adapters(model, r=args.adapter_r, alpha=args.adapter_alpha, kind=args.adapter_kind)
+        model = model.to(device)  # move freshly-created adapter params onto the device
+        tr, tot = freeze_base(model)
+        if args.grad_ckpt:
+            enable_input_require_grads(model)  # else checkpointing OOMs with frozen base
+        print(f"adapter [{args.adapter_kind} r={args.adapter_r} a={args.adapter_alpha:g}]: "
+              f"{len(inj)} modules · trainable {tr/1e6:.1f}M/{tot/1e6:.0f}M ({100*tr/tot:.2f}%) · base FROZEN",
+              flush=True)
+
     optimizer = build_optimizer(
         model,
         {"name": "adamw", "lr": args.lr, "betas": [0.9, 0.95], "weight_decay": 0.0, "eps": 1e-8},
@@ -806,7 +827,7 @@ def main() -> None:
         optimizer.zero_grad(set_to_none=True)
 
         if args.save_every and step % args.save_every == 0:
-            sp_path = save_sft_checkpoint(model, optimizer, scheduler, step, args.output_dir)
+            sp_path = save_sft_checkpoint(model, optimizer, scheduler, step, args.output_dir, adapter_only=args.adapter_r > 0)
             print(f"  [checkpoint] step {step} -> {sp_path}", flush=True)
 
         if step == 1 or step % args.eval_every == 0 or step == args.steps:
@@ -877,7 +898,7 @@ def main() -> None:
         print(f"\nPROMPT: {probe}\n{answer!r}", flush=True)
 
     if args.save_final:
-        path = save_sft_checkpoint(model, optimizer, scheduler, args.steps, args.output_dir)
+        path = save_sft_checkpoint(model, optimizer, scheduler, args.steps, args.output_dir, adapter_only=args.adapter_r > 0)
         diag["saved_checkpoint"] = str(path)
         print(f"\nsaved: {path}", flush=True)
     if args.diag_json:

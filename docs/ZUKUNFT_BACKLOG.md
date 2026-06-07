@@ -48,6 +48,21 @@
 > Entitäten dürfen NICHT ausgeschmückt werden; `12+15`→Tool). Eine Retention-Regression = nicht
 > promotable. Abstention moderat dosieren (RLVR-Humility-Befund: zu viel = Verweigerungs-Bot).
 
+### GEMESSEN — Calib v1 (Juni 2026): Fähigkeit bewiesen, Rezept zu grob
+- Probe (key-frei): step_600 halluziniert **100 %** der erfundenen Entitäten (60/60), kennt
+  Hauptstädte ~74 %, Werke nur 6 %. → klarer Kalibrierungsbedarf.
+- Calib-SFT v1 (714 Bsp: 155 Abstention / 38 confident / 600 Anker, ~20 % Abstention).
+- Dual-Gate (Held-out): Honesty **0→93 % Abstention** auf NEUEN Erfundenen, Hauptstädte
+  gehalten (89 %). **ABER Demo deckte auf, was das Aggregat-Gate maskierte:** Über-Verweigerung
+  leakt auf bekannte Fakten (Einstein→„weiß ich nicht") UND bricht Math-Dispatch (`12+15`→
+  Abstention statt Tool; `15 %` ging noch). → **step_50 NICHT promotable.**
+- **Lektion:** Gate maß nur Hauptstädte → Über-Verweigerung versteckte sich im ungemessenen Raum.
+  Greedy-Demo fing es, gesampeltes Aggregat nicht. („Prüfe, ob die Zahl misst, was du glaubst.")
+- **Fix Calib v2:** (a) **Tool-SFT-Traces beimischen** (Dispatch nicht vergessen), (b) confident-
+  Anker BREITER (Personen/Fakten, nicht nur Hauptstädte) + viele kurze Known-Facts (gegen
+  „kurz→abstain"), (c) Abstention-Anteil < 20 %. **Gate v2:** Retention breiter messen
+  (Hauptstädte + Personen + Math-Dispatch), nicht nur Capitals.
+
 ## Leitprinzip — besserer Entwicklungs-Loop, NICHT rekursive Selbstverbesserung
 > Quelle: Anthropic, "Recursive Self-Improvement". Helix wird **nicht durch „mehr Modell"** besser,
 > sondern durch einen **besseren Loop um das Modell**: Modell + Tools + Tests + Mensch.

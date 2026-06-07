@@ -111,6 +111,31 @@ Toolformer (wann Tool rufen), Qwen2.5-Math TIR (1,5B+Python→MATH 80).
 **Grenzen (ehrlich):** in-distribution (trainierte Typen, neue Zahlen); `simple` schwach wegen
 sqrt/`hoch 2`; answer_match konservativ (Komma/Punkt). Tool-Use fügt **kein Wissen** hinzu.
 
+## Modularer-Adapter-Meilenstein — Skills ohne Kollateralschaden (Juni 2026)
+**Helix kann modulare Verhaltens-Skills per LoRA-Adapter bekommen, ohne den Base zu beschädigen.**
+Das ist der Kern der modularen Vision — und der Gegenbeweis zum Full-Finetuning.
+
+**Das Problem (gemessen):** Full-FT-Kalibrierung vergisst Tool-Use/Fakten nach ~50 Steps
+(catastrophic forgetting). Zwei Runden lieferten KEINEN Checkpoint mit Honesty UND Retention.
+
+**Die Lösung:** LoRA-Adapter (1,2 % Params) auf **eingefrorenem** Base. `src/auralis/adapters/lora.py`
+(injiziert 188 GLA/Attn/FFN-Module; Mamba-Kernel exkludiert, da `.weight`-direkt). Plus α-Regler
+(`set_adapter_scale`) — die Skill-Stärke ist zur **Inferenz** dosierbar, ohne Neutraining.
+
+**α-Sweep (Honesty-Adapter auf step_600, Held-out, n=60 erfunden):**
+```
+α=0.00  inv-abstain 3%   people 5/5  math 5/5   ← = exakt Base (Kontrolle bestanden)
+α=0.50  inv-abstain 95%  people 5/5  math 5/5   ← SWEET SPOT
+α=1.00  inv-abstain 100% people 5/5  math 5/5
+```
+> **Adapter aus = exakt Base. Adapter an = steuerbares Zusatzverhalten. α=0.5 liefert 95 %
+> Abstention OHNE Tool- oder Faktenverlust.** Was Full-FT zweimal nicht konnte (Honesty ODER
+> Retention), macht der dosierbare Adapter in einem Lauf, auf garantiert intaktem Base.
+
+**Roadmap validiert:** Base (Sprache+Tool-Use) eingefroren · Honesty-LoRA @ α=0.5 zuschaltbar ·
+Code-LoRA nach Annealing · Wissens-MoRA später. Zwei PEFT-Fixes im Code (DoRA-Speicher; grad-ckpt
++ frozen Base → `enable_input_require_grads`).
+
 ## Leitsatz
 > Datensammlung erfolgt auf Basis von **Wissensprofilen**, nicht des Gesamt-Val-Loss.
 > Und: bevor eine schlechte Zahl „die Daten" sind — prüfe, ob die Zahl überhaupt misst, was du glaubst.

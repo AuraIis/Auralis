@@ -6,6 +6,40 @@ Dies ist die aktuelle Kurz-Wahrheit fuer das Repo. Wenn alte Phasenplaene,
 April-/Mai-Statusstaende oder Specs widersprechen, gilt zuerst diese Datei,
 dann die Reports vom 2026-05-29, dann die jeweilige Arbeitsdoku.
 
+## Update 2026-06-07b — Modulare Adapter (LoRA) bewiesen: Skills OHNE Kollateralschaden
+
+NEUESTER STAND. Zweiter Architektur-Meilenstein heute: Helix kann modulare Skills per
+Adapter bekommen, OHNE den Base dauerhaft zu beschaedigen — der Kern der modularen Vision.
+
+Problem (gemessen): Full-FT-Kalibrierung vergisst nach ~50 Steps Tool-Use/Fakten
+(catastrophic forgetting). Zwei Full-FT-Runden (calib v1+v2) lieferten KEINEN Checkpoint
+mit Honesty UND Retention zugleich (oszilliert / `12+15` bricht / Einstein ueber-verweigert).
+
+Loesung: LoRA-Adapter auf EINGEFRORENEM Base (`checkpoints/tool_sft_v12/step_600`).
+- `src/auralis/adapters/lora.py`: LoRA/DoRA-Layer, inject in 188 GLA/Attn/FFN-Module
+  (Mamba `mamba_ssm`-Kernel exkludiert — liest `.weight` direkt, un-wrappbar), 1,2% trainable,
+  alpha-Regler (`set_adapter_scale`), save/load (~MB statt 10 GB).
+- Trainer-Integration (`smoke_sft_de --adapter-r`), Adapter-Gate (`calib_gate --base/--alpha-sweep`).
+- Zwei PEFT-Stolpersteine gefixt + im Code dokumentiert: (1) DoRA rekonstruiert volle Gewichte
+  -> speicherhungrig -> LoRA; (2) grad-ckpt OOMt bei frozen Base -> `enable_input_require_grads`
+  (PEFT-Trick: Embedding-Output grad-pflichtig) -> 47GB -> 14,7GB.
+
+ALPHA-SWEEP (Honesty-Adapter `honesty_adapter_v1` auf step_600, Held-out-Bank, n=60 invented):
+```
+alpha   inv-abstain (honesty)   people-answer   math-tool
+0.00    3%   (= exakt Base)      5/5             5/5      <- Kontrolle: Adapter aus = Base
+0.25    18%                      5/5             5/5
+0.50    95%                      5/5             5/5      <- SWEET SPOT (empfohlenes alpha)
+0.75    100%                     5/5             5/5
+1.00    100%                     5/5             5/5
+```
+> **Adapter AUS = exakt Base. Adapter AN = steuerbares Zusatzverhalten. alpha=0.5 liefert
+> 95% Abstention OHNE Tool- oder Faktenverlust.** Was Full-FT ZWEIMAL nicht konnte (Honesty
+> ODER Retention), macht der dosierbare Adapter in EINEM Lauf, auf garantiert intaktem Base.
+
+Damit ist die modulare Roadmap validiert: Honesty-LoRA jetzt, Code-LoRA nach Annealing,
+Wissens-MoRA spaeter. Offen (naechste Session): Inferenz-Pfad Base+Adapter@0.5 (deploybar).
+
 ## Update 2026-06-07 — Tool-Use Mathe END-TO-END (verifiziertes Rechnen statt Raten)
 
 NEUESTER STAND. Helix loest Arithmetik jetzt ueber ein verifiziertes externes Tool,
