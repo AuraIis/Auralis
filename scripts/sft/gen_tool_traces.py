@@ -229,6 +229,10 @@ def main():
     ap.add_argument("--n-tool", type=int, default=1500)
     ap.add_argument("--n-qa", type=int, default=3500)
     ap.add_argument("--qa-src", default=str(REPO / "data/training/sft_real_v1/train.helix.jsonl"))
+    ap.add_argument("--verified-src", default=str(REPO / "data/training/tool_verified_v1/verified_math.jsonl"),
+                    help="executor-verified TEACHER tool traces (qwen3.6 + calculator + cross-solve) to mix in")
+    ap.add_argument("--n-verified", type=int, default=0,
+                    help="how many verified traces to mix (0=all available). Only used in --mode full.")
     ap.add_argument("--val", type=int, default=200)
     ap.add_argument("--mode", choices=["call_only", "full"], default="call_only")
     ap.add_argument(
@@ -242,7 +246,27 @@ def main():
     gens = PHASE2_SIMPLE_REBUMP_GENS if a.simple_rebump else BASE_GENS
     tool = gen_tool(rng, a.n_tool, a.mode, gens=gens)
     qa = sample_qa(rng, a.n_qa, a.qa_src)
-    rows = tool + qa
+    # mix in executor-verified TEACHER traces (natural-language word problems the
+    # templates can't produce, but guaranteed correct). full-mode only: they ARE full traces.
+    ver = []
+    vp = pathlib.Path(a.verified_src)
+    if a.mode == "full" and vp.exists():
+        for line in open(vp, encoding="utf-8"):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                r = json.loads(line)
+            except Exception:
+                continue
+            if r.get("text") and r.get("has_tool"):
+                ver.append({"text": r["text"], "source": "tool_math_verified", "has_tool": True})
+        rng.shuffle(ver)
+        if a.n_verified > 0:
+            ver = ver[:a.n_verified]
+    elif a.mode == "full":
+        print(f"WARN no verified-src at {vp} (skipping verified mix-in)", file=sys.stderr)
+    rows = tool + ver + qa
     rng.shuffle(rows)
     nval = min(a.val, len(rows) // 20)
     val, train = rows[:nval], rows[nval:]
@@ -252,7 +276,9 @@ def main():
             for r in part:
                 f.write(json.dumps(r, ensure_ascii=False) + "\n")
     nt = sum(r["has_tool"] for r in train)
-    print(f"=== tool-SFT [{a.mode}]: train {len(train)} (tool {nt} / qa {len(train)-nt}) | val {len(val)} ===")
+    nver = sum(r.get("source") == "tool_math_verified" for r in train)
+    print(f"=== tool-SFT [{a.mode}]: train {len(train)} (tool {nt} [templated {nt-nver} / verified {nver}] "
+          f"/ qa {len(train)-nt}) | val {len(val)} ===")
     print(f"    -> {out}")
     print("\n=== 3 SAMPLE TOOL TRACES ===")
     for r in [x for x in train if x["has_tool"]][:3]:

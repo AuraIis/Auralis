@@ -1,10 +1,52 @@
 # STATUS - Auralis v2
 
-Stand: 2026-06-07
+Stand: 2026-06-08
 
 Dies ist die aktuelle Kurz-Wahrheit fuer das Repo. Wenn alte Phasenplaene,
 April-/Mai-Statusstaende oder Specs widersprechen, gilt zuerst diese Datei,
 dann die Reports vom 2026-05-29, dann die jeweilige Arbeitsdoku.
+
+## Update 2026-06-08 — Verifizierte Daten-Pipeline (lokaler Teacher) + Antwort-Doktrin + Track-B Anneal
+
+NEUESTER STAND. Key-freie verifizierte Trainingsdaten aus lokalem Ollama-Teacher
+(qwen3.6:27b), eine formalisierte Antwort-Doktrin, und der erste echte Code-Anneal
+mit Retention-Diagnose. OpenRouter-Key bleibt geloescht — alles laeuft lokal.
+
+Teacher-Vergleich (kontrastive Fakten): qwen3.6:27b 10/10 > gemma4:12b 7/11 >
+qwen3.5 4/10. gpt-oss laedt nicht. -> qwen3.6 = Primary, gemma4 = schneller Kreuzpruefer.
+
+Verifizierte Daten-Pipeline (Teacher schlaegt vor, EXECUTOR = Wahrheit), zwei-phasig/
+inkrementell/resume:
+- Mathe: `gen_verified_math.py` — DE-Textaufgaben, AST-Calculator (T1 Selbst-Konsistenz)
+  + gemma4-Kreuzloesung (T2 Modellierung). **457 Traces** (Yield 91%, T1 97% / T2 95%).
+- Kalibrierung (Archetyp C): `gen_verified_abstain.py` — Tutor-Konfident (Gold-Kern) +
+  ehrliche Abstains (Hedge + Fabrikat-Sperre). Rein strukturell. **203 Zeilen (98%/98%)**.
+- Grounded (Archetyp H): `gen_verified_grounded.py` — KONTEXT = Executor. Beleg-Overlap
+  + RC-Check. **477 Zeilen, 0 Near-Duplikate, 100% answerable / 99% unanswerable**.
+
+HARTE LEKTION (an echten Daten bewiesen): Fakten haben keinen Executor -> lokale
+LLM-Richter sind NETTO-NEGATIV (verwerfen Korrektes pedantisch UND sind blind fuer
+eigene Fehler). Loesung = STRUKTUR (Gold-Kern / Fabrikat-Sperre / Kontext-Abgleich),
+nicht LLM-Urteil. Formalisiert in `docs/ANTWORT_DOKTRIN.md` (8 Archetypen; Form von uns,
+Inhalt vom Teacher, Korrektheit vom Verifizierer). Default-Ton: ausfuehrlich/lehrend.
+
+Track B — Code-Anneal bewiesen + Retention-Diagnose (eval_code_ppl, fixe Held-out-Sets):
+```
+                  baseline    v1(code50/de20)   v2(code35/de45)   v3(broad-DE, laeuft)
+code ppl          31725   ->  293           ->  349           ->  (Gate offen)
+de   ppl          295     ->  332 (+12%)    ->  581 (+97%!)   ->  (Gate offen)
+en   ppl          238     ->  172           ->  134           ->  (Gate offen)
+```
+- **Code-Injektion BEWIESEN: 31725 -> 293 (108x).** Continued-Pretrain bringt Code in den Base.
+- **v2-Schock:** mehr DE-Ratio (45%) -> SCHLECHTERES DE (+97%). Ursache: 2,4M DE-Set
+  ~12x wiederholt = Overfitting auf engen Ausschnitt, weg von der breiten Held-out-Verteilung.
+- **Fix (v3, laeuft):** DE-Retention 2,4M -> **23,5M breit** (FineWeb2-DE-edu + wiki =
+  exakte Foundation-Verteilung, <1x Wiederholung) + 7,5M EN. Mix 30/20/40/10, 1500 Steps,
+  warm-start Foundation step_50000. Gate: code<500, de<=+5% (<=~310), en<=238. Auswertung
+  ueber 3 Checkpoints (500/1000/1500), fruehester der das Gate trifft wird Base-v2.
+
+Datenbloecke fertig (verifiziert, gitignored): Mathe 457 + Kalibrierung 203 + H 477.
+Kombiniertes SFT (+ Tool/Honesty/Code-DoRA) ERST NACH bestandenem Base-v2-Gate. Kein Vorpreschen.
 
 ## Update 2026-06-07b — Modulare Adapter (LoRA) bewiesen: Skills OHNE Kollateralschaden
 
