@@ -16,7 +16,7 @@ import torch.nn.functional as F
 
 DEFAULT_TARGETS = ("q_proj", "k_proj", "v_proj", "g_proj", "out_proj",
                    "in_proj", "gate_proj", "up_proj", "down_proj")
-ADAPTER_KEYS = ("lora_A", "lora_B", "magnitude")
+ADAPTER_KEYS = ("lora_A", "lora_B", "magnitude", "mora_M")
 
 
 class LoRALinear(nn.Module):
@@ -67,6 +67,44 @@ class DoRALinear(nn.Module):
         return F.linear(self.dropout(x), W_eff.to(x.dtype), self.base.bias)
 
 
+class MoRALinear(nn.Module):
+    """MoRA: high-rank update via a SQUARE matrix M (init 0 -> identity), SAME trainable
+    param budget as LoRA-r but rank m >> r. Parameter-free group-compress (in -> m, sum
+    over contiguous chunks) and group-decompress (m -> out, repeat). Low-rank LoRA is good
+    at *adjusting* existing behaviour but weak at injecting genuinely NEW capability; MoRA's
+    high-rank update targets exactly that. Ref: Jiang et al. 2024 'MoRA' (own implementation;
+    selftested for identity-at-init + grad-flow). m chosen so m^2 ~ r*(in+out)."""
+    def __init__(self, base: nn.Linear, r: int, alpha: float, dropout: float = 0.0):
+        super().__init__()
+        self.base = base
+        self.base.weight.requires_grad_(False)
+        if self.base.bias is not None:
+            self.base.bias.requires_grad_(False)
+        in_f, out_f = base.in_features, base.out_features
+        self.in_f, self.out_f = in_f, out_f
+        self.m = max(r, int(round(math.sqrt(max(1, r * (in_f + out_f))))))
+        self.ci = math.ceil(in_f / self.m)
+        self.co = math.ceil(out_f / self.m)
+        self.mora_M = nn.Parameter(torch.zeros(self.m, self.m))  # init 0 -> identity
+        self.scaling = alpha / self.m
+        self.dropout = nn.Dropout(dropout) if dropout > 0 else nn.Identity()
+        self.scale = 1.0  # inference dial; scale=0 -> exact base (M-path zeroed)
+
+    def _compress(self, x):  # (..., in_f) -> (..., m)
+        pad = self.m * self.ci - self.in_f
+        if pad:
+            x = F.pad(x, (0, pad))
+        return x.reshape(*x.shape[:-1], self.m, self.ci).sum(-1)
+
+    def _decompress(self, h):  # (..., m) -> (..., out_f)
+        h = h.unsqueeze(-1).expand(*h.shape, self.co).reshape(*h.shape[:-1], self.m * self.co)
+        return h[..., :self.out_f]
+
+    def forward(self, x):
+        delta = self._decompress(self._compress(self.dropout(x)) @ self.mora_M.t())
+        return self.base(x) + delta * (self.scaling * self.scale)
+
+
 def _parent(model: nn.Module, dotted: str):
     parts = dotted.split(".")
     parent = model
@@ -85,7 +123,7 @@ def inject_adapters(model: nn.Module, targets=DEFAULT_TARGETS, r: int = 16,
     `out_proj.weight` DIRECTLY (bypassing module forward) — wrapping it both crashes
     and would have no effect. So adapters live on GLA/Attn/FFN (the mixing + MLP
     surface); the SSM state path stays un-adapted (acceptable + standard for PEFT)."""
-    Cls = DoRALinear if kind == "dora" else LoRALinear
+    Cls = {"dora": DoRALinear, "mora": MoRALinear}.get(kind, LoRALinear)
     injected = []
     for name, module in list(model.named_modules()):
         if any(ex in name for ex in exclude):
@@ -128,7 +166,7 @@ def set_adapter_scale(model: nn.Module, scale: float) -> int:
     scale=0 -> exact base (LoRA), scale=1 -> trained strength. Returns count set."""
     n = 0
     for m in model.modules():
-        if isinstance(m, (LoRALinear, DoRALinear)):
+        if isinstance(m, (LoRALinear, DoRALinear, MoRALinear)):
             m.scale = scale
             n += 1
     return n
@@ -160,7 +198,7 @@ def _selftest():
         def forward(s, x):
             return s.out_proj(s.q_proj(x))
 
-    for kind in ("lora", "dora"):
+    for kind in ("lora", "dora", "mora"):
         m = Mock()
         x = torch.randn(4, 32)
         y0 = m(x)

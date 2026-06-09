@@ -572,7 +572,7 @@ def main() -> None:
     ap.add_argument("--bucket", action="store_true", help="length-bucketed batching (minimal padding, no contamination)")
     ap.add_argument("--adapter-r", type=int, default=0, help="LoRA/DoRA rank (0=off -> full fine-tune). Freezes base, trains adapter only.")
     ap.add_argument("--adapter-alpha", type=float, default=32.0, help="adapter scaling alpha")
-    ap.add_argument("--adapter-kind", choices=["dora", "lora"], default="dora")
+    ap.add_argument("--adapter-kind", choices=["dora", "lora", "mora"], default="dora")
     ap.add_argument(
         "--category-weights",
         default="",
