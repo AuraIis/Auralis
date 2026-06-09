@@ -6,6 +6,44 @@ Dies ist die aktuelle Kurz-Wahrheit fuer das Repo. Wenn alte Phasenplaene,
 April-/Mai-Statusstaende oder Specs widersprechen, gilt zuerst diese Datei,
 dann die Reports vom 2026-05-29, dann die jeweilige Arbeitsdoku.
 
+## Update 2026-06-08b — Helix v2.1: Base-v2 + balancierte SFT (ehrlich + kohärent)
+
+NEUESTER STAND. Base-v2 (code_math_anneal_v3/step_1500) wurde balanciert ge-SFT-tet
+(basev2_sft_v1: 11.392 Beispiele — 68% Chat / 21% Mathe-Tool / 5% Kalibrierung / 5% Grounded,
+build_basev2_sft.py). 2000 Steps, val_loss 5.09 -> 2.09. Ergebnis = **Helix v2.1**.
+
+Vorher/Nachher (eval_probes.py, dieselben Prompts wie der Live-Test):
+```
+                  Stein-Helix (tool_sft_v12, alt)   ->  Helix v2.1 (basev2_sft step_2000)
+wer ist einstein? "Walhai-System, ein Stein..."    ->  "Ich weiss nicht, wer einstein ist."  ✅✅
+Hauptstadt DE?    "Arizona/Utah"-Salat             ->  "Berlin."                              ✅✅
+Moxthal Vornurr?  (konfabuliert)                   ->  sauberes Abstain (zugeben->warum->Hilfe) ✅✅
+47 mal 6?         —                                ->  Tool -> 282                            ✅
+hallo             360+618=978                      ->  immer noch Mathe (5*2=10)              ❌
+```
+- GEWONNEN: Kalibrierung/Ehrlichkeit (kein Konfabulieren mehr -> ehrliches Abstain), kohaerenter
+  Chat, Mathe-Tool. Der Kern der Vision (nicht erfinden, Unwissen zugeben) SITZT.
+- OFFEN: "hallo" triggert hartnaeckig das Tool (WANN-Tool nicht gelernt — Tool ist zu fest
+  ins Base-SFT gebacken); Weltwissen schwach/teils halluziniert (Korpus-Limit, nicht per SFT fixbar).
+
+RETENTION-CHECK (eval_code_ppl, fixe Held-out-Sets) — die kritische Frage "frisst full-FT-SFT
+die Base-v2-Gewinne?": NEIN.
+```
+                 base-v2(v3)  ->  SFT step_2000     (kein katastrophales Vergessen)
+code ppl         240       ->    15.9
+de   ppl         299       ->    134
+en   ppl         110       ->    30.6
+```
+EHRLICH: der grosse PPL-Abfall ist vermutlich z.T. ein Schaerfungs-Effekt (peakigere Ausgabe-
+Verteilung), nicht reiner Faehigkeitsgewinn — niedrige PPL != gute Generierung (Probes sind gemischt).
+Aber die Kern-Aussage steht: SFT hat die Base-v2-Retention NICHT zerstoert.
+
+Neue Tools: chat.py (interaktiver REPL), helix_serve.py (OpenAI-kompatibler Server -> Helix
+laeuft nicht in Ollama/LocalAI wg. GLA-Arch, aber spricht das OpenAI-Protokoll), eval_probes.py.
+
+NAECHSTE SCHRITTE: (1) Tool-Over-Trigger via MODULAREM Adapter loesen (Chat-Base ohne Tool ->
+Mathe/Code als gateable Adapter, genau die Modular-Vision); (2) Weltwissen = eigenes Korpus-Projekt.
+
 ## Update 2026-06-08 — Verifizierte Daten-Pipeline (lokaler Teacher) + Antwort-Doktrin + Track-B Anneal
 
 NEUESTER STAND. Key-freie verifizierte Trainingsdaten aus lokalem Ollama-Teacher
