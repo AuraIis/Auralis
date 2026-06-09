@@ -6,6 +6,29 @@ Dies ist die aktuelle Kurz-Wahrheit fuer das Repo. Wenn alte Phasenplaene,
 April-/Mai-Statusstaende oder Specs widersprechen, gilt zuerst diese Datei,
 dann die Reports vom 2026-05-29, dann die jeweilige Arbeitsdoku.
 
+## Update 2026-06-09 — Code-Skill: Executor-gated Daten + Code-LoRA v1 (gescheitert) -> v2
+
+Dritte Executor-Achse (nach Mathe=Calculator, Grounded=Kontext): fuer CODE ist der
+EXECUTOR py_compile + Ausfuehrung gegen Testfaelle. gen_verified_code.py: qwen3.6 schlaegt
+Aufgabe+Funktion+Tests vor, wir kompilieren+fuehren aus, behalten nur was laeuft+besteht.
+(Harness-Bug gefangen: JSON true/false als Python-Source crashte alle Praedikat-Funktionen
+-> mit _json.loads im Harness parsen.)
+
+CODE-LoRA v1 (173 verified -> LoRA r=16 auf frozen v2.1) — GESCHEITERT, dokumentiert:
+- Alpha-Sweep (eval_adapter_sweep.py): alpha=0 = EXAKT v2.1 (Honesty intakt -> Modular-Dial
+  ein zweites Mal bewiesen). ABER alpha>=0.5: Code-FORMAT erscheint, Code-QUALITAET = Murks/
+  Regurgitation, UND Honesty broeckelt (einstein-Konfabulation zurueck).
+- Befund: nicht Infra, sondern DATENMENGE+KAPAZITAET. 173 Beispiele = Format lernen + memorieren,
+  keine Generalisierung. Code ist ein ECHTER Skill (nicht wie Tool-Use/Honesty ein Verhaltens-Trick)
+  und braucht Tausende verifizierte Beispiele. NICHT promotbar.
+
+CODE-LoRA v2 (im Bau): gen_verified_code_v2.py — Scope ENG (kleine Funktionen, keine Imports,
+Algorithmen/Listen/Strings/Dicts), >=8 Edge-Case-Tests, + HIDDEN-TEST-Gate via Cross-Implementation
+(gemma4 loest unabhaengig, muss dieselben 8 Tests bestehen — zwei unabhaengige Impls = Korroboration;
+volle Output-Agreement war zu streng -> Spec-Ambiguitaet-False-Drops). Yield ~22% (doppelt verifiziert).
+Plan: 1000 verifizierte Aufgaben -> Code-LoRA v2 (r=32 + Honesty/Chat-Retention im Mix gegen Bleeding)
+-> Alpha-Sweep. Wenn echte Verbesserung -> auf 5000 skalieren.
+
 ## Update 2026-06-08b — Helix v2.1: Base-v2 + balancierte SFT (ehrlich + kohärent)
 
 NEUESTER STAND. Base-v2 (code_math_anneal_v3/step_1500) wurde balanciert ge-SFT-tet
