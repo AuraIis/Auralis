@@ -31,6 +31,7 @@ import torch.nn as nn
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LambdaLR
 
+from auralis.adaptive.bpb import bits_per_byte, bpb_gap
 from auralis.training.health import (
     AlertLevel,
     HealthConfig,
@@ -86,6 +87,10 @@ class TrainerState:
     step: int = 0
     best_val_loss: float = float("inf")
     consecutive_val_increases: int = 0
+    # Previous eval's val_loss — lets the guard count TRUE consecutive rises
+    # (val higher than the eval before it) rather than "failed to beat best".
+    # inf = no prior eval yet (first eval never counts as a rise).
+    last_val_loss: float = float("inf")
     tokens_seen: int = 0
     wall_clock_seconds: float = 0.0
     alerts: list[str] = field(default_factory=list)
@@ -95,6 +100,14 @@ class TrainerState:
     # Consecutive failures (resets on success). Used by the health monitor
     # to stop training before the checkpoint graveyard fills with bogus runs.
     external_backups_consecutive_failed: int = 0
+    # Non-finite loss/grad steps: total (forensics) and consecutive (the stop
+    # signal — resets on any finite step). One-off bf16 spikes are normal;
+    # only PERSISTENT non-finiteness is pathological.
+    nonfinite_steps_total: int = 0
+    nonfinite_steps_consecutive: int = 0
+    # Held-out eval-gate composite history (last few scores; full JSON on disk)
+    gate_last_composite: float = float("nan")
+    gate_best_composite: float = float("-inf")
 
 
 @dataclass
@@ -117,6 +130,26 @@ class RunMetadata:
     cuda_version: str | None = None
     gpu_name: str | None = None
     dtype: str = "fp32"
+    # Kernel/backend env flags at construction time. A checkpoint trained with
+    # the GLA kernel must not be silently evaluated/resumed native (and vice
+    # versa) — the native decay-dim bug made that a silent-corruption hole.
+    kernel_mamba: str = ""
+    kernel_gla: str = ""
+    kernel_flash_attn: str = ""
+
+
+def _align_model_state_for_load(
+    model: nn.Module,
+    state: dict[str, torch.Tensor],
+) -> dict[str, torch.Tensor]:
+    """Align torch.compile ``_orig_mod.`` prefixes before loading weights."""
+    model_prefixed = any(k.startswith("_orig_mod.") for k in model.state_dict())
+    ckpt_prefixed = any(k.startswith("_orig_mod.") for k in state)
+    if model_prefixed and not ckpt_prefixed:
+        return {f"_orig_mod.{k}": v for k, v in state.items()}
+    if ckpt_prefixed and not model_prefixed:
+        return {k.removeprefix("_orig_mod."): v for k, v in state.items()}
+    return state
 
 
 class PretrainTrainer:
@@ -132,6 +165,8 @@ class PretrainTrainer:
         device: str | torch.device = "cpu",
         val_dataloader: Iterator[dict[str, torch.Tensor]] | None = None,
         wandb_logger: Callable[[dict[str, float], int], None] | None = None,
+        world_size: int = 1,
+        rank: int = 0,
     ):
         self.model = model
         self.optimizer = optimizer
@@ -142,6 +177,19 @@ class PretrainTrainer:
         self.state = state or TrainerState()
         self.device = torch.device(device)
         self.log = _safe_log(wandb_logger or (lambda _metrics, _step: None))
+
+        # ---- Distributed (DDP) awareness; single-process when world_size == 1 ----
+        self._world_size = max(1, int(world_size))
+        self._rank = int(rank)
+        self._is_distributed = self._world_size > 1
+        self._is_main = self._rank == 0
+        # Checkpoints stay DDP-agnostic: save/load the underlying module so a
+        # multi-GPU checkpoint reloads single-GPU (no "module." key prefix).
+        self._core_model = (
+            model.module
+            if isinstance(model, nn.parallel.DistributedDataParallel)
+            else model
+        )
 
         # Unpack knobs that get hit every step.
         tcfg = config["training"]
@@ -175,11 +223,11 @@ class PretrainTrainer:
         # fp16 requires a GradScaler to stay numerically stable; bf16 and fp32
         # do not. Create the scaler only when fp16 on CUDA is actually active.
         self._use_amp = self._amp_dtype != torch.float32
-        self._scaler: torch.cuda.amp.GradScaler | None = None
+        self._scaler: torch.amp.GradScaler | None = None
         if self._amp_dtype == torch.float16:
             if self.device.type != "cuda":
                 raise ValueError("fp16 training requires a CUDA device.")
-            self._scaler = torch.cuda.amp.GradScaler()
+            self._scaler = torch.amp.GradScaler("cuda")
 
         lcfg = config["logging"]
         self._log_every = int(lcfg.get("log_every", 10))
@@ -195,6 +243,11 @@ class PretrainTrainer:
         # always wrote best.pt on val improvement. Default true preserves
         # the existing Phase-1 behaviour.
         self._save_best = bool(ccfg.get("save_best", True))
+        self._skip_step_save_if_checkpoint_written = bool(
+            ccfg.get("skip_step_save_if_checkpoint_written", False)
+        )
+        self._last_checkpoint_step: int | None = None
+        self._last_checkpoint_name: str | None = None
         self._external_backup = ccfg.get("external_backup") or {}
 
         # ---- Health monitor (auto-stop guards) ----
@@ -202,6 +255,10 @@ class PretrainTrainer:
         self.health = HealthMonitor(HealthConfig(
             **{k: v for k, v in mon_cfg.items() if k in HealthConfig.__dataclass_fields__}
         ))
+        # Tolerance (nats) below which a val change is treated as noise, not a
+        # real improvement OR a real rise. Stops the guard tripping on the
+        # normal sub-noise wobble of a converged checkpoint. 0.0 = exact.
+        self._val_min_delta = float(mon_cfg.get("val_min_delta", 0.0))
 
         # ---- Cost tracker ----
         cost_cfg = config.get("cost") or {}
@@ -228,7 +285,27 @@ class PretrainTrainer:
             cuda_version=(str(torch.version.cuda) if torch.cuda.is_available() else None),
             gpu_name=(str(torch.cuda.get_device_name(0)) if torch.cuda.is_available() else None),
             dtype=str(dtype_str),
+            kernel_mamba=os.environ.get("AURALIS_USE_MAMBA_KERNEL", ""),
+            kernel_gla=os.environ.get("AURALIS_USE_GLA_KERNEL", ""),
+            kernel_flash_attn=os.environ.get("AURALIS_USE_FLASH_ATTN", ""),
         )
+
+        # ---- Non-finite step policy ----
+        # A single non-finite loss/grad SKIPS the optimizer step instead of
+        # killing the run; only K consecutive non-finite steps stop training
+        # (via HealthMonitor.observe_nonfinite). Configurable through
+        # monitoring.health.nonfinite_stop_k.
+
+        # ---- Held-out eval gate (optional; see scripts/eval/eval_gate.py) ----
+        gate_cfg = (config.get("evaluation") or {}).get("gate") or {}
+        self._gate_enabled = bool(gate_cfg.get("enabled", False))
+        self._gate_every = int(gate_cfg.get("every_steps", self._eval_every * 10))
+        self._gate_data_path = Path(gate_cfg.get(
+            "data_path", repo_root / "data" / "eval" / "heldout_gate_v1.jsonl"
+        ))
+        self._gate_max_new_tokens = int(gate_cfg.get("max_new_tokens", 48))
+        self._gate_out_dir = Path(gate_cfg.get("out_dir", self._ckpt_dir / "eval_gate"))
+        self._gate_runner = None  # lazy import of scripts/eval/eval_gate.py
 
     def _autocast(self):
         """Context manager for mixed-precision forward/backward."""
@@ -242,15 +319,20 @@ class PretrainTrainer:
         self.model.train()
         data_iter = iter(self.dataloader)
         window_loss_sum = 0.0
+        window_loss_main_sum = 0.0
+        window_loss_mtp_sum = 0.0
+        window_loss_main_count = 0
+        window_loss_mtp_count = 0
         window_t0 = time.time()
         window_data_time = 0.0
         window_compute_time = 0.0
 
         while self.state.step < self._total_steps:
             loss_acc = 0.0
+            nonfinite_step = False
             self.optimizer.zero_grad(set_to_none=True)
 
-            for _ in range(self._grad_accum):
+            for micro in range(self._grad_accum):
                 t_data_0 = time.time()
                 batch = next(data_iter)
                 batch = {k: v.to(self.device, non_blocking=True) for k, v in batch.items()}
@@ -259,44 +341,102 @@ class PretrainTrainer:
                 window_data_time += time.time() - t_data_0
 
                 t_compute_0 = time.time()
-                with self._autocast():
-                    out = self.model(input_ids=batch["input_ids"], labels=batch["labels"])
-                    loss = out["loss"] / self._grad_accum
-                if not torch.isfinite(loss):
-                    msg = f"non-finite loss at step {self.state.step}: {loss.item()}"
-                    self.state.alerts.append(msg)
-                    raise RuntimeError(msg)
-                if self._scaler is not None:
-                    self._scaler.scale(loss).backward()
-                else:
-                    loss.backward()
+                # DDP: defer the gradient all-reduce to the LAST micro-step so it
+                # fires once per optimizer step, not once per accumulation micro-step.
+                is_last_micro = micro == self._grad_accum - 1
+                sync_ctx = (
+                    self.model.no_sync()
+                    if (self._is_distributed and not is_last_micro)
+                    else nullcontext()
+                )
+                with sync_ctx:
+                    with self._autocast():
+                        out = self.model(input_ids=batch["input_ids"], labels=batch["labels"])
+                        loss = out["loss"] / self._grad_accum
+                    if not torch.isfinite(loss):
+                        # One-off bf16 spikes are normal; only PERSISTENT
+                        # non-finiteness is pathological. Mark the step for
+                        # skipping instead of raising; the consecutive counter
+                        # below stops the run if it never recovers.
+                        nonfinite_step = True
+                        if not self._is_distributed:
+                            window_compute_time += time.time() - t_compute_0
+                            break
+                        # DDP: still backward so the all-reduce stays in sync
+                        # across ranks. The poisoned grads are zeroed below.
+                    if self._scaler is not None:
+                        self._scaler.scale(loss).backward()
+                    else:
+                        loss.backward()
                 loss_acc += loss.item()
+                loss_main = out.get("loss_main")
+                if loss_main is not None:
+                    window_loss_main_sum += float(loss_main.detach().item())
+                    window_loss_main_count += 1
+                loss_mtp = out.get("loss_mtp")
+                if loss_mtp is not None:
+                    window_loss_mtp_sum += float(loss_mtp.detach().item())
+                    window_loss_mtp_count += 1
                 if self.device.type == "cuda":
                     torch.cuda.synchronize()
                 window_compute_time += time.time() - t_compute_0
 
-            # Clip + step (unscale first if fp16 + GradScaler)
+            # Clip + step (unscale first if fp16 + GradScaler). Non-finite
+            # grads do not raise — they mark the step skipped, same as a
+            # non-finite loss. fp16+GradScaler already skips on inf itself.
             if self._scaler is not None:
                 self._scaler.unscale_(self.optimizer)
             grad_norm = torch.nn.utils.clip_grad_norm_(
-                self.model.parameters(), max_norm=self._clip_norm
+                self.model.parameters(),
+                max_norm=self._clip_norm,
+                error_if_nonfinite=False,
             )
-            if self._scaler is not None:
-                self._scaler.step(self.optimizer)
-                self._scaler.update()
+            if not torch.isfinite(grad_norm):
+                nonfinite_step = True
+            # DDP: skip must be unanimous or optimizer states drift apart.
+            if self._is_distributed:
+                flag = torch.tensor([1.0 if nonfinite_step else 0.0], device=self.device)
+                torch.distributed.all_reduce(flag, op=torch.distributed.ReduceOp.MAX)
+                nonfinite_step = bool(flag.item() > 0)
+
+            if nonfinite_step:
+                self.optimizer.zero_grad(set_to_none=True)
+                if self._scaler is not None:
+                    self._scaler.update()
+                self.state.nonfinite_steps_total += 1
+                self.state.nonfinite_steps_consecutive += 1
+                grad_norm = torch.zeros(())  # poisoned value must not hit logs/health
+                msg = (
+                    f"non-finite loss/grad at step {self.state.step} — skipped "
+                    f"optimizer step ({self.state.nonfinite_steps_consecutive} consecutive, "
+                    f"{self.state.nonfinite_steps_total} total)"
+                )
+                self.state.alerts.append(msg)
+                if self._is_main:
+                    print(f"  warn: {msg}", flush=True)
+                for level, m in self.health.observe_nonfinite(
+                    self.state.nonfinite_steps_consecutive, self.state.step
+                ):
+                    if self._is_main:
+                        print(f"  health[{level.value}]: {m}", flush=True)
             else:
-                self.optimizer.step()
+                self.state.nonfinite_steps_consecutive = 0
+                if self._scaler is not None:
+                    self._scaler.step(self.optimizer)
+                    self._scaler.update()
+                else:
+                    self.optimizer.step()
             self.scheduler.step()
 
             self.state.step += 1
-            self.state.tokens_seen += self._batch_tokens
+            self.state.tokens_seen += self._batch_tokens * self._world_size
             window_loss_sum += loss_acc
 
             if self.state.step % self._log_every == 0:
                 elapsed = time.time() - window_t0
                 self.state.wall_clock_seconds += elapsed
                 avg_loss = window_loss_sum / self._log_every
-                tps = (self._batch_tokens * self._log_every) / max(elapsed, 1e-9)
+                tps = (self._batch_tokens * self._world_size * self._log_every) / max(elapsed, 1e-9)
                 lr = self.scheduler.get_last_lr()[0]
                 metrics: dict[str, float] = {
                     "train/loss": avg_loss,
@@ -307,6 +447,10 @@ class PretrainTrainer:
                     "train/data_frac": window_data_time / max(elapsed, 1e-9),
                     "train/compute_frac": window_compute_time / max(elapsed, 1e-9),
                 }
+                if window_loss_main_count:
+                    metrics["train/loss_main"] = window_loss_main_sum / window_loss_main_count
+                if window_loss_mtp_count:
+                    metrics["train/loss_mtp"] = window_loss_mtp_sum / window_loss_mtp_count
                 metrics["system/step_time_ms"] = (elapsed / max(self._log_every, 1)) * 1000.0
                 if self.device.type == "cuda":
                     metrics["train/vram_alloc_gb"] = torch.cuda.memory_allocated() / 1e9
@@ -339,46 +483,78 @@ class PretrainTrainer:
                             f"> budget ${self._cost_budget:.0f}"
                         )
 
-                self.log(metrics, self.state.step)
+                if self._is_main:
+                    self.log(metrics, self.state.step)
 
-                # Health check — may set self.health.stop_requested
+                # Health check — runs on every rank so per-rank grad/VRAM
+                # anomalies are caught; only rank 0 prints to avoid N-way noise.
                 for level, msg in self.health.observe(metrics, self.state.step):
-                    print(f"  health[{level.value}]: {msg}", flush=True)
-                extra = ""
-                if self.device.type == "cuda":
-                    extra = f" | vram {metrics['train/vram_alloc_gb']:.1f}/{metrics['train/vram_peak_gb']:.1f}GB"
-                print(
-                    f"step {self.state.step:6d} | loss {avg_loss:6.4f} | "
-                    f"lr {lr:.2e} | grad_norm {float(grad_norm):5.2f} | "
-                    f"tok/s {tps/1e3:6.1f}k | "
-                    f"data {metrics['train/data_frac']*100:4.1f}%"
-                    f"{extra}",
-                    flush=True,
-                )
+                    if self._is_main:
+                        print(f"  health[{level.value}]: {msg}", flush=True)
+                if self._is_main:
+                    extra = ""
+                    if self.device.type == "cuda":
+                        extra = f" | vram {metrics['train/vram_alloc_gb']:.1f}/{metrics['train/vram_peak_gb']:.1f}GB"
+                    print(
+                        f"step {self.state.step:6d} | loss {avg_loss:6.4f} | "
+                        f"lr {lr:.2e} | grad_norm {float(grad_norm):5.2f} | "
+                        f"tok/s {tps/1e3:6.1f}k | "
+                        f"data {metrics['train/data_frac']*100:4.1f}%"
+                        f"{extra}",
+                        flush=True,
+                    )
                 window_loss_sum = 0.0
+                window_loss_main_sum = 0.0
+                window_loss_mtp_sum = 0.0
+                window_loss_main_count = 0
+                window_loss_mtp_count = 0
                 window_t0 = time.time()
                 window_data_time = 0.0
                 window_compute_time = 0.0
 
             if self.val_dataloader is not None and self.state.step % self._eval_every == 0:
-                val_loss = self._evaluate()
-                self._track_val(val_loss)
-                # Health may also STOP on sustained val regression.
-                for level, msg in self.health.observe_val(
-                    val_loss,
-                    self.state.best_val_loss,
-                    self.state.consecutive_val_increases,
-                    self.state.step,
-                ):
-                    print(f"  health[{level.value}]: {msg}", flush=True)
+                # Eval is forward-only (no gradient all-reduce), so rank 0 runs it
+                # alone while the others wait at the barrier below — no DDP desync.
+                if self._is_main:
+                    val_loss = self._evaluate()
+                    self._track_val(val_loss)
+                    # Health may also STOP on sustained val regression.
+                    for level, msg in self.health.observe_val(
+                        val_loss,
+                        self.state.best_val_loss,
+                        self.state.consecutive_val_increases,
+                        self.state.step,
+                    ):
+                        print(f"  health[{level.value}]: {msg}", flush=True)
+                if self._is_distributed:
+                    torch.distributed.barrier()
+
+            if self._gate_enabled and self.state.step % self._gate_every == 0:
+                # Held-out gate is forward-only; rank 0 runs it, peers wait.
+                if self._is_main:
+                    self.run_eval_gate()
+                if self._is_distributed:
+                    torch.distributed.barrier()
 
             if self.state.step % self._save_every == 0:
-                self.save_checkpoint(f"step_{self.state.step}")
+                self._save_step_checkpoint_if_needed(f"step_{self.state.step}")
 
-            if self.health.should_stop():
-                reason = self.health.state.stop_reason
-                print(f"  AUTO-STOP: {reason}. Saving emergency ckpt and exiting.", flush=True)
-                self.save_checkpoint(f"step_{self.state.step}_emergency")
+            # Stop decision must be unanimous across ranks or DDP collectives
+            # would hang. Reduce the local flag with MAX so any rank's stop wins.
+            stop_local = self.health.should_stop()
+            if self._is_distributed:
+                flag = torch.tensor([1.0 if stop_local else 0.0], device=self.device)
+                torch.distributed.all_reduce(flag, op=torch.distributed.ReduceOp.MAX)
+                stop_global = bool(flag.item() > 0)
+            else:
+                stop_global = stop_local
+            if stop_global:
+                reason = self.health.state.stop_reason or "peer_requested_stop"
+                if self._is_main:
+                    print(f"  AUTO-STOP: {reason}. Saving emergency ckpt and exiting.", flush=True)
+                    self.save_checkpoint(f"step_{self.state.step}_emergency")
+                if self._is_distributed:
+                    torch.distributed.barrier()
                 raise HealthStop(reason)
 
         # Final checkpoint — skip if the last in-loop save already wrote
@@ -386,7 +562,7 @@ class PretrainTrainer:
         # 80000 % 2500). Avoids overwriting the freshly written file with
         # identical content and triggering a redundant external backup.
         if self.state.step % self._save_every != 0:
-            self.save_checkpoint(f"step_{self.state.step}")
+            self._save_step_checkpoint_if_needed(f"step_{self.state.step}")
         return self.state
 
     # ------------------------------------------------------------------
@@ -400,9 +576,20 @@ class PretrainTrainer:
         """
         self.model.eval()
         assert self.val_dataloader is not None
+        # Rewind the val RNGs so EVERY eval sees the identical token stream.
+        # Otherwise the stateful sampler advances and each eval draws different
+        # val tokens — turning the val trajectory into model-change + sampling
+        # noise (the confound the five-AI review flagged and we confirmed).
+        reset = getattr(self.val_dataloader, "reset_rngs", None)
+        if callable(reset):
+            reset()
         eval_cfg = self.config.get("evaluation", {})
         max_batches = int(eval_cfg.get("max_val_batches", 50))
         per_lang_batches = int(eval_cfg.get("per_language_batches", 8))
+        tokens_per_byte = {
+            str(k): float(v)
+            for k, v in (eval_cfg.get("tokens_per_byte") or {}).items()
+        }
 
         metrics: dict[str, float] = {}
 
@@ -441,42 +628,210 @@ class PretrainTrainer:
                     lang_losses[lang].append(out["loss"].item())
             for lang, ls in lang_losses.items():
                 if ls:
-                    metrics[f"eval/val_loss/{lang}"] = sum(ls) / len(ls)
+                    lang_val = sum(ls) / len(ls)
+                    metrics[f"eval/val_loss/{lang}"] = lang_val
+                    if lang in tokens_per_byte:
+                        metrics[f"eval/bpb/{lang}"] = bits_per_byte(lang_val, tokens_per_byte[lang])
+            bpbs = {
+                k.rsplit("/", 1)[-1]: v
+                for k, v in metrics.items()
+                if k.startswith("eval/bpb/")
+            }
+            if len(bpbs) >= 2:
+                metrics["eval/bpb_gap_max"] = bpb_gap(bpbs)
 
         self.model.train()
         self.log(metrics, self.state.step)
-        pretty = " ".join(f"{k.split('/')[-1]}={v:.3f}" for k, v in metrics.items())
+        pretty = " ".join(f"{k.removeprefix('eval/').replace('/', '_')}={v:.3f}" for k, v in metrics.items())
         print(f"  eval @ step {self.state.step}: {pretty}", flush=True)
+        for level, msg in self.health.observe_bpb(metrics, self.state.step):
+            print(f"  health[{level.value}]: {msg}", flush=True)
         return val
 
     def _track_val(self, val_loss: float) -> None:
-        if val_loss < self.state.best_val_loss:
+        """Update best-checkpoint + the consecutive-rise guard.
+
+        Two SEPARATE decisions, previously conflated into one bug:
+
+        * best.pt is written only on a real improvement (beat best by more than
+          ``min_delta``), so sub-noise wobble doesn't churn the checkpoint.
+        * ``consecutive_val_increases`` counts TRUE consecutive rises — val_loss
+          higher than the PREVIOUS eval by more than ``min_delta`` — not "failed
+          to beat the all-time best". The old code incremented on every eval
+          that wasn't a new best, so a model sitting just above its optimum (the
+          normal case) looked like a runaway regression and tripped the stop.
+        """
+        delta = self._val_min_delta
+        # best tracking (checkpoint) — real improvement only
+        if val_loss < self.state.best_val_loss - delta:
             self.state.best_val_loss = val_loss
-            self.state.consecutive_val_increases = 0
-            # Codex P5: only write best.pt if the config asks for it.
             if self._save_best:
                 self.save_checkpoint("best")
-        else:
+
+        # true consecutive-rise detection vs the previous eval
+        prev = self.state.last_val_loss
+        if prev != float("inf") and val_loss > prev + delta:
             self.state.consecutive_val_increases += 1
-            if self.state.consecutive_val_increases >= 3:
-                msg = (
-                    f"val_loss rose {self.state.consecutive_val_increases} evals in a row; "
-                    f"best={self.state.best_val_loss:.4f} now={val_loss:.4f}"
-                )
-                self.state.alerts.append(msg)
-                print(f"  ALERT: {msg}", flush=True)
+        else:
+            self.state.consecutive_val_increases = 0
+        self.state.last_val_loss = val_loss
+
+        if self.state.consecutive_val_increases >= 3:
+            msg = (
+                f"val_loss rose {self.state.consecutive_val_increases} evals in a row; "
+                f"best={self.state.best_val_loss:.4f} now={val_loss:.4f}"
+            )
+            self.state.alerts.append(msg)
+            print(f"  ALERT: {msg}", flush=True)
 
     # ------------------------------------------------------------------
+    def baseline_eval(
+        self,
+        reference_val_loss: float | None = None,
+        *,
+        max_ratio: float = 1.5,
+        abort: bool = False,
+    ) -> float | None:
+        """One eval pass at step 0, right after a warm-start load.
+
+        Closes the silent-corruption hole: a botched load (kernel/native layout
+        mismatch, wrong tokenizer, half-loaded weights) shows up as a baseline
+        val_loss FAR above the source checkpoint's best_val_loss before a
+        single dollar of training is burned. ``reference_val_loss`` comes from
+        the source checkpoint's sidecar; the val sets usually differ between
+        corpora, so the default tolerance is a generous 1.5x — that catches a
+        broken load (loss ~10 vs ~2.3), not corpus shift.
+        """
+        if self.val_dataloader is None or not self._is_main:
+            return None
+        val = self._evaluate()
+        self.log({"eval/baseline_val_loss": val}, 0)
+        print(f"  baseline eval @ step 0: val_loss={val:.4f}", flush=True)
+        if reference_val_loss is not None and reference_val_loss > 0:
+            ratio = val / reference_val_loss
+            print(
+                f"  baseline vs source best_val_loss {reference_val_loss:.4f}: "
+                f"ratio {ratio:.2f}x (tolerance {max_ratio:.2f}x)",
+                flush=True,
+            )
+            if ratio > max_ratio:
+                msg = (
+                    f"baseline val_loss {val:.4f} is {ratio:.2f}x the source "
+                    f"checkpoint's best_val_loss {reference_val_loss:.4f} "
+                    f"(> {max_ratio:.2f}x) — likely a BAD warm-start load "
+                    f"(kernel/native layout, tokenizer, or weight mismatch)"
+                )
+                self.state.alerts.append(msg)
+                if abort:
+                    raise RuntimeError(msg)
+                print(f"  WARNING: {msg}", flush=True)
+        return val
+
+    # ------------------------------------------------------------------
+    def run_eval_gate(self) -> float | None:
+        """Run the held-out gate (scripts/eval/eval_gate.py) in-process.
+
+        Cheap fixed probe set, never part of any training bin. Per-axis scores
+        + composite go to W&B and a JSON under ``<ckpt_dir>/eval_gate``. The
+        health monitor stops the run on SUSTAINED composite regression. Any
+        failure is non-fatal: the gate must never kill an otherwise healthy
+        run on its own bugs.
+        """
+        if not self._gate_enabled or not self._is_main:
+            return None
+        try:
+            if self._gate_runner is None:
+                import importlib.util
+
+                gate_path = Path(__file__).resolve().parents[3] / "scripts" / "eval" / "eval_gate.py"
+                spec = importlib.util.spec_from_file_location("eval_gate", gate_path)
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+                self._gate_runner = module
+
+            self.model.eval()
+            try:
+                report = self._gate_runner.run_gate(
+                    model=self._core_model,
+                    tokenizer_path=self.metadata.tokenizer_path,
+                    data_path=self._gate_data_path,
+                    device=self.device,
+                    max_new_tokens=self._gate_max_new_tokens,
+                )
+            finally:
+                self.model.train()
+
+            composite = float(report["composite"])
+            self.state.gate_last_composite = composite
+            self.state.gate_best_composite = max(self.state.gate_best_composite, composite)
+            metrics = {"gate/composite": composite}
+            for axis, score in report["by_axis"].items():
+                metrics[f"gate/{axis}"] = float(score)
+            self.log(metrics, self.state.step)
+            pretty = " ".join(f"{k.removeprefix('gate/')}={v:.3f}" for k, v in metrics.items())
+            print(f"  gate @ step {self.state.step}: {pretty}", flush=True)
+
+            self._gate_out_dir.mkdir(parents=True, exist_ok=True)
+            out = self._gate_out_dir / f"gate_step_{self.state.step}.json"
+            report["step"] = self.state.step
+            out.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+
+            for level, msg in self.health.observe_gate(composite, self.state.step):
+                print(f"  health[{level.value}]: {msg}", flush=True)
+            return composite
+        except Exception as e:                                 # noqa: BLE001
+            msg = f"eval gate failed at step {self.state.step}: {type(e).__name__}: {e}"
+            self.state.alerts.append(msg)
+            print(f"  warn: {msg}", flush=True)
+            return None
+
+    # ------------------------------------------------------------------
+    def _save_step_checkpoint_if_needed(self, name: str) -> Path | None:
+        if (
+            self._skip_step_save_if_checkpoint_written
+            and self._last_checkpoint_step == self.state.step
+        ):
+            print(
+                f"  ckpt {name} skipped; {self._last_checkpoint_name}.pt "
+                f"already written at step {self.state.step}",
+                flush=True,
+            )
+            return None
+        return self.save_checkpoint(name)
+
     def save_checkpoint(self, name: str) -> Path:
+        import random
+
+        import numpy as np
+
         path = self._ckpt_dir / f"{name}.pt"
+        # Only rank 0 writes checkpoints in a distributed run; the others would
+        # race on the same path (and hold identical replicated weights anyway).
+        if not self._is_main:
+            return path
         tmp = path.with_suffix(".pt.tmp")
+        # RNG state so a resume continues the same random stream.
+        rng = {
+            "torch": torch.get_rng_state(),
+            "numpy": np.random.get_state(),
+            "python": random.getstate(),
+        }
+        if torch.cuda.is_available():
+            rng["cuda"] = torch.cuda.get_rng_state_all()
+        # Dataloader-owned RNGs (per-language + shuffle): without these every
+        # resume replays the SAME data the run already saw. The global states
+        # above do not cover np.random.default_rng generators.
+        get_dl_rng = getattr(self.dataloader, "get_rng_state", None)
+        if callable(get_dl_rng):
+            rng["dataloader"] = get_dl_rng()
         payload = {
-            "model": self.model.state_dict(),
+            "model": self._core_model.state_dict(),
             "optimizer": self.optimizer.state_dict(),
             "scheduler": self.scheduler.state_dict(),
             "state": asdict(self.state),
             "metadata": asdict(self.metadata),
             "scaler": self._scaler.state_dict() if self._scaler is not None else None,
+            "rng": rng,
         }
         t_write_0 = time.time()
         torch.save(payload, tmp)
@@ -543,6 +898,8 @@ class PretrainTrainer:
         print(note, flush=True)
 
         self._rotate_checkpoints()
+        self._last_checkpoint_step = self.state.step
+        self._last_checkpoint_name = name
         return path
 
     def _rotate_checkpoints(self) -> None:
@@ -573,13 +930,58 @@ class PretrainTrainer:
         current run — that's usually what you want, but silent drift is
         what turns "resume" into "Frankenrun".
         """
+        # weights_only=False is required: the payload holds optimizer / RNG /
+        # dataclass state, not just tensors. Only ever load self-produced ckpts.
         payload = torch.load(path, map_location="cpu", weights_only=False)
-        self.model.load_state_dict(payload["model"])
+
+        # Align torch.compile key prefixes so a checkpoint saved from a compiled
+        # model resumes into a non-compiled one (and vice versa) instead of
+        # crashing on a `_orig_mod.` key mismatch.
+        state = _align_model_state_for_load(self._core_model, payload["model"])
+        self._core_model.load_state_dict(state)
         self.optimizer.load_state_dict(payload["optimizer"])
         self.scheduler.load_state_dict(payload["scheduler"])
         self.state = TrainerState(**payload["state"])
         if self._scaler is not None and payload.get("scaler") is not None:
             self._scaler.load_state_dict(payload["scaler"])
+
+        # Restore RNG so the random stream continues (best-effort; never fatal).
+        rng = payload.get("rng") or {}
+        try:
+            import random
+
+            import numpy as np
+
+            if rng.get("torch") is not None:
+                torch.set_rng_state(rng["torch"])
+            if rng.get("numpy") is not None:
+                np.random.set_state(rng["numpy"])
+            if rng.get("python") is not None:
+                random.setstate(rng["python"])
+            cuda_rng = rng.get("cuda")
+            if (cuda_rng is not None and torch.cuda.is_available()
+                    and len(cuda_rng) == torch.cuda.device_count()):
+                torch.cuda.set_rng_state_all(cuda_rng)
+        except Exception as exc:  # RNG mismatch must not block a resume
+            print(f"  warn: could not fully restore RNG state: {exc}", flush=True)
+
+        # Dataloader RNGs — restore so the data stream CONTINUES instead of
+        # replaying from batch 0. Loud warning (not fatal): a silent replay is
+        # exactly the bug this guards against, but a missing key (older ckpt)
+        # must still resume.
+        dl_rng = rng.get("dataloader")
+        set_dl_rng = getattr(self.dataloader, "set_rng_state", None)
+        if dl_rng is not None and callable(set_dl_rng):
+            try:
+                set_dl_rng(dl_rng)
+            except Exception as exc:                           # noqa: BLE001
+                msg = f"could not restore dataloader RNG state ({exc}) — resume will REPLAY data"
+                self.state.alerts.append(msg)
+                print(f"  warn: {msg}", flush=True)
+        elif callable(set_dl_rng):
+            msg = "checkpoint has no dataloader RNG state (pre-fix ckpt) — resume will REPLAY data"
+            self.state.alerts.append(msg)
+            print(f"  warn: {msg}", flush=True)
 
         old_meta = payload.get("metadata") or {}
         mismatches = []
@@ -592,6 +994,45 @@ class PretrainTrainer:
             msg = "resume provenance mismatch — " + "; ".join(mismatches)
             self.state.alerts.append(msg)
             print(f"  warn: {msg}", flush=True)
+
+    def warm_start_from_checkpoint(self, path: str | Path, *, strict: bool = True) -> None:
+        """Load model weights only while keeping a fresh run state.
+
+        This is intentionally different from :meth:`load_checkpoint`: optimizer,
+        scheduler, scaler, RNG, and ``TrainerState.step`` are not restored. Use
+        it when a short ramp found useful weights but its LR schedule is too
+        short to resume for a longer foundation run.
+        """
+        payload = torch.load(path, map_location="cpu", weights_only=False)
+        # Hard tokenizer-identity check: warm-starting weights trained under a
+        # different tokenizer means the embedding/lm_head rows no longer map to
+        # the same token IDs — a silent corpus-level corruption. Fail loudly.
+        src_meta = payload.get("metadata") or {}
+        src_tok = src_meta.get("tokenizer_sha16")
+        cur_tok = self.metadata.tokenizer_sha16
+        if src_tok and cur_tok and src_tok != cur_tok:
+            raise RuntimeError(
+                f"warm-start tokenizer mismatch: checkpoint was trained with "
+                f"tokenizer sha {src_tok} but this run uses {cur_tok}. Token IDs "
+                f"would not align — refusing to warm-start. Re-tokenize with the "
+                f"matching tokenizer or warm-start from a matching checkpoint."
+            )
+        state = _align_model_state_for_load(self._core_model, payload["model"])
+        missing, extra = self._core_model.load_state_dict(state, strict=strict)
+        if missing or extra:
+            raise RuntimeError(
+                f"warm-start checkpoint mismatch: missing={len(missing)} extra={len(extra)}; "
+                f"first_missing={missing[:3]} first_extra={extra[:3]}"
+            )
+        source_state = payload.get("state") or {}
+        source_step = source_state.get("step", "?")
+        source_best = source_state.get("best_val_loss", "?")
+        note = (
+            f"warm-started model weights from {path} "
+            f"(source step={source_step}, source best_val_loss={source_best})"
+        )
+        self.state.alerts.append(note)
+        print(f"  {note}; optimizer/scheduler/state kept fresh", flush=True)
 
 
 __all__ = ["PretrainTrainer", "TrainerState"]

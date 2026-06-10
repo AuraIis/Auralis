@@ -48,14 +48,17 @@ def test_val_regression_triggers_stop():
     assert mon.should_stop()
 
 
-def test_vram_warn_then_stop():
+def test_vram_warns_never_stops():
+    # VRAM pressure WARNs but never STOPs: a high-but-stable allocation used to
+    # false-kill stable runs, and a genuine OOM aborts the process on its own.
     mon = HealthMonitor(HealthConfig(vram_frac_warn=0.90, vram_frac_stop=0.95))
-    fresh = mon.observe_vram(alloc_gb=9.0, total_gb=10.0, step=1)   # 90 % → WARN
+    fresh = mon.observe_vram(alloc_gb=9.0, total_gb=10.0, step=1)
     assert any(lvl == AlertLevel.WARN for lvl, _ in fresh)
     assert not mon.should_stop()
-    fresh = mon.observe_vram(alloc_gb=9.6, total_gb=10.0, step=2)   # 96 % → STOP
-    assert any(lvl == AlertLevel.STOP for lvl, _ in fresh)
-    assert mon.should_stop()
+    fresh = mon.observe_vram(alloc_gb=9.6, total_gb=10.0, step=2)
+    assert any(lvl == AlertLevel.WARN for lvl, _ in fresh)
+    assert not any(lvl == AlertLevel.STOP for lvl, _ in fresh)
+    assert not mon.should_stop()
 
 
 def test_ckpt_write_anomaly_triggers_warn():

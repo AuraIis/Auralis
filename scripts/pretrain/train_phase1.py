@@ -288,6 +288,33 @@ def main() -> None:
         print(f"  resumed from {args.resume} at step {trainer.state.step}")
     elif warm_start:
         trainer.warm_start_from_checkpoint(warm_start)
+        # Baseline eval @ step 0: compare against the source checkpoint's
+        # sidecar best_val_loss so a botched load (kernel layout, tokenizer,
+        # half-loaded weights) is caught BEFORE any training spend. Config:
+        # evaluation.baseline: {max_ratio: 1.5, abort: false}.
+        bcfg = (config.get("evaluation") or {}).get("baseline") or {}
+        ref = None
+        sidecar = Path(warm_start).with_suffix(".json")
+        if sidecar.is_file():
+            try:
+                import json
+                ref = float(json.loads(sidecar.read_text(encoding="utf-8"))
+                            .get("state", {}).get("best_val_loss"))
+            except Exception as e:                             # noqa: BLE001
+                print(f"  warn: could not read warm-start sidecar {sidecar}: {e}")
+        else:
+            print(f"  warn: no sidecar {sidecar} — baseline eval runs without reference")
+        if rank == 0 and val_loader is not None:
+            trainer.baseline_eval(
+                ref,
+                max_ratio=float(bcfg.get("max_ratio", 1.5)),
+                abort=bool(bcfg.get("abort", False)),
+            )
+            # Held-out gate baseline (if enabled) — establishes the composite
+            # reference the regression guard compares against.
+            trainer.run_eval_gate()
+        if is_distributed:
+            torch.distributed.barrier()
 
     # Kernel/back-end summary (unwrap DDP so .inner is reachable)
     core_model = model.module if is_distributed else model

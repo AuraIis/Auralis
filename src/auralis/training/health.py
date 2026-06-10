@@ -25,6 +25,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
+from auralis.adaptive.signals import detect_regression
+
 
 class AlertLevel(str, Enum):
     INFO = "info"
@@ -49,9 +51,27 @@ class HealthConfig:
     tps_k: int = 3
     # Val-loss regression: stop if val rose K consecutive evals.
     val_regression_stop_k: int = 5
-    # VRAM pressure (CUDA only). alloc/total ratio.
+    # Per-language bpb regression: lower is better. Disabled by default so
+    # legacy configs keep their exact behavior.
+    bpb_regression_enabled: bool = False
+    bpb_regression_languages: list[str] = field(default_factory=list)
+    bpb_regression_max_increase: float = 0.20
+    bpb_regression_k: int = 2
+    bpb_regression_lookback: int = 4
+    bpb_regression_warmup_evals: int = 2
+    # VRAM pressure (CUDA only). alloc/total ratio. Both thresholds are
+    # WARN-only: a high-but-stable allocation is normal on a packed run; a
+    # real OOM aborts on its own. STOP here false-killed stable runs.
     vram_frac_warn: float = 0.95
     vram_frac_stop: float = 0.98
+    # Non-finite loss/grad: STOP after K consecutive skipped steps.
+    # One-off bf16 spikes are normal; only persistence is pathological.
+    nonfinite_stop_k: int = 5
+    # Held-out eval-gate composite (higher is better): STOP after K
+    # consecutive gate runs more than gate_min_delta below best-so-far.
+    gate_regression_stop_k: int = 3
+    gate_min_delta: float = 0.02
+    gate_warmup_runs: int = 1
     # Checkpoint write-time anomaly: write > factor * rolling median of last N.
     ckpt_time_factor: float = 3.0
     ckpt_time_median_window: int = 5
@@ -65,6 +85,11 @@ class HealthState:
     tps_peak: float = 0.0
     loss_window: deque[float] = field(default_factory=lambda: deque(maxlen=32))
     ckpt_times: deque[float] = field(default_factory=lambda: deque(maxlen=5))
+    bpb_series: dict[str, list[float]] = field(default_factory=dict)
+    bpb_regression_counts: dict[str, int] = field(default_factory=dict)
+    gate_series: list[float] = field(default_factory=list)
+    gate_best: float = float("-inf")
+    gate_regression_count: int = 0
     alerts: list[tuple[int, AlertLevel, str]] = field(default_factory=list)
     stop_requested: bool = False
     stop_reason: str = ""
@@ -157,16 +182,134 @@ class HealthMonitor:
         return fresh
 
     # ------------------------------------------------------------------
+    def observe_bpb(self, metrics: dict[str, float], step: int) -> list[tuple[AlertLevel, str]]:
+        """Stop when a per-language bits-per-byte metric regresses.
+
+        BPB is lower-is-better. This catches the multilingual failure mode
+        where aggregate val_loss improves while one language quietly gets
+        worse.
+        """
+        fresh: list[tuple[AlertLevel, str]] = []
+        c = self.config
+        if not c.bpb_regression_enabled:
+            return fresh
+
+        available = {
+            key.rsplit("/", 1)[-1]: float(value)
+            for key, value in metrics.items()
+            if key.startswith("eval/bpb/")
+        }
+        if not available:
+            return fresh
+
+        langs = c.bpb_regression_languages or sorted(available)
+        for lang in langs:
+            if lang not in available:
+                continue
+            bpb = available[lang]
+            series = self.state.bpb_series.setdefault(lang, [])
+            series.append(bpb)
+
+            if len(series) <= c.bpb_regression_warmup_evals:
+                self.state.bpb_regression_counts[lang] = 0
+                continue
+
+            # detect_regression assumes higher-is-better, so negate bpb.
+            regressed = detect_regression(
+                [-v for v in series],
+                max_drop=c.bpb_regression_max_increase,
+                lookback=c.bpb_regression_lookback,
+            )
+            if regressed:
+                count = self.state.bpb_regression_counts.get(lang, 0) + 1
+                self.state.bpb_regression_counts[lang] = count
+                if count >= c.bpb_regression_k:
+                    lookback = series[-(c.bpb_regression_lookback + 1):-1]
+                    if not lookback:
+                        lookback = series[:-1]
+                    recent_best = min(lookback) if lookback else min(series[:-1])
+                    fresh.append((
+                        AlertLevel.STOP,
+                        f"bpb/{lang} regressed {count} evals "
+                        f"(current {bpb:.4f}, recent_best {recent_best:.4f}, "
+                        f"max_increase {c.bpb_regression_max_increase:.4f})",
+                    ))
+                    self._request_stop(f"bpb_regression:{lang}")
+            else:
+                self.state.bpb_regression_counts[lang] = 0
+
+        for level, msg in fresh:
+            self.state.alerts.append((step, level, msg))
+        return fresh
+
+    # ------------------------------------------------------------------
+    def observe_nonfinite(self, consecutive: int, step: int) -> list[tuple[AlertLevel, str]]:
+        """Skipped non-finite steps — the trainer owns the counter, we only
+        decide whether persistence is long enough to abort (>= K consecutive).
+        """
+        fresh: list[tuple[AlertLevel, str]] = []
+        if consecutive >= self.config.nonfinite_stop_k:
+            fresh.append((AlertLevel.STOP,
+                          f"{consecutive} consecutive non-finite loss/grad steps "
+                          f"(threshold {self.config.nonfinite_stop_k}) — model is diverging"))
+            self._request_stop("nonfinite_persistent")
+        elif consecutive > 0:
+            fresh.append((AlertLevel.WARN,
+                          f"non-finite loss/grad — optimizer step skipped "
+                          f"({consecutive}/{self.config.nonfinite_stop_k} consecutive)"))
+        for level, m in fresh:
+            self.state.alerts.append((step, level, m))
+        return fresh
+
+    # ------------------------------------------------------------------
+    def observe_gate(self, composite: float, step: int) -> list[tuple[AlertLevel, str]]:
+        """Held-out eval-gate composite (higher is better).
+
+        Counts consecutive gate runs more than ``gate_min_delta`` below the
+        best composite so far; sustained regression ⇒ STOP. First
+        ``gate_warmup_runs`` results only establish the baseline.
+        """
+        fresh: list[tuple[AlertLevel, str]] = []
+        c = self.config
+        self.state.gate_series.append(composite)
+        if len(self.state.gate_series) <= c.gate_warmup_runs:
+            self.state.gate_best = max(self.state.gate_best, composite)
+            return fresh
+        if composite < self.state.gate_best - c.gate_min_delta:
+            self.state.gate_regression_count += 1
+            if self.state.gate_regression_count >= c.gate_regression_stop_k:
+                fresh.append((AlertLevel.STOP,
+                              f"gate composite regressed {self.state.gate_regression_count} runs "
+                              f"(current {composite:.3f}, best {self.state.gate_best:.3f}, "
+                              f"min_delta {c.gate_min_delta:.3f})"))
+                self._request_stop("gate_regression")
+            else:
+                fresh.append((AlertLevel.WARN,
+                              f"gate composite {composite:.3f} < best {self.state.gate_best:.3f} "
+                              f"- {c.gate_min_delta:.3f} "
+                              f"({self.state.gate_regression_count}/{c.gate_regression_stop_k})"))
+        else:
+            self.state.gate_regression_count = 0
+        self.state.gate_best = max(self.state.gate_best, composite)
+        for level, m in fresh:
+            self.state.alerts.append((step, level, m))
+        return fresh
+
+    # ------------------------------------------------------------------
     def observe_vram(self, alloc_gb: float, total_gb: float, step: int) -> list[tuple[AlertLevel, str]]:
-        """Allocated/total ratio — fires at 95 % / 98 %."""
+        """Allocated/total ratio — WARN at 95 %, louder WARN at 98 %.
+
+        Deliberately never STOP: a high-but-stable allocation false-killed
+        stable runs; an actual OOM aborts by itself.
+        """
         fresh: list[tuple[AlertLevel, str]] = []
         if total_gb <= 0:
             return fresh
         frac = alloc_gb / total_gb
         if frac >= self.config.vram_frac_stop:
-            msg = f"VRAM {alloc_gb:.1f}/{total_gb:.1f}GB = {frac*100:.1f}% (stop threshold)"
-            fresh.append((AlertLevel.STOP, msg))
-            self._request_stop("vram_saturated")
+            msg = (f"VRAM {alloc_gb:.1f}/{total_gb:.1f}GB = {frac*100:.1f}% "
+                   f"(critical — OOM imminent if allocation grows)")
+            fresh.append((AlertLevel.WARN, msg))
         elif frac >= self.config.vram_frac_warn:
             msg = f"VRAM {alloc_gb:.1f}/{total_gb:.1f}GB = {frac*100:.1f}% (warn threshold)"
             fresh.append((AlertLevel.WARN, msg))
@@ -218,7 +361,16 @@ class HealthMonitor:
             "n_alerts": len(self.state.alerts),
             "grad_explosion_count": self.state.grad_explosion_count,
             "grad_collapse_count": self.state.grad_collapse_count,
+            "bpb_regression_counts": dict(self.state.bpb_regression_counts),
+            "bpb_latest": {
+                lang: values[-1]
+                for lang, values in self.state.bpb_series.items()
+                if values
+            },
             "tps_peak": self.state.tps_peak,
+            "gate_best": self.state.gate_best,
+            "gate_regression_count": self.state.gate_regression_count,
+            "gate_latest": self.state.gate_series[-1] if self.state.gate_series else None,
             "alerts": [
                 {"step": s, "level": lvl.value, "msg": m}
                 for (s, lvl, m) in self.state.alerts[-20:]

@@ -24,6 +24,7 @@ from auralis.model.helix_model import HelixModel
 from auralis.training.dataset import MixedDataLoader
 from auralis.training.optimizer import build_optimizer, build_scheduler
 from auralis.training.trainer import PretrainTrainer
+from auralis.training.health import HealthStop
 
 
 def _tiny_model() -> HelixModel:
@@ -245,7 +246,7 @@ def test_trainer_saves_metadata_in_checkpoint(trainer_env, tmp_path: Path):
     assert "metadata" in obj and "state" in obj
 
 
-def test_trainer_raises_on_nan_loss(trainer_env, monkeypatch):
+def test_trainer_skips_then_stops_on_persistent_nan(trainer_env, monkeypatch):
     trainer, _ = trainer_env
 
     class NaNModel(torch.nn.Module):
@@ -258,8 +259,13 @@ def test_trainer_raises_on_nan_loss(trainer_env, monkeypatch):
             return out
 
     trainer.model = NaNModel(trainer.model)
-    with pytest.raises(RuntimeError, match="non-finite loss"):
+    # Always-NaN: each step is skipped, the consecutive counter climbs to
+    # nonfinite_stop_k, and the run stops with a HealthStop (no first-step crash).
+    with pytest.raises(HealthStop):
         trainer.train()
+    k = trainer.health.config.nonfinite_stop_k
+    assert trainer.state.nonfinite_steps_consecutive >= k
+    assert trainer.state.nonfinite_steps_total >= k
 
 
 def test_emergency_checkpoint_does_not_break_rotation(trainer_env):

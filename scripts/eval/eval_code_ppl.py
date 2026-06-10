@@ -5,6 +5,7 @@ import os, sys, json, argparse, math, pathlib
 REPO = pathlib.Path("/workspace/v2data"); sys.path.insert(0, str(REPO/"src")); sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(REPO/"scripts/data"))
 os.environ.setdefault("AURALIS_USE_MAMBA_KERNEL", "1")
+os.environ.setdefault("AURALIS_USE_GLA_KERNEL", "1")   # fla chunk_gla: 20-30x faster than native scan
 import torch, torch.nn.functional as F
 import sentencepiece as spm
 from auralis.model import build_model

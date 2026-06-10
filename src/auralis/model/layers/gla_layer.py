@@ -14,6 +14,7 @@ Only the inner scan math differs.
 
 from __future__ import annotations
 
+import math
 import os
 
 import torch
@@ -55,13 +56,22 @@ class GLALayer(nn.Module):
         self.v_proj = nn.Linear(d_model, n_heads * d_head, bias=False)
         self.g_proj = nn.Linear(d_model, n_heads * d_head, bias=False)
         # Per-head-per-dim log-decay projection. fla's ``chunk_gla`` expects g
-        # shaped [B, L, H, D] in log-space; we parameterise with a logistic
-        # bias that puts init decay near 0.9 (log(0.9)≈-0.105).
+        # shaped [B, L, H, D] in log-space. The forward uses
+        # ``log_alpha = -softplus(-raw)``; initialise raw so exp(log_alpha)
+        # starts near 0.9 instead of the generic-init default 0.5.
         self.alpha_proj = nn.Linear(d_model, n_heads * d_head, bias=True)
-        with torch.no_grad():
-            self.alpha_proj.bias.fill_(-0.105)  # decay ≈ 0.9 per channel
+        self._target_decay = 0.9
+        self.reset_special_parameters()
 
         self.out_proj = nn.Linear(n_heads * d_head, d_model, bias=False)
+
+    def reset_special_parameters(self) -> None:
+        """Restore the GLA decay bias after generic model init."""
+        decay_lambda = -math.log(self._target_decay)
+        # For log_alpha = -softplus(-bias), solve softplus(-bias)=lambda.
+        bias = -math.log(math.expm1(decay_lambda))
+        with torch.no_grad():
+            self.alpha_proj.bias.fill_(bias)
 
     def forward(self, x, state=None):
         B, L, _ = x.shape
@@ -86,24 +96,33 @@ class GLALayer(nn.Module):
         return self.out_proj(out.reshape(B, L, H * D)), new_state
 
     def _native_scan(self, q, k, v, log_alpha, state):
-        """Sequential reference — matches chunk_gla semantics."""
+        """Sequential reference — matches chunk_gla semantics.
+
+        The recurrent state S is accumulated in fp32 (like the fla kernel does
+        internally) so long sequences don't drift under bf16; the output is
+        cast back to the input dtype.
+        """
         B, L, H, D = q.shape
-        q = q * (D ** -0.5)
-        alpha = torch.exp(log_alpha)                          # [B, L, H, D] in (0, 1]
+        out_dtype = q.dtype
+        q = q.float() * (D ** -0.5)
+        k = k.float()
+        v = v.float()
+        alpha = torch.exp(log_alpha.float())                  # [B, L, H, D] in (0, 1]
 
         if state is None:
-            S = torch.zeros(B, H, D, D, device=q.device, dtype=q.dtype)
+            S = torch.zeros(B, H, D, D, device=q.device, dtype=torch.float32)
         else:
-            S = state.to(q.dtype)
+            S = state.to(torch.float32)
 
         outs = []
         for t in range(L):
-            # per-channel decay broadcast over the D key dimension of S
-            a_t = alpha[:, t].unsqueeze(-2)                   # [B, H, 1, D]
+            # GLA decay acts on the KEY dimension of S (S[b,h,key,value]):
+            # S_t = diag(alpha_t) S_{t-1} + k_t v_t^T  — matches fla chunk_gla.
+            a_t = alpha[:, t].unsqueeze(-1)                   # [B, H, D, 1]
             update = torch.einsum("bhd,bhe->bhde", k[:, t], v[:, t])
             S = a_t * S + update
             outs.append(torch.einsum("bhd,bhde->bhe", q[:, t], S))
-        return torch.stack(outs, dim=1), S
+        return torch.stack(outs, dim=1).to(out_dtype), S
 
 
 __all__ = ["GLALayer"]

@@ -62,6 +62,8 @@ class _Mamba2Native(nn.Module):
         self.d_conv = d_conv
         self.expand_factor = expand_factor
         self.d_inner = expand_factor * d_model
+        self.dt_min = float(dt_min)
+        self.dt_max = float(dt_max)
 
         self.in_proj = nn.Linear(d_model, 2 * self.d_inner, bias=False)
         self.conv1d = nn.Conv1d(
@@ -71,18 +73,27 @@ class _Mamba2Native(nn.Module):
         )
         self.x_proj = nn.Linear(self.d_inner, self.d_inner + 2 * d_state, bias=False)
         self.dt_proj = nn.Linear(self.d_inner, self.d_inner, bias=True)
-        with torch.no_grad():
-            dt = torch.exp(
-                torch.rand(self.d_inner)
-                * (float(torch.log(torch.tensor(dt_max))) - float(torch.log(torch.tensor(dt_min))))
-                + float(torch.log(torch.tensor(dt_min)))
-            )
-            self.dt_proj.bias.copy_(dt + torch.log(-torch.expm1(-dt)))
 
         A = torch.arange(1, d_state + 1, dtype=torch.float32).unsqueeze(0).repeat(self.d_inner, 1)
         self.A_log = nn.Parameter(torch.log(A))
         self.D = nn.Parameter(torch.ones(self.d_inner))
         self.out_proj = nn.Linear(self.d_inner, d_model, bias=False)
+        self.reset_special_parameters()
+
+    def reset_special_parameters(self) -> None:
+        """Restore Mamba-specific parameters that generic init must not zero.
+
+        The model-wide initializer touches every ``nn.Linear`` and zeros its
+        bias. ``dt_proj.bias`` is not a normal bias: it is the inverse-softplus
+        parameterisation for the SSM time step, so it must be reset after the
+        generic init pass.
+        """
+        with torch.no_grad():
+            log_min = torch.log(torch.tensor(self.dt_min, dtype=torch.float32))
+            log_max = torch.log(torch.tensor(self.dt_max, dtype=torch.float32))
+            dt = torch.exp(torch.rand(self.d_inner, device=self.dt_proj.bias.device) * (log_max - log_min) + log_min)
+            # inverse softplus: softplus(bias) == dt
+            self.dt_proj.bias.copy_(dt + torch.log(-torch.expm1(-dt)))
 
     def forward(self, x, ssm_state=None):
         B, L, _ = x.shape
@@ -104,15 +115,19 @@ class _Mamba2Native(nn.Module):
         B, L, d_inner = x.shape
         d_state = A.shape[1]
         dtype = x.dtype
-        dA = torch.exp(dt.unsqueeze(-1) * A)
-        dB = dt.unsqueeze(-1) * Bp.unsqueeze(-2)
-        h = (torch.zeros(B, d_inner, d_state, device=x.device, dtype=dtype)
-             if state is None else state.to(dtype))
+        # Recurrence runs in fp32 (h drifts under bf16 on long sequences);
+        # output is cast back to the input dtype. A is already fp32.
+        x_f = x.float()
+        dA = torch.exp(dt.float().unsqueeze(-1) * A)
+        dB = dt.float().unsqueeze(-1) * Bp.float().unsqueeze(-2)
+        Cp = Cp.float()
+        h = (torch.zeros(B, d_inner, d_state, device=x.device, dtype=torch.float32)
+             if state is None else state.to(torch.float32))
         outputs = []
         for t in range(L):
-            h = dA[:, t] * h + dB[:, t] * x[:, t].unsqueeze(-1)
+            h = dA[:, t] * h + dB[:, t] * x_f[:, t].unsqueeze(-1)
             outputs.append((h * Cp[:, t].unsqueeze(-2)).sum(dim=-1))
-        y = torch.stack(outputs, dim=1)
+        y = torch.stack(outputs, dim=1).to(dtype)
         y = y + x * D
         return y, h
 
@@ -143,6 +158,10 @@ class _Mamba2CUDA(nn.Module):
             d_state=d_state,
             d_conv=d_conv,
             expand=expand_factor,
+            # Forward dt bounds — Mamba2 defaults happen to match ours
+            # (0.001 / 0.1), but a config tuner must not be silently ignored.
+            dt_min=dt_min,
+            dt_max=dt_max,
         )
 
     def forward(self, x, ssm_state=None):
@@ -187,6 +206,11 @@ class Mamba2Layer(nn.Module):
 
     def forward(self, x, ssm_state=None):
         return self._impl(x, ssm_state)
+
+    def reset_special_parameters(self) -> None:
+        reset = getattr(self._impl, "reset_special_parameters", None)
+        if callable(reset):
+            reset()
 
 
 __all__ = ["Mamba2Layer"]

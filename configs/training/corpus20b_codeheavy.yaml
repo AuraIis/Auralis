@@ -40,8 +40,14 @@ data:
     german_fresh: 0.13
     german_commons: 0.07
     en: 0.24
-    code: 0.04
-    code_algo: 0.06
+    # Within-code rebalance (total code share unchanged at 0.23): raw real code
+    # 0.04 -> 0.07 (raw-starcoder multi-lang, real files, was under-sampled at
+    # ~0.17 epochs this run); synthetic OpenCoder algo 0.06 -> 0.03 (short
+    # single-snippet drills, was over-sampled at ~0.30 epochs vs its bin size).
+    # Now ~0.29 vs ~0.15 epochs: more real code, less synthetic — quality fix
+    # per the team decision to keep code as a goal.
+    code: 0.07
+    code_algo: 0.03
     code_snip: 0.065
     code_qa: 0.065
     math: 0.09
