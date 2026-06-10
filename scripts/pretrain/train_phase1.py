@@ -155,6 +155,12 @@ def main() -> None:
         raise SystemExit("--resume and --warm-start/--init-weights are mutually exclusive")
 
     config = load_yaml(args.config)
+    # Config-level warm-start: top-level `init_from` in the training YAML is the
+    # declarative form of --warm-start. CLI flags win; --resume disables it (the
+    # resumed checkpoint already contains the weights).
+    if warm_start is None and not args.resume and config.get("init_from"):
+        warm_start = Path(config["init_from"])
+        print(f"warm-start (config init_from): {warm_start}")
     set_seed(42)
 
     is_distributed, rank, world_size, local_rank = _setup_distributed()

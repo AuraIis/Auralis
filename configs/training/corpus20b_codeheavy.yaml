@@ -1,0 +1,117 @@
+experiment:
+  name: helix_v2_1b_corpus20b_codeheavy
+  version: "1.0"
+  description: >
+    Clean ~24B code-heavy corpus for the base re-train (the fix for Helix's code).
+    Built after discovering the phase-1 code was TRIPLE-corrupted (prose-cleaner stripped
+    docstrings, py2 mixed in, line-per-doc tokenization atomized files). THIS corpus is:
+      - code 5.79B  : raw-starcoder ast-validated py3 (multi-lang) + OpenCoder algo/snippets/qa
+      - math 2.16B  : openmath
+      - de   8.90B  : fresh FineWeb2-DE (2-GPU edu-filtered) + german_commons.edu + curated
+      - en   ~6B    : curated FineWeb-edu (subset via ratio; bin is 11.79B)
+      - se   2.38B  : StackExchange OS/sysadmin (askubuntu/superuser/serverfault/unix) — OS knowledge
+    All tokenized correctly (EOS-per-document, newlines preserved). German stays the
+    largest single language (~35%); code-related (code+math+se) ~41% per the code-heavy choice.
+    Warm-start the FOUNDATION (step_50000); this both injects clean code AND lifts the model
+    off its under-trained ~3.3B toward Chinchilla. total_steps below is a first solid chunk;
+    scale up for a full Chinchilla pass (~229k steps @ this token/step for ~15B more).
+
+model:
+  # _flash variant = identical weights, global_tokens 32 -> 0 so flash-attn actually
+  # engages on the 6 attention layers (global_tokens != 0 forces native O(L^2) fallback).
+  config_path: "configs/model/helix_v2_1b_flash.yaml"
+
+# warm-start from the foundation (NOT from scratch): weights only, fresh optimizer/
+# scheduler/step. Read by train_phase1.py (top-level `init_from`); --warm-start CLI
+# overrides, --resume ignores it. Launch:
+#   python scripts/pretrain/train_phase1.py --config configs/training/corpus20b_codeheavy.yaml
+init_from: "/workspace/v2data/checkpoints/pretrain_1b_bilingual_de55_en45_foundation_warmstart_v3/step_50000.pt"
+
+data:
+  data_dir: "/workspace/v2data/tokenized/corpus20b"
+  # keys map to <key>.bin in data_dir; loader normalizes to sum=1. Effective proportions:
+  #   DE 0.35 (de_curated+german_fresh+german_commons) | EN 0.24 | Code 0.23 (4 bins) |
+  #   Math 0.09 | StackExchange/OS 0.09
+  mix_ratios:
+    # DE total 0.35, volume-weighted across the 3 DE bins (de 3.24B / fresh-dedup 2.67B /
+    # commons 1.36B = 7.27B unique) so each is seen ~equal epochs (german_fresh shrank from
+    # 4.30B after removing 35.7% exact dupes vs de_curated — see dedup_report).
+    de_curated: 0.15
+    german_fresh: 0.13
+    german_commons: 0.07
+    en: 0.24
+    code: 0.04
+    code_algo: 0.06
+    code_snip: 0.065
+    code_qa: 0.065
+    math: 0.09
+    stackexchange: 0.09
+  seq_length: 2048
+  val_split_bytes: 2_000_000
+  dataloader_seed: 20260610
+
+training:
+  device: "cuda"
+  dtype: "bfloat16"
+  matmul_precision: "high"
+  kernels:
+    enabled: true
+    mamba: true
+    gla: true
+    flash_attention: true
+  optimizer:
+    name: adamw
+    # Re-warm to 1e-4 (not 3e-5): foundation trained much of its budget on triple-corrupted
+    # code, so a too-low LR would barely overwrite that scar tissue in 60k steps. 1e-4 sits
+    # ~1/6 of foundation peak (6e-4) — standard continued-pretrain re-warm range — and the
+    # cosine decays into anneal territory (min 1e-5). 1000-step warmup avoids the warm-start
+    # shock at 64k tok/step.
+    lr: 1.0e-4
+    betas: [0.9, 0.95]
+    weight_decay: 0.05
+    eps: 1.0e-8
+    fused: true
+  scheduler:
+    type: cosine
+    warmup_steps: 1000    # longer re-warm: warm-started weights + 3x higher peak LR than before
+    min_lr_ratio: 0.1
+  batch_size_per_device: 1
+  gradient_accumulation: 32     # 65,536 tok/step -> total_steps*65536 = tokens seen
+  gradient_clip_norm: 1.0
+  total_steps: 60000            # ~3.9B tokens this run; raise toward ~229k for a full Chinchilla pass
+  gradient_checkpointing: true
+  torch_compile: false
+
+logging:
+  log_every: 10
+  eval_every: 500
+  save_every: 2000
+  wandb:
+    enabled: false
+    project: "auralis-v2"
+    tags: ["1b", "corpus20b", "codeheavy", "retrain"]
+
+checkpointing:
+  output_dir: "/workspace/v2data/checkpoints/corpus20b_codeheavy"
+  save_last_n: 5
+  save_best: true
+  skip_step_save_if_checkpoint_written: true
+
+evaluation:
+  max_val_batches: 30
+  per_language_batches: 12
+  tokens_per_byte:
+    code: 0.28
+    math: 0.22
+    de_curated: 0.18
+    german_fresh: 0.18
+    german_commons: 0.18
+    en: 0.21
+    stackexchange: 0.21
+
+monitoring:
+  health:
+    grad_explosion_threshold: 100.0
+    val_regression_stop_k: 8
+    val_min_delta: 0.01
+    bpb_regression_enabled: false
