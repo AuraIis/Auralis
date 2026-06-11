@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import platform
 import re
@@ -231,6 +232,12 @@ class PretrainTrainer:
 
         lcfg = config["logging"]
         self._log_every = int(lcfg.get("log_every", 10))
+        # Per-micro-batch torch.cuda.synchronize() around data/compute timing
+        # forces a full GPU drain twice per micro-batch (64 stalls per optimizer
+        # step at grad_accum=32) just to attribute data vs compute wall time.
+        # The timing is only diagnostic — keep it opt-in for debugging; the
+        # data_frac metric falls back to coarse per-step attribution when off.
+        self._debug_timing = bool(lcfg.get("debug_timing", False))
         self._eval_every = int(lcfg.get("eval_every", 1000))
         self._save_every = int(lcfg.get("save_every", 2500))
 
@@ -328,7 +335,16 @@ class PretrainTrainer:
         window_compute_time = 0.0
 
         while self.state.step < self._total_steps:
-            loss_acc = 0.0
+            # Accumulate losses ON-DEVICE; a single .item() per optimizer step
+            # (in the grad-norm finiteness check below) transfers them to host.
+            # The old per-micro-batch loss.item() + 2x torch.cuda.synchronize()
+            # forced 3 full GPU drains per micro-batch — 96 stalls per step at
+            # grad_accum=32 — purely for diagnostics.
+            loss_acc = torch.zeros((), device=self.device)
+            loss_main_acc = torch.zeros((), device=self.device)
+            loss_mtp_acc = torch.zeros((), device=self.device)
+            loss_main_count = 0
+            loss_mtp_count = 0
             nonfinite_step = False
             self.optimizer.zero_grad(set_to_none=True)
 
@@ -336,7 +352,7 @@ class PretrainTrainer:
                 t_data_0 = time.time()
                 batch = next(data_iter)
                 batch = {k: v.to(self.device, non_blocking=True) for k, v in batch.items()}
-                if self.device.type == "cuda":
+                if self._debug_timing and self.device.type == "cuda":
                     torch.cuda.synchronize()
                 window_data_time += time.time() - t_data_0
 
@@ -353,31 +369,27 @@ class PretrainTrainer:
                     with self._autocast():
                         out = self.model(input_ids=batch["input_ids"], labels=batch["labels"])
                         loss = out["loss"] / self._grad_accum
-                    if not torch.isfinite(loss):
-                        # One-off bf16 spikes are normal; only PERSISTENT
-                        # non-finiteness is pathological. Mark the step for
-                        # skipping instead of raising; the consecutive counter
-                        # below stops the run if it never recovers.
-                        nonfinite_step = True
-                        if not self._is_distributed:
-                            window_compute_time += time.time() - t_compute_0
-                            break
-                        # DDP: still backward so the all-reduce stays in sync
-                        # across ranks. The poisoned grads are zeroed below.
-                    if self._scaler is not None:
-                        self._scaler.scale(loss).backward()
-                    else:
-                        loss.backward()
-                loss_acc += loss.item()
+                    # Non-finite detection is deferred to the per-step check on
+                    # (loss_acc, grad_norm): NaN/inf propagates through the sum
+                    # and the gradients, so the step-skip decision is identical
+                    # without a host sync per micro-batch. Backward still runs
+                    # (keeps DDP all-reduce in sync; grads are zeroed on skip).
+                    # Grad-less loss (e.g. a frozen probe model) cannot backward.
+                    if loss.requires_grad:
+                        if self._scaler is not None:
+                            self._scaler.scale(loss).backward()
+                        else:
+                            loss.backward()
+                loss_acc += loss.detach()
                 loss_main = out.get("loss_main")
                 if loss_main is not None:
-                    window_loss_main_sum += float(loss_main.detach().item())
-                    window_loss_main_count += 1
+                    loss_main_acc += loss_main.detach()
+                    loss_main_count += 1
                 loss_mtp = out.get("loss_mtp")
                 if loss_mtp is not None:
-                    window_loss_mtp_sum += float(loss_mtp.detach().item())
-                    window_loss_mtp_count += 1
-                if self.device.type == "cuda":
+                    loss_mtp_acc += loss_mtp.detach()
+                    loss_mtp_count += 1
+                if self._debug_timing and self.device.type == "cuda":
                     torch.cuda.synchronize()
                 window_compute_time += time.time() - t_compute_0
 
@@ -391,7 +403,9 @@ class PretrainTrainer:
                 max_norm=self._clip_norm,
                 error_if_nonfinite=False,
             )
-            if not torch.isfinite(grad_norm):
+            # ONE host sync per optimizer step: grad_norm + accumulated losses.
+            loss_step = float(loss_acc)
+            if not torch.isfinite(grad_norm) or not math.isfinite(loss_step):
                 nonfinite_step = True
             # DDP: skip must be unanimous or optimizer states drift apart.
             if self._is_distributed:
@@ -430,7 +444,13 @@ class PretrainTrainer:
 
             self.state.step += 1
             self.state.tokens_seen += self._batch_tokens * self._world_size
-            window_loss_sum += loss_acc
+            window_loss_sum += loss_step
+            if loss_main_count:
+                window_loss_main_sum += float(loss_main_acc)
+                window_loss_main_count += loss_main_count
+            if loss_mtp_count:
+                window_loss_mtp_sum += float(loss_mtp_acc)
+                window_loss_mtp_count += loss_mtp_count
 
             if self.state.step % self._log_every == 0:
                 elapsed = time.time() - window_t0

@@ -1,0 +1,59 @@
+# Container-local paths for the first 1B pretraining data expansion wave.
+#
+# Intended to run inside Docker with:
+#   - /mnt/disk6/Auralis/AuralisV2 mounted at /workspace/v2data
+#   - /mnt/disk5/Auralis/NEWGPT/v2data mounted at /disk5v2data
+
+data_root: "/workspace/v2data"
+
+raw:
+  english: "raw/english"
+  german:  "raw/german"
+  code:    "raw/code"
+  sft:     "raw/sft"
+  orpo:    "raw/orpo"
+
+cleaned:
+  english:
+    - "data/training/curated_40b/english.txt"
+  german:
+    - "data/training/curated_40b/german.txt"
+  code: []
+
+tokenized:
+  curated_1b_english: "tokenized/curated_40b/english.bin"
+  curated_1b_german: "tokenized/curated_40b/german.bin"
+
+phase1_targets:
+  english:
+    # 4 bytes/token estimate in download_english.py.
+    fineweb_edu: 2_500_000_000    # ~10 GB raw sample
+    dclm_edu:    2_500_000_000    # ~10 GB raw sample
+    fineweb2_en: 1_000_000_000
+    wikipedia_en: 0
+    dolma: 0
+    openmath: 0
+  german:
+    german_commons: 0
+    wikipedia_de: 0
+    oscar_de: 0
+  code:
+    starcoder: 0
+    the_stack_v2: 0
+    open_web_math: 0
+
+filters:
+  english:
+    min_length: 300
+    max_length: 100_000
+    fineweb_min_score: 2.5
+  german:
+    min_length: 300
+    max_length: 100_000
+    max_perplexity: 500
+    cultural_keep_ratio: 0.05
+    excluded_subsets: []
+  code:
+    min_length: 80
+    max_length: 40_000
+    min_stars: 5

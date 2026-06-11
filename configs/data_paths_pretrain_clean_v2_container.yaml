@@ -1,0 +1,20 @@
+# Container-local variant of data_paths_pretrain_clean_v2.yaml.
+# Use this inside Docker where the repo is mounted at /workspace/v2data.
+
+data_root: "/workspace/v2data"
+
+raw:
+  english: "raw/english"
+  german:  "raw/german"
+  code:    "raw/code"
+  sft:     "raw/sft"
+  orpo:    "raw/orpo"
+
+cleaned:
+  english: []
+  german:
+    - "data/training/pretrain_clean_v2/mix_full.txt"
+  code: []
+
+tokenized:
+  clean_v2_german: "tokenized/pretrain_clean_v2/german.bin"

@@ -1,0 +1,93 @@
+experiment:
+  name: helix_v2_1b_s1_german_stem_smoke
+  version: "0.1"
+  description: >
+    Stage S1 smoke/ramp for the language-tree curriculum. German is the
+    language trunk; English stays as a small anchor to avoid later forgetting.
+    This run is meant to validate learning dynamics, bpb logging, generation
+    quality, and stability before a longer S1 foundation run.
+
+model:
+  config_path: "configs/model/helix_v2_1b.yaml"
+
+data:
+  data_dir: "/workspace/v2data/tokenized/curated_40b"
+  mix_ratios:
+    german: 0.92
+    english: 0.08
+  seq_length: 2048
+  val_split_bytes: 8_000_000
+  dataloader_seed: 20260530
+
+training:
+  device: "cuda"
+  dtype: "bfloat16"
+  matmul_precision: "high"
+  kernels:
+    enabled: true
+    mamba: true
+    gla: true
+    flash_attention: true
+
+  optimizer:
+    name: adamw
+    lr: 2.0e-4
+    betas: [0.9, 0.95]
+    weight_decay: 0.05
+    eps: 1.0e-8
+    fused: true
+
+  scheduler:
+    type: cosine
+    warmup_steps: 200
+    min_lr_ratio: 0.15
+
+  batch_size_per_device: 1
+  gradient_accumulation: 32
+  gradient_clip_norm: 1.0
+  total_steps: 2000
+
+  gradient_checkpointing: true
+  torch_compile: false
+
+logging:
+  log_every: 5
+  eval_every: 100
+  save_every: 250
+  wandb:
+    enabled: false
+    project: "auralis-v2"
+    tags: ["1b", "language-tree", "s1", "german-stem", "smoke"]
+
+checkpointing:
+  output_dir: "/workspace/v2data/checkpoints/pretrain_1b_s1_german_stem_smoke"
+  save_last_n: 4
+  save_best: true
+  external_backup:
+    enabled: false
+    path: ""
+    interval_steps: 500
+
+evaluation:
+  max_val_batches: 50
+  per_language_batches: 20
+  tokens_per_byte:
+    english: 0.1990
+    german: 0.2338
+
+monitoring:
+  health:
+    grad_explosion_threshold: 100.0
+    val_regression_stop_k: 3
+
+promotion_notes:
+  stage: s1_german_language_stem
+  promote_only_if:
+    - german_bpb_falls_or_stays_stable_without_repetition_regression
+    - english_anchor_does_not_collapse
+    - samples_are_less_degenerate_than_canary
+    - no_nan_inf_oom_or_temperature_alarm
+  not_expected_yet:
+    - frozen_gate_success
+    - instruction_following
+    - factual_repair_success

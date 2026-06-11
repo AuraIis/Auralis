@@ -100,6 +100,35 @@ class HelixBlock(nn.Module):
         x = x + self.ffn(self.norm2(x))
         return x
 
+    # ------------------------------------------------------------------
+    # Incremental decoding
+    # ------------------------------------------------------------------
+    def allocate_cache(self, batch: int, max_seqlen: int, device, dtype):
+        t = self.layer_config.type
+        if t == "plain_attention":
+            raise NotImplementedError("incremental decode not implemented for plain_attention")
+        return self.attn.allocate_cache(batch, max_seqlen, device, dtype)
+
+    def prefill(self, x, rope, cache):
+        t = self.layer_config.type
+        if t == "sparse_attention":
+            attn_out = self.attn.prefill(self.norm1(x), rope, cache)
+        else:
+            attn_out = self.attn.prefill(self.norm1(x), cache)
+        x = x + attn_out
+        x = x + self.ffn(self.norm2(x))
+        return x
+
+    def step(self, x, cache, cos=None, sin=None):
+        t = self.layer_config.type
+        if t == "sparse_attention":
+            attn_out = self.attn.step(self.norm1(x), cache, cos, sin)
+        else:
+            attn_out = self.attn.step(self.norm1(x), cache)
+        x = x + attn_out
+        x = x + self.ffn(self.norm2(x))
+        return x
+
 
 class MTPHead(nn.Module):
     """Small future-token head that reuses the main vocab projection.
@@ -303,6 +332,112 @@ class HelixModel(nn.Module):
 
     def count_parameters(self) -> int:
         return sum(p.numel() for p in self.parameters())
+
+    # ------------------------------------------------------------------
+    # Incremental (state-cached) autoregressive generation
+    # ------------------------------------------------------------------
+    def allocate_inference_caches(self, batch: int, max_seqlen: int):
+        device = self.embedding.weight.device
+        dtype = self.embedding.weight.dtype
+        return [blk.allocate_cache(batch, max_seqlen, device, dtype) for blk in self.blocks]
+
+    @torch.no_grad()
+    def generate(
+        self,
+        input_ids: torch.Tensor,                 # [B, L] prompt
+        max_new_tokens: int,
+        greedy: bool = True,
+        eos_id: int | None = None,
+        cuda_graph: bool = False,
+    ) -> torch.Tensor:
+        """O(1)-per-token greedy decode: Mamba/GLA carry recurrent state,
+        sparse-attn layers use a windowed KV cache. Token-identical to the
+        full re-forward loop (verified by bench_infer.py).
+
+        ``cuda_graph=True`` captures the single-token step once and replays
+        it — removes Python/launch overhead. eos early-exit is disabled in
+        graph mode (token IDs stay on-device)."""
+        if not greedy:
+            raise NotImplementedError("only greedy decoding is supported")
+        B, L = input_ids.shape
+        max_seqlen = L + max_new_tokens
+        caches = self.allocate_inference_caches(B, max_seqlen)
+
+        cos = sin = None
+        if self.rope is not None:
+            cos, sin = self.rope(max_seqlen, device=input_ids.device,
+                                 dtype=self.embedding.weight.dtype)
+
+        # Prefill the prompt
+        x = self.embedding(input_ids)
+        rope = (cos[:L], sin[:L]) if cos is not None else None
+        for blk, cache in zip(self.blocks, caches):
+            x = blk.prefill(x, rope, cache)
+        logits = self._vocab_projection(self.norm_out(x[:, -1:]))
+        next_id = logits[:, -1].argmax(dim=-1, keepdim=True)
+
+        if cuda_graph:
+            return self._generate_graphed(next_id, caches, cos, sin, L, max_new_tokens)
+
+        out_tokens = [next_id]
+        for pos in range(L, L + max_new_tokens - 1):
+            x = self.embedding(next_id)
+            c = cos[pos:pos + 1] if cos is not None else None
+            s = sin[pos:pos + 1] if sin is not None else None
+            for blk, cache in zip(self.blocks, caches):
+                x = blk.step(x, cache, c, s)
+            logits = self._vocab_projection(self.norm_out(x))
+            next_id = logits[:, -1].argmax(dim=-1, keepdim=True)
+            out_tokens.append(next_id)
+            if eos_id is not None and B == 1 and int(next_id) == eos_id:
+                break
+        return torch.cat(out_tokens, dim=1)
+
+    def _step_once(self, token_buf, caches, cos_buf, sin_buf):
+        x = self.embedding(token_buf)
+        for blk, cache in zip(self.blocks, caches):
+            x = blk.step(x, cache, cos_buf, sin_buf)
+        logits = self._vocab_projection(self.norm_out(x))
+        token_buf.copy_(logits[:, -1].argmax(dim=-1, keepdim=True))
+
+    def _generate_graphed(self, next_id, caches, cos, sin, L, max_new_tokens):
+        """Capture the single-token decode step in a CUDA graph and replay it.
+        All step state (Mamba conv/ssm, GLA S, attention KV + cache_seqlens)
+        lives in fixed buffers and is updated in-place inside the graph; only
+        the RoPE row is staged from outside per position."""
+        B = next_id.shape[0]
+        device = next_id.device
+        token_buf = next_id.clone()
+        cos_buf = cos[L:L + 1].clone() if cos is not None else None
+        sin_buf = sin[L:L + 1].clone() if sin is not None else None
+        ring = torch.empty(B, max_new_tokens, dtype=torch.long, device=device)
+        ring[:, 0] = token_buf[:, 0]
+
+        n_warm = min(3, max_new_tokens - 1)
+        for i in range(n_warm):                          # eager warmup (autotune)
+            pos = L + i
+            if cos is not None:
+                cos_buf.copy_(cos[pos:pos + 1]); sin_buf.copy_(sin[pos:pos + 1])
+            self._step_once(token_buf, caches, cos_buf, sin_buf)
+            ring[:, 1 + i] = token_buf[:, 0]
+        done = 1 + n_warm
+        if done >= max_new_tokens:
+            return ring[:, :done]
+
+        torch.cuda.synchronize()
+        graph = torch.cuda.CUDAGraph()
+        # NB: capture does NOT execute the step — it only records it. State
+        # advances exclusively through replays below.
+        with torch.cuda.graph(graph):
+            self._step_once(token_buf, caches, cos_buf, sin_buf)
+
+        for i in range(done, max_new_tokens):
+            pos = L + i - 1
+            if cos is not None:
+                cos_buf.copy_(cos[pos:pos + 1]); sin_buf.copy_(sin[pos:pos + 1])
+            graph.replay()
+            ring[:, i] = token_buf[:, 0]
+        return ring
 
 
 def build_model(config_path: str | Path) -> HelixModel:

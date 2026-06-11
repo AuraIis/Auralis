@@ -29,7 +29,7 @@ class RMSNorm(nn.Module):
         # fp32 reduction for numerical stability regardless of input dtype
         variance = x.to(torch.float32).pow(2).mean(-1, keepdim=True)
         x = x * torch.rsqrt(variance + self.eps).to(x.dtype)
-        return x * self.weight
+        return x * self.weight.to(dtype=x.dtype)
 
 
 __all__ = ["RMSNorm"]

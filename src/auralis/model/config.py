@@ -36,6 +36,7 @@ class LayerConfig:
     window_size: int | None = None
     global_tokens: int | None = None
     use_rope: bool | None = None
+    qk_norm: bool | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -61,6 +62,7 @@ class MoEConfig:
 class MTPConfig:
     enabled: bool = False
     n_heads: int = 1
+    loss_weight: float = 0.2
 
 
 @dataclass
@@ -227,6 +229,8 @@ class AuralisConfig:
                 layers_total += self.d_model * self.n_heads       # alpha
             elif lc.type == "sparse_attention":
                 layers_total += 4 * self.d_model * self.d_model  # q,k,v,o
+                if lc.qk_norm:
+                    layers_total += 2 * self.d_head              # q_norm + k_norm
             elif lc.type == "plain_attention":
                 layers_total += 4 * self.d_model * self.d_model  # q,k,v,o (ablation)
             else:
@@ -234,14 +238,20 @@ class AuralisConfig:
 
         # Norms: 2 per block + final
         norms_total = (2 * self.n_layers + 1) * self.d_model
+        mtp_total = 0
+        if self.mtp.enabled:
+            # Each MTP head is RMSNorm + d_model->d_model projection. The
+            # expensive vocab projection is shared with embeddings/lm_head.
+            mtp_total = int(self.mtp.n_heads) * (self.d_model + self.d_model * self.d_model)
 
         return {
             "embedding": emb,
             "layers": layers_total,
             "ffn": ffn_total,
             "norms": norms_total,
+            "mtp": mtp_total,
             "lm_head": head,
-            "total": emb + layers_total + ffn_total + norms_total + head,
+            "total": emb + layers_total + ffn_total + norms_total + mtp_total + head,
         }
 
 

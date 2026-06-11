@@ -1,0 +1,141 @@
+# AURALIS — Projektstand & Gesamthistorie (v1 → Helix v2 → jetzt)
+
+> **Zweck:** Single-Source-of-Truth-Überblick für Michael und neue Reviewer/KIs.
+> Synthese — die *detaillierten* append-only Logs sind `HISTORY.md` (Chronik) und
+> `LESSONS.md` (nummerierte Lektionen L-001…L-022). Stand: v3-Foundation ~step 35k/50k.
+
+---
+
+## 0) Vorgeschichte: Auralis **v1** (der Vorgänger)
+Ein früheres Projekt, das v2 erst möglich machte — vor allem durch seine **Fehler**:
+- **L-001:** Trainings- vs. Inference-Prompt-Mismatch (`<|user|>` vs `User:\n`) verschleierte *wochenlang* die Qualität → v2: EIN Prompt-Builder, byte-exakter Test.
+- **L-002:** LoRA lernte *Patterns, keine Fakten* (Loss 0.0099 = Memorization, neue Fragen scheiterten) → v2: MoRA für Fakten, DoRA für Patterns, disjunkte Val-Splits.
+- **L-003:** GPT-2-Tokenizer ~50% zu ineffizient für DE, aber fest verbacken → v2: **eigener 200k SentencePiece, einmal richtig**.
+- **L-004:** german-commons verzerrte Richtung historisches Deutsch → v2: bewusste Mix-Ratios + Stichproben-Reviews.
+- **L-005/006:** keine Baseline-Tests; 3 Modellversionen durch vergessenes `--reset-optimizer` verloren.
+
+v1 lieferte ~23,7 GB dedupliziertes deutsches Pretraining-Material (~4,7B Tokens), in v2 wiederverwendet.
+
+## 1) v2 Phase 0–1 (Apr 2026): Fundament
+- **Phase 0 (Tokenizer):** eigener **200k SentencePiece** (50 EN/40 DE/10 Code), Quality-PASS (DE 134 tok/100w vs v1 ~220), byte-exakter Roundtrip. Lektionen L-007..L-012 (SP-Normalisierung `identity`, NUL-Strip, Threads, RAM, HF-`datasets`-v4-Ban, Code-Metrik `tokens/KB`).
+- **Phase 0.5 (Architektur):** **Helix = 28L Hybrid (6× Mamba-2 + 16× GLA + 6× Sparse-Attn)**, RMSNorm/SwiGLU/RoPE, tied 200k, d_model 1280, ~954M. Pure-torch-Referenz + GPU-Kernels. Init-Loss 12.37 ≈ ln(200k) ✓, 50/50 Tests grün.
+- **Blackwell-Bringup:** mamba_ssm/fla/flash-attn auf RTX PRO 5000 — der **`TRITON_OVERRIDE_ARCH=sm89`-Trick** (sm_120 sonst abgelehnt). Kernels sparen v.a. **VRAM**.
+- **Phase 1:** Trainer/DataLoader/Tokenisierung/Smoke. Fehler L-013 (`shuf` killt Trainer-Disk-IO), L-014 (Checkpoint-Rotation crasht bei `_emergency`), L-015 (RoPE nur bei Sparse-Layer gebaut), L-016 (`pgrep`-Wrapper matcht sich selbst). NVMe-Staging **42× schneller**. **1B-Hauptlauf** (80k Steps, Mix 70/25/5).
+
+## 2) Phase 2/3 + die 500M-Sackgasse (Apr–Mai 2026)
+- **SFT-Daten-Pipeline** (DeepSeek-V4 via OpenRouter), **Anti-Halluzinations-Prompt** (L-017: generisches „lüg nicht" reicht nicht → verbotene Spekulations-Marker + Few-Shot → 0% statt 3% Halluzination). WSL2/3090-Inference.
+- **500M-Experimente (v5/v6):** Forensik, v6-Datenpläne (Gutenberg-Books, contamination-checks), **SFT-Reparatur-Sweep v3→v9** gegen *Interferenz* (Bonn/Berlin, Photosynthese, Faust/Goethe). **Frozen/Live-Response-Gates → kein 500M-Checkpoint promotable**.
+- **Diagnose:** 500M nicht produktionsreif; Ursache = **Interferenz** → Weg = *sauber gewichteter 1B-Mix* statt Mini-Patches. → Pivot auf 1B.
+
+## 3) Bilingualer 1B-Ramp + Deutsch-Edu-Filter (Mai 30/31)
+- 1B de55/en45 bis Step ~3400 enttäuschend. **Diagnose:** nicht Eval, nicht Architektur, sondern **Under-Training (~16% Chinchilla) + qualitäts-invertierter DE-Mix**.
+- **Edu-Filter (FineWeb-Edu-Methodik):** Judge **qwen3-235b** (non-thinking) statt gemini (L-018 Thinking-Kostenfalle €24; L-019 billiger Judge ist *besser*); günstiger **e5+Ridge-Klassifikator** (Pearson 0.87), Schwelle kalibriert (L-021). **german_commons gedroppt** (L-020: OCR-historisch). **DDP/Multi-GPU** additiv+gated (L-022).
+
+## 4) Aktuelle Session: Warm-start v2/v3 + Mess-Post-mortem + Wissensprofil
+- Warm-start-Continued-Pretraining; **5 Fehldiagnosen aufgelöst** (alle „schien Daten, war Messung/LR/Decoding"): Warm-start-LR zu hoch · ungültiger Baseline-Vergleich · kaputte Eval (falsche tokens/byte, stochastisch, wiki-only-Tail → Gap-Fata-Morgana 3.2 vs echt 1.04) · Guard-False-Stop (step 4250) · „keine Fakten" = Greedy-Decoding-Artefakt. (Details: `POSTMORTEM_messung_vs_daten.md`.)
+- **Gebaut:** Step-0-Diagnose, deterministische Eval, fixierter Guard, **rigorose Fakten-Margin-Batterie** (Härtegrade, 5 Kategorien), ehrliches Dashboard, parallele CPU-Daten-Pipeline (RedPajama+HPLT → 74 GB sauber), 3 Blueprints + Post-mortem + Datenstrategie-Doku.
+- **Wissensprofil (n=57, step 35k):** 95%-easy-Boden, Gradient 95→89→77; **Geschichte 92 / Geografie 83 / Tech-Konzepte 80 / Wissenschaft 67 / Sprache 64** (strict). Code = nur Konzepte (**0% Code trainiert**).
+- **Stand:** v3 ~35k/50k gesund (val 2.34, 0 Alarme); 50k-Check armiert (Gen + Profil); SFT danach (Format ≠ Wissen); Skalierung 1B→3B→7B+ + gezielte Daten (Wissenschaft/cross-lingual) als Plan.
+
+## Wiederkehrende Fehler-Muster (die eigentliche Reife)
+1. **Erst Messung verdächtigen, dann Daten** (Eval-Bias, tokens/byte, Decoding ≠ Wissen).
+2. **Infra/Disk-Koordination** (L-013 `shuf`, NVMe-Staging, Cross-Chat-Kollisionen).
+3. **Judge-/Tooling-Wahl** (L-018/019: billiger non-thinking-Judge > teures Thinking).
+4. **Interferenz statt „dumm"** (500M-Sackgasse → größerer, sauberer Mix).
+
+## Begriffe (nicht vermischen)
+**Margin = Wissen · Top-k = Abrufnähe · Greedy = Antwortverhalten · SFT = Format/Steuerbarkeit.**
+
+## Reifegrad (Stand jetzt)
+- ✅ Stabiles Training · ✅ Sprachlernen (DE/EN flüssig, getrennt) · ✅ Faktenbindung (überraschend stark, Geschichte/Geografie)
+- ⚠️ Wissenschaft + Übersetzung schwächer · ⚠️ freies Decoding noch roh
+- ▷ offen: Instruction-Following (SFT) · Skalierung 3B+ · knowledge_dna/kernel (unbewiesen, optionaler Boost)
+
+## SFT-Meilenstein + Benchmarks (Juni 2026)
+**SFT erfolgreich:** Erster echter SFT-Lauf (~32k diverse DE+EN, fakten-geprüft via gpt-4o-Verify
+[269 Halluzinationen gefangen], dekontaminiert; ~1 Epoche optimal, früh gestoppt bei val-Plateau).
+Helix wurde vom Base, der nicht mal „Berlin" sagen konnte, zu einem **antwortenden Assistenten**:
+Wien ✅, Madrid ✅ (EN!), sauberes Stoppen (Loopen weg, `eos-loss-weight 2.0`). Aber: auf
+spezifischen Fakten **confident-Halluzination** (Glühbirne→Goethe), Mathe unzuverlässig.
+> **Log-Satz:** SFT hat das *Verhalten* erfolgreich transformiert. Die größte verbleibende Schwäche
+> liegt nicht mehr im Antwortformat, sondern in der **Wissensqualität des Basismodells**
+> (fleckig, ~5–6/10; confident-Halluzination → Kalibrierung + besserer Base, Reihenfolge Annealing→3B).
+
+**Benchmarks (eigener MC-Loglikelihood-Runner, n=300, acc/acc_norm):**
+```
+ENGLISCH         MMLU  ARC-C HellaSw     DEUTSCH(*übersetzt)  mmlu_de arc_de hellaswag_de
+Helix-SFT        26,3  21,3  29,3        Helix-SFT            27,7    22,7   29,0
+Qwen2.5-0.5B     48,3  32,3  50,0        Qwen2.5-0.5B         34,3    26,0   38,0
+SmolLM2-360M     26,3  39,3  52,0        SmolLM2-360M         24,3    25,3   27,7
+TinyLlama-1.1B   28,3  34,3  61,7        TinyLlama-1.1B       25,3    27,0   38,0
+```
+**Eigentliche Aussage (nicht „27,7 %"):** Helix zeigt auf **deutschen** Benchmarks einen deutlich
+kleineren Rückstand als auf englischen und **schlägt mehrere englisch-zentrierte Small Models** —
+konkret SmolLM2-360M + TinyLlama auf **mmlu_de**, SmolLM2 auf **hellaswag_de** (auf **arc_de** ist
+Helix letzter). Qwens MMLU-Vorsprung schrumpft von ~22 (EN) auf ~7 (DE). → **Die Sprachstrategie
+(200k Vokab, de55/en45, eigener Tokenizer) zahlt sich messbar aus.** Absolute Werte alle niedrig
+(~Zufall–38 %) = Untertrainings-/Größen-Signal. EN 26–29 % widerlegt „kann nur Deutsch".
+
+**Stand kompakt:** Sprachmodell ✅ · Deutschkompetenz ✅ · Assistentenformat ✅ ·
+Wissen ⚠️ · Commonsense ⚠️ · Reasoning ⚠️ · Skalierung 🚧.
+**Nächste Hebel (gated, gemessen):** Annealing (FineWeb-2-DE/Cosmopedia/Code — schon geladen) →
+Kalibrierungs-SFT (Ehrlichkeit) → 3B. Erst messen, dann entscheiden.
+
+## Tool-Use-Meilenstein — verifiziertes Rechnen (Juni 2026)
+**Der Übergang von „raten" zu „prüfen" für Mathe ist gelungen.** Helix erkennt eine
+Rechenaufgabe, ruft einen sicheren externen Rechner (AST-Whitelist, kein RCE), übernimmt
+das Ergebnis und beantwortet Faktenfragen ohne Tool. System-Fortschritt (Modell + Harness +
+Rechner), nicht „ein Prompt hat geklappt".
+
+**Vorher → Nachher (gleiche Fragen, ein Tag Abstand):**
+```
+12 + 15      Quicktest: "12"          → step_600: print(12+15)→27 → "12 + 15 ergibt 27."
+15% von 240  Quicktest: Müll          → step_600: print(240*15/100)→36 → "Das sind 36."
+80€ −20%     —                        → step_600: print(80-80*20/100)→64 → "Er kostet dann 64 Euro."
+Wien/Faust   confident-Halluzination  → step_600: direkt korrekt, KEIN Tool
+```
+
+**Methodik (3 gated Phasen, best-by-GATE — val_loss war nachweislich irreführend):**
+Phase 1 (call_only) → 1.1 (Sprache→Formel) → 2 (Result-Injektion, `<result>` loss-maskiert).
+Promoted: `checkpoints/tool_sft_v12/sft_smoke_step_600.pt`.
+
+**Harte Zahlen (eigenes duales End-to-End-Gate, n=100 Mathe + 51 Fakten):**
+```
+correct 94% · parse 100% · fake_result 0% · false_tool 0% · answer_match 85%
+Buckets: percent 24/24 · word 21/21 · speed 10/10 · english 7/7 · time_unit 16/17 · simple 16/21 (76%)
+```
+Kern-Beweise: `false_tool 0%` (kein Missbrauch) · `fake_result 0%` (keine gefälschten Ergebnisse,
+dank `<result>`-Masking) · `parse 100%` (Harness führt zuverlässig aus). Szene bestätigt es:
+Toolformer (wann Tool rufen), Qwen2.5-Math TIR (1,5B+Python→MATH 80).
+
+**Grenzen (ehrlich):** in-distribution (trainierte Typen, neue Zahlen); `simple` schwach wegen
+sqrt/`hoch 2`; answer_match konservativ (Komma/Punkt). Tool-Use fügt **kein Wissen** hinzu.
+
+## Modularer-Adapter-Meilenstein — Skills ohne Kollateralschaden (Juni 2026)
+**Helix kann modulare Verhaltens-Skills per LoRA-Adapter bekommen, ohne den Base zu beschädigen.**
+Das ist der Kern der modularen Vision — und der Gegenbeweis zum Full-Finetuning.
+
+**Das Problem (gemessen):** Full-FT-Kalibrierung vergisst Tool-Use/Fakten nach ~50 Steps
+(catastrophic forgetting). Zwei Runden lieferten KEINEN Checkpoint mit Honesty UND Retention.
+
+**Die Lösung:** LoRA-Adapter (1,2 % Params) auf **eingefrorenem** Base. `src/auralis/adapters/lora.py`
+(injiziert 188 GLA/Attn/FFN-Module; Mamba-Kernel exkludiert, da `.weight`-direkt). Plus α-Regler
+(`set_adapter_scale`) — die Skill-Stärke ist zur **Inferenz** dosierbar, ohne Neutraining.
+
+**α-Sweep (Honesty-Adapter auf step_600, Held-out, n=60 erfunden):**
+```
+α=0.00  inv-abstain 3%   people 5/5  math 5/5   ← = exakt Base (Kontrolle bestanden)
+α=0.50  inv-abstain 95%  people 5/5  math 5/5   ← SWEET SPOT
+α=1.00  inv-abstain 100% people 5/5  math 5/5
+```
+> **Adapter aus = exakt Base. Adapter an = steuerbares Zusatzverhalten. α=0.5 liefert 95 %
+> Abstention OHNE Tool- oder Faktenverlust.** Was Full-FT zweimal nicht konnte (Honesty ODER
+> Retention), macht der dosierbare Adapter in einem Lauf, auf garantiert intaktem Base.
+
+**Roadmap validiert:** Base (Sprache+Tool-Use) eingefroren · Honesty-LoRA @ α=0.5 zuschaltbar ·
+Code-LoRA nach Annealing · Wissens-MoRA später. Zwei PEFT-Fixes im Code (DoRA-Speicher; grad-ckpt
++ frozen Base → `enable_input_require_grads`).
+
+## Leitsatz
+> Datensammlung erfolgt auf Basis von **Wissensprofilen**, nicht des Gesamt-Val-Loss.
+> Und: bevor eine schlechte Zahl „die Daten" sind — prüfe, ob die Zahl überhaupt misst, was du glaubst.

@@ -154,10 +154,27 @@ def _stream_oscar_de(filters: dict[str, Any]) -> Iterator[tuple[str, dict[str, i
         yield clean_text(text), {}
 
 
+def _stream_fineweb2_de(filters: dict[str, Any]) -> Iterator[tuple[str, dict[str, int]]]:
+    """FineWeb-2 German slice (deu_Latn), streamed from Hugging Face."""
+    ds = _open_streaming("HuggingFaceFW/fineweb-2", name="deu_Latn")
+    min_len = filters["min_length"]
+    max_len = filters["max_length"]
+    for ex in ds:
+        text = ex.get("text", "") or ""
+        if len(text) < min_len:
+            yield None, {"too_short": 1}
+            continue
+        if len(text) > max_len:
+            yield None, {"too_long": 1}
+            continue
+        yield clean_text(text), {}
+
+
 SOURCES: dict[str, Any] = {
     "german_commons": {"stream": _stream_german_commons, "filename": "german_commons.txt"},
     "wikipedia_de":   {"stream": _stream_wikipedia_de,   "filename": "wikipedia_de.txt"},
     "oscar_de":       {"stream": _stream_oscar_de,       "filename": "oscar_de.txt"},
+    "fineweb2_de":    {"stream": _stream_fineweb2_de,    "filename": "fineweb2_de.txt"},
 }
 
 

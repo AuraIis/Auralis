@@ -1,0 +1,44 @@
+# Model-budget checkpoints before committing the 1B recipe.
+
+name: pretrain_v6_vocab_budget_notes
+created_at: "2026-05-26"
+
+current_500m:
+  vocab_size: 200000
+  hidden_size: 1024
+  tied_embedding_params: 204800000
+  total_params_approx: 496000000
+  embedding_share_approx: 0.413
+  note: "The 200k vocab consumes about 41% of the 500M parameter budget."
+
+variants_to_measure_before_1b:
+  - name: vocab_100k_same_hidden
+    vocab_size: 100000
+    hidden_size: 1024
+    tied_embedding_params: 102400000
+    expected_effect: "Frees roughly 102M params versus 200k for model depth/width or lowers total size."
+    risk: "More fragmentation for German compounds, rare code identifiers, and byte fallback."
+  - name: vocab_128k_same_hidden
+    vocab_size: 128000
+    hidden_size: 1024
+    tied_embedding_params: 131072000
+    expected_effect: "Middle ground; frees roughly 74M params versus 200k."
+    risk: "Need tokenizer A/B on German/code compression."
+  - name: vocab_200k_1b_only
+    vocab_size: 200000
+    hidden_size: ">=1280"
+    expected_effect: "Large vocab may be acceptable only when the transformer body is no longer starved."
+    risk: "Still expensive; must justify with tokens-per-byte and eval gains."
+
+required_measurements:
+  tokenizer_ab:
+    - "tokens per byte on German prose"
+    - "tokens per byte on Python code"
+    - "tokens per byte on QA/instruction data"
+    - "unknown/byte fallback rate if applicable"
+  model_ab:
+    - "same-data 100M or 200M canary with 100k/128k/200k vocab"
+    - "source-disjoint gate score"
+    - "source PPL by de_prose, qa_de, math, code"
+    - "throughput and VRAM"
+

@@ -28,6 +28,11 @@ except Exception:
     _chunk_gla = None
     _FLA_AVAILABLE = False
 
+try:
+    from fla.ops.gla import fused_recurrent_gla as _fused_recurrent_gla  # type: ignore
+except Exception:
+    _fused_recurrent_gla = None
+
 
 def _use_fla(on_cuda: bool) -> bool:
     if not (_FLA_AVAILABLE and on_cuda):
@@ -73,7 +78,7 @@ class GLALayer(nn.Module):
         with torch.no_grad():
             self.alpha_proj.bias.fill_(bias)
 
-    def forward(self, x, state=None):
+    def forward(self, x, state=None, output_final_state: bool = False):
         B, L, _ = x.shape
         H, D = self.n_heads, self.d_head
 
@@ -88,12 +93,46 @@ class GLALayer(nn.Module):
             out, new_state = _chunk_gla(q, k, v, log_alpha,
                                         scale=D ** -0.5,
                                         initial_state=state,
-                                        output_final_state=False)
+                                        output_final_state=output_final_state)
         else:
             out, new_state = self._native_scan(q, k, v, log_alpha, state)
 
         out = out * g_out                                     # per-channel output gate
         return self.out_proj(out.reshape(B, L, H * D)), new_state
+
+    # ------------------------------------------------------------------
+    # Incremental decoding — recurrent state carried across steps
+    # ------------------------------------------------------------------
+    def allocate_cache(self, batch: int, max_seqlen: int, device, dtype):
+        # fla keeps the recurrent state in fp32 internally; allocate lazily
+        # (prefill writes the real state).
+        return {"S": None}
+
+    def prefill(self, x, cache):
+        out, S = self.forward(x, state=None, output_final_state=True)
+        # contiguous fp32 buffer with a STABLE pointer (cuda-graph safe)
+        cache["S"] = S.to(torch.float32).contiguous()
+        return out
+
+    def step(self, x, cache):
+        B, L, _ = x.shape                                  # L == 1
+        H, D = self.n_heads, self.d_head
+        q = self.q_proj(x).view(B, L, H, D)
+        k = self.k_proj(x).view(B, L, H, D)
+        v = self.v_proj(x).view(B, L, H, D)
+        g_out = torch.sigmoid(self.g_proj(x).view(B, L, H, D))
+        log_alpha = -F.softplus(-self.alpha_proj(x).view(B, L, H, D))
+        if _use_fla(x.is_cuda) and _fused_recurrent_gla is not None:
+            out, S = _fused_recurrent_gla(q, k, v, log_alpha,
+                                          scale=D ** -0.5,
+                                          initial_state=cache["S"],
+                                          output_final_state=True)
+        else:
+            out, S = self._native_scan(q, k, v, log_alpha, cache["S"])
+        # in-place so the state pointer stays stable across steps (graph-safe)
+        cache["S"].copy_(S)
+        out = out * g_out
+        return self.out_proj(out.reshape(B, L, H * D))
 
     def _native_scan(self, q, k, v, log_alpha, state):
         """Sequential reference — matches chunk_gla semantics.

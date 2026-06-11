@@ -81,12 +81,12 @@ training:
     type: cosine
     warmup_steps: 1000    # longer re-warm: warm-started weights + 3x higher peak LR than before
     min_lr_ratio: 0.1
-  batch_size_per_device: 1
-  gradient_accumulation: 32     # 65,536 tok/step -> total_steps*65536 = tokens seen
+  batch_size_per_device: 4
+  gradient_accumulation: 8     # 65,536 tok/step -> total_steps*65536 = tokens seen
   gradient_clip_norm: 1.0
   total_steps: 60000            # ~3.9B tokens this run; raise toward ~229k for a full Chinchilla pass
   gradient_checkpointing: true
-  torch_compile: false
+  torch_compile: true   # measured +47% vs baseline at 22.4GB (micro=4+compile); --no-compile to disable
 
 logging:
   log_every: 10
@@ -114,6 +114,12 @@ evaluation:
     german_commons: 0.18
     en: 0.21
     stackexchange: 0.21
+  baseline:
+    max_ratio: 1.5
+    abort: false
+  gate:
+    enabled: true
+    every_steps: 5000
 
 monitoring:
   health:

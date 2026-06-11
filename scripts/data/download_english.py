@@ -195,12 +195,33 @@ def _stream_fineweb2_en(filters: dict[str, Any]) -> Iterator[tuple[str, dict[str
         yield clean_text(text), {}
 
 
+def _stream_dclm_edu(filters: dict[str, Any]) -> Iterator[tuple[str, dict[str, int]]]:
+    """HuggingFaceTB/dclm-edu — education-filtered DCLM text.
+
+    This is a compact high-quality English web/edu source used by small-LM
+    recipes. It complements FineWeb-Edu with a different upstream crawl/mix.
+    """
+    ds = _open_dataset_streaming("HuggingFaceTB/dclm-edu")
+    min_len = filters["min_length"]
+    max_len = filters["max_length"]
+    for ex in ds:
+        text = ex.get("text", "") or ex.get("content", "") or ""
+        if len(text) < min_len:
+            yield None, {"too_short": 1}
+            continue
+        if len(text) > max_len:
+            yield None, {"too_long": 1}
+            continue
+        yield clean_text(text), {}
+
+
 SOURCES: dict[str, Any] = {
     "fineweb_edu":    {"stream": _stream_fineweb_edu,   "filename": "fineweb_edu.txt"},
     "wikipedia_en":   {"stream": _stream_wikipedia_en,  "filename": "wikipedia_en.txt"},
     "dolma":          {"stream": _stream_dolma,         "filename": "dolma.txt"},
     "openmath":       {"stream": _stream_openmath,      "filename": "openmath.txt"},
     "fineweb2_en":    {"stream": _stream_fineweb2_en,   "filename": "fineweb2_en.txt"},
+    "dclm_edu":       {"stream": _stream_dclm_edu,      "filename": "dclm_edu.txt"},
 }
 
 

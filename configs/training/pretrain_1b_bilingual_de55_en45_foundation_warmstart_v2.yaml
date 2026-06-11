@@ -1,0 +1,111 @@
+experiment:
+  name: helix_v2_1b_bilingual_de55_en45_foundation_warmstart_v2
+  version: "0.1"
+  description: >
+    Relaunch v2: warm-start from the previous foundation best.pt (bpb_de 1.172,
+    step 7250) onto the EXPANDED, CLEANER German pool (fineweb2 v1+v2 + wiki =
+    3.24B unique tokens; german_commons dropped after a QC sample showed it was
+    OCR-historical = the v1 style trap). Everything else (mix, LR, schedule, eval
+    calibration) is held identical to the prior run so bpb is directly comparable
+    to the 1.172 baseline — the ONLY change is the German data. Separate output_dir
+    so the warm-start source checkpoint is preserved.
+
+model:
+  config_path: "configs/model/helix_v2_1b.yaml"
+
+data:
+  data_dir: "/workspace/v2data/tokenized/curated_40b"
+  mix_ratios:
+    german: 0.55
+    english: 0.45
+  seq_length: 2048
+  val_split_bytes: 8_000_000
+  dataloader_seed: 20260601
+
+training:
+  device: "cuda"
+  dtype: "bfloat16"
+  matmul_precision: "high"
+  kernels:
+    enabled: true
+    mamba: true
+    gla: true
+    flash_attention: true
+
+  optimizer:
+    name: adamw
+    lr: 1.5e-4
+    betas: [0.9, 0.95]
+    weight_decay: 0.05
+    eps: 1.0e-8
+    fused: true
+
+  scheduler:
+    type: cosine
+    warmup_steps: 1000
+    min_lr_ratio: 0.10
+
+  batch_size_per_device: 1
+  gradient_accumulation: 32
+  gradient_clip_norm: 1.0
+  total_steps: 50000
+
+  gradient_checkpointing: true
+  torch_compile: false
+
+logging:
+  log_every: 5
+  eval_every: 250
+  save_every: 1000
+  wandb:
+    enabled: false
+    project: "auralis-v2"
+    tags: ["1b", "foundation", "bilingual", "de55-en45", "warmstart", "v2", "expanded-de"]
+
+checkpointing:
+  output_dir: "/workspace/v2data/checkpoints/pretrain_1b_bilingual_de55_en45_foundation_warmstart_v2"
+  save_last_n: 6
+  save_best: true
+  skip_step_save_if_checkpoint_written: true
+  external_backup:
+    enabled: false
+    path: ""
+    interval_steps: 1000
+
+evaluation:
+  max_val_batches: 50
+  per_language_batches: 20
+  tokens_per_byte:
+    english: 0.1990
+    german: 0.2338
+
+monitoring:
+  health:
+    grad_explosion_threshold: 100.0
+    val_regression_stop_k: 5
+    bpb_regression_enabled: true
+    bpb_regression_languages: ["english", "german"]
+    bpb_regression_max_increase: 0.25
+    bpb_regression_k: 2
+    bpb_regression_lookback: 4
+    bpb_regression_warmup_evals: 3
+
+decision_points:
+  inspect_at_steps:
+    - 250
+    - 500
+    - 1000
+    - 2500
+    - 5000
+    - 10000
+    - 25000
+    - 50000
+  continue_if:
+    - no_nan_inf_oom_or_temperature_alarm
+    - grad_norm_stays_below_threshold
+    - bpb_german_and_bpb_english_both_improve_or_stay_stable
+    - free_generation_repetition_trends_down_over_checkpoints
+  stop_and_replan_if:
+    - bpb_german_or_english_regresses_for_multiple_evals
+    - aggregate_val_loss_regresses_persistently
+    - sample_generation_quality_collapses

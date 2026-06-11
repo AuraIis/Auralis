@@ -1,0 +1,29 @@
+version: auralis-memory-v0.1
+description: "Experimental chat-to-memory pipeline for future User-DoRA/LoRA tests."
+
+memory_types:
+  trainable:
+    - user_preference
+    - project_fact
+    - hardware_fact
+  non_trainable:
+    - path_fact
+    - temporary_status
+
+adapter_training_policy:
+  train_raw_chat: false
+  train_temporary_status: false
+  min_confidence_for_adapter: 0.65
+  output_format: alpaca_jsonl
+
+kernel_tags:
+  - "<|preference|>"
+  - "<|fact|>"
+  - "<|memory|>"
+  - "<|end|>"
+
+next_steps:
+  - "Replace heuristic extractor with local/teacher LLM extractor behind the same JSONL schema."
+  - "Add conflict resolution before adapter training."
+  - "Train a tiny LoRA/DoRA smoke adapter from adapter_train.jsonl and test preference recall."
+
