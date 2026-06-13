@@ -127,3 +127,4 @@ monitoring:
     val_regression_stop_k: 8
     val_min_delta: 0.01
     bpb_regression_enabled: false
+    gate_regression_stop_k: 9999  # gate=generation proxy, noisy for a base model; bpb/val_loss govern. Killed a healthy run at step 35000.
