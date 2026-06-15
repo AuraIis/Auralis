@@ -25,6 +25,7 @@ ADAPTERS = {"corrective": "sft_corrective_v3", "grounded": "sft_grounded_v4", "c
 # Measured: corrective @1.0 over-fires the abstain/encyclopedic template (Hund=Katze, word-mangling);
 # @0.5 is much more sensible while "Paris." stays crisp.
 VARIANT_CFG = {
+    "helix":                    ("code", 0.5, False, False),   # AUTO-ROUTER: dispatches to math/rag/web/code/chat by query (default placeholder cfg)
     "helix-chat":               ("code", 0.5, False, False),   # OFAT: facts 1.0; trade greeting-vs-unknown-abstain at 0.5 vs 0.6
     "helix-rag":                ("grounded", 1.0, False, False),  # local Wikipedia (FTS5) -> grounded reader (honest: abstains vs confabulates; corrective@0.5 extracts more but invents facts on messy/fake context)
     "helix-web":                ("grounded", 1.0, False, False),  # LIVE web search (DuckDuckGo) -> grounded reader; honest over confident-wrong
@@ -180,12 +181,31 @@ def web_search(q, k=4):  # live DuckDuckGo (no API key); snippets as grounded co
     except Exception:
         return []
 
+def route(q):  # AUTO-ROUTER: pick the right mode from the query
+    ql = (q or "").lower().strip()
+    if re.search(r"\d[\d.,]*\s*(\*|x|×|·|/|:|\+|mal|geteilt|plus|minus|hoch|durch)\s*\d", ql) or ql.startswith(("rechne", "berechne")) or "wie viel ist" in ql or "wieviel ist" in ql:
+        return "math"
+    if any(w in ql for w in ("schreibe eine funktion", "schreib eine funktion", "python-funktion", "funktion die", "programmiere", "schreibe code", "schreib code")):
+        return "code"
+    if any(w in ql for w in ("aktuell", "heute", "derzeit", "momentan", "neueste", "jüngste", "dieses jahr", "gerade ")) or re.search(r"\b20(1[5-9]|2[0-9])\b", ql):
+        return "web"
+    if re.match(r"^(was ist|was sind|wer ist|wer war|wer sind|wer hat|erklaer|erkläre|was bedeutet|wie funktioniert|wie viele|wo liegt|wo ist|welche|welcher|welches|definiere)\b", ql) or looks_bare(q):
+        return "rag"
+    return "chat"
+
 def gen_stream(name, messages):
+    requested = name
+    q0 = next((m.get("content", "").strip() for m in reversed(messages) if m.get("role") == "user"), "")
+    if name == "helix":
+        name = {"math": "helix-corrective-tools", "code": "helix-code", "chat": "helix-chat",
+                "rag": "helix-rag", "web": "helix-web"}[route(q0)]
     base, scale, think, tools = parse_model(name)
     if name in ("helix-rag", "helix-web"):
-        q = next((m.get("content", "").strip() for m in reversed(messages) if m.get("role") == "user"), "")
+        q = q0
         if looks_bare(q): q = f"Was ist {rewrite_term(q)}?"
         hits = web_search(q, 4) if name == "helix-web" else rag_retrieve(q, 3)
+        if not hits and name == "helix-rag" and requested == "helix":
+            hits = web_search(q, 4)  # auto-router: fall back to web for unknown/current
         if not hits:
             yield ("Ich habe online nichts dazu gefunden." if name == "helix-web" else "Dazu finde ich keinen passenden Eintrag — ich weiss es nicht."); return
         ctx = "\n\n".join(f"{t}: {i[:380]}" for t, i in hits)[:1500]  # short per-doc snippet = cleaner for the 0.9B reader
