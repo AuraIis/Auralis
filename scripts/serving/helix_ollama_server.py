@@ -25,7 +25,7 @@ ADAPTERS = {"corrective": "sft_corrective_v3", "grounded": "sft_grounded_v4", "c
 # Measured: corrective @1.0 over-fires the abstain/encyclopedic template (Hund=Katze, word-mangling);
 # @0.5 is much more sensible while "Paris." stays crisp.
 VARIANT_CFG = {
-    "helix-chat":               ("code", 1.0, False, False),   # measured best casual all-rounder (coherent + stops)
+    "helix-chat":               ("code", 0.5, False, False),   # OFAT: facts 1.0; trade greeting-vs-unknown-abstain at 0.5 vs 0.6
     "helix-corrective":         ("corrective", 0.5, False, False),
     "helix-corrective-precise": ("corrective", 1.0, False, False),
     "helix-corrective-tools":   ("corrective", 1.0, False, True),

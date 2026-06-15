@@ -16,7 +16,7 @@ Der Hub zeigt per `OLLAMA_BASE_URL=http://auralis-blackwell:11434` darauf (`.env
 ## Modi (= Modell-Varianten im Dropdown)
 | Variante | Adapter | LoRA-α | wofür |
 |---|---|---|---|
-| **helix-chat** (Default) | code | 1.0 | bester Casual-Allrounder |
+| **helix-chat** (Default) | code | **0.5** | bester Casual-Allrounder (OFAT-Sweep-Gewinner) |
 | helix-corrective | corrective | **0.5** | knappe Antworten |
 | helix-corrective-precise | corrective | 1.0 | Fakten + **ehrliche Absage** |
 | helix-corrective-tools | corrective | 1.0 | **Mathe rechnet echt** |
@@ -58,6 +58,16 @@ Echte Ollama-Modelle (.37) zurückholen:
 ```
 ssh root@BITBASTION 'cd /mnt/user/appdata/auralis-hub && cp .env.bak.helix .env && docker compose up -d --force-recreate --no-deps api'
 ```
+
+## OFAT-Serving-Sweep (ein Knopf pro Test, gemessen statt geraten)
+`scripts/serving/sweep_serving.py` — lädt das Modell einmal, variiert EINEN Knopf pro Zeile, scort 24
+feste Prompts auf 8 Metriken (stop / len / degen / false_tool / facts / abstain_unknown / topic).
+Befunde:
+- **adapter_alpha ist der einzige große Hebel.** code @ α=1.0 → Fakten nur 0.75; **α=0.5 → Fakten 1.0**,
+  Routing-Gate 8/8 (α=0.6 wäre Abstain-Unknown 1.0, bricht aber Grüße → Gate 7/8). → `helix-chat` = α=0.5.
+- **Decode war schon optimal:** rep_penalty 1.05–1.20 = kein Unterschied; **greedy** schlägt Sampling
+  (temp=0.4 → Fakten 0.75); max_new 80 schneidet ab (stop 0.87), ≥120 reicht. → keine Decode-Änderung nötig.
+Methode: Gewinner einer Stufe übernehmen, dann nächste Stufe — nie nach Gefühl.
 
 ## Ehrliche Grenzen
 Modi + Rewriter + Tools + Grounded lösen **Serving/Phrasierung**. NICHT lösbar (0.9B-Decke, mehrfach vermessen):
