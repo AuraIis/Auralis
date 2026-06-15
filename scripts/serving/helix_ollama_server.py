@@ -26,6 +26,8 @@ ADAPTERS = {"corrective": "sft_corrective_v3", "grounded": "sft_grounded_v4", "c
 # @0.5 is much more sensible while "Paris." stays crisp.
 VARIANT_CFG = {
     "helix-chat":               ("code", 0.5, False, False),   # OFAT: facts 1.0; trade greeting-vs-unknown-abstain at 0.5 vs 0.6
+    "helix-rag":                ("grounded", 1.0, False, False),  # local Wikipedia (FTS5) -> grounded reader (honest: abstains vs confabulates; corrective@0.5 extracts more but invents facts on messy/fake context)
+    "helix-web":                ("grounded", 1.0, False, False),  # LIVE web search (DuckDuckGo) -> grounded reader; honest over confident-wrong
     "helix-corrective":         ("corrective", 0.5, False, False),
     "helix-corrective-precise": ("corrective", 1.0, False, False),
     "helix-corrective-tools":   ("corrective", 1.0, False, True),
@@ -123,9 +125,67 @@ def maybe_rewrite(name, messages):
             break
     return msgs
 
+import sqlite3
+RAG_DB = "/workspace/v2data/rag/dewiki.fts5.db"; _rag = {"con": None}
+RAG_STOP = {"was","ist","eine","ein","einen","der","die","das","wer","wie","wo","wann","warum","welche","welcher",
+            "welches","mir","mich","du","kannst","ueber","über","sagen","erklaere","erkläre","kurz","nenne","sind",
+            "den","dem","des","von","im","in","zu","und","mit","auf","fuer","für","etwas","mal","bitte"}
+def rag_terms(q):
+    ks = [w for w in re.findall(r"[\wäöüÄÖÜß]+", q.lower()) if w not in RAG_STOP and len(w) > 1]
+    return " OR ".join(ks)
+_BAD = ("steht für", "begriffsklärung", "ist der familienname", "ist der name mehrerer", "ist der name folgender",
+        "ist der name von", "bezeichnet:", "ist eine ortsbezeichnung", "kann sich beziehen", "ist eine liste",
+        "ist eine begriffsklärung", "bezeichnet mehrere")
+def _good(ti, intro):  # drop disambiguation / name-list pages (bad context, confuse the reader)
+    if "Begriffsklärung" in ti or "(Familienname)" in ti: return False
+    h = intro[:130].lower()
+    return not any(b in h for b in _BAD)
+def _title_cands(q):  # capitalized / acronym-upper main terms, e.g. "Paris", "GPU", "Hardware"
+    ws = [w for w in re.findall(r"[\wäöüÄÖÜß]+", q) if w.lower() not in RAG_STOP and len(w) > 1]
+    c = [(w.upper() if w.lower() in ACRONYMS else w[0].upper() + w[1:]) for w in ws]
+    if len(ws) > 1: c.append(" ".join((w.upper() if w.lower() in ACRONYMS else w[0].upper() + w[1:]) for w in ws))
+    return c
+def rag_retrieve(q, k=3):
+    if _rag["con"] is None:
+        try: _rag["con"] = sqlite3.connect(f"file:{RAG_DB}?mode=ro", uri=True, check_same_thread=False)
+        except Exception: return []
+    con = _rag["con"]; out = []; seen = set()
+    for term in _title_cands(q):  # HARD RULE: exact title wins over niche/disambig/list articles
+        try: r = con.execute("SELECT t, intro FROM titlemap WHERE t = ? COLLATE NOCASE LIMIT 1", (term,)).fetchone()
+        except Exception: r = None
+        if r and _good(r[0], r[1]) and r[0].lower() not in seen:
+            out.append((r[0], r[1])); seen.add(r[0].lower())
+    t = rag_terms(q)  # BM25 fill for the rest
+    if t:
+        try: rows = con.execute("SELECT title, intro FROM docs WHERE docs MATCH ? ORDER BY bm25(docs) LIMIT ?", (t, k * 15)).fetchall()
+        except Exception: rows = []
+        for ti, i in rows:
+            if _good(ti, i) and len(i) >= 80 and ti.lower() not in seen:  # skip extremely short niche stubs
+                out.append((ti, i)); seen.add(ti.lower())
+    return out[:k]
+
+_ddgs = {"cls": None}
+def web_search(q, k=4):  # live DuckDuckGo (no API key); snippets as grounded context
+    try:
+        if _ddgs["cls"] is None:
+            from ddgs import DDGS; _ddgs["cls"] = DDGS
+        rows = list(_ddgs["cls"]().text(q, max_results=k, region="de-de"))
+        return [((x.get("title") or "").strip(), (x.get("body") or "").strip()) for x in rows if (x.get("body") or "").strip()]
+    except Exception:
+        return []
+
 def gen_stream(name, messages):
     base, scale, think, tools = parse_model(name)
-    messages = maybe_rewrite(name, messages)
+    if name in ("helix-rag", "helix-web"):
+        q = next((m.get("content", "").strip() for m in reversed(messages) if m.get("role") == "user"), "")
+        if looks_bare(q): q = f"Was ist {rewrite_term(q)}?"
+        hits = web_search(q, 4) if name == "helix-web" else rag_retrieve(q, 3)
+        if not hits:
+            yield ("Ich habe online nichts dazu gefunden." if name == "helix-web" else "Dazu finde ich keinen passenden Eintrag — ich weiss es nicht."); return
+        ctx = "\n\n".join(f"{t}: {i[:380]}" for t, i in hits)[:1500]  # short per-doc snippet = cleaner for the 0.9B reader
+        messages = [{"role": "user", "content": f"{ctx}\n\nFrage: {q}"}]
+    else:
+        messages = maybe_rewrite(name, messages)
     with GPU_LOCK:
         if _cur["name"] != base: apply_adapter(base)
         set_adapter_scale(model, scale)  # variant-specific LoRA strength (alpha)
