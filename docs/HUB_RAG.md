@@ -13,6 +13,10 @@ Frage → Query-Rewriter → Retriever → Top-k Kontext → helix-grounded lies
 - **Harte Titelregel** (`rag_finalize.py` baut eine indizierte `titlemap`): bei „Was ist X?" gewinnt der Artikel
   mit **Titel == X** über jeden Sportverein/Township/Nebenartikel; danach BM25-Auffüllung. Begriffsklärungen/
   Namenslisten gefiltert, extrem kurze Stubs (<80 Zeichen) raus.
+- **v0.1 Redirect/Alias-Auflösung** (`rag_aliases.py` baut `aliasmap`: **1.797.661 Aliase** aus dem echten de-Wiki
+  `redirect.sql` + `page.sql`-Join): Term → Alias → Exakt-Titel — **Katze→Hauskatze, Hund→Haushund, Auto→Automobil,
+  USA→Vereinigte Staaten**. Bei Exakt-/Alias-Treffer **keine BM25-Beimischung** (sauberer Einzel-Kontext; sonst zieht
+  der Reader Nebenartikel wie „Ein dicker Hund").
 - **`helix-web`** = live **DuckDuckGo** (`ddgs`, kein API-Key, `region=de-de`), Top-4 Snippets als Kontext —
   für **Unbekanntes / Aktuelles** (z. B. „Hauptstadt von Australien" → Canberra ✅).
 - **Reader = `helix-grounded`** (bewusst): ehrlich (lehnt ab statt zu erfinden). corrective@0.5 extrahiert mehr,
@@ -31,12 +35,13 @@ Fakten, schwach bei indirekter Formulierung „X *wurde gewählt zum* Kanzler", 
 
 ## v0-Grenzen (= Modellgröße / Datenform, kein Bug)
 1. **Indirekte Extraktion:** grounded liest „X *ist* Y" sauber, „X *wurde* Y *gewählt*" nicht. → größerer Reader.
-2. **Mehrdeutige Kurzbegriffe ohne Exakt-Titel** (Katze→Hauskatze): Titelregel hat keine Redirects. → Embeddings.
-3. **Reader-Extraktion** greift mal einen Nebensatz statt der Definition.
+2. **Mehrdeutige Kurzbegriffe** — in **v0.1 weitgehend gelöst** über die Redirect/Alias-Tabelle (Katze/Hund/Auto/USA
+   funktionieren jetzt). Rest: echte Synonyme/Paraphrasen ohne Redirect → Embeddings.
+3. **Reader-Extraktion** greift mal einen Nebensatz statt der Definition. → größerer Reader.
 
-## v1 (NICHT beides gleichzeitig — erst v0 stabil)
-1. **Embeddings fürs Retrieval** (`sentence-transformers` + `faiss`) → Synonyme/Redirects/Paraphrasen (Katze≈Hauskatze).
-2. **Größerer Reader (3B)** für indirekte Extraktion.
+## v1 (NICHT beides gleichzeitig — erst v0/v0.1 stabil)
+1. **Embeddings fürs Retrieval** (`sentence-transformers` + `faiss`) → echte Synonyme/Paraphrasen jenseits der Aliase.
+2. **Größerer Reader (3B)** für indirekte Extraktion + sauberere Definitions-Extraktion.
 
 ## Betrieb
 Modi `helix-rag` / `helix-web` im Shim (`scripts/serving/helix_ollama_server.py`). Brauchen die DB auf dem Server

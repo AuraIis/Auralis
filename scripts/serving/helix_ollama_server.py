@@ -150,12 +150,18 @@ def rag_retrieve(q, k=3):
         try: _rag["con"] = sqlite3.connect(f"file:{RAG_DB}?mode=ro", uri=True, check_same_thread=False)
         except Exception: return []
     con = _rag["con"]; out = []; seen = set()
-    for term in _title_cands(q):  # HARD RULE: exact title wins over niche/disambig/list articles
-        try: r = con.execute("SELECT t, intro FROM titlemap WHERE t = ? COLLATE NOCASE LIMIT 1", (term,)).fetchone()
+    for term in _title_cands(q):  # HARD RULE: alias-resolve (Katze->Hauskatze) then exact title beats niche/disambig
+        tgt = term
+        try:
+            a = con.execute("SELECT target FROM aliasmap WHERE a = ? LIMIT 1", (term.lower(),)).fetchone()
+            if a: tgt = a[0]
+        except Exception: pass
+        try: r = con.execute("SELECT t, intro FROM titlemap WHERE t = ? COLLATE NOCASE LIMIT 1", (tgt,)).fetchone()
         except Exception: r = None
         if r and _good(r[0], r[1]) and r[0].lower() not in seen:
             out.append((r[0], r[1])); seen.add(r[0].lower())
-    t = rag_terms(q)  # BM25 fill for the rest
+    if out: return out[:k]  # exact/alias hit -> clean single context, no BM25 dilution
+    t = rag_terms(q)  # BM25 fallback only when there is no exact/alias article
     if t:
         try: rows = con.execute("SELECT title, intro FROM docs WHERE docs MATCH ? ORDER BY bm25(docs) LIMIT ?", (t, k * 15)).fetchall()
         except Exception: rows = []

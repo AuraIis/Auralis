@@ -23,9 +23,15 @@ def terms(q): return " OR ".join(w for w in re.findall(r"[\wäöüÄÖÜß]+", q
 def retrieve(q, k=3):
     out = []; seen = set()
     for term in tcands(q):
-        try: r = con.execute("SELECT t,intro FROM titlemap WHERE t=? COLLATE NOCASE LIMIT 1", (term,)).fetchone()
+        tgt = term
+        try:
+            a = con.execute("SELECT target FROM aliasmap WHERE a=? LIMIT 1", (term.lower(),)).fetchone()
+            if a: tgt = a[0]
+        except Exception: pass
+        try: r = con.execute("SELECT t,intro FROM titlemap WHERE t=? COLLATE NOCASE LIMIT 1", (tgt,)).fetchone()
         except Exception: r = None
         if r and good(r[0], r[1]) and r[0].lower() not in seen: out.append((r[0], r[1])); seen.add(r[0].lower())
+    if out: return out[:k]
     tt = terms(q)
     if tt:
         try: rows = con.execute("SELECT title,intro FROM docs WHERE docs MATCH ? ORDER BY bm25(docs) LIMIT ?", (tt, k*15)).fetchall()
