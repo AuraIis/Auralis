@@ -16,12 +16,21 @@ import json
 import mimetypes
 import re
 import time
+import urllib.request
 from dataclasses import asdict, dataclass
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from typing import Any
 from urllib.parse import parse_qs, unquote, urlparse
 
+# ---------------------------------------------------------------------------
+# Ollama base URL — configurable via --ollama-url arg (default: local network)
+# ---------------------------------------------------------------------------
+OLLAMA_BASE = "http://192.168.178.37:11434"
+
+# Simple in-process cache for /api/models (TTL 30 s)
+_models_cache: dict[str, Any] = {"ts": 0.0, "models": []}
 
 STEP_RE = re.compile(
     r"step\s+(?P<step>\d+)\s+\|\s+loss\s+(?P<loss>[-+0-9.eE]+)\s+\|\s+"
@@ -33,6 +42,7 @@ EVAL_RE = re.compile(r"eval @ step\s+(?P<step>\d+):\s+(?P<body>.*)")
 KV_RE = re.compile(r"(?P<key>[A-Za-z0-9_/-]+)=(?P<value>[-+0-9.eE]+)")
 MIX_RE = re.compile(r"train expected rows/batch per language:\s+(?P<mix>\{.*\})")
 MANIFEST_RE = re.compile(r"manifest:\s+(?P<path>.+)")
+GATE_RE = re.compile(r"gate @ step\s+(?P<step>\d+):\s+(?P<body>.*)")
 
 LN2 = 0.6931471805599453
 # Measured tokens/byte (from eval_diagnostic.py). The training log computed bpb
@@ -108,7 +118,7 @@ def resolve_log_path(root: Path, log_dirs: list[Path], selected: str) -> Path | 
     return safe_relative(root, selected)
 
 
-def parse_log(path: Path, max_lines: int = 6000) -> dict[str, object]:
+def parse_log(path: Path, max_lines: int = 8000) -> dict[str, object]:
     if not path.exists():
         return {"error": f"log not found: {path}"}
     lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
@@ -117,6 +127,7 @@ def parse_log(path: Path, max_lines: int = 6000) -> dict[str, object]:
 
     train: list[TrainPoint] = []
     evals: list[dict[str, float]] = []
+    gates: list[dict[str, float]] = []
     health: list[str] = []
     mix = ""
     manifest = ""
@@ -142,25 +153,31 @@ def parse_log(path: Path, max_lines: int = 6000) -> dict[str, object]:
                 vram_alloc_gb=_float_or_none(m.group("vram_alloc")),
                 vram_peak_gb=_float_or_none(m.group("vram_peak")),
             ))
+        elif m := GATE_RE.search(line):
+            grow: dict[str, float] = {"step": float(m.group("step"))}
+            for kv in KV_RE.finditer(m.group("body")):
+                grow[kv.group("key")] = float(kv.group("value"))
+            gates.append(grow)
         elif m := EVAL_RE.search(line):
             row: dict[str, float] = {"step": float(m.group("step"))}
             for kv in KV_RE.finditer(m.group("body")):
                 row[kv.group("key").replace("/", "_")] = float(kv.group("value"))
-            # Honest bpb: recompute from per-language val_loss with the MEASURED
-            # tokens/byte, overriding the logged values (which used the wrong tpb).
-            for lang in ("german", "english"):
-                vl = row.get(f"val_loss_{lang}")
-                tpb = CORRECT_TPB.get(lang)
-                if vl is not None and tpb:
-                    row[f"bpb_{lang}"] = vl * tpb / LN2
-            de_b, en_b = row.get("bpb_german"), row.get("bpb_english")
-            if de_b and en_b:
-                row["bpb_gap_max"] = max(de_b, en_b) / min(de_b, en_b)
+            # The log already contains accurate bpb_de_curated and bpb_en values.
+            # Also create normalised aliases used by the chart/balance/card code.
+            if "bpb_de_curated" in row:
+                row["bpb_de"] = row["bpb_de_curated"]
+            if "bpb_en" in row:
+                row["bpb_en"] = row["bpb_en"]  # already present, keep alias consistent
             evals.append(row)
 
     latest_train = asdict(train[-1]) if train else None
     latest_eval = evals[-1] if evals else None
     mtime = path.stat().st_mtime
+
+    # Compute recent tok/s average for ETA (last 20 training steps)
+    recent_toks = [p.tok_s for p in train[-20:] if p.tok_s > 0]
+    avg_toks = sum(recent_toks) / len(recent_toks) if recent_toks else None
+
     return {
         "path": str(path),
         "name": path.name,
@@ -171,12 +188,37 @@ def parse_log(path: Path, max_lines: int = 6000) -> dict[str, object]:
         "manifest": manifest,
         "train": [asdict(p) for p in train],
         "evals": evals,
+        "gates": gates,
         "latest_train": latest_train,
         "latest_eval": latest_eval,
         "health": health[-30:],
         "last_error": last_error,
         "tail": lines[-80:],
+        "avg_tok_s": avg_toks,
     }
+
+
+def parse_gate_jsons(root: Path, run_name: str = "corpus20b_codeheavy") -> list[dict[str, object]]:
+    """Load gate_step_*.json files for richer per-item gate data."""
+    gate_dir = root / "checkpoints" / run_name / "eval_gate"
+    if not gate_dir.exists():
+        return []
+    out = []
+    for p in sorted(gate_dir.glob("gate_step_*.json")):
+        try:
+            d = json.loads(p.read_text(encoding="utf-8", errors="replace"))
+            step = d.get("step")
+            by_axis = d.get("by_axis", {})
+            composite = d.get("composite")
+            if step is None:
+                continue
+            row: dict[str, object] = {"step": step, "composite": composite}
+            for k, v in by_axis.items():
+                row[k] = v
+            out.append(row)
+        except Exception:
+            continue
+    return sorted(out, key=lambda x: x["step"])
 
 
 def learning_reports(root: Path) -> list[dict[str, object]]:
@@ -564,6 +606,40 @@ INDEX_HTML = r"""<!doctype html>
     @media (prefers-reduced-motion:reduce){ *{animation-duration:.001s!important; transition:none!important;} }
     @media (max-width:1180px){ .cards{grid-template-columns:repeat(3,1fr);} .split,.split3{grid-template-columns:1fr;} }
     @media (max-width:620px){ .cards{grid-template-columns:repeat(2,1fr);} header{gap:12px;} main{padding:14px;} }
+
+    /* ---------- chat panel ---------- */
+    #chatPanel { border-left:3px solid var(--accent); }
+    #chatPanel h2 { color:var(--accent); }
+    .chat-toolbar { display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
+    .chat-toolbar select { flex:1; min-width:160px; max-width:340px; }
+    .chat-ctx-btn { font-size:11.5px; padding:6px 10px; border-radius:8px; background:rgba(122,240,200,.1); border:1px solid rgba(122,240,200,.3); color:var(--accent); cursor:pointer; transition:background .15s,border-color .15s; white-space:nowrap; }
+    .chat-ctx-btn.on { background:rgba(122,240,200,.22); border-color:var(--accent); color:#fff; }
+    #chatMessages { height:320px; overflow-y:auto; display:flex; flex-direction:column; gap:10px;
+      padding:10px; background:rgba(7,11,13,.6); border:1px solid var(--stroke); border-radius:12px;
+      margin-bottom:10px; scroll-behavior:smooth; }
+    .msg { display:flex; flex-direction:column; gap:4px; animation:rise .25s both; }
+    .msg-user { align-items:flex-end; }
+    .msg-assistant { align-items:flex-start; }
+    .bubble { max-width:85%; padding:9px 13px; border-radius:14px; font-size:13px; line-height:1.6;
+      white-space:pre-wrap; word-break:break-word; }
+    .msg-user .bubble { background:linear-gradient(135deg,rgba(61,220,132,.22),rgba(70,198,255,.18));
+      border:1px solid rgba(70,198,255,.3); border-bottom-right-radius:4px; }
+    .msg-assistant .bubble { background:rgba(20,26,30,.85); border:1px solid var(--stroke);
+      color:#d8e8ec; border-bottom-left-radius:4px; }
+    .msg-meta { font-size:10.5px; color:var(--faint); padding:0 4px; }
+    .chat-input-row { display:flex; gap:8px; align-items:stretch; }
+    #chatInput { flex:1; font:inherit; color:var(--text); background:rgba(18,24,28,.85);
+      border:1px solid var(--stroke); border-radius:10px; padding:9px 13px; font-size:13px;
+      resize:none; min-height:44px; max-height:120px; outline:none; transition:border-color .2s; }
+    #chatInput:focus { border-color:rgba(122,240,200,.5); }
+    #chatSend { padding:9px 18px; background:linear-gradient(120deg,rgba(61,220,132,.25),rgba(70,198,255,.22));
+      border:1px solid rgba(70,198,255,.4); border-radius:10px; color:#fff; cursor:pointer;
+      font:inherit; font-size:13px; transition:border-color .2s,background .2s; white-space:nowrap; }
+    #chatSend:hover:not(:disabled) { border-color:rgba(70,198,255,.7); background:linear-gradient(120deg,rgba(61,220,132,.35),rgba(70,198,255,.32)); }
+    #chatSend:disabled { opacity:.5; cursor:default; }
+    .chat-status { font-size:11.5px; color:var(--faint); margin-top:6px; min-height:16px; }
+    .streaming-cursor { display:inline-block; width:2px; height:1em; background:var(--accent); margin-left:2px; vertical-align:text-bottom; animation:blink .7s infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
   </style>
 </head>
 <body>
@@ -593,13 +669,31 @@ INDEX_HTML = r"""<!doctype html>
         <div class="foot" id="sftTrend" style="margin-top:6px;color:#8ca0a8"></div>
       </div>
     </section>
+    <!-- Progress bar -->
+    <section class="row" id="progressRow">
+      <div class="panel" style="padding:12px 18px">
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <div style="flex:1;min-width:200px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:5px;font-size:12px;color:var(--muted)">
+              <span>Fortschritt <b id="progressPct" style="color:var(--text)">–</b></span>
+              <span>ETA <b id="progressEta" style="color:var(--accent)">–</b></span>
+            </div>
+            <div style="height:8px;border-radius:999px;background:rgba(120,150,160,.12);overflow:hidden">
+              <div id="progressFill" style="height:100%;border-radius:999px;width:0%;background:linear-gradient(90deg,var(--de),var(--en));box-shadow:0 0 12px var(--glow-en);transition:width 1s cubic-bezier(.2,.7,.2,1)"></div>
+            </div>
+          </div>
+          <div style="font-size:12px;color:var(--muted);white-space:nowrap"><span id="progressSteps">– / 60 000 steps</span></div>
+        </div>
+      </div>
+    </section>
+
     <section class="row cards stagger" id="cards">
       <div class="panel card"><div class="label" data-tip="Trainingsschritt. 1 Schritt = 1 Optimizer-Update (hier ~65k Tokens).">Step</div><div id="step" class="value">–</div><div class="foot" id="mix">–</div></div>
       <div class="panel card"><div class="label" data-tip="Überraschung des Modells über das nächste Token (nats). Start ≈ 12,2 = reines Raten. Niedriger = besser.">Train Loss</div><div id="loss" class="value">–</div><div class="foot"><span id="lossDelta" class="delta flat">–</span><span id="lr">lr –</span></div></div>
       <div class="panel card"><div class="label" data-tip="Stärke der Gewichts-Änderung pro Schritt. Stabil/klein = gesund, plötzliche Sprünge = Explosion (Guard stoppt).">Grad Norm</div><div id="grad" class="value">–</div><div class="foot">Guard aktiv · stabil</div></div>
       <div class="panel card"><div class="label" data-tip="Verarbeitete Tokens pro Sekunde. Bestimmt, wie lange der Lauf dauert.">Durchsatz</div><div id="tps" class="value">–</div><div class="foot" id="dataPct">data –</div></div>
-      <div class="panel card de"><div class="label" data-tip="Bits-pro-Byte für Deutsch — der faire, sprachübergreifend vergleichbare Schwierigkeitswert. Niedriger = besser.">Deutsch · BPB</div><div id="bpbDe" class="value">–</div><div class="foot"><span id="deDelta" class="delta flat">–</span>niedriger = besser</div></div>
-      <div class="panel card en"><div class="label" data-tip="Bits-pro-Byte für Englisch. Soll nicht kollabieren — der Health-Guard wacht darüber.">Englisch · BPB</div><div id="bpbEn" class="value">–</div><div class="foot"><span id="enDelta" class="delta flat">–</span>niedriger = besser</div></div>
+      <div class="panel card de"><div class="label" data-tip="Bits-pro-Byte für Deutsch (bpb_de_curated) — aus der aktuellen Eval. Niedriger = besser.">DE · BPB (curated)</div><div id="bpbDe" class="value">–</div><div class="foot"><span id="deDelta" class="delta flat">–</span>step <span id="bpbDeStep">–</span></div></div>
+      <div class="panel card en"><div class="label" data-tip="Bits-pro-Byte für Englisch (bpb_en) — aus der aktuellen Eval. Soll nicht kollabieren.">EN · BPB</div><div id="bpbEn" class="value">–</div><div class="foot"><span id="enDelta" class="delta flat">–</span>step <span id="bpbEnStep">–</span></div></div>
     </section>
 
     <section class="row split">
@@ -638,16 +732,45 @@ INDEX_HTML = r"""<!doctype html>
 
     <section class="row split">
       <div class="panel fade">
-        <h2>Bits-per-Byte über Steps <span style="font-weight:600;color:var(--faint);font-size:11px;text-transform:none;letter-spacing:0">· Tail-Val-Trend (echte tokens/byte) · Kacheln oben = repräsentativ</span></h2>
+        <h2>Bits-per-Byte über Steps <span style="font-weight:600;color:var(--faint);font-size:11px;text-transform:none;letter-spacing:0">· aus Eval-Log (bpb_de_curated / bpb_en / bpb_code / bpb_math)</span></h2>
         <div class="legend">
-          <span><i class="swatch" style="background:var(--de);color:var(--de)"></i>Deutsch</span>
-          <span><i class="swatch" style="background:var(--en);color:var(--en)"></i>Englisch</span>
+          <span><i class="swatch" style="background:var(--de);color:var(--de)"></i>DE curated</span>
+          <span><i class="swatch" style="background:var(--en);color:var(--en)"></i>EN</span>
+          <span><i class="swatch" style="background:#f4b740;color:#f4b740"></i>Code</span>
+          <span><i class="swatch" style="background:#b388ff;color:#b388ff"></i>Math</span>
         </div>
         <canvas id="bpbChart" height="300"></canvas>
       </div>
       <div class="panel fade">
         <h2>Letzte Eval</h2>
         <table id="evalTable"></table>
+      </div>
+    </section>
+
+    <!-- Code-val trend panel -->
+    <section class="row split">
+      <div class="panel fade" style="border-left:3px solid #f4b740">
+        <h2>Code-Val Trend <span style="font-weight:600;color:var(--faint);font-size:11px;text-transform:none;letter-spacing:0">· val_loss_code + bpb_code + sub-tasks</span></h2>
+        <div class="legend">
+          <span><i class="swatch" style="background:#f4b740;color:#f4b740"></i>bpb_code</span>
+          <span><i class="swatch" style="background:#5aa7ff;color:#5aa7ff"></i>val_loss_code_algo</span>
+          <span><i class="swatch" style="background:#ff6b6b;color:#ff6b6b"></i>val_loss_code_snip</span>
+          <span><i class="swatch" style="background:#7af0c8;color:#7af0c8"></i>val_loss_code_qa</span>
+        </div>
+        <canvas id="codeChart" height="280"></canvas>
+      </div>
+      <!-- Gate scores panel -->
+      <div class="panel fade" style="border-left:3px solid #3ddc84">
+        <h2>Gate-Scores über Steps <span style="font-weight:600;color:var(--faint);font-size:11px;text-transform:none;letter-spacing:0">· QA / Code / Abstain / Composite</span></h2>
+        <div class="legend">
+          <span><i class="swatch" style="background:#3ddc84;color:#3ddc84"></i>qa</span>
+          <span><i class="swatch" style="background:#f4b740;color:#f4b740"></i>code</span>
+          <span><i class="swatch" style="background:#46c6ff;color:#46c6ff"></i>abstain</span>
+          <span><i class="swatch" style="background:#ff9b54;color:#ff9b54"></i>tool</span>
+          <span><i class="swatch" style="background:#fff;color:#fff"></i>composite</span>
+        </div>
+        <canvas id="gateChart" height="280"></canvas>
+        <div id="gateLatest" style="margin-top:10px;font-size:12px;color:var(--muted)">–</div>
       </div>
     </section>
 
@@ -688,6 +811,28 @@ INDEX_HTML = r"""<!doctype html>
       <div class="panel fade">
         <h2>Learning-Trace Reports</h2>
         <div id="reportLinks" class="links"></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- CHAT PANEL — Helix Ollama Chat                             -->
+    <!-- ============================================================ -->
+    <section class="row">
+      <div class="panel fade" id="chatPanel">
+        <h2>Helix Chat <span style="font-weight:600;color:var(--faint);font-size:11px;text-transform:none;letter-spacing:0">· lokales Ollama</span></h2>
+        <div class="chat-toolbar">
+          <select id="chatModel" title="Modell auswählen">
+            <option value="">Lade Modelle…</option>
+          </select>
+          <button id="chatCtxBtn" class="chat-ctx-btn on" title="Aktuellen Trainingsstatus als Kontext einbetten">Training-Kontext: ein</button>
+          <button id="chatClear" class="chat-ctx-btn" style="border-color:rgba(255,107,107,.3);color:var(--red)">Verlauf löschen</button>
+        </div>
+        <div id="chatMessages"></div>
+        <div class="chat-input-row">
+          <textarea id="chatInput" rows="1" placeholder="Nachricht eingeben… (Enter = senden, Shift+Enter = Zeilenumbruch)"></textarea>
+          <button id="chatSend">Senden ▶</button>
+        </div>
+        <div class="chat-status" id="chatStatus"></div>
       </div>
     </section>
 
@@ -872,7 +1017,31 @@ INDEX_HTML = r"""<!doctype html>
         document.getElementById("sftFoot").textContent = `~${sft.sec_per_step||"?"}s/Step · ETA ${eta} · letzter Eval vor ${sft.age_min}min · Checkpoints: ${(sft.checkpoints||[]).join(", ")||"–"}`;
         document.getElementById("sftTrend").textContent = "val-Trend:  " + (sft.recent||[]).map(p=>`${p.step}:${p.val.toFixed(2)}`).join("  →  ");
       } else { sftRow.style.display="none"; }
+
       const run=data.run||{}, lt=run.latest_train||{}, ev=run.latest_eval||{};
+      const TOTAL_STEPS = data.total_steps || 60000;
+
+      /* ---- progress bar + ETA ---- */
+      const curStep = lt.step ?? ev.step ?? 0;
+      if(curStep){
+        const pctNum = Math.round(10000 * curStep / TOTAL_STEPS) / 100;
+        document.getElementById("progressPct").textContent = pctNum.toFixed(1)+"%";
+        document.getElementById("progressFill").style.width = Math.min(100,pctNum)+"%";
+        document.getElementById("progressSteps").textContent = curStep.toLocaleString("de-DE") + " / " + TOTAL_STEPS.toLocaleString("de-DE") + " steps";
+        const avgTokS = run.avg_tok_s;
+        if(avgTokS && avgTokS > 0){
+          // tokens per step ≈ 65536 (from config); remaining steps × tps
+          const TOKENS_PER_STEP = 65536;
+          const remSteps = TOTAL_STEPS - curStep;
+          const etaSec = remSteps * TOKENS_PER_STEP / avgTokS;
+          let etaStr;
+          if(etaSec > 3600*24){ etaStr = (etaSec/3600/24).toFixed(1)+"d"; }
+          else if(etaSec > 3600){ etaStr = (etaSec/3600).toFixed(1)+"h"; }
+          else { etaStr = Math.round(etaSec/60)+"min"; }
+          document.getElementById("progressEta").textContent = etaStr + " (~" + (avgTokS/1000).toFixed(1)+"k tok/s)";
+        }
+      }
+
       document.getElementById("step").textContent = lt.step ?? ev.step ?? "–";
       document.getElementById("mix").textContent = run.mix || run.name || "–";
       tween(document.getElementById("loss"), lt.loss, 3);
@@ -882,14 +1051,17 @@ INDEX_HTML = r"""<!doctype html>
       const tpsEl=document.getElementById("tps");
       tpsEl.innerHTML = lt.tok_s ? (lt.tok_s/1000).toFixed(1)+"<small>k tok/s</small>" : "–";
       document.getElementById("dataPct").textContent = "data " + fmt(lt.data_pct,1) + "%";
-      const rp = data.repr || null;
-      const tileDe = rp ? rp.de : ev.bpb_german;
-      const tileEn = rp ? rp.en : ev.bpb_english;
+
+      /* ---- BPB top cards: use CURRENT eval bpb_de_curated / bpb_en, NOT stale repr ---- */
+      const tileDe = ev.bpb_de_curated ?? ev.bpb_de;
+      const tileEn = ev.bpb_en;
+      const evStep = ev.step;
       tween(document.getElementById("bpbDe"), tileDe, 3);
       tween(document.getElementById("bpbEn"), tileEn, 3);
       setDelta(document.getElementById("deDelta"), tileDe, state.prev.de, true);
       setDelta(document.getElementById("enDelta"), tileEn, state.prev.en, true);
-      document.querySelectorAll("#bpbDe,#bpbEn").forEach(e=>e.title = rp ? ("repräsentativ · alle Quellen · step "+(rp.step??"?")) : "Tail-Val (Log)");
+      const stepEl = document.getElementById("bpbDeStep"); if(stepEl) stepEl.textContent = evStep ?? "–";
+      const stepElEn = document.getElementById("bpbEnStep"); if(stepElEn) stepElEn.textContent = evStep ?? "–";
 
       /* status pill */
       const st=document.getElementById("runStatus");
@@ -898,7 +1070,7 @@ INDEX_HTML = r"""<!doctype html>
       const now=new Date(); document.getElementById("updated").textContent = "aktualisiert "+now.toLocaleTimeString("de-DE");
       document.getElementById("subline").textContent = run.name ? run.name : "Live-BPB · Health · Neuro-Trace";
 
-      /* language balance bars (normalize against max so both visible) */
+      /* language balance bars — use current eval bpb_de_curated / bpb_en */
       const de=tileDe, en=tileEn;
       if(Number.isFinite(de)&&Number.isFinite(en)){
         const mx=Math.max(de,en)*1.08;
@@ -907,30 +1079,59 @@ INDEX_HTML = r"""<!doctype html>
         document.getElementById("balDeVal").textContent=de.toFixed(3);
         document.getElementById("balEnVal").textContent=en.toFixed(3);
       }
-      const gap = rp ? rp.gap : ev.bpb_gap_max;
+      const gap = ev.bpb_gap_max;
       tween(document.getElementById("gapBig"), gap, 3);
       const gapTag=document.getElementById("gapTag"), gapHint=document.getElementById("gapHint");
-      if(rp && Number.isFinite(gap)){
-        gapTag.className="gaptag narrow"; gapTag.textContent="● repräsentativ";
-        gapHint.textContent="Über alle Quellen, echte tokens/byte: de "+rp.de.toFixed(2)+" / en "+rp.en.toFixed(2)+" — fast gleichauf (step "+(rp.step??"?")+").";
-      } else if(Number.isFinite(gap)){
+      if(Number.isFinite(gap)){
         state.gapHist.push(gap); if(state.gapHist.length>6) state.gapHist.shift();
         if(state.gapHist.length>=2){
           const d=gap-state.gapHist[0];
           if(d<-0.01){ gapTag.className="gaptag narrow"; gapTag.textContent="▼ verengt sich"; gapHint.textContent="Gut – Abstand schließt sich."; }
           else if(d>0.01){ gapTag.className="gaptag widen"; gapTag.textContent="▲ weitet sich"; gapHint.textContent="Beobachten."; }
-          else { gapTag.className="gaptag flat"; gapTag.textContent="● stabil"; gapHint.textContent="Gap hält."; }
+          else { gapTag.className="gaptag flat"; gapTag.textContent="● stabil"; gapHint.textContent="Gap hält (step "+(evStep??"?")+")."; }
         }
       }
 
+      /* ---- charts ---- */
       animateChart(document.getElementById("lossChart"), [
         {name:"train/loss", color:"#5aa7ff", points:(run.train||[]).map(p=>({x:p.step,y:p.loss}))},
         {name:"grad_norm", color:"#f4b740", points:(run.train||[]).map(p=>({x:p.step,y:p.grad_norm}))},
       ]);
+
+      /* BPB chart — use the direct log fields bpb_de_curated / bpb_en / bpb_code / bpb_math */
       animateChart(document.getElementById("bpbChart"), [
-        {name:"Deutsch", color:"#3ddc84", points:(run.evals||[]).filter(e=>Number.isFinite(e.bpb_german)).map(e=>({x:e.step,y:e.bpb_german}))},
-        {name:"Englisch", color:"#46c6ff", points:(run.evals||[]).filter(e=>Number.isFinite(e.bpb_english)).map(e=>({x:e.step,y:e.bpb_english}))},
+        {name:"DE curated", color:"#3ddc84", points:(run.evals||[]).filter(e=>Number.isFinite(e.bpb_de_curated)).map(e=>({x:e.step,y:e.bpb_de_curated}))},
+        {name:"EN", color:"#46c6ff", points:(run.evals||[]).filter(e=>Number.isFinite(e.bpb_en)).map(e=>({x:e.step,y:e.bpb_en}))},
+        {name:"Code", color:"#f4b740", points:(run.evals||[]).filter(e=>Number.isFinite(e.bpb_code)).map(e=>({x:e.step,y:e.bpb_code}))},
+        {name:"Math", color:"#b388ff", points:(run.evals||[]).filter(e=>Number.isFinite(e.bpb_math)).map(e=>({x:e.step,y:e.bpb_math}))},
       ]);
+
+      /* Code-val trend */
+      animateChart(document.getElementById("codeChart"), [
+        {name:"bpb_code", color:"#f4b740", points:(run.evals||[]).filter(e=>Number.isFinite(e.bpb_code)).map(e=>({x:e.step,y:e.bpb_code}))},
+        {name:"val_code_algo", color:"#5aa7ff", points:(run.evals||[]).filter(e=>Number.isFinite(e.val_loss_code_algo)).map(e=>({x:e.step,y:e.val_loss_code_algo}))},
+        {name:"val_code_snip", color:"#ff6b6b", points:(run.evals||[]).filter(e=>Number.isFinite(e.val_loss_code_snip)).map(e=>({x:e.step,y:e.val_loss_code_snip}))},
+        {name:"val_code_qa", color:"#7af0c8", points:(run.evals||[]).filter(e=>Number.isFinite(e.val_loss_code_qa)).map(e=>({x:e.step,y:e.val_loss_code_qa}))},
+      ]);
+
+      /* Gate-scores chart */
+      const gates = run.gates || [];
+      animateChart(document.getElementById("gateChart"), [
+        {name:"qa",        color:"#3ddc84", points:gates.filter(g=>Number.isFinite(g.qa)).map(g=>({x:g.step,y:g.qa}))},
+        {name:"code",      color:"#f4b740", points:gates.filter(g=>Number.isFinite(g.code)).map(g=>({x:g.step,y:g.code}))},
+        {name:"abstain",   color:"#46c6ff", points:gates.filter(g=>Number.isFinite(g.abstain)).map(g=>({x:g.step,y:g.abstain}))},
+        {name:"tool",      color:"#ff9b54", points:gates.filter(g=>Number.isFinite(g.tool)).map(g=>({x:g.step,y:g.tool}))},
+        {name:"composite", color:"#ffffff", points:gates.filter(g=>Number.isFinite(g.composite)).map(g=>({x:g.step,y:g.composite}))},
+      ]);
+      if(gates.length){
+        const lg = gates[gates.length-1];
+        document.getElementById("gateLatest").innerHTML =
+          `Latest (step ${lg.step}): <b style="color:#3ddc84">qa ${fmt(lg.qa,3)}</b> · `+
+          `<b style="color:#f4b740">code ${fmt(lg.code,3)}</b> · `+
+          `<b style="color:#46c6ff">abstain ${fmt(lg.abstain,3)}</b> · `+
+          `<b style="color:#ff9b54">tool ${fmt(lg.tool,3)}</b> · `+
+          `<b>composite ${fmt(lg.composite,3)}</b>`;
+      }
 
       const tbl=document.getElementById("evalTable");
       const rows=Object.entries(ev).sort(([a],[b])=>a.localeCompare(b));
@@ -1112,11 +1313,228 @@ INDEX_HTML = r"""<!doctype html>
     }
     document.getElementById("refreshBtn").addEventListener("click", loadStatus);
     document.getElementById("logSelect").addEventListener("change", e=>{ state.selectedLog=e.target.value; loadStatus(); });
-    ["lossChart","bpbChart"].forEach(id=>attachHover(document.getElementById(id)));
+    ["lossChart","bpbChart","codeChart","gateChart"].forEach(id=>attachHover(document.getElementById(id)));
     setupTips();
-    window.addEventListener("resize", ()=>{ ["lossChart","bpbChart"].forEach(id=>{ const c=document.getElementById(id); if(c&&c._lastSeries) paintChart(c,c._lastSeries,1); }); });
+    window.addEventListener("resize", ()=>{ ["lossChart","bpbChart","codeChart","gateChart"].forEach(id=>{ const c=document.getElementById(id); if(c&&c._lastSeries) paintChart(c,c._lastSeries,1); }); });
     loadStatus();
     setInterval(loadStatus, REFRESH_MS);
+
+    /* ================================================================
+       CHAT PANEL — Ollama streaming chat
+    ================================================================ */
+    (function(){
+      const chatState = {
+        messages: [],           // {role, content}
+        useCtx: true,
+        streaming: false,
+        lastTrainStats: null,   // populated by render() hook below
+      };
+
+      /* model selector */
+      async function loadModels(){
+        try {
+          const r = await fetch("/api/models");
+          const j = await r.json();
+          const sel = document.getElementById("chatModel");
+          sel.innerHTML = "";
+          if(!j.models || !j.models.length){
+            sel.innerHTML = '<option value="">Keine Modelle gefunden</option>';
+            return;
+          }
+          j.models.forEach(m => {
+            const o = document.createElement("option");
+            o.value = m; o.textContent = m;
+            sel.appendChild(o);
+          });
+          // default: prefer qwen3.5:latest
+          const pref = j.models.find(m => m.includes("qwen3.5")) || j.models[0];
+          sel.value = pref;
+        } catch(e){
+          document.getElementById("chatModel").innerHTML = '<option value="">Ollama nicht erreichbar</option>';
+        }
+      }
+
+      /* training context string — built from the data already in render() */
+      function buildTrainCtx(){
+        const s = chatState.lastTrainStats;
+        if(!s) return "";
+        const parts = [];
+        parts.push('WICHTIG - so liest du diese Helix-Trainingsmetriken KORREKT, sonst ziehst du falsche Schluesse:');
+        parts.push('- bpb = bits-per-byte. NIEDRIGER ist BESSER. Die bpb-Werte unten (DE ca 0.92, Code ca 0.71, Math ca 0.26) sind alle GUT und niedrig, also KEIN Schwaechezeichen.');
+        parts.push('- bpb und val_loss messen VORHERSAGE (versteht das Modell die Daten), NICHT Generierung. Ein niedriger Wert ist stark.');
+        parts.push('- Die Gate-Scores (qa, code, composite) messen GENERIERUNG (kann das Modell als Assistent antworten oder coden). Sie sind jetzt niedrig oder 0, WEIL dies ein Base-Modell mitten im Pretraining OHNE SFT ist. Generative Faehigkeit entsteht erst in der spaeteren SFT-Phase, nicht im Pretraining. Niedrige oder 0-Gates sind hier ERWARTET und KEIN Daten- oder Konfigurationsfehler.');
+        parts.push('- Mathe-Rechnen laeuft by design ueber Tools (Taschenrechner), nicht im Modellgewicht. Ein niedriger bpb_math bedeutet gutes Mathe-Textverstaendnis, nicht schwache Logik.');
+        parts.push('- Empfiehl NICHT mehr Code- oder Mathe-Daten. Der Hebel fuer die Gate-Scores ist SFT, nicht mehr Pretraining-Daten. Mehr Daten wuerden die Gates nicht bewegen.');
+        parts.push('- Der Lauf laeuft bis 60000 Steps durch und stoppt nicht bis die Gates konsistent sind, sondern nur bei Regression oder Divergenz. Die generativen Gates bewegen sich erst NACH der SFT.');
+        parts.push('');
+        parts.push("Aktueller Helix-Trainingsstatus (live):");
+        if(s.step)      parts.push(`  Step: ${s.step}`);
+        if(s.loss)      parts.push(`  Train-Loss: ${Number(s.loss).toFixed(4)}`);
+        if(s.bpb_de)    parts.push(`  BPB Deutsch: ${Number(s.bpb_de).toFixed(4)}`);
+        if(s.bpb_en)    parts.push(`  BPB Englisch: ${Number(s.bpb_en).toFixed(4)}`);
+        if(s.bpb_code)  parts.push(`  BPB Code: ${Number(s.bpb_code).toFixed(4)}`);
+        if(s.bpb_math)  parts.push(`  BPB Math: ${Number(s.bpb_math).toFixed(4)}`);
+        if(s.gate_qa != null)    parts.push(`  Gate QA: ${Number(s.gate_qa).toFixed(3)}`);
+        if(s.gate_code != null)  parts.push(`  Gate Code: ${Number(s.gate_code).toFixed(3)}`);
+        if(s.gate_comp != null)  parts.push(`  Gate Composite: ${Number(s.gate_comp).toFixed(3)}`);
+        if(s.lr)        parts.push(`  LR: ${Number(s.lr).toExponential(3)}`);
+        if(s.grad)      parts.push(`  Grad Norm: ${Number(s.grad).toFixed(3)}`);
+        if(s.tok_s)     parts.push(`  Throughput: ${(Number(s.tok_s)/1000).toFixed(1)}k tok/s`);
+        return parts.join("\n");
+      }
+
+      /* message renderer */
+      function renderMessages(){
+        const box = document.getElementById("chatMessages");
+        box.innerHTML = "";
+        chatState.messages.forEach(m => {
+          if(m.role === "system") return;
+          const div = document.createElement("div");
+          div.className = "msg msg-" + m.role;
+          const bubble = document.createElement("div");
+          bubble.className = "bubble";
+          bubble.textContent = m.content;
+          div.appendChild(bubble);
+          box.appendChild(div);
+        });
+        box.scrollTop = box.scrollHeight;
+      }
+
+      /* send a message */
+      async function sendMessage(){
+        if(chatState.streaming) return;
+        const input = document.getElementById("chatInput");
+        const text = input.value.trim();
+        if(!text) return;
+        const model = document.getElementById("chatModel").value;
+        if(!model){ setStatus("Bitte zuerst ein Modell auswählen."); return; }
+
+        input.value = "";
+        input.style.height = "auto";
+
+        // Build messages array (with optional system context)
+        const msgs = [];
+        if(chatState.useCtx){
+          const ctx = buildTrainCtx();
+          if(ctx) msgs.push({role:"system", content: ctx});
+        }
+        // keep the existing conversation (skip old system messages)
+        chatState.messages.filter(m=>m.role!=="system").forEach(m=>msgs.push(m));
+        msgs.push({role:"user", content: text});
+
+        // store user message for display
+        chatState.messages.push({role:"user", content: text});
+        // placeholder assistant message
+        chatState.messages.push({role:"assistant", content: ""});
+        renderMessages();
+        document.getElementById("chatSend").disabled = true;
+        chatState.streaming = true;
+        setStatus("Antwort wird gestreamt…");
+
+        // Add streaming cursor to last bubble
+        const box = document.getElementById("chatMessages");
+        const lastBubble = box.lastElementChild && box.lastElementChild.querySelector(".bubble");
+        const cursor = document.createElement("span"); cursor.className = "streaming-cursor";
+        if(lastBubble) lastBubble.appendChild(cursor);
+
+        try {
+          const resp = await fetch("/api/chat", {
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body: JSON.stringify({model, messages: msgs})
+          });
+          if(!resp.ok) throw new Error("HTTP " + resp.status);
+
+          const reader = resp.body.getReader();
+          const dec = new TextDecoder();
+          let buf = "";
+
+          while(true){
+            const {done, value} = await reader.read();
+            if(done) break;
+            buf += dec.decode(value, {stream:true});
+            // parse SSE lines
+            const lines = buf.split("\n");
+            buf = lines.pop();
+            for(const line of lines){
+              if(!line.startsWith("data:")) continue;
+              const raw = line.slice(5).trim();
+              if(raw === "[DONE]") continue;
+              try {
+                const chunk = JSON.parse(raw);
+                const delta = chunk.choices?.[0]?.delta?.content || "";
+                if(delta){
+                  chatState.messages[chatState.messages.length-1].content += delta;
+                  if(lastBubble){
+                    // update text before cursor
+                    lastBubble.childNodes[0]
+                      ? (lastBubble.childNodes[0].textContent = chatState.messages[chatState.messages.length-1].content)
+                      : (lastBubble.prepend(document.createTextNode(chatState.messages[chatState.messages.length-1].content)));
+                    box.scrollTop = box.scrollHeight;
+                  }
+                }
+              } catch(e){ /* ignore parse errors in SSE chunks */ }
+            }
+          }
+        } catch(e){
+          chatState.messages[chatState.messages.length-1].content = "[Fehler: " + e.message + "]";
+        } finally {
+          chatState.streaming = false;
+          document.getElementById("chatSend").disabled = false;
+          renderMessages(); // clean re-render without cursor
+          setStatus("");
+        }
+      }
+
+      function setStatus(msg){ document.getElementById("chatStatus").textContent = msg; }
+
+      /* wire buttons + Enter key */
+      document.getElementById("chatSend").addEventListener("click", sendMessage);
+      document.getElementById("chatInput").addEventListener("keydown", e=>{
+        if(e.key === "Enter" && !e.shiftKey){ e.preventDefault(); sendMessage(); }
+        // auto-resize textarea
+        setTimeout(()=>{
+          const t = e.target; t.style.height = "auto";
+          t.style.height = Math.min(t.scrollHeight, 120) + "px";
+        }, 0);
+      });
+      document.getElementById("chatCtxBtn").addEventListener("click", function(){
+        chatState.useCtx = !chatState.useCtx;
+        this.textContent = "Training-Kontext: " + (chatState.useCtx ? "ein" : "aus");
+        this.classList.toggle("on", chatState.useCtx);
+      });
+      document.getElementById("chatClear").addEventListener("click", ()=>{
+        chatState.messages = [];
+        renderMessages();
+        setStatus("");
+      });
+
+      /* hook into render() to capture live training stats */
+      const _origRender = render;
+      window.render = function(data){
+        _origRender(data);
+        const run = data.run || {}, lt = run.latest_train || {}, ev = run.latest_eval || {};
+        const gates = run.gates || [];
+        const lg = gates.length ? gates[gates.length-1] : {};
+        chatState.lastTrainStats = {
+          step: lt.step ?? ev.step,
+          loss: lt.loss,
+          lr: lt.lr,
+          grad: lt.grad_norm,
+          tok_s: lt.tok_s,
+          bpb_de: ev.bpb_de_curated ?? ev.bpb_de,
+          bpb_en: ev.bpb_en,
+          bpb_code: ev.bpb_code,
+          bpb_math: ev.bpb_math,
+          gate_qa: lg.qa,
+          gate_code: lg.code,
+          gate_comp: lg.composite,
+        };
+      };
+
+      /* initial model load */
+      loadModels();
+    })();
   </script>
 </body>
 </html>
@@ -1126,6 +1544,7 @@ INDEX_HTML = r"""<!doctype html>
 class Handler(BaseHTTPRequestHandler):
     root: Path = repo_root_from_here()
     log_dirs: list[Path] = []
+    ollama_base: str = OLLAMA_BASE
 
     def log_message(self, fmt: str, *args: object) -> None:
         return
@@ -1139,6 +1558,97 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    # ------------------------------------------------------------------
+    # /api/models — proxy Ollama /api/tags, cache 30 s
+    # ------------------------------------------------------------------
+    def _handle_models(self) -> None:
+        global _models_cache
+        now = time.time()
+        if now - _models_cache["ts"] < 30.0 and _models_cache["models"]:
+            self.send_json({"models": _models_cache["models"]})
+            return
+        try:
+            url = self.ollama_base.rstrip("/") + "/api/tags"
+            with urllib.request.urlopen(url, timeout=6) as r:
+                raw = json.loads(r.read().decode("utf-8"))
+            ids = [m.get("name", m.get("model", "")) for m in (raw.get("models") or [])]
+            ids = [x for x in ids if x]
+            _models_cache = {"ts": now, "models": ids}
+            self.send_json({"models": ids})
+        except Exception:
+            # Ollama offline — return empty list, never crash
+            self.send_json({"models": [], "error": "ollama_offline"})
+
+    # ------------------------------------------------------------------
+    # /api/chat — stream Ollama /v1/chat/completions back as SSE
+    # ------------------------------------------------------------------
+    def _handle_chat(self) -> None:
+        length = int(self.headers.get("Content-Length", 0))
+        body_raw = self.rfile.read(length)
+        try:
+            body = json.loads(body_raw)
+        except Exception:
+            self.send_error(HTTPStatus.BAD_REQUEST, "invalid JSON")
+            return
+
+        model = str(body.get("model", ""))
+        messages = body.get("messages", [])
+        if not model or not isinstance(messages, list):
+            self.send_error(HTTPStatus.BAD_REQUEST, "model + messages required")
+            return
+
+        payload = json.dumps({
+            "model": model,
+            "messages": messages,
+            "stream": True,
+        }).encode("utf-8")
+
+        url = self.ollama_base.rstrip("/") + "/v1/chat/completions"
+        req = urllib.request.Request(
+            url, data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+
+        try:
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                self.send_response(HTTPStatus.OK)
+                self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("X-Accel-Buffering", "no")
+                self.end_headers()
+                # Relay SSE chunks verbatim
+                buf = b""
+                while True:
+                    chunk = resp.read(256)
+                    if not chunk:
+                        break
+                    buf += chunk
+                    # flush whole lines so SSE framing is preserved
+                    while b"\n" in buf:
+                        line, buf = buf.split(b"\n", 1)
+                        self.wfile.write(line + b"\n")
+                    self.wfile.flush()
+                if buf:
+                    self.wfile.write(buf)
+                    self.wfile.flush()
+        except Exception as exc:
+            # If headers not yet sent, send error; otherwise best-effort SSE error event
+            try:
+                self.send_response(HTTPStatus.BAD_GATEWAY)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(exc)}).encode())
+            except Exception:
+                pass
+
+    def do_POST(self) -> None:
+        parsed = urlparse(self.path)
+        if parsed.path == "/api/chat":
+            self._handle_chat()
+        else:
+            self.send_error(HTTPStatus.NOT_FOUND)
+
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
         if parsed.path == "/":
@@ -1151,6 +1661,10 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(data)
             return
 
+        if parsed.path == "/api/models":
+            self._handle_models()
+            return
+
         if parsed.path == "/api/status":
             logs = list_logs(self.root, self.log_dirs)
             qs = parse_qs(parsed.query)
@@ -1159,6 +1673,19 @@ class Handler(BaseHTTPRequestHandler):
                 selected = str(logs[0]["path"])
             selected_path = resolve_log_path(self.root, self.log_dirs, selected) if selected else None
             run = parse_log(selected_path) if selected_path else {}
+            # Derive run name from log filename (strip .log) for gate JSON lookup
+            run_name = selected_path.stem if selected_path else "corpus20b_codeheavy"
+            # Merge gate JSONs with log-parsed gate lines (JSON wins, log fills gaps)
+            gate_jsons = parse_gate_jsons(self.root, run_name=run_name)
+            gate_log = run.get("gates", [])
+            gate_by_step: dict[int, dict] = {}
+            for g in gate_log:
+                gate_by_step[int(g["step"])] = g
+            for g in gate_jsons:
+                gate_by_step[int(g["step"])] = g
+            gates_merged = sorted(gate_by_step.values(), key=lambda x: x["step"])
+            run["gates"] = gates_merged
+
             self.send_json({
                 "root": str(self.root),
                 "selected_log": selected,
@@ -1168,6 +1695,7 @@ class Handler(BaseHTTPRequestHandler):
                 "neuro": latest_neuro_summary(self.root),
                 "repr": representative_snapshot(self.root),
                 "sft": parse_sft_log(self.root),
+                "total_steps": 60000,
             })
             return
 
@@ -1196,13 +1724,17 @@ def main() -> None:
     ap.add_argument("--log-dir", type=Path, action="append", default=[])
     ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--port", type=int, default=8765)
+    ap.add_argument("--ollama-url", default=OLLAMA_BASE,
+                    help="Ollama base URL (default: %(default)s)")
     args = ap.parse_args()
 
     Handler.root = args.root.resolve()
     Handler.log_dirs = [p.resolve() for p in (args.log_dir or default_log_dirs(Handler.root)) if p.exists()]
+    Handler.ollama_base = args.ollama_url
     server = ThreadingHTTPServer((args.host, args.port), Handler)
     print(f"Auralis Training Monitor: http://{args.host}:{args.port}")
     print(f"root: {Handler.root}")
+    print(f"ollama: {Handler.ollama_base}")
     print("log dirs:")
     for p in Handler.log_dirs:
         print(f"  - {p}")
