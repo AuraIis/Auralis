@@ -1,211 +1,211 @@
 # STATUS - Auralis v2
 
-Stand: 2026-06-07
+As of: 2026-06-07
 
-Dies ist die aktuelle Kurz-Wahrheit fuer das Repo. Wenn alte Phasenplaene,
-April-/Mai-Statusstaende oder Specs widersprechen, gilt zuerst diese Datei,
-dann die Reports vom 2026-05-29, dann die jeweilige Arbeitsdoku.
+This is the current short-form truth for the repo. If old phase plans,
+April/May status states, or specs contradict it, this file takes precedence first,
+then the reports from 2026-05-29, then the respective working docs.
 
-## Update 2026-06-07b — Modulare Adapter (LoRA) bewiesen: Skills OHNE Kollateralschaden
+## Update 2026-06-07b — Modular Adapters (LoRA) proven: Skills WITHOUT collateral damage
 
-NEUESTER STAND. Zweiter Architektur-Meilenstein heute: Helix kann modulare Skills per
-Adapter bekommen, OHNE den Base dauerhaft zu beschaedigen — der Kern der modularen Vision.
+LATEST STATE. Second architecture milestone today: Helix can receive modular skills via
+adapters WITHOUT permanently damaging the base — the core of the modular vision.
 
-Problem (gemessen): Full-FT-Kalibrierung vergisst nach ~50 Steps Tool-Use/Fakten
-(catastrophic forgetting). Zwei Full-FT-Runden (calib v1+v2) lieferten KEINEN Checkpoint
-mit Honesty UND Retention zugleich (oszilliert / `12+15` bricht / Einstein ueber-verweigert).
+Problem (measured): Full-FT calibration forgets tool-use/facts after ~50 steps
+(catastrophic forgetting). Two full-FT rounds (calib v1+v2) delivered NO checkpoint
+with honesty AND retention at the same time (oscillates / `12+15` breaks / Einstein over-refuses).
 
-Loesung: LoRA-Adapter auf EINGEFRORENEM Base (`checkpoints/tool_sft_v12/step_600`).
-- `src/auralis/adapters/lora.py`: LoRA/DoRA-Layer, inject in 188 GLA/Attn/FFN-Module
-  (Mamba `mamba_ssm`-Kernel exkludiert — liest `.weight` direkt, un-wrappbar), 1,2% trainable,
-  alpha-Regler (`set_adapter_scale`), save/load (~MB statt 10 GB).
-- Trainer-Integration (`smoke_sft_de --adapter-r`), Adapter-Gate (`calib_gate --base/--alpha-sweep`).
-- Zwei PEFT-Stolpersteine gefixt + im Code dokumentiert: (1) DoRA rekonstruiert volle Gewichte
-  -> speicherhungrig -> LoRA; (2) grad-ckpt OOMt bei frozen Base -> `enable_input_require_grads`
-  (PEFT-Trick: Embedding-Output grad-pflichtig) -> 47GB -> 14,7GB.
+Solution: LoRA adapter on a FROZEN base (`checkpoints/tool_sft_v12/step_600`).
+- `src/auralis/adapters/lora.py`: LoRA/DoRA layers, inject into 188 GLA/Attn/FFN modules
+  (Mamba `mamba_ssm` kernel excluded — reads `.weight` directly, un-wrappable), 1.2% trainable,
+  alpha control (`set_adapter_scale`), save/load (~MB instead of 10 GB).
+- Trainer integration (`smoke_sft_de --adapter-r`), adapter gate (`calib_gate --base/--alpha-sweep`).
+- Two PEFT pitfalls fixed + documented in the code: (1) DoRA reconstructs full weights
+  -> memory-hungry -> LoRA; (2) grad-ckpt OOMs with a frozen base -> `enable_input_require_grads`
+  (PEFT trick: make embedding output grad-requiring) -> 47GB -> 14.7GB.
 
-ALPHA-SWEEP (Honesty-Adapter `honesty_adapter_v1` auf step_600, Held-out-Bank, n=60 invented):
+ALPHA SWEEP (honesty adapter `honesty_adapter_v1` on step_600, held-out bank, n=60 invented):
 ```
 alpha   inv-abstain (honesty)   people-answer   math-tool
-0.00    3%   (= exakt Base)      5/5             5/5      <- Kontrolle: Adapter aus = Base
+0.00    3%   (= exactly Base)    5/5             5/5      <- Control: adapter off = base
 0.25    18%                      5/5             5/5
-0.50    95%                      5/5             5/5      <- SWEET SPOT (empfohlenes alpha)
+0.50    95%                      5/5             5/5      <- SWEET SPOT (recommended alpha)
 0.75    100%                     5/5             5/5
 1.00    100%                     5/5             5/5
 ```
-> **Adapter AUS = exakt Base. Adapter AN = steuerbares Zusatzverhalten. alpha=0.5 liefert
-> 95% Abstention OHNE Tool- oder Faktenverlust.** Was Full-FT ZWEIMAL nicht konnte (Honesty
-> ODER Retention), macht der dosierbare Adapter in EINEM Lauf, auf garantiert intaktem Base.
+> **Adapter OFF = exactly base. Adapter ON = controllable additional behavior. alpha=0.5 delivers
+> 95% abstention WITHOUT tool or fact loss.** What full-FT could NOT do TWICE (honesty
+> OR retention), the dosable adapter does in ONE run, on a guaranteed-intact base.
 
-Damit ist die modulare Roadmap validiert: Honesty-LoRA jetzt, Code-LoRA nach Annealing,
-Wissens-MoRA spaeter. Offen (naechste Session): Inferenz-Pfad Base+Adapter@0.5 (deploybar).
+This validates the modular roadmap: honesty-LoRA now, code-LoRA after annealing,
+knowledge-MoRA later. Open (next session): inference path base+adapter@0.5 (deployable).
 
-## Update 2026-06-07 — Tool-Use Mathe END-TO-END (verifiziertes Rechnen statt Raten)
+## Update 2026-06-07 — Tool-Use Math END-TO-END (verified computation instead of guessing)
 
-NEUESTER STAND. Helix loest Arithmetik jetzt ueber ein verifiziertes externes Tool,
-statt im Kopf zu raten. Strukturell geloest: aus "12 + 15 = 12" (raten) wird
-`<tool:python>print(12+15)</tool>` -> Executor 27 -> "12 + 15 ergibt 27."
+LATEST STATE. Helix now solves arithmetic via a verified external tool,
+instead of guessing in its head. Structurally solved: "12 + 15 = 12" (guessing) becomes
+`<tool:python>print(12+15)</tool>` -> executor 27 -> "12 + 15 equals 27."
 
-Gebaut (alles KEY-FREI / self-generating; der Rechner ist die Ground Truth):
-- `scripts/sft/tool_harness.py` — AST-Whitelist-Rechner (kein RCE, Selftest 14/14) +
-  Generierungs-Loop mit `</tool>`-Stop-Sequenz + Result-Injektion + Resume.
-- `scripts/sft/gen_tool_traces.py` — Tool-SFT-Traces (modes call_only/full, --simple-rebump).
-- `scripts/sft/tool_gate.py` — DUALES Gate (Mathe->Tool, Fakten->kein Tool) + End-to-End
-  (`--mode full`: result_usage_rate, answer_numeric_match), Typ-Breakdown, best-by-GATE.
-- `smoke_sft_de.py` — `<result>`-Block aus dem Loss MASKIERT (token-genau verifiziert) ->
-  Modell lernt NICHT, Ergebnisse zu faelschen.
+Built (all KEY-FREE / self-generating; the calculator is the ground truth):
+- `scripts/sft/tool_harness.py` — AST-whitelist calculator (no RCE, selftest 14/14) +
+  generation loop with `</tool>` stop sequence + result injection + resume.
+- `scripts/sft/gen_tool_traces.py` — tool-SFT traces (modes call_only/full, --simple-rebump).
+- `scripts/sft/tool_gate.py` — DUAL gate (math->tool, facts->no tool) + end-to-end
+  (`--mode full`: result_usage_rate, answer_numeric_match), type breakdown, best-by-GATE.
+- `smoke_sft_de.py` — `<result>` block MASKED from the loss (token-exact verified) ->
+  model does NOT learn to fake results.
 
-Phasen (jede gated, best-by-Gate statt val_loss — val_loss war hier nachweislich irrefuehrend):
-- Phase 1 (call_only): Tool-Call + Stop. step_400: tool 100% · false_tool 0% · parse 97% · correct 68%.
-- Phase 1.1 (enrichte Uebersetzungs-Traces, Sprache->Formel). step_500: correct 93%.
-- Phase 2 (full, Result-Injektion -> finale Antwort).
+Phases (each gated, best-by-gate instead of val_loss — val_loss was demonstrably misleading here):
+- Phase 1 (call_only): tool call + stop. step_400: tool 100% · false_tool 0% · parse 97% · correct 68%.
+- Phase 1.1 (enriched translation traces, language->formula). step_500: correct 93%.
+- Phase 2 (full, result injection -> final answer).
 
 PROMOTED: **`checkpoints/tool_sft_v12/sft_smoke_step_600.pt`**
   correct **94%** · parse **100%** · fake_result **0%** · false_tool **0%** · answer_match **85%**
   Buckets: percent 24/24 · word 21/21 · speed 10/10 · english 7/7 · time_unit 16/17 · simple 16/21 (76%)
 
-Ehrliche Grenzen: in-distribution (trainierte Aufgabentypen, neue Zahlen; frei formulierte
-Fragen ungetestet); `simple`-Bucket schwach wegen sqrt/`hoch 2` (= Operator-Mapping, nicht +-*/);
-answer_match konservativ gemessen (deutsches Dezimalkomma "59,5" vs Executor "59.5" zaehlt als
-Mismatch). Tool-Use fuegt KEIN Wissen hinzu — Wissensluecken bleiben (Annealing/Skalierung).
+Honest limits: in-distribution (trained task types, new numbers; freely phrased
+questions untested); `simple` bucket weak due to sqrt/`hoch 2` (= operator mapping, not +-*/);
+answer_match measured conservatively (German decimal comma "59,5" vs executor "59.5" counts as
+mismatch). Tool-use adds NO knowledge — knowledge gaps remain (annealing/scaling).
 
-Naechste Session (NICHT vorgezogen): (1) Gate-Zahlenvergleich normalisieren (Komma/Punkt/Trailing-0),
-(2) simple-Bucket in basic/advanced splitten + Fehlerfaelle extrahieren, (3) gezielte sqrt/power-Traces,
-(4) dann Kalibrierung/R-Tuning (key-frei, Self-Labeling gegen Gold/MC/Executor).
+Next session (NOT pulled forward): (1) normalize gate number comparison (comma/dot/trailing-0),
+(2) split simple bucket into basic/advanced + extract failure cases, (3) targeted sqrt/power traces,
+(4) then calibration/R-tuning (key-free, self-labeling against gold/MC/executor).
 
-## Update 2026-06-06 — 1B-Foundation gelaufen + SFT (Verhalten) + Reasoning-Slice
+## Update 2026-06-06 — 1B foundation ran + SFT (behavior) + reasoning slice
 
-NEUESTER STAND. Geht ALLEN Abschnitten darunter vor (inkl. 2026-05-31). Die
-1B-Policy/Preflight-Gates weiter unten sind erfuellt und damit historisch — der
-Foundation-Run IST gelaufen.
+LATEST STATE. Takes precedence over ALL sections below (incl. 2026-05-31). The
+1B policy/preflight gates further down are satisfied and thus historical — the
+foundation run HAS run.
 
-Wo wir stehen:
+Where we stand:
 
-- 1B-Foundation-Warmstart v3 GELAUFEN bis step 50000
+- 1B foundation warmstart v3 RAN through step 50000
   (`checkpoints/pretrain_1b_bilingual_de55_en45_foundation_warmstart_v3/step_50000.pt`).
-  Gesundes Training, Sprache + Faktenbindung nachgewiesen (Wissensprofil n=57:
-  Geschichte/Geografie stark, Wissenschaft/Uebersetzung schwaecher).
+  Healthy training, language + fact grounding demonstrated (knowledge profile n=57:
+  history/geography strong, science/translation weaker).
 
-- SFT v1 (~32k diverse DE+EN, gpt-4o-verifiziert [269 Halluzinationen gefangen],
-  dekontaminiert) GELAUFEN. Aus dem Base, der kaum antworten konnte, wurde ein
-  ANTWORTENDER Assistent (Wien/Madrid korrekt, sauberes Stoppen via
-  eos-loss-weight 2.0). SFT lehrt FORM, nicht WISSEN — durch Benchmarks bestaetigt.
+- SFT v1 (~32k diverse DE+EN, gpt-4o-verified [269 hallucinations caught],
+  decontaminated) RAN. From the base that could barely answer, an
+  ANSWERING assistant emerged (Vienna/Madrid correct, clean stopping via
+  eos-loss-weight 2.0). SFT teaches FORM, not KNOWLEDGE — confirmed by benchmarks.
 
-- Benchmarks (eigener MC-Loglikelihood-Runner, n=300): Helix-SFT schlaegt auf
-  mmlu_de SmolLM2-360M + TinyLlama-1.1B; Qwens MMLU-Vorsprung schrumpft von ~22
-  (EN) auf ~7 (DE). Sprachstrategie (200k Vokab, de55/en45) zahlt sich messbar
-  aus. Absolutwerte niedrig (Untertrainings-/Groessen-Signal). Details:
+- Benchmarks (own MC log-likelihood runner, n=300): Helix-SFT beats
+  SmolLM2-360M + TinyLlama-1.1B on mmlu_de; Qwen's MMLU lead shrinks from ~22
+  (EN) to ~7 (DE). Language strategy (200k vocab, de55/en45) pays off measurably.
+  Absolute values low (under-training/size signal). Details:
   `docs/PROJEKT_STAND.md`.
 
-- Reasoning-Slice gebaut + verifiziert: 2500 DE (nativ generiert) + 2500 EN
-  (GSM8K konvertiert). gpt-4o-Verify zu 100% auf Mathe -> ~9.4% falsche Mathe
-  gefangen/korrigiert. Sauber im Helix-Format.
+- Reasoning slice built + verified: 2500 DE (natively generated) + 2500 EN
+  (GSM8K converted). gpt-4o-verify 100% on math -> ~9.4% wrong math
+  caught/corrected. Clean in the Helix format.
 
-- SFT v2 LAEUFT (36.6k = SFT v1 + Reasoning-Slice, ~13.5% Reasoning, 1 Epoche,
-  bucket+grad-ckpt). val-Tiefpunkt bei step 2100 (val 2.580 — besser als v1 ~2.81),
-  danach Overfit-Uptick. Keeper: `checkpoints/sft_v2/sft_smoke_step_2100.pt`.
-  Quicktest + Re-Benchmark als naechstes.
+- SFT v2 RUNNING (36.6k = SFT v1 + reasoning slice, ~13.5% reasoning, 1 epoch,
+  bucket+grad-ckpt). val low point at step 2100 (val 2.580 — better than v1 ~2.81),
+  then overfit uptick. Keeper: `checkpoints/sft_v2/sft_smoke_step_2100.pt`.
+  Quicktest + re-benchmark next.
 
-Entschiedene Richtung danach (dreifach trianguliert Michael+GPT+Claude):
+Direction decided afterward (triple-triangulated Michael+GPT+Claude):
 
-1. Tool-Use ZUERST (Mathe-Tool-Harness): kleines Modell lernt PRUEFEN statt raten.
+1. Tool-use FIRST (math tool harness): small model learns to VERIFY instead of guess.
    Spec: `docs/BLUEPRINT_TOOL_USE_VERIFIER.md`.
-2. Annealing (FineWeb-2-DE/Cosmopedia/Python-Edu schon geladen) inkl. Code.
-3. DoRA Mathe/Logik/Code auf annealtem Base. Spec:
+2. Annealing (FineWeb-2-DE/Cosmopedia/Python-Edu already loaded) including code.
+3. DoRA math/logic/code on annealed base. Spec:
    `docs/BLUEPRINT_DOMAIN_ADAPTERS_DORA.md`.
 
-Reihenfolge gegated (`ZUKUNFT_BACKLOG.md`). Kernprinzip: Adapter verstaerkt
-Latentes, installiert nichts -> Code-DoRA gesperrt bis Code-Annealing.
+Order gated (`ZUKUNFT_BACKLOG.md`). Core principle: adapter amplifies
+the latent, installs nothing -> code-DoRA locked until code annealing.
 
-Infra-Hinweis: `data/` und `checkpoints/` liegen NUR auf BITBASTION
-(`/workspace/v2data`, 36T), nicht auf der Windows-Box (gitignored, zu gross).
-Nur Code synct (U:\ <-> Container). Das ist gewollt, kein Daten-Verlust.
+Infra note: `data/` and `checkpoints/` live ONLY on BITBASTION
+(`/workspace/v2data`, 36T), not on the Windows box (gitignored, too large).
+Only code syncs (U:\ <-> container). This is intentional, not data loss.
 
-## Update 2026-05-31 — Edu-Daten-Filter (Deutsch) + Multi-GPU
+## Update 2026-05-31 — Edu data filter (German) + Multi-GPU
 
-Dieser Block ist der neueste Stand und geht den aelteren 1B-Canary-/500M-
-Abschnitten unten vor.
+This block is the latest state and takes precedence over the older 1B-canary/500M
+sections below.
 
-Kontext: Der bilinguale 1B-Ramp (de55/en45) lief bis Step ~3400 (best.pt),
-das Lernverhalten war enttaeuschend. Saubere Diagnose (nicht aus dem Bauch):
+Context: The bilingual 1B ramp (de55/en45) ran through step ~3400 (best.pt),
+the learning behavior was disappointing. Clean diagnosis (not from the gut):
 
-- NICHT die Eval (Qwen-2.5 auf denselben Probes = sinnvoll, 37/50).
-- NICHT die Architektur (All-Plain-Attention-Kontrolle ~ gleichauf mit Helix
-  bis Step 300).
-- Sondern: Under-Training (~3.4B Tokens ~ 16% Chinchilla) UND ein
-  qualitaets-invertierter deutscher Mix (die schwaechste Quelle bekam das
-  meiste Budget).
+- NOT the eval (Qwen-2.5 on the same probes = sensible, 37/50).
+- NOT the architecture (all-plain-attention control ~ on par with Helix
+  up to step 300).
+- Rather: under-training (~3.4B tokens ~ 16% Chinchilla) AND a
+  quality-inverted German mix (the weakest source got the
+  most budget).
 
-Daten-Qualitaet (FineWeb-Edu-Methodik fuer Deutsch, neu gebaut):
+Data quality (FineWeb-Edu methodology for German, rebuilt):
 
-- LLM-Annotation 0-5 auf Bildungswert. Judge: `qwen3-235b-a22b-2507` via
-  OpenRouter (non-thinking, ~40x billiger als gemini-3.5-flash, strenger und
-  genauer auf Web-Text). 12k Labels, ~1 EUR.
-- Cheap Klassifikator: frozen multilingual-e5-large + Ridge-Kopf + kalibrierte
-  Schwelle. Val Pearson 0.866, Keep-F1 0.872.
-- Korpus-Filter @ Schwelle 2.0: fineweb2_de ~38% behalten, wikipedia_de ganz,
-  german_commons GEDROPPT (~2-5% Keep, EuroParl/OCR-Fragmente).
-- German-v2 = edu-gefiltertes fineweb2_de + wikipedia_de ~ 2.0B hochwertige
-  Tokens (reicht den ~1.8B-DE-Bedarf des Foundation-Runs ohne Wiederholung).
-- Config: `configs/data_paths.curated_v2_german.yaml` (re-tokenisiert nur DE).
+- LLM annotation 0-5 on educational value. Judge: `qwen3-235b-a22b-2507` via
+  OpenRouter (non-thinking, ~40x cheaper than gemini-3.5-flash, stricter and
+  more accurate on web text). 12k labels, ~1 EUR.
+- Cheap classifier: frozen multilingual-e5-large + Ridge head + calibrated
+  threshold. Val Pearson 0.866, Keep-F1 0.872.
+- Corpus filter @ threshold 2.0: fineweb2_de ~38% kept, wikipedia_de in full,
+  german_commons DROPPED (~2-5% keep, EuroParl/OCR fragments).
+- German-v2 = edu-filtered fineweb2_de + wikipedia_de ~ 2.0B high-quality
+  tokens (covers the ~1.8B DE need of the foundation run without repetition).
+- Config: `configs/data_paths.curated_v2_german.yaml` (re-tokenizes only DE).
 
-Multi-GPU / DDP (neu, PR #1, Branch `feat/multigpu-ddp`):
+Multi-GPU / DDP (new, PR #1, branch `feat/multigpu-ddp`):
 
-- DistributedDataParallel im Trainer, strikt auf `WORLD_SIZE>1` gegated ->
-  Single-GPU-Pfad bit-identisch (verifiziert: py_compile + dry-run).
-- DDP-agnostische Checkpoints (kein `module.`-Prefix -> single-GPU-ladbar),
-  no_sync bei Grad-Accum, Rank-0-Eval+Barrier, globaler Stop via all_reduce.
-- torchrun-Launcher: `scripts/ops/run_pretrain_multigpu.sh`.
-- Gemessener Durchsatz: 12.9k tok/s/GPU (1B, Blackwell). Volles 1B (~20B Tok):
-  ~18 Tage 1 GPU, ~5 Tage 4 GPU. Noch nicht auf echter Multi-GPU validiert
-  (Testbox hat 1 GPU) -> kurzer 2-GPU-Run auf RunPod vor langer Strecke.
+- DistributedDataParallel in the trainer, strictly gated on `WORLD_SIZE>1` ->
+  single-GPU path bit-identical (verified: py_compile + dry-run).
+- DDP-agnostic checkpoints (no `module.` prefix -> single-GPU loadable),
+  no_sync during grad-accum, rank-0 eval+barrier, global stop via all_reduce.
+- torchrun launcher: `scripts/ops/run_pretrain_multigpu.sh`.
+- Measured throughput: 12.9k tok/s/GPU (1B, Blackwell). Full 1B (~20B tok):
+  ~18 days 1 GPU, ~5 days 4 GPU. Not yet validated on real multi-GPU
+  (test box has 1 GPU) -> short 2-GPU run on RunPod before the long haul.
 
-Infra-Entscheidung: Training bleibt auf BITBASTION (1 GPU, gratis) fuer den
-Foundation-Run; fuer schnelle/grosse Laeufe RunPod-Multi-GPU (Spot, dank
-Resume), NICHT Colab (Compute-Units + Session-Limits ungeeignet).
+Infra decision: training stays on BITBASTION (1 GPU, free) for the
+foundation run; for fast/large runs RunPod multi-GPU (spot, thanks to
+resume), NOT Colab (compute units + session limits unsuitable).
 
-Skalierungs-Quellen (wenn mehr Deutsch noetig): RedPajama-V2-de (3T modern,
-mit Quality-Signals) + mehr fineweb2_de, edu-gefiltert. german-commons
-verworfen (OCR-historisch, siehe L-020). multitask_german_32k fuer die
-spaetere SFT-Phase gesichert.
+Scaling sources (if more German needed): RedPajama-V2-de (3T modern,
+with quality signals) + more fineweb2_de, edu-filtered. german-commons
+discarded (OCR-historical, see L-020). multitask_german_32k secured for the
+later SFT phase.
 
-Offen / als naechstes:
+Open / next:
 
-1. fineweb2_de-Voll-Scoring laeuft (~38% Keep) -> dann German-v2 tokenisieren
-   (altes `german.bin` sichern, nur DE neu via `curated_v2_german.yaml`).
-2. Danach Foundation-Warmstart von ramp `best.pt` auf den besseren Daten.
+1. fineweb2_de full scoring running (~38% keep) -> then tokenize German-v2
+   (back up old `german.bin`, only DE fresh via `curated_v2_german.yaml`).
+2. Then foundation warmstart from ramp `best.pt` on the better data.
 
-## Kurzentscheidung
+## Short Decision
 
-1B wird noch nicht gestartet.
+1B is not started yet.
 
-Der Sicherheitsrahmen fuer einen 1B-Canary ist jetzt gebaut, aber der Preflight
-ist noch nicht gruen. Der naechste echte Schritt ist kein weiterer 500M-SFT-
-Patch, sondern der finale, auditierte 1B-Clean/Tokenized-Mix.
+The safety framework for a 1B canary is now built, but the preflight
+is not yet green. The next real step is not another 500M-SFT
+patch, but the final, audited 1B clean/tokenized mix.
 
-Aktueller 1B-Preflight:
+Current 1B preflight:
 
 - Report: `reports/auralis_1b_readiness_preflight_v2_2026-05-29.md`
-- Ergebnis: `ready_to_launch: False`
-- Eval-Prompts: 70
-- Trainings-Einheiten gescannt: 382,763
-- Hash-Kollisionen: 0
-- Substring-Hits: 0
+- Result: `ready_to_launch: False`
+- Eval prompts: 70
+- Training units scanned: 382,763
+- Hash collisions: 0
+- Substring hits: 0
 
 Interpretation:
 
-- Die Leak-/Disjunktheitsseite ist aktuell sauber.
-- Der Start ist blockiert, weil der finale 1B-Datenmix noch nicht belastbar
-  als Clean/Tokenized-Mix eingetragen und per Preflight freigegeben ist.
-- `configs/data_paths_1b_samples_container.yaml` muss vor Start auf echte,
-  existierende 1B-Clean- und Tokenized-Pfade zeigen. `.bin`-Tokenfiles brauchen
-  die passende `.idx`.
+- The leak/disjointness side is currently clean.
+- The start is blocked because the final 1B data mix is not yet reliably
+  entered as a clean/tokenized mix and released via preflight.
+- `configs/data_paths_1b_samples_container.yaml` must point to real,
+  existing 1B clean and tokenized paths before start. `.bin` token files need
+  the matching `.idx`.
 
-## Verbindliche 1B-Policy
+## Binding 1B Policy
 
-Der 1B-Lauf darf erst starten, wenn Daten und Gates vorher gruen sind.
+The 1B run may only start when data and gates are green beforehand.
 
-Verbindliche Dateien:
+Binding files:
 
 - 1B Readiness Gate: `eval/auralis_1b_readiness_gate_v1.yaml`
 - Frozen Target/Retention Gate: `eval/sft_response_frozen_target_retention_v2.yaml`
@@ -214,66 +214,66 @@ Verbindliche Dateien:
 - Guarded Canary Config: `configs/training/pretrain_1b_canary_readiness.yaml`
 - Guarded Canary Runner: `scripts/ops/run_pretrain_1b_canary_readiness.sh`
 
-Promotion-Regel:
+Promotion rule:
 
-- Target muss bestehen.
-- Retention muss 0 Regressionen haben.
-- Eine einzige Retention-Regression bedeutet: nicht promotable.
-- Eval-Probes werden nicht gelockert, um einen Lauf gruen zu machen.
-- Neue Probes nur append-only ergaenzen.
+- Target must pass.
+- Retention must have 0 regressions.
+- A single retention regression means: not promotable.
+- Eval probes are not loosened to make a run green.
+- New probes only added append-only.
 
-Wichtige Target-/Retention-Achsen:
+Important target/retention axes:
 
-- Photosynthese als echtes Konzept, nicht nur Keyword-Treffer.
-- Faust/Goethe als confident known fact.
-- Bonn frueher vs. Berlin heute.
-- Bekannte Fakten beantworten, erfundene Entitaeten verweigern.
-- Goethe nicht mit `Mein Kampf` verwechseln.
-- Faust I nicht wegen ueberdominantem Honesty-Training verweigern.
+- Photosynthesis as a real concept, not just a keyword hit.
+- Faust/Goethe as a confident known fact.
+- Bonn formerly vs. Berlin today.
+- Answer known facts, refuse invented entities.
+- Do not confuse Goethe with `Mein Kampf`.
+- Do not refuse Faust I due to overdominant honesty training.
 
-## 500M-Stand
+## 500M State
 
-Kein getesteter 500M-Checkpoint ist promotable.
+No tested 500M checkpoint is promotable.
 
-Frozen-Gate-v2-Ergebnisse:
+Frozen-Gate-v2 results:
 
 | Checkpoint | Target | Retention | Promotable |
 |---|---:|---:|---:|
-| `v8_safe` | 8/25 | 18/25 | nein |
-| `hybrid_v1_40` | 9/25 | 17/25 | nein |
-| `hybrid_v12_bridge_60` | 10/25 | 17/25 | nein |
-| `hybrid_v12_repair_v2_80` | 9/25 | 17/25 | nein |
+| `v8_safe` | 8/25 | 18/25 | no |
+| `hybrid_v1_40` | 9/25 | 17/25 | no |
+| `hybrid_v12_bridge_60` | 10/25 | 17/25 | no |
+| `hybrid_v12_repair_v2_80` | 9/25 | 17/25 | no |
 
-Aktuelle Schlussfolgerung:
+Current conclusion:
 
-- `v8_safe` bleibt nur relativ am stabilsten, weil Retention am wenigsten
-  kaputtgeht.
-- Hybrid/v12 bewegt Photosynthese/Faust teilweise, verliert aber Retention.
-- Weitere 500M-Mini-Patches sind Diagnose-Arbeit, keine Promotion-Arbeit.
-- 500M darf nicht als geloest oder produktionsnah behandelt werden.
+- `v8_safe` only remains the most stable relatively speaking, because retention
+  breaks the least.
+- Hybrid/v12 moves photosynthesis/Faust partly, but loses retention.
+- Further 500M mini-patches are diagnostic work, not promotion work.
+- 500M must not be treated as solved or production-ready.
 
-## Diagnose
+## Diagnosis
 
-Die aktuellen Fehler sind keine simplen Prompt-, Score- oder Loss-Probleme.
-Das Modell zeigt Interferenz:
+The current errors are not simple prompt, score, or loss problems.
+The model shows interference:
 
-- Photosynthese/Faust lassen sich lokal verbessern.
-- Dabei kippen Bonn/Berlin, Known-Fact-Retention oder sichere Gegenfakten.
-- Honesty/Refusal ist bei manchen bekannten Fakten zu dominant.
-- Erfundenen Entitaeten werden teilweise trotzdem Details angedichtet.
+- Photosynthesis/Faust can be improved locally.
+- In doing so, Bonn/Berlin, known-fact retention, or safe counter-facts tip over.
+- Honesty/refusal is too dominant on some known facts.
+- Invented entities are sometimes nevertheless ascribed details.
 
-Das spricht gegen weitere kleine Reparatur-SFTs auf 500M und fuer einen sauber
-gewichteten 1B-Pretrain/SFT-Mix.
+This argues against further small repair SFTs on 500M and in favor of a cleanly
+weighted 1B pretrain/SFT mix.
 
-## Adaptive / Live-Gates
+## Adaptive / Live Gates
 
-Die adaptive Trainingsschicht kann das v2-Frozen-Gate live mitlaufen lassen:
+The adaptive training layer can run the v2 frozen gate live alongside:
 
 - Adaptive Frozen-Gate Bridge: `src/auralis/adaptive/frozen_gate.py`
 - Adaptive Trainer CLI: `scripts/train/adaptive_curriculum.py`
-- Live-Trace: `<output-dir>/frozen_gate_trace.jsonl`
+- Live trace: `<output-dir>/frozen_gate_trace.jsonl`
 
-Neue Live-Metriken:
+New live metrics:
 
 - `frozen_target_pass`
 - `frozen_retention_pass`
@@ -281,27 +281,26 @@ Neue Live-Metriken:
 - `frozen_retention_failures`
 - `frozen_promotable`
 
-Teststatus laut Handoff:
+Test status per handoff:
 
-- lokale adaptive Tests: gruen
-- Container-Smoke fuer Frozen-Gate-Live-Bridge: gruen
-- Mini-Smoke mit 500M-v8 pruefte nur Verdrahtung, nicht inhaltliche Scores.
+- local adaptive tests: green
+- container smoke for frozen-gate live bridge: green
+- mini smoke with 500M-v8 only checked the wiring, not content scores.
 
-## Naechste Schritte
+## Next Steps
 
-1. Finalen 1B-Clean-Mix bauen.
-   - `cleaned.german`, `cleaned.english`, `cleaned.code` mit echten Pfaden
-     befuellen.
-   - Tokenized-Pfade eintragen.
-   - Existenz von `.bin` und passender `.idx` sicherstellen.
+1. Build final 1B clean mix.
+   - Fill `cleaned.german`, `cleaned.english`, `cleaned.code` with real paths.
+   - Enter tokenized paths.
+   - Ensure existence of `.bin` and matching `.idx`.
 
-2. Datenmix vor dem Tokenisieren auditen.
-   - moderne deutsche QA/Fakten staerker als beim 500M.
-   - Refusal/Honesty deckeln, nicht dominieren lassen.
-   - confident-correct Fakten explizit einplanen.
-   - Books niedrig dosieren, nicht als Hauptwissenstraeger verwenden.
+2. Audit the data mix before tokenizing.
+   - modern German QA/facts stronger than in the 500M.
+   - cap refusal/honesty, do not let it dominate.
+   - explicitly plan for confident-correct facts.
+   - dose books low, do not use as the main knowledge carrier.
 
-3. Preflight erneut laufen lassen:
+3. Run preflight again:
 
 ```bash
 python scripts/eval/one_b_readiness_preflight.py \
@@ -310,26 +309,26 @@ python scripts/eval/one_b_readiness_preflight.py \
   --output-md reports/auralis_1b_readiness_preflight_v2_$(date -u +%F).md
 ```
 
-4. Erst wenn `ready_to_launch: true`, Canary starten:
+4. Only when `ready_to_launch: true`, start the canary:
 
 ```bash
 bash scripts/ops/run_pretrain_1b_canary_readiness.sh
 ```
 
-## Stop-Kriterien im 1B-Canary
+## Stop Criteria in the 1B Canary
 
-Sofort stoppen oder nicht promoten, wenn:
+Stop immediately or do not promote when:
 
-- Retention auch nur einen Fehler bekommt.
-- Bonn historisch wegfaellt.
-- Berlin heute kippt.
-- Goethe/Faust verweigert oder falsch wird.
-- Photosynthese nur gut klingt, aber Zucker/Sauerstoff/Pflanzen/Licht falsch
-  verbindet.
-- erfundene Entitaeten ausgeschmueckt werden.
-- Target nicht besser wird, obwohl Loss sinkt.
+- Retention gets even a single error.
+- Bonn historically drops out.
+- Berlin today tips over.
+- Goethe/Faust is refused or becomes wrong.
+- Photosynthesis only sounds good but connects sugar/oxygen/plants/light
+  wrongly.
+- invented entities are embellished.
+- Target does not improve even though loss drops.
 
-## Aktuelle Referenzen
+## Current References
 
 - `reports/auralis_1b_readiness_plan_2026-05-29.md`
 - `reports/codex_handoff_1b_readiness_v2_2026-05-29.md`
@@ -338,11 +337,11 @@ Sofort stoppen oder nicht promoten, wenn:
 - `docs/DOCS_INDEX.md`
 - `eval/README.md`
 
-## Was nicht mehr als aktueller Stand gilt
+## What No Longer Counts as the Current State
 
-- `STATUS.md` Stand 2026-05-17 als Run-Plan.
-- Der alte `pretrain_mix_v4_boosted_500m` als aktueller Hauptpfad.
-- Der April-Plan `curated_40b` als aktiver Hauptmix.
-- Alte Pfade wie `tokenized/phase1` oder `checkpoints/phase1_pretrain` als
-  Default fuer neue Runs.
-- SFT als Reparatur fuer ein schwaches/noisy Base-Modell.
+- `STATUS.md` as of 2026-05-17 as the run plan.
+- The old `pretrain_mix_v4_boosted_500m` as the current main path.
+- The April plan `curated_40b` as the active main mix.
+- Old paths like `tokenized/phase1` or `checkpoints/phase1_pretrain` as the
+  default for new runs.
+- SFT as a repair for a weak/noisy base model.

@@ -1,41 +1,41 @@
-# Auralis v2 — Context-Handover für neue Chat-Session
-**Stand:** 2026-04-26 ~13:00 lokal (CEST)
-**Vorherige Session-Länge:** ~2 Tage
+# Auralis v2 — Context handover for a new chat session
+**As of:** 2026-04-26 ~13:00 local (CEST)
+**Previous session length:** ~2 days
 
-## Was Auralis v2 ist
-- 1B bilinguales (DE/EN) Hybrid-LLM (Helix v2: 6 Mamba + 16 GLA + 6 Sparse Attention)
-- Eigener 200k SentencePiece-Tokenizer
-- Repository: `/mnt/user/Auralis/AuralisV2/` (Server) = `\BITBASTION\Auralis\AuralisV2` (Windows SMB)
-- ⚠️ **NICHT** `I:\AuralisV2` verwenden — ist eine veraltete lokale NTFS-Kopie und Quelle vieler Sync-Probleme
+## What Auralis v2 is
+- 1B bilingual (DE/EN) hybrid LLM (Helix v2: 6 Mamba + 16 GLA + 6 Sparse Attention)
+- Custom 200k SentencePiece tokenizer
+- Repository: `/mnt/user/Auralis/AuralisV2/` (server) = `\BITBASTION\Auralis\AuralisV2` (Windows SMB)
+- ⚠️ Do **NOT** use `I:\AuralisV2` — it's an outdated local NTFS copy and the source of many sync problems
 
-## Infrastruktur
+## Infrastructure
 | | |
 |---|---|
 | Server | 192.168.178.5 (BITBASTION, Unraid) |
 | GPU | RTX PRO 5000 Blackwell, 47 GB VRAM |
 | Container | `auralis-training` (Python 3.11.12, torch 2.7.0+cu128) |
-| Data root im Container | `/workspace/v2data` (= /mnt/user/Auralis/AuralisV2/) |
+| Data root in the container | `/workspace/v2data` (= /mnt/user/Auralis/AuralisV2/) |
 | SSH | `ssh root@192.168.178.5` |
 
-## Pflicht-Env-Vars für jedes Trainings-Run
+## Mandatory env vars for every training run
 ```bash
 export PYTHONUNBUFFERED=1
-export AURALIS_USE_CUDA_KERNELS=1     # mamba_ssm + fla aktivieren
-export TRITON_OVERRIDE_ARCH=sm89       # Blackwell sm_120 Triton-Workaround
-export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True  # gegen OOM-Fragmentierung
+export AURALIS_USE_CUDA_KERNELS=1     # enable mamba_ssm + fla
+export TRITON_OVERRIDE_ARCH=sm89       # Blackwell sm_120 Triton workaround
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True  # against OOM fragmentation
 ```
 
-## Aktuell laufend (Stand jetzt)
-1. **Canary Runde 3** `canary_runde3_de_medium_b16` — batch=12 seq=1024, mix 70/25/5
-   - Started 12:44 lokal, ETA fertig ~13:25
+## Currently running (as of now)
+1. **Canary Round 3** `canary_runde3_de_medium_b16` — batch=12 seq=1024, mix 70/25/5
+   - Started 12:44 local, ETA done ~13:25
    - Log: `logs/runde3_de_medium_b16.log`
-   - Ckpt-Dir: `checkpoints/canary_runde3_de_medium_b16/`
-2. **Chained: 1B Batch-Size-Sweep** (`scripts/utils/batch_size_sweep.py`)
-   - Wartet auf runde3 Ende, startet automatisch
-   - Testet helix_v2_1b mit batch [1,2,4,6,8,12] × seq [1024,2048]
+   - Ckpt dir: `checkpoints/canary_runde3_de_medium_b16/`
+2. **Chained: 1B batch-size sweep** (`scripts/utils/batch_size_sweep.py`)
+   - Waits for round 3 to end, starts automatically
+   - Tests helix_v2_1b with batch [1,2,4,6,8,12] × seq [1024,2048]
    - Output: `logs/batch_sweep_1b.log`
 
-## Sieger-Verdikt der vorherigen 3-Wege-Ablation (batch16, alle FERTIG)
+## Winner verdict of the previous 3-way ablation (batch16, all DONE)
 | | baseline (12/3/1) | de_heavy (10/5/1) | code_heavy (10/3/3) |
 |---|---|---|---|
 | val_loss | 3.286 | 3.652 | 3.912 |
@@ -43,68 +43,68 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True  # gegen OOM-Fragmentier
 | DE | 6.500 | 6.280 | 6.293 |
 | Code | 5.541 | 5.594 | 5.451 |
 
-Empfehlung: **Mix 70/25/5** für 1B-Hauptlauf (de_medium = Zwischenstufe, läuft jetzt zur Validierung)
+Recommendation: **Mix 70/25/5** for the 1B main run (de_medium = intermediate step, now running for validation)
 
-## Daten-Pipeline-Status
-### Pretrain (curated_40b, fertig + getestet)
-- `tokenized/curated_40b/` — english 11.79B, german 5.60B, code 0.71B Tokens
-- Gefiltert mit verbessertem `filter_quality.py` (PROTECTED_PREFIXES + max_repetition CLI)
+## Data pipeline status
+### Pretrain (curated_40b, done + tested)
+- `tokenized/curated_40b/` — english 11.79B, german 5.60B, code 0.71B tokens
+- Filtered with the improved `filter_quality.py` (PROTECTED_PREFIXES + max_repetition CLI)
 
-### SFT-Daten gesammelt (heute):
+### SFT data collected (today):
 | Stream | Records | Status |
 |---|---|---|
-| QA (SQuAD + MS MARCO) → `seeds/sft/qa/qa_combined.sft.jsonl` | 330,319 | ✅ einsatzbereit |
-| Coding-Troubleshoot → `seeds/sft/coding_troubleshoot/clean.jsonl` | 19,276 | ✅ einsatzbereit |
-| Safety Hard-No → `seeds/sft/safety/safety_hard.jsonl` | 567 | ✅ einsatzbereit |
-| Safety Softable → `safety_softable.jsonl` | 13,254 | ⏳ braucht Qwen-Rewrite |
-| Safety Normal → `safety_normal.jsonl` | 560,091 | ✅ einsatzbereit |
+| QA (SQuAD + MS MARCO) → `seeds/sft/qa/qa_combined.sft.jsonl` | 330,319 | ✅ ready to use |
+| Coding troubleshoot → `seeds/sft/coding_troubleshoot/clean.jsonl` | 19,276 | ✅ ready to use |
+| Safety Hard-No → `seeds/sft/safety/safety_hard.jsonl` | 567 | ✅ ready to use |
+| Safety Softable → `safety_softable.jsonl` | 13,254 | ⏳ needs Qwen rewrite |
+| Safety Normal → `safety_normal.jsonl` | 560,091 | ✅ ready to use |
 
-### Safety-Policy (NEU heute, kritisch):
-- `docs/AURALIS_SAFETY_POLICY.md` — 5 Hard-No-Kategorien + Owner-Mode-Mechanismus
-- 5 Hard-No: CSAM, WMD-Synthese, konkrete Anschlagsplanung, Doxxing, deployment-ready Malware
-- Owner-Mode: System-Prompt-Flag `[OWNER_MODE: true]` schaltet Soft-Refusals ab
+### Safety policy (NEW today, critical):
+- `docs/AURALIS_SAFETY_POLICY.md` — 5 Hard-No categories + Owner-mode mechanism
+- 5 Hard-No: CSAM, WMD synthesis, concrete attack planning, doxxing, deployment-ready malware
+- Owner-mode: system-prompt flag `[OWNER_MODE: true]` turns off soft refusals
 
-## Heute fertig gestellte Tools
-- `scripts/data/filter_quality.py` (gepatched)
+## Tools finished today
+- `scripts/data/filter_quality.py` (patched)
 - `scripts/data/download_qa_seeds.py` (SQuAD + MS MARCO)
 - `scripts/data/download_german_speeches.py` (German Political Speeches)
 - `scripts/data/download_safety_seeds.py` (HH-RLHF, OASST1/2, WildChat, AdvBench, HarmBench, JailbreakBench)
 - `scripts/data/download_kaggle_seeds.py` (license-aware, default class=commercial)
 - `scripts/data/process_troubleshoot_seeds.py` (Stack Exchange → SFT)
 - `scripts/data/process_qa_seeds.py` (SQuAD/MSMARCO → chat-SFT)
-- `scripts/data/categorize_safety_seeds.py` (hard/softable/normal Bins)
-- `scripts/data/synth/qwen_client.py` (async OpenAI-API Client)
-- `scripts/data/synth/qwen_synth_sft.py` (Refactor-Pipeline für Softable)
-- `scripts/utils/runde2_master.sh`, `runde2_b16_master.sh` (Trainings-Master)
-- `scripts/utils/batch_size_sweep.py` (gerade in Wartestellung)
-- `scripts/utils/diagnose_layer_memory.py` (per-Layer VRAM-Tracker)
+- `scripts/data/categorize_safety_seeds.py` (hard/softable/normal bins)
+- `scripts/data/synth/qwen_client.py` (async OpenAI-API client)
+- `scripts/data/synth/qwen_synth_sft.py` (refactor pipeline for softable)
+- `scripts/utils/runde2_master.sh`, `runde2_b16_master.sh` (training masters)
+- `scripts/utils/batch_size_sweep.py` (currently on standby)
+- `scripts/utils/diagnose_layer_memory.py` (per-layer VRAM tracker)
 
-## Offene Todos für nach 1B-Sweep
-1. 4-Wege-Vergleich kompilieren (baseline, de_medium, de_heavy, code_heavy)
-2. 1B Phase-1 Hauptlauf-Config bauen mit Sweep-Empfehlung
-3. Vor 1B-Start: `docs/AURALIS_SAFETY_POLICY.md` reviewen + bestätigen
-4. Qwen-Endpoint aufsetzen für Safety-Softable-Rewrite (vLLM oder DeepSeek-API)
-5. Songtext-4-Säulen-Pipeline (Theory, Public Domain, Qwen-Generation, Reception-Discourse)
+## Open todos for after the 1B sweep
+1. Compile 4-way comparison (baseline, de_medium, de_heavy, code_heavy)
+2. Build 1B Phase-1 main-run config with the sweep recommendation
+3. Before the 1B start: review + confirm `docs/AURALIS_SAFETY_POLICY.md`
+4. Set up Qwen endpoint for the safety-softable rewrite (vLLM or DeepSeek API)
+5. Lyrics 4-pillar pipeline (Theory, Public Domain, Qwen generation, reception discourse)
 
-## Wichtigste v1-Lektionen (in v2 schon adressiert)
-- L-001 Prompt-Format-Konsistenz: noch zu validieren bei SFT-Start
+## Most important v1 lessons (already addressed in v2)
+- L-001 Prompt-format consistency: still to be validated at SFT start
 - L-003 Tokenizer locked (200k SP, identity normalization, byte_fallback)
-- L-005 `eval/baseline_questions.yaml` (339 Zeilen) existiert, muss in Trainer integriert werden
-- L-006 Optimizer-Reset = Default für SFT (noch nicht relevant, da kein SFT bisher)
-- L-008 NUL-Strip Pflicht vor Tokenizer (in pipeline aktiv)
-- L-012 Blackwell-Triton-Bug → `TRITON_OVERRIDE_ARCH=sm89`
+- L-005 `eval/baseline_questions.yaml` (339 lines) exists, must be integrated into the trainer
+- L-006 Optimizer reset = default for SFT (not relevant yet, since no SFT so far)
+- L-008 NUL strip mandatory before tokenizer (active in the pipeline)
+- L-012 Blackwell Triton bug → `TRITON_OVERRIDE_ARCH=sm89`
 
-## Working Style für die neue Chat-Session
-- Server-Side direkt arbeiten via `ssh root@192.168.178.5 ...`
-- Files schreiben über base64-transport (Beispiel im git-history sichtbar)
-- Lange Trainings-Runs detached starten: `docker exec -d auralis-training bash -c ...`
-- Fortschritt monitoren via Wakeup-Schedule
-- ALLE Dateien direkt nach `/mnt/user/Auralis/AuralisV2/` schreiben — nicht I:
-## Wichtigste Files zum Kontext-Aufbau (bei Bedarf lesen)
+## Working style for the new chat session
+- Work server-side directly via `ssh root@192.168.178.5 ...`
+- Write files via base64 transport (example visible in git history)
+- Start long training runs detached: `docker exec -d auralis-training bash -c ...`
+- Monitor progress via wakeup schedule
+- Write ALL files directly to `/mnt/user/Auralis/AuralisV2/` — not I:
+## Most important files for building context (read as needed)
 - `docs/AURALIS_SAFETY_POLICY.md`
-- `LESSONS.md` (~150 Zeilen, append-only)
-- `HISTORY.md` (chronologisch, append-only)
+- `LESSONS.md` (~150 lines, append-only)
+- `HISTORY.md` (chronological, append-only)
 - `STATUS.md`
-- `configs/training/canary_runde2_*_b16.yaml` (3 Mix-Varianten)
-- `configs/training/canary_runde3_de_medium_b16.yaml` (gerade laufend)
-- `configs/model/helix_v2_1b.yaml` (Ziel-Architektur)
+- `configs/training/canary_runde2_*_b16.yaml` (3 mix variants)
+- `configs/training/canary_runde3_de_medium_b16.yaml` (currently running)
+- `configs/model/helix_v2_1b.yaml` (target architecture)

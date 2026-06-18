@@ -1,62 +1,62 @@
-# LoRA-Eval-Standard (Phase 5 Vorarbeit)
+# LoRA Eval Standard (Phase 5 preliminary work)
 
-Dieses Dokument legt fest, welche Gates jede neue LoRA-Adapter-Trainings-Runde
-durchlaufen muss, bevor sie als „produktiv" markiert wird. Inspiration:
-v1-Lessons L-002 (LoRA-Memorization) und der Brief §3.3 §6.
+This document defines which gates every new LoRA-adapter training round
+must pass before it is marked "production". Inspiration:
+v1 lessons L-002 (LoRA memorization) and the brief §3.3 §6.
 
-## 1. Pflicht-Artefakte pro Adapter
+## 1. Mandatory artifacts per adapter
 
-Bei jedem LoRA-Merge / jeder veröffentlichten Version liegt im Adapter-Ordner
-zwingend:
+For every LoRA merge / every published version, the adapter folder must
+contain, mandatorily:
 
 ```
 adapter_<name>_vNN/
     adapter.safetensors
     adapter_config.yaml            # rank, target_modules, alpha, dropout, method
-    facts.yaml                     # nur für Topic-LoRAs (Fakten-Tabelle, Quellen)
-    train.jsonl                    # ~1000 Samples, 80 Fakten × Paraphrasen
-    val.jsonl                      # 20 Fakten DISJUNKT zu Train
-    oov_probes.jsonl               # >=20 Fragen außerhalb des Topics
-    manifest.yaml                  # training run details (siehe §4)
-    quality_report.md              # Scores aus den Gates unten
+    facts.yaml                     # only for topic LoRAs (fact table, sources)
+    train.jsonl                    # ~1000 samples, 80 facts × paraphrases
+    val.jsonl                      # 20 facts DISJOINT from train
+    oov_probes.jsonl               # >=20 questions outside the topic
+    manifest.yaml                  # training run details (see §4)
+    quality_report.md              # scores from the gates below
 ```
 
-## 2. Pflicht-Gates (alle müssen bestehen)
+## 2. Mandatory gates (all must pass)
 
-### 2.1 Disjunkter Train/Val-Split (v1-Lesson L-002)
+### 2.1 Disjoint train/val split (v1 lesson L-002)
 
-- ``facts.yaml``-Fakten disjunkt zwischen Train und Val, nicht nur verschiedene Paraphrasen
-- Val enthält mind. 20 Fakten, mind. 3 pro Unter-Kategorie
+- ``facts.yaml`` facts disjoint between train and val, not just different paraphrases
+- Val contains at least 20 facts, at least 3 per sub-category
 - Code: `python scripts/lora/check_split_disjoint.py --adapter <dir>`
 
-### 2.2 OOD-Fragen (style bleed / regression)
+### 2.2 OOD questions (style bleed / regression)
 
-- mindestens 20 Fragen AUSSERHALB des Topics (Mathe-LoRA ⇒ Literatur-Fragen etc.)
-- Metric: `base_oov_score` (Base-Modell ohne Adapter) vs. `adapter_oov_score`
-- Gate: `adapter_oov_score >= base_oov_score - 0.02` (max 2 %-Punkte Regression)
+- at least 20 questions OUTSIDE the topic (math LoRA ⇒ literature questions etc.)
+- Metric: `base_oov_score` (base model without adapter) vs. `adapter_oov_score`
+- Gate: `adapter_oov_score >= base_oov_score - 0.02` (max 2 percentage points regression)
 
-### 2.3 Base-Regression auf den 50 Baseline-Fragen
+### 2.3 Base regression on the 50 baseline questions
 
-- Wir laufen ``eval/baseline_questions.yaml`` MIT geladenem Adapter
-- Gate: ≥ 95 % vom Base-Score (kein allgemeiner Qualitätsverlust)
+- We run ``eval/baseline_questions.yaml`` WITH the adapter loaded
+- Gate: ≥ 95% of the base score (no general quality loss)
 
 ### 2.4 Factual Retention (Core Gate)
 
-- Val-Fakten, 1:1 Formulierung aus ``facts.yaml``
-- Gate: ≥ 70 % korrekt (bei 20 Fakten = ≥ 14)
-- KEIN Train-Loss-Gate unter 0.05 (= v1-Memorization-Trap), stattdessen Val-Loss-Plateau bei 0.2–0.3
+- Val facts, 1:1 wording from ``facts.yaml``
+- Gate: ≥ 70% correct (at 20 facts = ≥ 14)
+- NO train-loss gate below 0.05 (= v1 memorization trap), instead a val-loss plateau at 0.2–0.3
 
-### 2.5 Style Bleed (neu)
+### 2.5 Style Bleed (new)
 
-- „Neutrale" Fragen ohne Topic, Adapter MUSS wie Base antworten (kein Style-Drift)
-- Automatisch: Cosine-Sim der Embeddings von (base_answer, adapter_answer) ≥ 0.9
+- "neutral" questions without a topic, the adapter MUST answer like the base (no style drift)
+- Automatic: cosine sim of the embeddings of (base_answer, adapter_answer) ≥ 0.9
 
-## 3. Router-LoRA spezielle Gates (aus Punkt 16)
+## 3. Router-LoRA specific gates (from point 16)
 
-### 3.1 Gelabelte Routing-Daten
+### 3.1 Labeled routing data
 
-Der Router-LoRA wird gegen einen `router_eval.jsonl` getestet mit
-mindestens 200 Samples, verteilt über sechs Klassen:
+The router LoRA is tested against a `router_eval.jsonl` with
+at least 200 samples, distributed across six classes:
 
 - `level_0_smalltalk`
 - `level_1_factual_recall`
@@ -65,25 +65,25 @@ mindestens 200 Samples, verteilt über sechs Klassen:
 - `level_4_reasoning`
 - `level_5_high_risk`
 
-Metric: **Per-Class Accuracy**, nicht nur Overall.
+Metric: **per-class accuracy**, not just overall.
 
-### 3.2 Per-Class Gates
+### 3.2 Per-class gates
 
-| Klasse | Min-Accuracy | Confusion-Constraint |
+| Class | Min accuracy | Confusion constraint |
 |---|--:|---|
-| level_0_smalltalk | 95 % | darf nicht zu level_5 routen |
-| level_1_factual_recall | 90 % | |
-| level_2_tools_needed | 80 % | |
-| level_3_topic_knowledge | 80 % | korrektes Topic-Label ≥ 75 % |
-| level_4_reasoning | 75 % | |
-| level_5_high_risk | **95 %** | darf niemals zu level_0 routen — Safety |
+| level_0_smalltalk | 95% | must not route to level_5 |
+| level_1_factual_recall | 90% | |
+| level_2_tools_needed | 80% | |
+| level_3_topic_knowledge | 80% | correct topic label ≥ 75% |
+| level_4_reasoning | 75% | |
+| level_5_high_risk | **95%** | must never route to level_0 — safety |
 
-### 3.3 Safety-Fence
+### 3.3 Safety fence
 
-- level_5_high_risk → level_0 Routing: **strict zero tolerance**.
-- Jeder Router-Release mit einem einzigen solchen Fehler ist ein Release-Blocker.
+- level_5_high_risk → level_0 routing: **strict zero tolerance**.
+- Any router release with a single such error is a release blocker.
 
-## 4. Manifest-Pflichtfelder
+## 4. Mandatory manifest fields
 
 ```yaml
 adapter:
@@ -112,27 +112,27 @@ results:
   style_bleed_cos_sim: 0.94         # ≥ 0.90
 ```
 
-## 5. Ablauf vor jedem Adapter-Release
+## 5. Procedure before each adapter release
 
 ```
-1. Train läuft mit early-stop auf val_loss
+1. Train runs with early-stop on val_loss
 2. python scripts/lora/gate_eval.py --adapter <dir> --base <ckpt>
-   Prüft alle fünf Gates. Exit-Code != 0 ⇒ Release blockiert.
-3. Bei PASS: git tag -a lora/<name>/vNN
-4. Adapter-Manifest automatisch in STATUS.md referenzieren
+   Checks all five gates. Exit code != 0 ⇒ release blocked.
+3. On PASS: git tag -a lora/<name>/vNN
+4. Reference the adapter manifest automatically in STATUS.md
 ```
 
-Gate-Script (`scripts/lora/gate_eval.py`) wird in Phase 5 implementiert;
-dieses Dokument beschreibt WAS es tun muss.
+The gate script (`scripts/lora/gate_eval.py`) is implemented in Phase 5;
+this document describes WHAT it must do.
 
-## 6. Anti-Patterns (v1-Erfahrung)
+## 6. Anti-patterns (v1 experience)
 
-- ❌ Train-Loss 0.0099 = Memorization, nicht Lernen
-- ❌ Val-Fakten sind Paraphrasen der Train-Fakten
-- ❌ Base-Regression nicht gemessen
-- ❌ Style-Drift auf neutralen Fragen nicht gemessen
-- ❌ Router ohne gelabelte Routing-Daten („klingt plausibel")
-- ❌ Release ohne Manifest-SHAs (später nicht nachvollziehbar)
+- ❌ Train loss 0.0099 = memorization, not learning
+- ❌ Val facts are paraphrases of the train facts
+- ❌ Base regression not measured
+- ❌ Style drift on neutral questions not measured
+- ❌ Router without labeled routing data ("sounds plausible")
+- ❌ Release without manifest SHAs (later not traceable)
 
-Jeder dieser Punkte ist in v1 mindestens einmal vorgekommen und hat
-Arbeit kostet. Gates sind die Gegenmaßnahme.
+Each of these points occurred at least once in v1 and cost
+work. Gates are the countermeasure.

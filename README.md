@@ -2,111 +2,111 @@
 
 <p align="center">
   <img src="docs/auralis_logo_512.png" width="200" alt="Auralis logo"><br>
-  <em>Ein from-scratch, deutsch-primaeres ~0.9B-Hybrid-LLM (Mamba-2 / GLA / Sparse-Attention).</em>
+  <em>A from-scratch, German-primary ~0.9B hybrid LLM (Mamba-2 / GLA / sparse attention).</em>
 </p>
 
-Auralis ist das Assistenz-System. Helix v2 ist das eigene LLM darunter.
+Auralis is the assistance system. Helix v2 is the in-house LLM underneath it.
 
-Der aktuelle Arbeitsstand steht in [STATUS.md](STATUS.md). Die grosse
-Projektidee und Modellphilosophie stehen in
-[Doc/AURALIS_V2_PROJECT_BRIEF.md](Doc/AURALIS_V2_PROJECT_BRIEF.md). Die
-technische Architektur-Spec steht in
+The current working state is in [STATUS.md](STATUS.md). The overarching
+project idea and model philosophy are in
+[Doc/AURALIS_V2_PROJECT_BRIEF.md](Doc/AURALIS_V2_PROJECT_BRIEF.md). The
+technical architecture spec is in
 [Doc/SPECs/SPEC_PHASE_0.5_MODEL_ARCHITECTURE.md](Doc/SPECs/SPEC_PHASE_0.5_MODEL_ARCHITECTURE.md).
 
 ## Quick Links
 
-- [Aktueller Stand](STATUS.md)
+- [Current Status](STATUS.md)
 - [Roadmap & Status (Blueprint)](docs/auralis_roadmap_blueprint_en.svg)
 - [Blueprint: Tool-Use & Verifier](docs/BLUEPRINT_TOOL_USE_VERIFIER.md)
-- [Blueprint: DoRA-Domaenen-Adapter](docs/BLUEPRINT_DOMAIN_ADAPTERS_DORA.md)
-- [Zukunft-Backlog](docs/ZUKUNFT_BACKLOG.md)
-- [Doku-Index](docs/DOCS_INDEX.md)
-- [Projekt-Brief / Grundidee](Doc/AURALIS_V2_PROJECT_BRIEF.md)
-- [Modell-Architektur](Doc/SPECs/SPEC_PHASE_0.5_MODEL_ARCHITECTURE.md)
+- [Blueprint: DoRA Domain Adapters](docs/BLUEPRINT_DOMAIN_ADAPTERS_DORA.md)
+- [Future Backlog](docs/ZUKUNFT_BACKLOG.md)
+- [Docs Index](docs/DOCS_INDEX.md)
+- [Project Brief / Core Idea](Doc/AURALIS_V2_PROJECT_BRIEF.md)
+- [Model Architecture](Doc/SPECs/SPEC_PHASE_0.5_MODEL_ARCHITECTURE.md)
 - [Data Cleaning Pipeline V3](docs/data_cleaning_pipeline_v3.md)
 - [Dataset Market App](docs/dataset_market_app.md)
 - [Evaluation](eval/README.md)
 - [Lessons](LESSONS.md)
 - [History](HISTORY.md)
 
-## Aktueller Fokus (Stand 2026-06-06)
+## Current Focus (as of 2026-06-06)
 
-Pipeline, Checkpointing, Tokenizer und Training laufen stabil. Seit dem
-deutschen Edu-Daten-Filter ist viel passiert:
+Pipeline, checkpointing, tokenizer and training run stably. A lot has happened
+since the German edu-data filter:
 
-1. **Foundation-Run gelaufen** (1B, de55/en45, Warmstart v3 bis Step 50k):
-   gesundes Training, Sprache + Faktenbindung nachgewiesen.
-2. **SFT (Instruction-Tuning):** aus dem Base, der kaum antworten konnte, wurde
-   ein antwortender Assistent. v1 (~32k diverse DE+EN, gpt-4o-verifiziert,
-   dekontaminiert) + v2 (+ deutscher Reasoning-Slice, gpt-4o-mathgeprueft).
-   **SFT lehrt FORM, nicht WISSEN** — durch Benchmarks bestaetigt.
-3. **Benchmarks** (eigener MC-Loglikelihood-Runner, n=300): Helix-SFT schlaegt
-   auf `mmlu_de` SmolLM2-360M + TinyLlama-1.1B; Qwens MMLU-Vorsprung schrumpft
-   von ~22 (EN) auf ~7 (DE). Die Sprachstrategie (200k Vokab, de55/en45) zahlt
-   sich messbar aus. Absolutwerte niedrig = Untertrainings-/Groessen-Signal.
-4. **Naechste Richtung** (dreifach abgestimmt, Reihenfolge gegated): Tool-Use
-   zuerst (kleines Modell lernt PRUEFEN statt raten) -> Annealing inkl. Code
-   -> DoRA-Domaenen-Adapter. Specs:
+1. **Foundation run completed** (1B, de55/en45, warm-start v3 up to step 50k):
+   healthy training, language + factual grounding demonstrated.
+2. **SFT (instruction tuning):** the base, which could barely answer, was turned
+   into an answering assistant. v1 (~32k diverse DE+EN, gpt-4o-verified,
+   decontaminated) + v2 (+ German reasoning slice, gpt-4o math-checked).
+   **SFT teaches FORM, not KNOWLEDGE** — confirmed by benchmarks.
+3. **Benchmarks** (own MC log-likelihood runner, n=300): Helix-SFT beats
+   SmolLM2-360M + TinyLlama-1.1B on `mmlu_de`; Qwen's MMLU lead shrinks
+   from ~22 (EN) to ~7 (DE). The language strategy (200k vocab, de55/en45) pays
+   off measurably. Absolute values low = under-training / size signal.
+4. **Next direction** (triple-aligned, order gated): tool-use
+   first (small model learns to VERIFY instead of guess) -> annealing including code
+   -> DoRA domain adapters. Specs:
    [Tool-Use](docs/BLUEPRINT_TOOL_USE_VERIFIER.md),
    [DoRA](docs/BLUEPRINT_DOMAIN_ADAPTERS_DORA.md),
    [Backlog](docs/ZUKUNFT_BACKLOG.md).
 
-Roadmap auf einen Blick:
+Roadmap at a glance:
 
 ![Roadmap & Status](docs/auralis_roadmap_blueprint_en.svg)
 
-Details: der "Update 2026-06-06"-Block in [STATUS.md](STATUS.md), der Verlauf
-in [HISTORY.md](HISTORY.md), die Lehren (inkl. L-018..L-022) in
+Details: the "Update 2026-06-06" block in [STATUS.md](STATUS.md), the timeline
+in [HISTORY.md](HISTORY.md), the lessons (incl. L-018..L-022) in
 [LESSONS.md](LESSONS.md).
 
-## Was Helix heute kann — und was nicht (ehrlich gemessen)
+## What Helix can do today — and what it cannot (honestly measured)
 
-Das 0,9B-Modell laeuft live im Auralis Hub (PyTorch-Ollama-Shim) mit Auto-Router,
-Werkzeug-Ausfuehrung, lokalem de-Wikipedia-RAG + Websuche, Eingabe-Normalisierer und
-Single-Turn-Kontext. Stand der gemessenen Faehigkeiten:
+The 0.9B model runs live in the Auralis Hub (PyTorch-Ollama shim) with auto-router,
+tool execution, local de-Wikipedia RAG + web search, input normalizer and
+single-turn context. State of the measured capabilities:
 
-| Kann | Verhalten |
+| Can do | Behavior |
 |---|---|
-| Deutsche Fakten | Hauptstaedte, Autoren, Grundwissen — schnell, auf haeufigen Fakten korrekt |
-| **Ehrliches Abstain** (Signatur) | sagt „Ich weiss nicht" bei erfundenen/unbekannten Begriffen statt zu halluzinieren |
-| Mathe ueber Werkzeug | rechnet nie im Kopf — Tool-Aufruf, Ausfuehrung, verifiziertes Ergebnis |
-| RAG / gegroundet | lokale de-Wikipedia (2,84 Mio. Artikel) + Live-Web; liest den Kontext, antwortet belegt oder abstaint |
-| Code | einfache, lauffaehige Funktionen; sauberer Stop |
-| Auto-Router | waehlt automatisch Mathe / Code / RAG / Web / Chat |
-| Robust gegen „dreckige" Eingaben | Normalisierer putzt Tippfehler/Slang/Umlaute *vor* dem Modell |
+| German facts | capitals, authors, general knowledge — fast, correct on common facts |
+| **Honest abstain** (signature) | says "I don't know" for invented/unknown terms instead of hallucinating |
+| Math via tool | never computes in its head — tool call, execution, verified result |
+| RAG / grounded | local de-Wikipedia (2.84 million articles) + live web; reads the context, answers with evidence or abstains |
+| Code | simple, runnable functions; clean stop |
+| Auto-router | automatically chooses math / code / RAG / web / chat |
+| Robust against "dirty" input | normalizer cleans up typos/slang/umlauts *before* the model |
 
-| Kann (noch) nicht — gemessen, modellgroessen-bedingt | |
+| Cannot (yet) do — measured, model-size-bound | |
 |---|---|
-| Zuverlaessiges Weltwissen | konfabuliert untrainierte Fakten; RAG mildert, der echte Fix ist ein groesseres Modell |
-| Tiefe/offene Erklaerungen | Form ja, Inhalt nicht immer korrekt |
-| Code-Logik / Generalisierung | scheitert jenseits einfacher Funktionen |
-| Semantische Umschreibungen | „das Getraenk mit dem Stier" findet nicht zuverlaessig „Red Bull" |
-| Mehrturnige Gespraeche | schwach (daher Single-Turn im Betrieb) |
+| Reliable world knowledge | confabulates untrained facts; RAG mitigates, the real fix is a larger model |
+| Deep/open explanations | form yes, content not always correct |
+| Code logic / generalization | fails beyond simple functions |
+| Semantic paraphrases | "the drink with the bull" does not reliably find "Red Bull" |
+| Multi-turn conversations | weak (hence single-turn in operation) |
 
-**Deutsch vs. Englisch:** Helix *versteht* Englisch (zweisprachiger Pretrain), wurde
-aber nur auf Deutsch instruktions-trainiert — englische **Antworten** sind deutlich
-schwaecher (mehr Konfabulation, teils Sprach-Mix). Das ist **Design**: ein
-deutsch-primaerer Assistent. Fuer beste Ergebnisse auf Deutsch fragen.
+**German vs. English:** Helix *understands* English (bilingual pretrain), but was
+only instruction-trained in German — English **answers** are noticeably
+weaker (more confabulation, partly language mixing). This is **by design**: a
+German-primary assistant. For best results, ask in German.
 
-**Methodik:** Jede Faehigkeit hat ein Test-Gate; Entscheidungen fallen ueber Gates,
-nicht ueber Val-Loss. Negativergebnisse (z. B. Embedding-Retrieval, Dirty-Data-SFT,
-ein offener „Erklaeren"-Archetyp) werden dokumentiert und geparkt statt geschoent
-ausgeliefert. Der naechste grosse Hebel ist ueberall dieselbe gemessene Decke:
-**Modellgroesse** (Upcycle ~2B / from-scratch 3B) — der gesamte Serving-Stack
-(Tokenizer, Router, Tools, RAG, Normalisierer, Gates) wird dabei direkt uebernommen.
+**Methodology:** every capability has a test gate; decisions are made via gates,
+not via val loss. Negative results (e.g. embedding retrieval, dirty-data SFT,
+an open "explain" archetype) are documented and parked instead of being shipped
+prettied up. The next big lever is the same measured ceiling everywhere:
+**model size** (upcycle ~2B / from-scratch 3B) — the entire serving stack
+(tokenizer, router, tools, RAG, normalizer, gates) carries over directly.
 
-## Projekt-Struktur
+## Project Structure
 
 ```text
-configs/          YAML-Configs fuer Modell, Training, Daten und Experimente
-data/             lokale Daten, Audits und Zwischenartefakte
-Doc/              urspruengliche Master-Specs und Phasen-Spezifikationen
-docs/             aktuelle Arbeitsdoku und Experimente
-eval/             Probes, Benchmarks und Eval-Dokumentation
-scripts/          Download, Cleaning, Tokenize, Training, Eval, Experimente
-src/auralis/      Python-Paket: Tokenizer, Modell, Training, Inference
-tests/            Pytest-Suites
-tokenizer/        Helix-v2-Tokenizer und Qualitaetsreport
+configs/          YAML configs for model, training, data and experiments
+data/             local data, audits and intermediate artifacts
+Doc/              original master specs and phase specifications
+docs/             current working docs and experiments
+eval/             probes, benchmarks and eval documentation
+scripts/          download, cleaning, tokenize, training, eval, experiments
+src/auralis/      Python package: tokenizer, model, training, inference
+tests/            pytest suites
+tokenizer/        Helix-v2 tokenizer and quality report
 ```
 
 ## Setup
@@ -118,16 +118,16 @@ pip install -e ".[dev]"
 pytest
 ```
 
-Auf dem Trainingsserver laufen viele Jobs im Docker-Container
-`auralis-training`. Container-Pfade beginnen dort typischerweise mit
+On the training server, many jobs run in the Docker container
+`auralis-training`. Container paths there typically start with
 `/workspace/v2data`.
 
-## Grundregeln
+## Ground Rules
 
-1. Der aktuelle Status steht in `STATUS.md`, nicht in alten Phasen-Specs.
-2. Specs in `Doc/SPECs/` sind Designhistorie plus Referenz, aber nicht immer
-   der heutige Run-Plan.
-3. Kein grosser Run ohne Audit, Tokenize-Manifest und Capability-Probes.
-4. Keine Tokenizer-Aenderung ohne bewusstes Tokenizer-v2-Experiment.
-5. Neue Booster wie Knowledge-DNA bleiben experimentell, bis eine Ablation
-   eindeutig positiv ist.
+1. The current status is in `STATUS.md`, not in old phase specs.
+2. Specs in `Doc/SPECs/` are design history plus reference, but not always
+   today's run plan.
+3. No large run without audit, tokenize manifest and capability probes.
+4. No tokenizer change without a deliberate tokenizer-v2 experiment.
+5. New boosters like Knowledge-DNA stay experimental until an ablation
+   is unambiguously positive.

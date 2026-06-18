@@ -1,62 +1,62 @@
-# Phase 0: Tokenizer-Training
+# Phase 0: Tokenizer Training
 
-**Projekt:** Auralis v2 / Helix v2
-**Phase:** 0 (Voraussetzung für alles andere)
-**Dauer:** 2-3 Tage
-**Ziel:** Produktionsreifer 200k bilingual + Code Tokenizer
+**Project:** Auralis v2 / Helix v2
+**Phase:** 0 (prerequisite for everything else)
+**Duration:** 2-3 days
+**Goal:** Production-ready 200k bilingual + code tokenizer
 
 ---
 
-## 1. Warum diese Phase zuerst?
+## 1. Why this phase first?
 
-Der Tokenizer ist die einzige Komponente die sich NICHT nachträglich
-austauschen lässt. Jedes Bit Training-Arbeit ist an das Vocabulary
-gebunden. Tokenizer-Wechsel = komplettes Re-Pretraining.
+The tokenizer is the only component that CANNOT be swapped out
+afterwards. Every bit of training work is tied to the vocabulary.
+Tokenizer change = complete re-pretraining.
 
-Deshalb: EINMAL richtig machen, dann nie wieder anfassen.
+Therefore: do it right ONCE, then never touch it again.
 
 ---
 
 ## 2. Deliverables
 
-Am Ende dieser Phase existieren:
+At the end of this phase the following exist:
 
 ```
 /tokenizer/
-    helix_v2_tokenizer.model    # SentencePiece Modell-Datei
-    helix_v2_tokenizer.vocab    # Vocab als Text (zum Anschauen)
-    training_manifest.yaml      # Welche Daten, welche Config
-    quality_report.md           # Effizienz pro Sprache/Domäne
+    helix_v2_tokenizer.model    # SentencePiece model file
+    helix_v2_tokenizer.vocab    # Vocab as text (for inspection)
+    training_manifest.yaml      # Which data, which config
+    quality_report.md           # Efficiency per language/domain
 
 /scripts/tokenizer/
-    prepare_corpus.py           # Daten-Download + Filtering
-    train_tokenizer.py          # SentencePiece Training
-    test_tokenizer.py           # Qualitäts-Tests
+    prepare_corpus.py           # Data download + filtering
+    train_tokenizer.py          # SentencePiece training
+    test_tokenizer.py           # Quality tests
     
 /src/auralis/tokenizer/
     __init__.py
-    helix_tokenizer.py          # Python-Wrapper für Training + Inference
-    chat_template.py            # Chat-Format-Handling
+    helix_tokenizer.py          # Python wrapper for training + inference
+    chat_template.py            # Chat format handling
 
 /tests/tokenizer/
-    test_helix_tokenizer.py     # Unit-Tests
-    test_chat_template.py       # Chat-Format Tests
-    test_roundtrip.py           # Encode→Decode Tests
+    test_helix_tokenizer.py     # Unit tests
+    test_chat_template.py       # Chat format tests
+    test_roundtrip.py           # Encode→Decode tests
 ```
 
 ---
 
-## 3. Arbeits-Schritte
+## 3. Work Steps
 
-### 3.1 Projekt-Struktur aufsetzen (30 Min)
+### 3.1 Set up project structure (30 min)
 
 ```bash
-# Repo anlegen
+# Create repo
 mkdir -p auralis-v2
 cd auralis-v2
 git init
 
-# Struktur
+# Structure
 mkdir -p {data,scripts,src,tests,configs,docs,checkpoints}
 mkdir -p data/{raw,cleaned,training,eval}
 mkdir -p scripts/{tokenizer,pretrain,sft,lora,eval,utils}
@@ -101,7 +101,7 @@ EOF
 
 # .gitignore
 cat > .gitignore << 'EOF'
-# Data (nie committen)
+# Data (never commit)
 data/raw/*
 data/cleaned/*
 data/training/*
@@ -137,7 +137,7 @@ wandb/
 runs/
 EOF
 
-# Erste Placeholder
+# First placeholders
 touch data/raw/.gitkeep
 touch checkpoints/.gitkeep
 
@@ -145,17 +145,17 @@ git add .
 git commit -m "chore: initial project structure"
 ```
 
-### 3.2 Trainings-Korpus vorbereiten (4-6 Stunden)
+### 3.2 Prepare training corpus (4-6 hours)
 
-**Konzept:**
+**Concept:**
 
 ```
-Zielgrößen:
-  Englisch:  35 GB  (60% — meiste Daten, beste Qualität)
-  Deutsch:   18 GB  (30% — gefiltert, modern)
-  Code:       7 GB  (10% — Multi-Language)
+Target sizes:
+  English:  35 GB  (60% — most data, best quality)
+  German:   18 GB  (30% — filtered, modern)
+  Code:      7 GB  (10% — multi-language)
   
-Total:     ~60 GB Text für Tokenizer-Training
+Total:     ~60 GB of text for tokenizer training
 ```
 
 **Script:** `scripts/tokenizer/prepare_corpus.py`
@@ -390,23 +390,23 @@ if __name__ == "__main__":
     main()
 ```
 
-**Ausführung:**
+**Execution:**
 
 ```bash
 cd auralis-v2
 pip install -e ".[dev]"
 
-# Einmalig durchlaufen, braucht Zeit + Bandbreite
+# Run once, takes time + bandwidth
 python scripts/tokenizer/prepare_corpus.py
 
-# Test-Modus mit kleineren Daten zuerst:
+# Test mode with smaller data first:
 python scripts/tokenizer/prepare_corpus.py \
     --english-gb 1.0 \
     --german-gb 0.5 \
     --code-gb 0.2
 ```
 
-### 3.3 Tokenizer trainieren (4-8 Stunden)
+### 3.3 Train tokenizer (4-8 hours)
 
 **Script:** `scripts/tokenizer/train_tokenizer.py`
 
@@ -577,7 +577,7 @@ if __name__ == "__main__":
     )
 ```
 
-### 3.4 Python-Wrapper für Modell-Integration
+### 3.4 Python wrapper for model integration
 
 **Script:** `src/auralis/tokenizer/helix_tokenizer.py`
 
@@ -765,7 +765,7 @@ class HelixTokenizer:
         )
 ```
 
-### 3.5 Tests (KRITISCH — v1-Bugs verhindern)
+### 3.5 Tests (CRITICAL — prevent v1 bugs)
 
 **Script:** `tests/tokenizer/test_helix_tokenizer.py`
 
@@ -994,15 +994,15 @@ class TestVocabSize:
         assert tokenizer.vocab_size == 200000
 ```
 
-**Ausführung:**
+**Execution:**
 
 ```bash
 pytest tests/tokenizer/ -v
 ```
 
-**Alle Tests müssen GRÜN sein bevor Phase 0 abgeschlossen ist.**
+**All tests must be GREEN before Phase 0 is complete.**
 
-### 3.6 Qualitäts-Report erzeugen
+### 3.6 Generate quality report
 
 **Script:** `scripts/tokenizer/test_tokenizer.py`
 
@@ -1096,111 +1096,111 @@ if __name__ == "__main__":
 
 ---
 
-## 4. Akzeptanz-Kriterien
+## 4. Acceptance Criteria
 
-**Phase 0 ist abgeschlossen wenn:**
+**Phase 0 is complete when:**
 
 ```
 Code:
-  □ Alle Scripts existieren und laufen durch
-  □ helix_tokenizer.py Production-ready
-  □ Alle Unit-Tests grün (pytest tests/tokenizer/ passes)
-  □ Prompt-Builder Consistency Test grün (kritisch!)
+  □ All scripts exist and run through
+  □ helix_tokenizer.py production-ready
+  □ All unit tests green (pytest tests/tokenizer/ passes)
+  □ Prompt-builder consistency test green (critical!)
 
 Tokenizer:
-  □ helix_v2_tokenizer.model existiert
-  □ Vocab-Size = 200000 exakt
-  □ Alle Special Tokens korrekt erkannt
-  □ quality_report.md generiert
+  □ helix_v2_tokenizer.model exists
+  □ Vocab size = 200000 exactly
+  □ All special tokens correctly recognized
+  □ quality_report.md generated
 
-Effizienz:
-  □ Englisch: < 150 tokens/100 words
-  □ Deutsch: < 170 tokens/100 words
+Efficiency:
+  □ English: < 150 tokens/100 words
+  □ German: < 170 tokens/100 words
   □ Code: < 180 tokens/100 words
-  □ Lange deutsche Wörter: < 12 tokens
+  □ Long German words: < 12 tokens
 
-Dokumentation:
+Documentation:
   □ training_manifest.yaml committed
   □ quality_report.md committed
-  □ README.md in /tokenizer/ mit Usage-Beispiel
+  □ README.md in /tokenizer/ with usage example
 
 Git:
-  □ Alle Änderungen committed
+  □ All changes committed
   □ Tag: "v0.1.0-tokenizer"
 ```
 
 ---
 
-## 5. Fehlerbehebung
+## 5. Troubleshooting
 
-**Problem: "Special Token erkannt als UNK"**
-
-```
-Ursache: user_defined_symbols nicht korrekt übergeben
-Lösung:  Prüfen dass Liste als Python-List, nicht als String
-```
-
-**Problem: "Deutsche Effizienz schlecht (>180)"**
+**Problem: "Special token recognized as UNK"**
 
 ```
-Ursache: Zu wenig deutsche Daten im Korpus
-Lösung:  prepare_german(target_gb=25.0) erneut laufen
-         Oder: mehr diverse Quellen hinzufügen
+Cause:    user_defined_symbols not passed correctly
+Solution: Check that the list is a Python list, not a string
 ```
 
-**Problem: "Tokenizer Training crashed mit OOM"**
+**Problem: "German efficiency poor (>180)"**
 
 ```
-Ursache: RAM zu klein für Korpus
-Lösung:  num_threads reduzieren (weniger parallel)
-         Oder: Korpus-Größe reduzieren
+Cause:    Too little German data in the corpus
+Solution: Run prepare_german(target_gb=25.0) again
+          Or: add more diverse sources
 ```
 
-**Problem: "Roundtrip ändert Whitespace"**
+**Problem: "Tokenizer training crashed with OOM"**
 
 ```
-Ursache: add_dummy_prefix=True + normalization
-Lösung:  Erwartet! `text.strip()` beim Vergleich
+Cause:    RAM too small for corpus
+Solution: Reduce num_threads (less parallelism)
+          Or: reduce corpus size
 ```
 
----
-
-## 6. Next Steps nach Phase 0
-
-Nach erfolgreichem Abschluss:
+**Problem: "Roundtrip changes whitespace"**
 
 ```
-1. Git-Tag setzen: git tag -a v0.1.0-tokenizer
-2. Push zu Remote: git push origin v0.1.0-tokenizer
-3. Modell-Architektur starten (Phase 0.5)
-   → Embeddings-Größe = vocab_size (200k × d_model)
-   → Siehe: SPEC_PHASE_0.5_MODEL_ARCHITECTURE.md
-4. Parallel: Pretraining-Daten vorbereiten (Phase 1)
-   → Siehe: SPEC_PHASE_1_PRETRAINING.md
+Cause:    add_dummy_prefix=True + normalization
+Solution: Expected! `text.strip()` when comparing
 ```
 
 ---
 
-## 7. Zeitplan
+## 6. Next Steps after Phase 0
+
+After successful completion:
 
 ```
-Tag 1 (6-8 Stunden):
-  09:00-10:00  Projekt-Struktur + pyproject.toml
-  10:00-14:00  Korpus-Vorbereitung (englisch + deutsch)
-  14:00-15:00  Korpus-Vorbereitung (code)
-  15:00-16:00  Tests schreiben
-  16:00-17:00  Dokumentation + Commits
+1. Set git tag: git tag -a v0.1.0-tokenizer
+2. Push to remote: git push origin v0.1.0-tokenizer
+3. Start model architecture (Phase 0.5)
+   → Embeddings size = vocab_size (200k × d_model)
+   → See: SPEC_PHASE_0.5_MODEL_ARCHITECTURE.md
+4. In parallel: prepare pretraining data (Phase 1)
+   → See: SPEC_PHASE_1_PRETRAINING.md
+```
 
-Tag 2 (8-10 Stunden):
-  09:00         Tokenizer-Training starten
-  09:00-17:00   Training läuft (parallel: Model-Arch planen)
-  17:00-18:00   Quality-Test + Report
+---
 
-Tag 3 (4-6 Stunden):
-  09:00-12:00  Tests ausführen, debuggen
-  12:00-14:00  Final-Tuning falls nötig
-  14:00-15:00  Dokumentation + Git-Tag
-  15:00-16:00  Kick-off Phase 1 Planung
+## 7. Schedule
+
+```
+Day 1 (6-8 hours):
+  09:00-10:00  Project structure + pyproject.toml
+  10:00-14:00  Corpus preparation (english + german)
+  14:00-15:00  Corpus preparation (code)
+  15:00-16:00  Write tests
+  16:00-17:00  Documentation + commits
+
+Day 2 (8-10 hours):
+  09:00         Start tokenizer training
+  09:00-17:00   Training runs (in parallel: plan model arch)
+  17:00-18:00   Quality test + report
+
+Day 3 (4-6 hours):
+  09:00-12:00  Run tests, debug
+  12:00-14:00  Final tuning if needed
+  14:00-15:00  Documentation + git tag
+  15:00-16:00  Kick-off Phase 1 planning
 ```
 
 ---

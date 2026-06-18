@@ -1,33 +1,33 @@
-# 250M-Testlauf auf Unraid (RTX Pro 5000 Blackwell)
+# 250M test run on Unraid (RTX Pro 5000 Blackwell)
 
-Dieser Lauf validiert die volle Pipeline auf einer Workstation-GPU, bevor
-ein mehrstündiger RunPod-Lauf gebucht wird. 250 M Modell, `bf16`,
-heterogener Stack (Mamba + GLA + Sparse).
+This run validates the full pipeline on a workstation GPU before
+a multi-hour RunPod run is booked. 250 M model, `bf16`,
+heterogeneous stack (Mamba + GLA + Sparse).
 
-**Erwartung (Blackwell 48 GB, pure-python Kernel):**
+**Expectation (Blackwell 48 GB, pure-python kernel):**
 
-| Metrik | 3090 gemessen | Pro 5000 Blackwell erwartet |
+| Metric | 3090 measured | Pro 5000 Blackwell expected |
 |---|--:|--:|
 | Peak VRAM | 13.0 GB | 13-15 GB |
 | Tokens/s | 97 | 300-500 (Blackwell TC + FP8-ready) |
-| Loss Δ über 50 Steps | +0.87 | gleich (gleiches Modell / gleiche Daten) |
+| Loss Δ over 50 steps | +0.87 | same (same model / same data) |
 
-**Mit `mamba-ssm` + `flash-attn` + `flash-linear-attention` installiert:**
-10 000-30 000 tok/s erwartet. Das sind die Libraries, die ohnehin auf
-RunPod gebraucht werden. Empfehlung: hier gleich mitinstallieren.
+**With `mamba-ssm` + `flash-attn` + `flash-linear-attention` installed:**
+10,000-30,000 tok/s expected. These are the libraries that are needed
+on RunPod anyway. Recommendation: install them here right away.
 
 ---
 
-## Variante A — Python venv (am einfachsten)
+## Variant A — Python venv (simplest)
 
-Voraussetzung: SSH auf den Unraid-Host, User-Tools installiert.
+Prerequisite: SSH to the Unraid host, user tools installed.
 
 ```bash
-# 1. Repo ziehen (oder rsync vom PC):
+# 1. Pull repo (or rsync from the PC):
 git clone <repo-url> /mnt/user/auralis_v2_repo
 cd /mnt/user/auralis_v2_repo
 
-# 2. venv mit Python 3.12 (Blackwell braucht CUDA 12.6+):
+# 2. venv with Python 3.12 (Blackwell needs CUDA 12.6+):
 python3.12 -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
@@ -36,17 +36,17 @@ pip install --upgrade pip
 pip install torch --index-url https://download.pytorch.org/whl/cu124
 pip install numpy pyyaml tqdm sentencepiece
 
-# 4. Optional (aber dramatisch schneller):
+# 4. Optional (but dramatically faster):
 pip install mamba-ssm flash-attn flash-linear-attention
 
-# 5. Smoke-Test 250 M, bf16, synthetisch:
+# 5. Smoke test 250 M, bf16, synthetic:
 PYTHONPATH=src python scripts/pretrain/smoke_test.py \
   --device cuda --dtype bf16 \
   --model-config configs/model/helix_v2_250m.yaml \
   --steps 100 --batch-size 8 --seq-length 512 \
   --warmup-steps 10 --lr 1e-3
 
-# 6. Smoke-Test mit ECHTEN Tokens (wenn tokenized/phase1/*.bin auf dem NAS steht):
+# 6. Smoke test with REAL tokens (when tokenized/phase1/*.bin is on the NAS):
 PYTHONPATH=src python scripts/pretrain/smoke_test.py \
   --device cuda --dtype bf16 \
   --model-config configs/model/helix_v2_250m.yaml \
@@ -55,7 +55,7 @@ PYTHONPATH=src python scripts/pretrain/smoke_test.py \
   --warmup-steps 20 --lr 3e-4
 ```
 
-## Variante B — Docker (wenn Unraid-Docker GPU-Passthrough)
+## Variant B — Docker (if Unraid Docker GPU passthrough)
 
 ```bash
 docker run --rm --gpus all \
@@ -72,33 +72,33 @@ docker run --rm --gpus all \
              --warmup-steps 20 --lr 3e-4"
 ```
 
-**Wichtig:** `data_paths.yaml` erwartet `//BITBASTION/...`. Wenn der
-Unraid-Host dieselbe Maschine ist: `cp configs/data_paths.yaml
-configs/data_paths.local.yaml`, dort `data_root` auf
-`/mnt/user/Auralis/AuralisV2` setzen, und `--data-config` beim Aufruf
-übergeben.
+**Important:** `data_paths.yaml` expects `//BITBASTION/...`. If the
+Unraid host is the same machine: `cp configs/data_paths.yaml
+configs/data_paths.local.yaml`, set `data_root` there to
+`/mnt/user/Auralis/AuralisV2`, and pass `--data-config` on
+the call.
 
-## Was der Report zeigen muss
+## What the report has to show
 
-Bei Erfolg (am Ende des Outputs):
+On success (at the end of the output):
 
 ```
   peak VRAM         : 10-15 GB
   loss first        : ~12.2     (≈ ln(200k) = uniform prior)
-  loss last         : deutlich < first  (mind. Δ 0.5 bei 100+ Steps)
+  loss last         : clearly < first  (at least Δ 0.5 at 100+ steps)
   loss delta        : +0.5+   ✓ learning
   checkpoint        :  ... (reloaded OK)
 ```
 
-Wenn das durchläuft ohne `RuntimeError` / `CUDA OOM` / `NaN`:
-**Grünes Licht für RunPod-Buchung.** Vorher definitiv nicht.
+If this runs through without `RuntimeError` / `CUDA OOM` / `NaN`:
+**Green light for booking RunPod.** Definitely not before.
 
 ## Troubleshooting
 
-| Symptom | Ursache / Fix |
+| Symptom | Cause / Fix |
 |---|---|
-| `CUDA OOM` | Batch-Size senken, seq-length halbieren |
-| `NaN loss` | `--dtype fp32` probieren; wenn dann stabil → bf16-spezifisches Problem |
-| `303 tok/s` statt >5k | Pure-python-Scan aktiv. `pip install mamba-ssm flash-linear-attention` installieren und Code-Hook später. |
-| `FileNotFoundError: .../english.bin` bei `--use-real-data` | Daten-Dir-Pfad prüfen, `configs/data_paths.yaml` → `data_root` anpassen |
-| `CUDA kernel image` error | Torch nicht passend zur CUDA-Version. `cu124` für Blackwell nehmen, ggf. `cu126`. |
+| `CUDA OOM` | Lower batch size, halve seq-length |
+| `NaN loss` | Try `--dtype fp32`; if stable then → bf16-specific problem |
+| `303 tok/s` instead of >5k | Pure-python scan active. Install `pip install mamba-ssm flash-linear-attention` and hook the code later. |
+| `FileNotFoundError: .../english.bin` with `--use-real-data` | Check data dir path, adjust `configs/data_paths.yaml` → `data_root` |
+| `CUDA kernel image` error | Torch doesn't match the CUDA version. Use `cu124` for Blackwell, possibly `cu126`. |

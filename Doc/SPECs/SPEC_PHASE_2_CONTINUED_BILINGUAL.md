@@ -1,72 +1,72 @@
 # Phase 2: Bilingual Continued Pretraining
 
-**Projekt:** Auralis v2 / Helix v2
-**Phase:** 2 (Deutsch-Aufbau ohne Englisch zu vergessen)
-**Dauer:** 1-2 Wochen
-**Ziel:** Starkes Deutsch + Englisch-Retention > 95%
-**Voraussetzung:** Phase 1 abgeschlossen (Phase-1-Checkpoint existiert)
-**Hardware:** H200 (brauchen Student + Teacher gleichzeitig)
+**Project:** Auralis v2 / Helix v2
+**Phase:** 2 (Building German without forgetting English)
+**Duration:** 1-2 weeks
+**Goal:** Strong German + English retention > 95%
+**Prerequisite:** Phase 1 complete (Phase 1 checkpoint exists)
+**Hardware:** H200 (need student + teacher simultaneously)
 **Budget:** ~$200-400
 
 ---
 
-## 1. Das Kernproblem
+## 1. The Core Problem
 
-Continued Pretraining mit neuer Sprache führt zu **catastrophic forgetting**:
+Continued pretraining with a new language leads to **catastrophic forgetting**:
 
 ```
-Phase 1 Modell (EN-stark):
-  English MMLU:  45  ← gute Basis
-  German eval:   20  ← schwach aber grundlegend
+Phase 1 model (EN-strong):
+  English MMLU:  45  ← good base
+  German eval:   20  ← weak but fundamental
 
-Naive Continued Training (100% Deutsch):
-  English MMLU:  25  ← stark verloren!
-  German eval:   50  ← gut gewachsen
+Naive continued training (100% German):
+  English MMLU:  25  ← strongly lost!
+  German eval:   50  ← grew well
 
-Das ist inakzeptabel. Lösung: KL-Distillation.
+This is unacceptable. Solution: KL distillation.
 ```
 
-Die Teacher-Student-Architektur erhält das Englisch-Wissen
-während Deutsch dazu gelernt wird.
+The teacher-student architecture preserves the English knowledge
+while German is learned in addition.
 
 ---
 
-## 2. KL-Distillation Strategie
+## 2. KL Distillation Strategy
 
-### 2.1 Konzept
+### 2.1 Concept
 
 ```
-Phase 1 Modell → kopieren in zwei Versionen:
-  Teacher:  Frozen (nie trainiert)
-  Student:  Trainierbar (lernt Phase 2)
+Phase 1 model → copy into two versions:
+  Teacher:  Frozen (never trained)
+  Student:  Trainable (learns Phase 2)
 
-Während Training:
-  Student → lernt Deutsch (normaler Task Loss)
-  Student → bleibt nah an Teacher (KL Loss)
+During training:
+  Student → learns German (normal task loss)
+  Student → stays close to teacher (KL loss)
   
   Total Loss = Task Loss + λ * KL Loss
   
-  λ (lambda) balanciert:
-    Niedrig (0.1-0.3): Mehr lernen, weniger bewahren
-    Mittel (0.5):      Ausgewogen (empfohlen)
-    Hoch (0.8-1.5):    Stark bewahren, weniger lernen
+  λ (lambda) balances:
+    Low (0.1-0.3): Learn more, preserve less
+    Medium (0.5):  Balanced (recommended)
+    High (0.8-1.5): Preserve strongly, learn less
 ```
 
 ### 2.2 Temperature Parameter
 
 ```
-T = 3.0 (Standard):
-  → Weichere Verteilungen
-  → KL sieht ganze Top-k Rangfolge
-  → Bewährt in Papers
+T = 3.0 (standard):
+  → Softer distributions
+  → KL sees the entire top-k ranking
+  → Proven in papers
 
-Niedriger T: KL fokussiert auf Top-1
-Höherer T: KL verteilt sich breiter
+Lower T: KL focuses on top-1
+Higher T: KL spreads out more broadly
 ```
 
 ---
 
-## 3. Daten-Mix
+## 3. Data Mix
 
 ```yaml
 # configs/data/phase2_mix.yaml
@@ -131,9 +131,9 @@ total_tokens: 15_000_000_000  # 15B total
 
 ---
 
-## 4. Training-Konfiguration
+## 4. Training Configuration
 
-**Datei:** `configs/training/phase2_continued.yaml`
+**File:** `configs/training/phase2_continued.yaml`
 
 ```yaml
 experiment:
@@ -286,9 +286,9 @@ monitoring:
 
 ---
 
-## 5. KL-Distillation Implementation
+## 5. KL Distillation Implementation
 
-**Datei:** `src/auralis/training/kl_distillation.py`
+**File:** `src/auralis/training/kl_distillation.py`
 
 ```python
 """
@@ -467,7 +467,7 @@ class KLDistillationWrapper:
 
 ## 6. Adaptive Lambda Logic
 
-**Datei:** `src/auralis/training/adaptive_lambda.py`
+**File:** `src/auralis/training/adaptive_lambda.py`
 
 ```python
 """
@@ -534,7 +534,7 @@ class AdaptiveLambda:
 
 ## 7. Training Script
 
-**Datei:** `scripts/pretrain/train_phase2.py`
+**File:** `scripts/pretrain/train_phase2.py`
 
 ```python
 """
@@ -739,65 +739,65 @@ if __name__ == "__main__":
 
 ---
 
-## 8. Erwartete Ergebnisse
+## 8. Expected Results
 
 ```
-Start (von Phase 1):
+Start (from Phase 1):
   English MMLU:        45
   Belebele-DE:         25
   Code HumanEval:      20
 
-Nach 15k Steps (~25%):
+After 15k steps (~25%):
   English MMLU:        43  (-4% retention loss - normal)
   Belebele-DE:         40  (+15)
   Code HumanEval:      22  (+2)
 
-Nach 30k Steps (~50%):
+After 30k steps (~50%):
   English MMLU:        42  (-7% retention - acceptable)
   Belebele-DE:         52  (+27)
   Code HumanEval:      25  (+5)
 
-Nach 60k Steps (Ende):
+After 60k steps (end):
   English MMLU:        41  (retention: 91% ✓)
-  Belebele-DE:         60  (deutlich stärker ✓)
-  Code HumanEval:      26  (stabil ✓)
+  Belebele-DE:         60  (clearly stronger ✓)
+  Code HumanEval:      26  (stable ✓)
 
-Ziele:
-  ✓ English MMLU > 40 (Retention > 88%)
+Goals:
+  ✓ English MMLU > 40 (retention > 88%)
   ✓ Belebele-DE > 55
   ✓ Code HumanEval > 25
 ```
 
 ---
 
-## 9. Akzeptanz-Kriterien
+## 9. Acceptance Criteria
 
 ```
 Training Quality:
-  □ English Retention > 90% throughout training
-  □ German benchmarks zeigen stetigen Fortschritt
-  □ Code-Skills nicht verschlechtert
-  □ Val Loss sinkt stetig
+  □ English retention > 90% throughout training
+  □ German benchmarks show steady progress
+  □ Code skills not degraded
+  □ Val loss decreases steadily
 
 KL-Distillation:
-  □ Teacher korrekt geladen (frozen)
-  □ KL-Loss berechnet sich korrekt
-  □ Adaptive Lambda justiert sich sinnvoll
-  □ Temperature = 3.0 bewährt
+  □ Teacher loaded correctly (frozen)
+  □ KL loss computes correctly
+  □ Adaptive lambda adjusts sensibly
+  □ Temperature = 3.0 proven
 
 Output:
-  □ best.pt basierend auf kombiniertem Score (EN + DE + Code)
-  □ Full Benchmark Report
-  □ KL-Distillation Lambda History geloggt
-  □ Externes Backup existiert
+  □ best.pt based on combined score (EN + DE + Code)
+  □ Full benchmark report
+  □ KL-Distillation lambda history logged
+  □ External backup exists
 ```
 
 ---
 
 ## 10. Next Steps
 
-Nach Phase 2 erfolgreich:
-→ SPEC_PHASE_3_SFT.md (Supervised Fine-Tuning mit GaLore)
+After Phase 2 succeeds:
+→ SPEC_PHASE_3_SFT.md (Supervised Fine-Tuning with GaLore)
 
 ---
 

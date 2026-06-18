@@ -1,107 +1,107 @@
-# Blueprint — Domänen-Adapter (DoRA: Mathe / Logik / Code) (Helix v2)
+# Blueprint — Domain adapters (DoRA: Math / Logic / Code) (Helix v2)
 
-> **Status:** Design / beschlossen-mit-Vorbehalt (Michael + GPT + Claude, Juni 2026). Nicht implementiert.
-> **Phase:** **NACH** Tool-Use **und** NACH Code-Annealing. Siehe `BLUEPRINT_TOOL_USE_VERIFIER.md`
-> (Stufe 5) und `ZUKUNFT_BACKLOG.md` Phase 3–5.
-> **Kernprinzip (nicht verhandelbar):**
-> *Ein Adapter verstärkt latente Fähigkeit — er installiert keine neue.*
+> **Status:** Design / decided-with-reservation (Michael + GPT + Claude, June 2026). Not implemented.
+> **Phase:** **AFTER** tool use **and** after code annealing. See `BLUEPRINT_TOOL_USE_VERIFIER.md`
+> (stage 5) and `ZUKUNFT_BACKLOG.md` phase 3–5.
+> **Core principle (non-negotiable):**
+> *An adapter amplifies latent ability — it installs no new one.*
 
 ---
 
-## 1) Idee
-Hauptmodell **einfrieren**, pro Domäne einen kleinen Adapter trainieren, der die *Fähigkeit*
-(nicht das Wissen) verstärkt:
-- `dora:math` — Rechenweg-Struktur, Schritt-für-Schritt
-- `dora:logic` — Schlussfolgern, Fallunterscheidung
-- `dora:code` — Code-Struktur, Tests, Reparatur-Muster
+## 1) Idea
+**Freeze** the main model, train one small adapter per domain that amplifies the *ability*
+(not the knowledge):
+- `dora:math` — calculation-path structure, step by step
+- `dora:logic` — reasoning, case distinction
+- `dora:code` — code structure, tests, repair patterns
 
-Adapter werden separat trainiert und je nach Aufgabe geladen/getauscht (oder geroutet).
+Adapters are trained separately and loaded/swapped per task (or routed).
 
-## 2) Warum DoRA — und nicht LoRA oder MoRA
-Aus den v1-Lektionen (**L-002**): *LoRA lernte Muster, keine Fakten.* Daraus die saubere Trennung:
-| Technik | wofür | Helix-Einsatz |
+## 2) Why DoRA — and not LoRA or MoRA
+From the v1 lessons (**L-002**): *LoRA learned patterns, not facts.* Hence the clean separation:
+| Technique | for what | Helix use |
 |---|---|---|
-| **DoRA** (weight-decomposed) | **Muster / Skills** | Mathe-Rechenweg, Code-Struktur, Logik → **hier richtig** |
-| **MoRA** (high-rank) | **Fakten / Wissen** | Wissens-Injektion (separater Pfad, nicht dieses Dokument) |
+| **DoRA** (weight-decomposed) | **patterns / skills** | math calculation path, code structure, logic → **right here** |
+| **MoRA** (high-rank) | **facts / knowledge** | knowledge injection (separate path, not this document) |
 
-Mathe-/Logik-/Code-Können ist ein **Skill-Muster** → DoRA passt. Fakten würden MoRA brauchen.
+Math/logic/code ability is a **skill pattern** → DoRA fits. Facts would need MoRA.
 
-## 3) Der Haken — Reihenfolge ist Pflicht, nicht Stil
-Ein Adapter dreht an Gewichten, die **schon da** sind. Fehlt die Fähigkeit im Base *latent*,
-hat der Adapter nichts zum Verstärken.
+## 3) The catch — order is mandatory, not style
+An adapter turns weights that are **already there**. If the ability is missing from the base *latently*,
+the adapter has nothing to amplify.
 
-| Adapter | latente Basis im aktuellen Base? | Verdikt |
+| Adapter | latent base in the current base? | verdict |
 |---|---|---|
-| `dora:code` | **0 % echter Code im Pretraining** (nur Code-als-Prosa) | **gesperrt** bis Code-Annealing — sonst auf Sand gebaut |
-| `dora:math` | dünn vorhanden (war im Mix) | moderat verstärkbar, lohnt eher nach Annealing |
-| `dora:logic` | dünn vorhanden | moderat verstärkbar |
+| `dora:code` | **0% real code in pretraining** (only code-as-prose) | **locked** until code annealing — otherwise built on sand |
+| `dora:math` | thinly present (was in the mix) | moderately amplifiable, better worth it after annealing |
+| `dora:logic` | thinly present | moderately amplifiable |
 
-→ **Code-Annealing (Python-Edu liegt bereit) ist die Voraussetzung für `dora:code`.**
-Reihenfolge umgedreht = verbrannte Zeit.
+→ **Code annealing (Python-Edu is ready) is the prerequisite for `dora:code`.**
+Order reversed = burned time.
 
-## 4) Verhältnis zu Tool-Use (wichtig — nicht konkurrierend)
-DoRA **ersetzt den Verifier nicht.** Tool-Use macht Antworten *verifizierbar* (Korrektheit von
-außen); DoRA macht das Modell *flüssiger/strukturierter* in der Domäne. Reihenfolge:
-1. **Tool-Use zuerst** (höchster Hebel bei 0,9B, Korrektheit von außen).
-2. **Annealing** (latente Fähigkeit in den Base).
-3. **DoRA danach** (verstärkt das Latente, inkl. „ruft Tool sauber").
+## 4) Relationship to tool use (important — not competing)
+DoRA **does not replace the verifier.** Tool use makes answers *verifiable* (correctness from
+the outside); DoRA makes the model *more fluent/structured* in the domain. Order:
+1. **Tool use first** (highest lever at 0.9B, correctness from the outside).
+2. **Annealing** (latent ability into the base).
+3. **DoRA afterward** (amplifies the latent, including "calls the tool cleanly").
 
-Ein DoRA-Mathe-Adapter sollte idealerweise das **Tool-Use-Verhalten mitlernen**, nicht
-Kopfrechnen ersetzen wollen.
+A DoRA math adapter should ideally **learn the tool-use behavior too**, not try to
+replace mental arithmetic.
 
-## 5) Targeting auf der Hybrid-Architektur (Implementierungs-Kern)
-Helix ist kein reines Transformer-Stack. DoRA hängt an **Linear-Projektionen** — die existieren
-in allen drei Layer-Typen, müssen aber im Trainer verdrahtet werden:
-| Layer-Typ (Anzahl) | adaptierbare Linears |
+## 5) Targeting on the hybrid architecture (implementation core)
+Helix is not a pure transformer stack. DoRA hangs off **linear projections** — those exist
+in all three layer types, but have to be wired up in the trainer:
+| Layer type (count) | adaptable linears |
 |---|---|
-| Mamba-2 (6×) | `in_proj`, `out_proj` (ggf. `x_proj`/`dt_proj`) |
+| Mamba-2 (6×) | `in_proj`, `out_proj` (possibly `x_proj`/`dt_proj`) |
 | GLA (16×) | `q_proj`, `k_proj`, `v_proj`, `g_proj`, `out_proj` |
 | Sparse-Attn (6×) | `q/k/v/o_proj` |
-| MLP (SwiGLU, alle) | `gate/up/down_proj` |
+| MLP (SwiGLU, all) | `gate/up/down_proj` |
 
-**Offene Design-Entscheidung:** alle Projektionen targeten (max. Kapazität, mehr Params) vs.
-nur Attention/GLA-Projektionen (üblich, sparsamer). **Erst Ablation, dann Default.** Embedding
-(tied 200k) bleibt eingefroren.
+**Open design decision:** target all projections (max capacity, more params) vs.
+only attention/GLA projections (common, leaner). **Ablation first, then default.** Embedding
+(tied 200k) stays frozen.
 
-## 6) Trainingsrezept (Startwerte, zu kalibrieren)
+## 6) Training recipe (starting values, to be calibrated)
 ```
-base:        eingefroren (kein grad)
-adapter:     DoRA, rank r ∈ {8,16,32} (ablatieren), alpha = 2r
-target:      siehe §5 (Default-Entscheidung via Ablation)
-lr:          ~1e-4 (höher als Full-SFT, da nur Adapter lernt)
-data/adapter: domänenrein (math-only / logic-only / code-only), je 5–20k
-              — math/logic aus unserem Reasoning-Slice ableitbar
-eval:        disjunkte Val-Splits pro Domäne (L-002: Memorization-Falle vermeiden)
-             + Negativ-Guard: allgemeine Benchmarks dürfen NICHT fallen (Adapter aus = Baseline)
+base:        frozen (no grad)
+adapter:     DoRA, rank r ∈ {8,16,32} (ablate), alpha = 2r
+target:      see §5 (default decision via ablation)
+lr:          ~1e-4 (higher than full-SFT, since only the adapter learns)
+data/adapter: domain-pure (math-only / logic-only / code-only), 5–20k each
+              — math/logic derivable from our reasoning slice
+eval:        disjoint val splits per domain (L-002: avoid the memorization trap)
+             + negative guard: general benchmarks must NOT drop (adapter off = baseline)
 ```
 
-## 7) Multi-Adapter zur Laufzeit
-- **Variante A (einfach, zuerst):** expliziter Modus — User/Caller wählt Adapter
-  (`--adapter math`). Kein Router-Risiko.
-- **Variante B (später):** kleiner Router/Klassifikator wählt Adapter aus der Frage.
-  Eigene Fehlerquelle (falscher Adapter) → erst wenn A steht und sich lohnt.
-- Adapter sind klein → mehrere im RAM, schnelles Tauschen; **nicht** in den Base mergen
-  (sonst Modularität weg).
+## 7) Multi-adapter at runtime
+- **Variant A (simple, first):** explicit mode — user/caller selects the adapter
+  (`--adapter math`). No router risk.
+- **Variant B (later):** small router/classifier selects the adapter from the question.
+  Its own error source (wrong adapter) → only once A is in place and it's worth it.
+- Adapters are small → several in RAM, fast swapping; do **not** merge into the base
+  (otherwise modularity is gone).
 
-## 8) Ehrliche Decke bei 0,9B
-- DoRA hebt v.a. **Form/Flüssigkeit** in der Domäne — kein Sprung auf „starkes Reasoning".
-- Effekt **gated auf Base-Qualität**: vor Annealing klein, danach größer.
-- Kein Ersatz für Skalierung. DoRA ist Feinschliff, nicht Fundament.
-- Realistische Erwartung: messbarer, *moderater* Lift auf Domänen-Benchmarks bei gehaltenem
-  Allgemein-Niveau — nicht mehr, nicht weniger. „Erst messen, dann entscheiden."
+## 8) Honest ceiling at 0.9B
+- DoRA mainly raises **form/fluency** in the domain — no jump to "strong reasoning".
+- Effect **gated on base quality**: small before annealing, larger after.
+- No substitute for scaling. DoRA is a polish, not a foundation.
+- Realistic expectation: measurable, *moderate* lift on domain benchmarks with held
+  general level — no more, no less. "Measure first, then decide."
 
-## 9) Erfolgskriterien
-- Domänen-Benchmark (z.B. mmlu_de Mathe-Slice / GSM8K-de / Logik-Probe) **mit Adapter > ohne**.
-- Allgemein-Benchmarks (de/en MMLU/ARC/HellaSwag) mit Adapter **≥** ohne (kein Allgemein-Verlust).
-- Adapter-Größe ≪ Base; Laden/Tauschen < 1 s.
+## 9) Success criteria
+- Domain benchmark (e.g. mmlu_de math slice / GSM8K-de / logic probe) **with adapter > without**.
+- General benchmarks (de/en MMLU/ARC/HellaSwag) with adapter **≥** without (no general loss).
+- Adapter size ≪ base; load/swap < 1 s.
 
-## 10) Voraussetzungen (Gates) — vor Start abhaken
-- [ ] Tool-Use Stufe 1–2 grün (Mathe-Tool beweist Harness)
-- [ ] Code-Annealing gelaufen (für `dora:code`) — `math`/`logic` ggf. früher
-- [ ] DoRA-Targeting im v2-Trainer verdrahtet (§5) + Ablation rank/target
-- [ ] disjunkte Domänen-Val-Splits gebaut (L-002)
-- [ ] Negativ-Guard-Eval (Allgemein-Benchmarks) als Pflicht-Gate eingerichtet
+## 10) Prerequisites (gates) — check off before start
+- [ ] Tool use stage 1–2 green (math tool proves the harness)
+- [ ] Code annealing done (for `dora:code`) — `math`/`logic` possibly earlier
+- [ ] DoRA targeting wired into the v2 trainer (§5) + ablation rank/target
+- [ ] disjoint domain val splits built (L-002)
+- [ ] negative-guard eval (general benchmarks) set up as a mandatory gate
 
 ---
-*Reihenfolge gegated. `dora:code` ohne Code-Annealing = §1-Kernprinzip verletzt = auf Sand bauen.
-Erinnerung 500M-Sackgasse: Schicht vor Fundament = Müll.*
+*Order gated. `dora:code` without code annealing = §1 core principle violated = building on sand.
+Reminder of the 500M dead end: layer before foundation = garbage.*

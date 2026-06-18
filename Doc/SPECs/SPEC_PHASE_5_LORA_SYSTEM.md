@@ -1,11 +1,11 @@
-# Phase 5: LoRA-System
+# Phase 5: LoRA System
 
-**Projekt:** Auralis v2 / Helix v2
-**Phase:** 5 (Modulares Erweiterungssystem)
-**Dauer:** 2-3 Wochen
-**Ziel:** Brain-inspiriertes LoRA-System mit Meta-LoRAs + Topic-LoRAs
-**Voraussetzung:** Phase 4 abgeschlossen (aligniertes Basismodell)
-**Hardware:** RTX 3090 für LoRAs, H200 nur bei Meta-LoRAs
+**Project:** Auralis v2 / Helix v2
+**Phase:** 5 (modular extension system)
+**Duration:** 2-3 weeks
+**Goal:** Brain-inspired LoRA system with Meta-LoRAs + Topic-LoRAs
+**Prerequisite:** Phase 4 complete (aligned base model)
+**Hardware:** RTX 3090 for LoRAs, H200 only for Meta-LoRAs
 **Budget:** ~$50-100
 
 ---
@@ -13,53 +13,53 @@
 ## 1. Vision: Brain-Inspired Architecture
 
 ```
-Das menschliche Gehirn hat verschiedene Module:
-  → Thalamus:          Routing (was ist wichtig?)
-  → Broca/Wernicke:    Sprache (Basismodell)
-  → Präfrontaler Kx:   Reasoning, Planning
-  → Logik-Zentrum:     Widerspruch-Erkennung
-  → Hippocampus:       Gedächtnis
-  → Temporal-Lappen:   Fachwissen
-  → Cerebellum:        Automatische Patterns
-  → Körper:            Tools (Hände, Augen, etc.)
+The human brain has various modules:
+  → Thalamus:          Routing (what is important?)
+  → Broca/Wernicke:    Language (base model)
+  → Prefrontal Cx:     Reasoning, Planning
+  → Logic center:      Contradiction detection
+  → Hippocampus:       Memory
+  → Temporal lobe:     Domain knowledge
+  → Cerebellum:        Automatic patterns
+  → Body:              Tools (hands, eyes, etc.)
 
-Helix v2 bildet das ab:
-  → Router-LoRA:       Komplexitäts-Entscheidung
-  → Basismodell:       Sprache + Basis-Weltwissen
+Helix v2 mirrors this:
+  → Router-LoRA:       Complexity decision
+  → Base model:        Language + basic world knowledge
   → Denk-LoRA:         Chain-of-Thought, Reasoning
-  → Logik-LoRA:        Selbstprüfung
-  → Memory-LoRA:       Persistentes Wissen
-  → Topic-LoRAs:       Fachgebiete on-demand
-  → Autopilot:         Im Basismodell (schnelle Antworten)
-  → Tool-System:       Python, Web, Code-Execution
+  → Logik-LoRA:        Self-checking
+  → Memory-LoRA:       Persistent knowledge
+  → Topic-LoRAs:       Domains on-demand
+  → Autopilot:         In the base model (fast answers)
+  → Tool system:       Python, Web, Code-Execution
 
-Vorteil: Compute skaliert mit Komplexität
-  Level 0: ~100ms (Basismodell only)
-  Level 5: ~15s (Alles + Self-Verification)
+Advantage: compute scales with complexity
+  Level 0: ~100ms (base model only)
+  Level 5: ~15s (everything + Self-Verification)
 ```
 
 ---
 
-## 2. Struktur des LoRA-Systems
+## 2. Structure of the LoRA System
 
-### 2.1 Hierarchie
+### 2.1 Hierarchy
 
 ```
-Immer aktiv (Meta-LoRAs):
-  ┌─ Router-LoRA (immer zuerst)
-  ├─ Denk-LoRA (bei Level 2+)
-  └─ Logik-LoRA (bei Level 4+)
+Always active (Meta-LoRAs):
+  ┌─ Router-LoRA (always first)
+  ├─ Denk-LoRA (at Level 2+)
+  └─ Logik-LoRA (at Level 4+)
 
 On-Demand (Topic-LoRAs):
-  ┌─ Medizin
-  ├─ Recht
-  ├─ Technik
-  ├─ Kochen
-  ├─ Reisen
-  ├─ Finanzen
+  ┌─ Medicine
+  ├─ Law
+  ├─ Technology
+  ├─ Cooking
+  ├─ Travel
+  ├─ Finance
   └─ ...
 
-Tools (extern):
+Tools (external):
   ┌─ Python-Sandbox
   ├─ Web-Search
   ├─ Code-Execution
@@ -67,19 +67,19 @@ Tools (extern):
   └─ ...
 ```
 
-### 2.2 Inference-Pipeline
+### 2.2 Inference Pipeline
 
 ```
 User: "Kann ich Ramipril mit Bisoprolol kombinieren?"
 
 Step 1: Router-LoRA
   Output: {level: 4, topics: ["medizin"], tools: false}
-  → Medizinische Frage, erfordert Fachwissen + Vorsicht
+  → Medical question, requires domain knowledge + caution
 
-Step 2: Topic-LoRA laden (Medizin)
-  → Hot-swap in Runtime
+Step 2: Load Topic-LoRA (Medicine)
+  → Hot-swap at runtime
 
-Step 3: Denk-LoRA aktiv
+Step 3: Denk-LoRA active
   <think>
   Ramipril: ACE-Hemmer (Blutdruck)
   Bisoprolol: Beta-Blocker (Blutdruck, Herz)
@@ -91,13 +91,13 @@ Step 4: Generate Answer
   "Die Kombination von ACE-Hemmern und Beta-Blockern ist eine 
   gängige Therapie bei Bluthochdruck..."
 
-Step 5: Logik-LoRA (Selbstprüfung)
+Step 5: Logik-LoRA (self-checking)
   <reflection>
   Habe ich Warnungen erwähnt? Ja.
   Rechtliche Abgrenzung? Sollte ich ergänzen.
   </reflection>
 
-Step 6: Final Answer (mit Disclaimer)
+Step 6: Final Answer (with disclaimer)
 ```
 
 ---
@@ -106,9 +106,9 @@ Step 6: Final Answer (mit Disclaimer)
 
 ### 3.1 Router-LoRA
 
-**Zweck:** Entscheidet Komplexitäts-Level und welche Topics/Tools nötig.
+**Purpose:** Decides complexity level and which topics/tools are needed.
 
-**Datenformat:**
+**Data format:**
 
 ```jsonl
 {
@@ -130,10 +130,10 @@ Step 6: Final Answer (mit Disclaimer)
 ```
 
 **Dataset:**
-- 5000-8000 Samples
-- Alle 6 Level vertreten
-- Breite Topic-Abdeckung
-- Handcurated Gold Standard
+- 5000-8000 samples
+- All 6 levels represented
+- Broad topic coverage
+- Hand-curated gold standard
 
 **Config:**
 
@@ -164,9 +164,9 @@ training:
 
 ### 3.2 Denk-LoRA (Reasoning Patterns)
 
-**Zweck:** Chain-of-Thought, Problem-Zerlegung in `<think>` Blöcke.
+**Purpose:** Chain-of-Thought, problem decomposition into `<think>` blocks.
 
-**Datenformat:**
+**Data format:**
 
 ```jsonl
 {
@@ -180,15 +180,15 @@ training:
 ```
 
 **Dataset:**
-- 5000-10000 Samples
-- Verschiedene Reasoning-Arten:
-  - Mathematisch
-  - Logisch (Syllogismen)
-  - Ursache-Wirkung
-  - Vergleiche
-  - Pro/Contra
-  - Schrittweise Anleitung
-- `<think>` immer vor finaler Antwort
+- 5000-10000 samples
+- Various kinds of reasoning:
+  - Mathematical
+  - Logical (syllogisms)
+  - Cause-effect
+  - Comparisons
+  - Pro/Con
+  - Step-by-step instructions
+- `<think>` always before the final answer
 
 **Config:**
 
@@ -215,9 +215,9 @@ training:
 
 ### 3.3 Logik-LoRA (Self-Verification)
 
-**Zweck:** Prüft eigene Antworten in `<reflection>` auf Widersprüche, Lücken, Fehler.
+**Purpose:** Checks its own answers in `<reflection>` for contradictions, gaps, errors.
 
-**Datenformat:**
+**Data format:**
 
 ```jsonl
 {
@@ -231,19 +231,19 @@ training:
 ```
 
 **Dataset:**
-- 3000-5000 Samples
-- Universelle Logik-Regeln
-- Bekannte Fakten-Checks
-- Widersprüche-Erkennung
-- Abschätzungen prüfen
+- 3000-5000 samples
+- Universal logic rules
+- Known fact checks
+- Contradiction detection
+- Checking estimates
 
 ---
 
 ## 4. Topic-LoRAs
 
-### 4.1 Beispiel: Medizin-LoRA
+### 4.1 Example: Medicine-LoRA
 
-**Fakten-Spec (YAML):**
+**Facts spec (YAML):**
 
 ```yaml
 # data/lora/topics/medizin/facts.yaml
@@ -347,7 +347,7 @@ training:
 
 ## 5. LoRA Training Script
 
-**Datei:** `scripts/lora/train_lora.py`
+**File:** `scripts/lora/train_lora.py`
 
 ```python
 """
@@ -574,7 +574,7 @@ if __name__ == "__main__":
 
 ### 6.1 Hot-Swap Manager
 
-**Datei:** `src/auralis/lora/manager.py`
+**File:** `src/auralis/lora/manager.py`
 
 ```python
 """
@@ -668,7 +668,7 @@ class LoRAManager:
 
 ### 6.2 Orchestrator (Pipeline)
 
-**Datei:** `src/auralis/inference/orchestrator.py`
+**File:** `src/auralis/inference/orchestrator.py`
 
 ```python
 """
@@ -884,86 +884,86 @@ class AuralisOrchestrator:
 
 ---
 
-## 7. Topic-LoRA Entwicklung (Template)
+## 7. Topic-LoRA Development (Template)
 
-**Für jedes neue Topic den gleichen Workflow:**
+**Use the same workflow for each new topic:**
 
 ```
-1. YAML-Fakten-Spec erstellen
-   - 100 atomare Fakten
-   - 80 train + 20 val (disjunkt!)
-   - Mit Quellenangaben
+1. Create YAML facts spec
+   - 100 atomic facts
+   - 80 train + 20 val (disjoint!)
+   - With source citations
 
-2. Samples generieren
-   - 3 Paraphrasen pro Fact = 240 core samples
-   - + 500-750 kontextuelle = ~1000 total
-   - Kategorien abdecken
+2. Generate samples
+   - 3 paraphrases per fact = 240 core samples
+   - + 500-750 contextual = ~1000 total
+   - Cover the categories
 
-3. LoRA trainieren
-   - MoRA-Method für Fakten
-   - Early Stopping bei Val ~0.2-0.3
-   - NICHT: Loss unter 0.05 (Memorization!)
+3. Train LoRA
+   - MoRA method for facts
+   - Early stopping at val ~0.2-0.3
+   - NOT: loss below 0.05 (memorization!)
 
-4. Evaluieren
-   - 50 disjunkte Test-Fragen
-   - Accuracy > 70% anstreben
-   - Baseline-Vergleich (ohne LoRA)
+4. Evaluate
+   - 50 disjoint test questions
+   - Aim for accuracy > 70%
+   - Baseline comparison (without LoRA)
 
-5. Deployen
-   - In lora_adapters/ speichern
-   - Router-LoRA Training updaten
-   - In LoRAManager registrieren
+5. Deploy
+   - Save in lora_adapters/
+   - Update Router-LoRA training
+   - Register in LoRAManager
 ```
 
 ---
 
-## 8. Geplante Topic-LoRAs (Roadmap)
+## 8. Planned Topic-LoRAs (Roadmap)
 
 ```
-Phase 5a (Core): 4 Wochen
+Phase 5a (Core): 4 weeks
   ✓ Router-LoRA
   ✓ Denk-LoRA
   ✓ Logik-LoRA
-  ✓ Medizin-LoRA (Proof-of-Concept)
+  ✓ Medicine-LoRA (proof-of-concept)
 
-Phase 5b (Expansion): 2-3 Wochen
-  → Recht
-  → Technik / Programmierung
-  → Kochen / Ernährung
-  → Reisen
-  → Finanzen (Basics)
+Phase 5b (Expansion): 2-3 weeks
+  → Law
+  → Technology / Programming
+  → Cooking / Nutrition
+  → Travel
+  → Finance (basics)
 
 Phase 5c (Long-tail): on demand
-  → Pflanzenpflege
-  → Tierhaltung
-  → Sport
-  → Musik-Theorie
+  → Plant care
+  → Animal husbandry
+  → Sports
+  → Music theory
   → etc.
 ```
 
 ---
 
-## 9. Akzeptanz-Kriterien
+## 9. Acceptance Criteria
 
 ```
 Meta-LoRAs:
-  □ Router-LoRA: > 90% korrektes Level 0-5 Routing
-  □ Denk-LoRA: Chain-of-Thought ist kohärent
-  □ Logik-LoRA: Erkennt bekannte Fehler in Drafts
+  □ Router-LoRA: > 90% correct Level 0-5 routing
+  □ Denk-LoRA: Chain-of-Thought is coherent
+  □ Logik-LoRA: Detects known errors in drafts
 
-Topic-LoRAs (pro Adapter):
-  □ Val Loss im Bereich 0.2-0.4 (nicht < 0.05 = Memorization!)
-  □ Test-Fragen > 70% correct (disjunkt zum Training)
-  □ Besser als Basis-Modell ohne LoRA
-  □ Hot-Swap funktioniert ohne Crash
-  □ Kombinierbar mit Meta-LoRAs
+Topic-LoRAs (per adapter):
+  □ Val loss in the range 0.2-0.4 (not < 0.05 = memorization!)
+  □ Test questions > 70% correct (disjoint from training)
+  □ Better than base model without LoRA
+  □ Hot-swap works without crash
+  □ Combinable with Meta-LoRAs
 
 Orchestrator:
-  □ Komplette Pipeline läuft stabil
-  □ Level 0-5 Handling korrekt
-  □ <think>, <reflection>, <lora> werden geschnitten
-  □ Kein User-facing Leak von Internal Tags
-  □ Latency-Ziele eingehalten:
+  □ Complete pipeline runs stably
+  □ Level 0-5 handling correct
+  □ <think>, <reflection>, <lora> are stripped
+  □ No user-facing leak of internal tags
+  □ Latency targets met:
     - Level 0: < 500ms
     - Level 1: < 1s
     - Level 2: < 3s
@@ -972,52 +972,52 @@ Orchestrator:
     - Level 5: < 20s
 
 Deployment:
-  □ LoRA-Manager stabil (kein Memory-Leak)
-  □ Multi-LoRA-Composition funktioniert
-  □ API-Endpoint für LoRA-Switch
-  □ Monitoring (welcher LoRA wann aktiv)
+  □ LoRA manager stable (no memory leak)
+  □ Multi-LoRA composition works
+  □ API endpoint for LoRA switch
+  □ Monitoring (which LoRA active when)
 ```
 
 ---
 
 ## 10. Next Steps: Post-Phase 5
 
-Nach diesen 5 Phasen ist Helix v2 "production-ready":
+After these 5 phases, Helix v2 is "production-ready":
 
 ```
-Post-Launch Arbeit:
-  → Quantisierung (AWQ 4-bit)
+Post-launch work:
+  → Quantization (AWQ 4-bit)
   → vLLM Deployment
-  → FastAPI Production-Server
-  → Open WebUI Integration
-  → User-Feedback-Loop
-  → Continuous Topic-LoRA Erweiterung
+  → FastAPI production server
+  → Open WebUI integration
+  → User feedback loop
+  → Continuous Topic-LoRA expansion
 
-Forschung/Experiment:
-  → MoE aktivieren (8 Experten)
+Research/experiment:
+  → Activate MoE (8 experts)
   → Multi-Token Prediction
-  → Längerer Context (16k+)
-  → Memory-LoRA (Persistent User Memory)
-  → Live-Learning (Instant LoRA Creation)
+  → Longer context (16k+)
+  → Memory-LoRA (persistent user memory)
+  → Live learning (instant LoRA creation)
 ```
 
 ---
 
-## Zusammenfassung aller 6 Phasen
+## Summary of all 6 phases
 
 ```
-Phase 0:    Tokenizer                        (2-3 Tage)
-Phase 0.5:  Model Architecture               (1 Woche)
-Phase 1:    Pretraining (EN-heavy)           (3-4 Wochen, $500-800)
-Phase 2:    Continued Bilingual + KL         (1-2 Wochen, $200-400)
-Phase 3:    SFT (GaLore)                     (1 Woche, $100-200)
-Phase 4:    ORPO Alignment                   (3-5 Tage, $50-100)
-Phase 5:    LoRA System                      (2-3 Wochen, $50-100)
+Phase 0:    Tokenizer                        (2-3 days)
+Phase 0.5:  Model Architecture               (1 week)
+Phase 1:    Pretraining (EN-heavy)           (3-4 weeks, $500-800)
+Phase 2:    Continued Bilingual + KL         (1-2 weeks, $200-400)
+Phase 3:    SFT (GaLore)                     (1 week, $100-200)
+Phase 4:    ORPO Alignment                   (3-5 days, $50-100)
+Phase 5:    LoRA System                      (2-3 weeks, $50-100)
 
-Total:      4-5 Monate, $900-1600
+Total:      4-5 months, $900-1600
 ```
 
 ---
 
 *Phase 5 Spec Version 1.0 — April 2026*
-*Damit sind alle Phasen für Auralis v2 / Helix v2 vollständig spezifiziert.*
+*This completes the full specification of all phases for Auralis v2 / Helix v2.*

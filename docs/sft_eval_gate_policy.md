@@ -1,31 +1,31 @@
 # Auralis SFT Eval Gate Policy
 
-## Disjunkte Evals sind Pflicht
+## Disjoint evals are mandatory
 
-Ein besserer SFT-Score ist nur vertrauenswuerdig, wenn die Eval-Daten disjunkt zu den
-Trainingsdaten sind. Disjunkt heisst hier: keine gleichen oder fast gleichen Prompts,
-Antworten, Generator-Templates, Seeds, Quellen-Snippets oder Antwortmuster.
+A better SFT score is only trustworthy when the eval data is disjoint from the
+training data. Disjoint here means: no identical or near-identical prompts,
+answers, generator templates, seeds, source snippets, or answer patterns.
 
-Grund: Ein Modell kann sonst oberflaechliche Muster lernen und im Score gut aussehen,
-ohne die Faehigkeit wirklich zu koennen. Beim Code-SFT kann das zum Beispiel bedeuten,
-dass `def`, `return`, Klammern und Keywords belohnt werden, obwohl der Code nicht korrekt
-funktioniert.
+Reason: otherwise a model can learn superficial patterns and look good in the score,
+without actually being able to do the task. With code SFT this can mean, for example,
+that `def`, `return`, brackets, and keywords are rewarded even though the code does not
+work correctly.
 
-## Harte Regel
+## Hard rule
 
-- Vor jedem groesseren SFT zuerst eine disjunkte Eval bauen.
-- Trainingsdaten und Evaldaten strikt trennen.
-- Keine Eval aus derselben Datei, demselben Generator-Template oder denselben Seed-Fragen wie SFT.
-- Prompt- und Antwort-Aehnlichkeit per Hash und fuzzy matching pruefen.
-- Code-Evals muessen ausfuehrbar geprueft werden: Syntaxcheck, Unit Tests, erwartete Ausgabe.
-- Fakten-Evals muessen aus anderen QA-Seeds/Quellen stammen als die Trainingsdaten.
-- Halluzinations-Evals muessen Fallen enthalten, die nicht exakt im Training vorkamen.
-- Automatischer Score allein reicht nicht: manuelle Stichprobe bleibt Pflicht.
+- Before every larger SFT, first build a disjoint eval.
+- Keep training data and eval data strictly separate.
+- No eval from the same file, the same generator template, or the same seed questions as the SFT.
+- Check prompt and answer similarity via hash and fuzzy matching.
+- Code evals must be checked executably: syntax check, unit tests, expected output.
+- Fact evals must come from different QA seeds/sources than the training data.
+- Hallucination evals must contain traps that did not appear exactly in training.
+- An automatic score alone is not enough: a manual spot check remains mandatory.
 
-## Entscheidungsgate
+## Decision gate
 
-Ein SFT-Run darf erst als besser gelten, wenn alle drei Punkte stimmen:
+An SFT run may only be considered better when all three points hold:
 
-1. Disjunkte Eval verbessert sich.
-2. Manuelle Stichprobe wirkt besser, nicht nur formaler.
-3. Keine Regression bei Refusal, Deutsch, Fakten und Code-Basics.
+1. The disjoint eval improves.
+2. The manual spot check feels better, not just more formal.
+3. No regression in refusal, German, facts, and code basics.
