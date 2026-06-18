@@ -59,6 +59,42 @@ Details: der "Update 2026-06-06"-Block in [STATUS.md](STATUS.md), der Verlauf
 in [HISTORY.md](HISTORY.md), die Lehren (inkl. L-018..L-022) in
 [LESSONS.md](LESSONS.md).
 
+## Was Helix heute kann — und was nicht (ehrlich gemessen)
+
+Das 0,9B-Modell laeuft live im Auralis Hub (PyTorch-Ollama-Shim) mit Auto-Router,
+Werkzeug-Ausfuehrung, lokalem de-Wikipedia-RAG + Websuche, Eingabe-Normalisierer und
+Single-Turn-Kontext. Stand der gemessenen Faehigkeiten:
+
+| Kann | Verhalten |
+|---|---|
+| Deutsche Fakten | Hauptstaedte, Autoren, Grundwissen — schnell, auf haeufigen Fakten korrekt |
+| **Ehrliches Abstain** (Signatur) | sagt „Ich weiss nicht" bei erfundenen/unbekannten Begriffen statt zu halluzinieren |
+| Mathe ueber Werkzeug | rechnet nie im Kopf — Tool-Aufruf, Ausfuehrung, verifiziertes Ergebnis |
+| RAG / gegroundet | lokale de-Wikipedia (2,84 Mio. Artikel) + Live-Web; liest den Kontext, antwortet belegt oder abstaint |
+| Code | einfache, lauffaehige Funktionen; sauberer Stop |
+| Auto-Router | waehlt automatisch Mathe / Code / RAG / Web / Chat |
+| Robust gegen „dreckige" Eingaben | Normalisierer putzt Tippfehler/Slang/Umlaute *vor* dem Modell |
+
+| Kann (noch) nicht — gemessen, modellgroessen-bedingt | |
+|---|---|
+| Zuverlaessiges Weltwissen | konfabuliert untrainierte Fakten; RAG mildert, der echte Fix ist ein groesseres Modell |
+| Tiefe/offene Erklaerungen | Form ja, Inhalt nicht immer korrekt |
+| Code-Logik / Generalisierung | scheitert jenseits einfacher Funktionen |
+| Semantische Umschreibungen | „das Getraenk mit dem Stier" findet nicht zuverlaessig „Red Bull" |
+| Mehrturnige Gespraeche | schwach (daher Single-Turn im Betrieb) |
+
+**Deutsch vs. Englisch:** Helix *versteht* Englisch (zweisprachiger Pretrain), wurde
+aber nur auf Deutsch instruktions-trainiert — englische **Antworten** sind deutlich
+schwaecher (mehr Konfabulation, teils Sprach-Mix). Das ist **Design**: ein
+deutsch-primaerer Assistent. Fuer beste Ergebnisse auf Deutsch fragen.
+
+**Methodik:** Jede Faehigkeit hat ein Test-Gate; Entscheidungen fallen ueber Gates,
+nicht ueber Val-Loss. Negativergebnisse (z. B. Embedding-Retrieval, Dirty-Data-SFT,
+ein offener „Erklaeren"-Archetyp) werden dokumentiert und geparkt statt geschoent
+ausgeliefert. Der naechste grosse Hebel ist ueberall dieselbe gemessene Decke:
+**Modellgroesse** (Upcycle ~2B / from-scratch 3B) — der gesamte Serving-Stack
+(Tokenizer, Router, Tools, RAG, Normalisierer, Gates) wird dabei direkt uebernommen.
+
 ## Projekt-Struktur
 
 ```text
