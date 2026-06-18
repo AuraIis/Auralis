@@ -1,60 +1,60 @@
-# Milestone — Code-Skill (Helix 0.9B)
+# Milestone — Code skill (Helix 0.9B)
 
-**Status: Tür geöffnet, aber Code als 0.9B-Grenze sauber bewiesen. v3 ist das Code-Adapter.
-Kommt erst bei 3B/7B wieder auf den Tisch.** Ehrlicher Forschungsstand inkl. zweier Negativbefunde.
+**Status: Door opened, but code cleanly proven as the 0.9B limit. v3 is the code adapter.
+Comes back on the table only at 3B/7B.** Honest research state including two negative findings.
 
-## Kernergebnis
-Helix 0.9B schreibt nach dem Code-SFT **syntaktisch perfekten, lauffähigen Code, der sauber stoppt
-und bekannte Muster abruft** — aber es **generalisiert neue Logik nicht** und **kann sich nicht aus
-Test-Feedback korrigieren**. Das ist eine Repräsentations-Kapazitäts-Grenze, parallel zur
-Grounded-Decke ([[grounded-archetype-h-ceiling]]).
+## Core result
+After the code SFT, Helix 0.9B writes **syntactically perfect, runnable code that stops cleanly
+and recalls known patterns** — but it does **not generalize new logic** and **cannot
+correct itself from test feedback**. That is a representation-capacity limit, parallel to the
+grounded ceiling ([[grounded-archetype-h-ceiling]]).
 
-## Der Bogen (3 Stufen, je mit Executor-Gate verifiziert)
+## The arc (3 stages, each verified with an executor gate)
 
-### 1. v3 — Tür auf ✅
-- Base: `step_60000` (final pretrain) + **Narrow-Embedding-EOS-Fix** (Rows 4–17).
-- Daten: `code_curated_v1` (1189, executor-verifiziert) + `code_verified_v1` (173) + corrective + abstain.
-- Gate (Executor, 18 Tasks): **syntax 1.0, eos 1.0, pass 11/18, unseen 2/9 (22%)**.
-- **Wurzel des alten „0/5":** die früheren `code_lora_v1/v2` trainierten auf dem falschen Base
-  (`sft_smoke_step_2000`) **ohne** den Embedding-Fix → konnten `<|end|>` nicht emittieren → Kauderwelsch.
-  Mit korrektem Base + Fix: kohärenter, lauffähiger Code.
+### 1. v3 — door open ✅
+- Base: `step_60000` (final pretrain) + **narrow-embedding-EOS fix** (rows 4–17).
+- Data: `code_curated_v1` (1189, executor-verified) + `code_verified_v1` (173) + corrective + abstain.
+- Gate (executor, 18 tasks): **syntax 1.0, eos 1.0, pass 11/18, unseen 2/9 (22%)**.
+- **Root of the old "0/5":** the earlier `code_lora_v1/v2` trained on the wrong base
+  (`sft_smoke_step_2000`) **without** the embedding fix → couldn't emit `<|end|>` → gibberish.
+  With the correct base + fix: coherent, runnable code.
 
-### 2. v4 — mehr Musterdaten ✗ (Negativbefund)
-- +53 deterministische Musterklassen-Funktionen (map/filter/reduce/digits/sort/dedup/string),
-  ×3 gewichtet, Gate-Funktionen bewusst ausgeschlossen (Transfer-Test).
-- Gate (24 Tasks): **unseen 3/14 (21%) — flach**; auf den *gleichen* 18 Tasks **9/18 vs v3 11/18 ↓**.
-- **Interferenz** statt Generalisierung: `nur_gerade → filtert ungerade`, `dritte_potenz → ×3`,
-  `doppelt → +2`; brach sogar `remove_duplicates` + `zaehle_vokale`, die v3 konnte.
-- **Lehre:** dichte ähnliche Code-SFT-Daten erzeugen bei 0.9B Interferenz, keine Generalisierung.
+### 2. v4 — more pattern data ✗ (negative finding)
+- +53 deterministic pattern-class functions (map/filter/reduce/digits/sort/dedup/string),
+  ×3 weighted, gate functions deliberately excluded (transfer test).
+- Gate (24 tasks): **unseen 3/14 (21%) — flat**; on the *same* 18 tasks **9/18 vs v3 11/18 ↓**.
+- **Interference** instead of generalization: `nur_gerade → filters odd`, `dritte_potenz → ×3`,
+  `doppelt → +2`; it even broke `remove_duplicates` + `zaehle_vokale`, which v3 could do.
+- **Lesson:** dense, similar code SFT data produces interference at 0.9B, not generalization.
 
-### 3. Repair-Loop — Feedback nutzen ✗ (Negativbefund)
-- Inference-Loop auf v3: schreiben → Hidden-Tests → **kurzes standardisiertes** Fehlerfeedback
-  (`TEST FAILED / function / input / expected / got / Fix the function only.`) → 1 Repair.
-- **pass@1 12/24, repair@1 12/24, repair_gain +0** (unseen ebenfalls +0).
-- **Lehre:** Das Modell produziert bei gezeigtem Fehler dieselbe falsche Logik erneut —
-  0.9B kann Test-Feedback nicht zur Selbstkorrektur nutzen.
+### 3. Repair loop — use feedback ✗ (negative finding)
+- Inference loop on v3: write → hidden tests → **short standardized** error feedback
+  (`TEST FAILED / function / input / expected / got / Fix the function only.`) → 1 repair.
+- **pass@1 12/24, repair@1 12/24, repair_gain +0** (unseen likewise +0).
+- **Lesson:** Given a shown error, the model produces the same wrong logic again —
+  0.9B cannot use test feedback for self-correction.
 
-## Schlussfolgerung
-| Fähigkeit | 0.9B |
+## Conclusion
+| Ability | 0.9B |
 |---|---|
-| Syntax / kompiliert | ✅ 100% |
-| Sauberer Stop (`<\|end\|>`) | ✅ 100% |
-| Bekannte Muster abrufen | ✅ |
-| **Neue Logik generalisieren** | ❌ (~22%, mehr Daten = schlechter) |
-| **Aus Feedback reparieren** | ❌ (gain +0) |
+| Syntax / compiles | ✅ 100% |
+| Clean stop (`<\|end\|>`) | ✅ 100% |
+| Recall known patterns | ✅ |
+| **Generalize new logic** | ❌ (~22%, more data = worse) |
+| **Repair from feedback** | ❌ (gain +0) |
 
-Code ist für 0.9B **als Grenze bewiesen**, nicht als „fast geschafft". Der nächste sinnvolle Hebel
-ist **kein** weiteres SFT/Repair, sondern ein **größeres Basismodell (3B/7B)** oder deutlich mehr
-Code-*Pretraining*. Bis dahin: **v3 als Code-Adapter behalten** (kohärent, sicher, stoppt sauber).
+Code is **proven as a limit** for 0.9B, not as "almost there". The next sensible lever
+is **not** more SFT/repair, but a **larger base model (3B/7B)** or significantly more
+code *pretraining*. Until then: **keep v3 as the code adapter** (coherent, safe, stops cleanly).
 
-## Methode / Reproduktion
-- Deterministisch generierte, **garantiert-korrekte** verifizierte Tasks (Referenz-Code self-checked).
-- **Executor-Gate** (`scripts/sft/code/executor_gate.py`): generiert Code → `compile` → führt Asserts aus;
-  Metriken syntax_rate / pass_rate / eos_rate / **unseen_pass** (Hauptmetrik = Transfer, nicht Memorieren).
-- **Repair-Gate** (`scripts/sft/code/repair_gate.py`): pass@1 / repair@1 / repair_gain, kurzes Feedback.
-- Trainer = derselbe Narrow-Embedding-Fix-Trainer wie Grounded ([[sft-eos-embedding-fix]]).
+## Method / reproduction
+- Deterministically generated, **guaranteed-correct** verified tasks (reference code self-checked).
+- **Executor gate** (`scripts/sft/code/executor_gate.py`): generates code → `compile` → runs the asserts;
+  metrics syntax_rate / pass_rate / eos_rate / **unseen_pass** (main metric = transfer, not memorization).
+- **Repair gate** (`scripts/sft/code/repair_gate.py`): pass@1 / repair@1 / repair_gain, short feedback.
+- Trainer = the same narrow-embedding-fix trainer as Grounded ([[sft-eos-embedding-fix]]).
 
-## Artefakte
-- Adapter (NICHT in git): `checkpoints/sft_code_v3/adapter_best.pt` (Server). v4 verworfen.
-- Daten: `code_curated_v1` (1189 verifiziert), `code_verified_v1` (173), `code_v4` (Muster, Negativbefund).
+## Artifacts
+- Adapter (NOT in git): `checkpoints/sft_code_v3/adapter_best.pt` (server). v4 discarded.
+- Data: `code_curated_v1` (1189 verified), `code_verified_v1` (173), `code_v4` (patterns, negative finding).
 - Scripts: `scripts/sft/code/`.

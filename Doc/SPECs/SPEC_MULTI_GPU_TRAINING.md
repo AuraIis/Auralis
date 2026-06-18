@@ -1,14 +1,14 @@
 # Multi-GPU Training Spec (Overlay)
 
-**Projekt:** Auralis v2 / Helix v2
-**Status:** Overlay - gilt für ALLE Phasen (1-5)
-**Ziel:** Kostengünstiges Training auf RunPod mit Multi-GPU-Setups
+**Project:** Auralis v2 / Helix v2
+**Status:** Overlay - applies to ALL phases (1-5)
+**Goal:** Cost-effective training on RunPod with multi-GPU setups
 
 ---
 
-## 1. Warum Multi-GPU?
+## 1. Why Multi-GPU?
 
-### 1.1 Kosten-Vergleich (RunPod, Stand Anfang 2026)
+### 1.1 Cost Comparison (RunPod, as of early 2026)
 
 ```
 Single-GPU (sehr teuer):
@@ -28,7 +28,7 @@ Fazit:
     4x A40:  ~$1200-1800   ← spart 50%
 ```
 
-### 1.2 Wann Multi-GPU nötig/sinnvoll?
+### 1.2 When is Multi-GPU necessary/sensible?
 
 ```
 MUSS Multi-GPU:
@@ -47,9 +47,9 @@ OFT single-GPU:
 
 ---
 
-## 2. Framework-Wahl: FSDP vs DeepSpeed ZeRO
+## 2. Framework Choice: FSDP vs DeepSpeed ZeRO
 
-### 2.1 Die beiden Hauptoptionen
+### 2.1 The two main options
 
 ```
 DeepSpeed ZeRO (Microsoft):
@@ -73,7 +73,7 @@ Empfehlung für Auralis v2: FSDP
   → torch.compile kompatibel
 ```
 
-### 2.2 Sharding-Strategien
+### 2.2 Sharding Strategies
 
 ```
 NO_SHARD (entspricht DDP):
@@ -98,7 +98,7 @@ HYBRID_SHARD:
   → Für Multi-Node Setups
 ```
 
-### 2.3 Welche Strategy für welche Phase?
+### 2.3 Which strategy for which phase?
 
 ```
 Phase 1 Pretraining (3B Modell):
@@ -127,9 +127,9 @@ Phase 5 LoRA:
 
 ---
 
-## 3. Empfohlene RunPod-Setups
+## 3. Recommended RunPod Setups
 
-### 3.1 Budget-Setup: 4x A40 48GB
+### 3.1 Budget Setup: 4x A40 48GB
 
 ```
 Hardware:       4x NVIDIA A40 48GB
@@ -147,7 +147,7 @@ Nachteile:
   ✗ Keine FP8, nur BF16
 ```
 
-### 3.2 Sweet-Spot: 4x A6000 48GB
+### 3.2 Sweet Spot: 4x A6000 48GB
 
 ```
 Hardware:       4x NVIDIA RTX A6000 48GB
@@ -161,7 +161,7 @@ Vorteile:
   ✓ Oft verfügbar auf RunPod
 ```
 
-### 3.3 Performance-Setup: 2x A100 80GB
+### 3.3 Performance Setup: 2x A100 80GB
 
 ```
 Hardware:       2x NVIDIA A100 80GB SXM
@@ -178,7 +178,7 @@ Nachteile:
   ✗ 2x GPUs = kleinere FSDP Sharding
 ```
 
-### 3.4 Bare-Bones: 8x A40 für großes Pretraining
+### 3.4 Bare-Bones: 8x A40 for large pretraining
 
 ```
 Hardware:       8x NVIDIA A40 48GB
@@ -192,7 +192,7 @@ Für Helix v2 (3B) nicht nötig, aber:
   → HYBRID_SHARD sinnvoll
 ```
 
-### 3.5 Kosten-Kalkulation pro Phase
+### 3.5 Cost Calculation per Phase
 
 ```
 Phase 1 (30B Tokens Pretraining):
@@ -222,7 +222,7 @@ Trotzdem: Multi-GPU lohnt sich für Phase 1 klar.
 
 ### 4.1 Core FSDP Wrapper
 
-**Datei:** `src/auralis/training/distributed.py`
+**File:** `src/auralis/training/distributed.py`
 
 ```python
 """
@@ -403,7 +403,7 @@ def reduce_scalar(value: float, op: str = "mean") -> float:
 
 ### 4.2 Distributed DataLoader
 
-**Datei:** `src/auralis/training/distributed_data.py`
+**File:** `src/auralis/training/distributed_data.py`
 
 ```python
 """
@@ -528,7 +528,7 @@ class DistributedStreamingDataset(torch.utils.data.IterableDataset):
 
 ### 4.3 Distributed Checkpoint Handling
 
-**Datei:** `src/auralis/training/distributed_checkpoint.py`
+**File:** `src/auralis/training/distributed_checkpoint.py`
 
 ```python
 """
@@ -670,7 +670,7 @@ def save_for_inference(
 
 ## 5. Training Script (Phase 1 Multi-GPU Example)
 
-**Datei:** `scripts/pretrain/train_phase1_distributed.py`
+**File:** `scripts/pretrain/train_phase1_distributed.py`
 
 ```python
 """
@@ -908,9 +908,9 @@ if __name__ == "__main__":
 
 ## 6. Launch Scripts
 
-### 6.1 Single-Node Multi-GPU (häufigster Fall)
+### 6.1 Single-Node Multi-GPU (most common case)
 
-**Datei:** `scripts/launch/train_multi_gpu.sh`
+**File:** `scripts/launch/train_multi_gpu.sh`
 
 ```bash
 #!/bin/bash
@@ -939,7 +939,7 @@ torchrun \
     "$@"
 ```
 
-### 6.2 Variante mit spezifischer GPU-Anzahl
+### 6.2 Variant with a specific GPU count
 
 ```bash
 #!/bin/bash
@@ -962,9 +962,9 @@ bash scripts/launch/train_multi_gpu.sh \
 
 ---
 
-## 7. Config-Anpassungen
+## 7. Config Adjustments
 
-### 7.1 Neues Multi-GPU Config-Pattern
+### 7.1 New Multi-GPU Config Pattern
 
 ```yaml
 # configs/training/phase1_pretrain_4gpu.yaml
@@ -1021,7 +1021,7 @@ checkpointing:
   save_last_n: 3
 ```
 
-### 7.2 Batch-Size Scaling bei Multi-GPU
+### 7.2 Batch-Size Scaling with Multi-GPU
 
 ```
 Konzept: "Effective Batch Size" muss konstant bleiben
@@ -1047,7 +1047,7 @@ Regel:
 
 ---
 
-## 8. Per-Phase Anpassungen
+## 8. Per-Phase Adjustments
 
 ### 8.1 Phase 1 Pretraining
 
@@ -1069,11 +1069,11 @@ training:
   # Effective: 128
 ```
 
-### 8.2 Phase 2 Continued mit Teacher (tricky!)
+### 8.2 Phase 2 Continued with Teacher (tricky!)
 
-**Problem:** Student + Teacher + Optimizer = viel Memory
+**Problem:** Student + Teacher + Optimizer = lots of memory
 
-**Lösung A:** Teacher auf separatem Device / CPU
+**Solution A:** Teacher on a separate device / CPU
 
 ```python
 # In train_phase2.py
@@ -1086,7 +1086,7 @@ teacher = teacher.eval()  # Frozen, kein FSDP nötig
 teacher = teacher.to("cpu")  # Offload wenn VRAM knapp
 ```
 
-**Lösung B:** Beide FSDP-Wrapped
+**Solution B:** Both FSDP-wrapped
 
 ```python
 # Auf 4x A40:
@@ -1098,7 +1098,7 @@ for p in teacher.parameters():
     p.requires_grad = False
 ```
 
-### 8.3 Phase 3 SFT mit GaLore
+### 8.3 Phase 3 SFT with GaLore
 
 ```yaml
 # GaLore + FSDP funktioniert, aber:
@@ -1139,9 +1139,9 @@ training:
 
 ---
 
-## 9. Fehlerbehebung
+## 9. Troubleshooting
 
-### 9.1 Häufige Probleme
+### 9.1 Common Problems
 
 ```
 Problem: "Address already in use"
@@ -1165,7 +1165,7 @@ Ursache: num_workers Problem mit multiprocessing
 Lösung: num_workers=0 oder persistent_workers=True
 ```
 
-### 9.2 Performance-Debugging
+### 9.2 Performance Debugging
 
 ```bash
 # GPU Utilization prüfen
@@ -1182,7 +1182,7 @@ export TORCH_DISTRIBUTED_DEBUG=DETAIL
 export TORCH_SHOW_CPP_STACKTRACES=1
 ```
 
-### 9.3 Speed-Optimierungen
+### 9.3 Speed Optimizations
 
 ```yaml
 # 1. Gradient Checkpointing (trade compute for memory)
@@ -1205,7 +1205,7 @@ distributed:
 
 ---
 
-## 10. Checkliste pro Training-Launch
+## 10. Checklist per Training Launch
 
 ```
 Vor dem Start:
@@ -1239,7 +1239,7 @@ Nach Training:
 
 ---
 
-## 11. Beispiel: Kompletter Phase 1 Multi-GPU Workflow
+## 11. Example: Complete Phase 1 Multi-GPU Workflow
 
 ```bash
 # === 1. Pod starten ===
@@ -1325,25 +1325,25 @@ DON'T:
 
 ---
 
-## 13. Anpassungen an bestehende Phasen-Specs
+## 13. Adjustments to Existing Phase Specs
 
-Diese Multi-GPU Spec gilt als **Overlay** über Phase 1-5. Konkret:
+This multi-GPU spec applies as an **overlay** over Phases 1-5. Concretely:
 
-**Phase 1 (Pretraining):** Standardmäßig Multi-GPU, siehe 4x A40 Config oben
+**Phase 1 (Pretraining):** Multi-GPU by default, see the 4x A40 config above
 
-**Phase 2 (Continued + KL):** Multi-GPU mit Teacher-Handling (Sektion 8.2)
+**Phase 2 (Continued + KL):** Multi-GPU with teacher handling (Section 8.2)
 
-**Phase 3 (SFT):** Single oder Multi-GPU möglich, SHARD_GRAD_OP empfohlen
+**Phase 3 (SFT):** Single or multi-GPU possible, SHARD_GRAD_OP recommended
 
-**Phase 4 (ORPO):** Multi-GPU wegen doppeltem Memory-Bedarf
+**Phase 4 (ORPO):** Multi-GPU due to doubled memory requirement
 
-**Phase 5 (LoRA):** Single-GPU reicht, außer bei großen Meta-LoRAs
+**Phase 5 (LoRA):** Single-GPU is sufficient, except for large meta-LoRAs
 
-**Hinweis für Claude Code:**
+**Note for Claude Code:**
 
-Die Trainings-Scripts in den Phase-Specs sind single-GPU Versionen. Für Multi-GPU diesen Overlay nutzen und die Scripts entsprechend anpassen (setup_distributed, FSDP-Wrap, DistributedSampler).
+The training scripts in the phase specs are single-GPU versions. For multi-GPU, use this overlay and adapt the scripts accordingly (setup_distributed, FSDP wrap, DistributedSampler).
 
 ---
 
 *Multi-GPU Training Spec Version 1.0 — April 2026*
-*Overlay für alle Phasen von Auralis v2 / Helix v2*
+*Overlay for all phases of Auralis v2 / Helix v2*

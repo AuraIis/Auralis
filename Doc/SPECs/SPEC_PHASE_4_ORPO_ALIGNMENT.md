@@ -1,91 +1,91 @@
 # Phase 4: ORPO Alignment
 
-**Projekt:** Auralis v2 / Helix v2
-**Phase:** 4 (Präferenz-Alignment ohne komplexes RLHF)
-**Dauer:** 3-5 Tage
-**Ziel:** Modell bevorzugt hilfreiche, ehrliche Antworten
-**Voraussetzung:** Phase 3 SFT Checkpoint
-**Hardware:** H200 oder RTX Pro 5000
+**Project:** Auralis v2 / Helix v2
+**Phase:** 4 (Preference alignment without complex RLHF)
+**Duration:** 3-5 days
+**Goal:** Model prefers helpful, honest answers
+**Prerequisite:** Phase 3 SFT checkpoint
+**Hardware:** H200 or RTX Pro 5000
 **Budget:** ~$50-100
 
 ---
 
-## 1. Warum ORPO statt DPO/RLHF?
+## 1. Why ORPO instead of DPO/RLHF?
 
-**Das Problem mit klassischem RLHF:**
+**The problem with classic RLHF:**
 
 ```
-RLHF-Pipeline (wie GPT-3 → GPT-4):
-  1. SFT Modell trainieren
-  2. Reward Model trainieren (Human Preferences)
-  3. PPO mit Reward Model
+RLHF pipeline (like GPT-3 → GPT-4):
+  1. Train SFT model
+  2. Train reward model (human preferences)
+  3. PPO with reward model
   
-Nachteile:
-  ✗ 3 Modelle gleichzeitig (Policy, Ref, Reward) → VRAM-Hungrig
-  ✗ PPO instabil, schwer zu tunen
-  ✗ Reward Hacking
-  ✗ Braucht Reward Model (zusätzliches Training)
+Drawbacks:
+  ✗ 3 models simultaneously (policy, ref, reward) → VRAM-hungry
+  ✗ PPO unstable, hard to tune
+  ✗ Reward hacking
+  ✗ Needs reward model (additional training)
 ```
 
 **DPO (Direct Preference Optimization):**
 
 ```
-Besser als RLHF, aber:
-  ✗ Braucht 2 Modelle im Speicher (Policy + Reference)
-  ✗ Reference muss identisch zu Initial Policy sein
-  ✗ Separate SFT + DPO Schritte
+Better than RLHF, but:
+  ✗ Needs 2 models in memory (policy + reference)
+  ✗ Reference must be identical to initial policy
+  ✗ Separate SFT + DPO steps
 ```
 
 **ORPO (Odds Ratio Preference Optimization):**
 
 ```
-Vorteile:
-  ✓ NUR EIN Modell im Speicher
-  ✓ Kein Reference Model nötig
-  ✓ SFT + Preference in EINEM Schritt möglich
-  ✓ Stabiler als DPO
-  ✓ Geringerer VRAM-Bedarf
-  ✓ Einfacher zu implementieren
+Advantages:
+  ✓ ONLY ONE model in memory
+  ✓ No reference model needed
+  ✓ SFT + preference possible in ONE step
+  ✓ More stable than DPO
+  ✓ Lower VRAM requirement
+  ✓ Easier to implement
 
-Formel (vereinfacht):
+Formula (simplified):
   loss = sft_loss(chosen) + λ * log_odds_ratio(chosen, rejected)
   
-Wo:
-  sft_loss: Standard Cross-Entropy auf chosen response
-  log_odds_ratio: Erhöht Wahrscheinlichkeit chosen vs rejected
+Where:
+  sft_loss: Standard cross-entropy on chosen response
+  log_odds_ratio: Increases probability of chosen vs rejected
 ```
 
 ---
 
-## 2. Präferenz-Daten Strategie
+## 2. Preference Data Strategy
 
-### 2.1 Daten-Mix
+### 2.1 Data Mix
 
 ```
-Total: 50k-100k Preference Pairs
+Total: 50k-100k preference pairs
 
-Strategie:
-  → Gleiche Frage, zwei Antworten
-  → "Chosen" = gute Antwort (DeepSeek V3 / GPT-4)
-  → "Rejected" = schlechtere Antwort
+Strategy:
+  → Same question, two answers
+  → "Chosen" = good answer (DeepSeek V3 / GPT-4)
+  → "Rejected" = worse answer
   
-Quellen der Rejected-Samples:
-  1. Llama 2 7B Generierungen (~40%)
-     → Natürlich schlechter als DeepSeek V3
+Sources of the rejected samples:
+  1. Llama 2 7B generations (~40%)
+     → Naturally worse than DeepSeek V3
   
-  2. Frühere Helix-Versionen (~20%)
-     → "Helix v1 Artefakte" als negatives Beispiel
+  2. Earlier Helix versions (~20%)
+     → "Helix v1 artifacts" as a negative example
   
-  3. Helix nach nur 500 SFT steps (~20%)
-     → Vor-SFT "ehrlicher" Output
+  3. Helix after only 500 SFT steps (~20%)
+     → Pre-SFT "honest" output
   
-  4. Synthetisch schlechter gemacht (~20%)
-     → Floskeln hinzugefügt
-     → Kürzer/länger als optimal
-     → Thema verfehlt
+  4. Synthetically degraded (~20%)
+     → Filler phrases added
+     → Shorter/longer than optimal
+     → Off-topic
 ```
 
-### 2.2 Automatisierte Generation
+### 2.2 Automated Generation
 
 **Script:** `scripts/data/generate_preference_pairs.py`
 
@@ -252,7 +252,7 @@ if __name__ == "__main__":
     )
 ```
 
-### 2.3 Datenformat
+### 2.3 Data Format
 
 ```jsonl
 {"prompt": "Was ist Photosynthese?", "chosen": "Photosynthese ist der Prozess, bei dem Pflanzen Lichtenergie in chemische Energie umwandeln. Dabei wird CO2 und Wasser mithilfe von Chlorophyll zu Glukose und Sauerstoff umgewandelt.", "rejected": "Natürlich! Das ist eine ausgezeichnete Frage. Gerne erkläre ich dir das. Photosynthese ist wichtig für Pflanzen.", "strategy": "floskel_injection"}
@@ -263,7 +263,7 @@ if __name__ == "__main__":
 
 ## 3. ORPO Implementation
 
-**Datei:** `src/auralis/training/orpo.py`
+**File:** `src/auralis/training/orpo.py`
 
 ```python
 """
@@ -389,9 +389,9 @@ class ORPOLoss:
 
 ---
 
-## 4. Konfiguration
+## 4. Configuration
 
-**Datei:** `configs/training/phase4_orpo.yaml`
+**File:** `configs/training/phase4_orpo.yaml`
 
 ```yaml
 experiment:
@@ -493,7 +493,7 @@ evaluation:
 
 ## 5. Training Script
 
-**Datei:** `scripts/orpo/train_phase4.py`
+**File:** `scripts/orpo/train_phase4.py`
 
 ```python
 """
@@ -761,60 +761,60 @@ if __name__ == "__main__":
 
 ---
 
-## 6. Erwartete Ergebnisse
+## 6. Expected Results
 
 ```
-Vor Phase 4 (Phase 3 SFT):
-  Preference Accuracy:  ~55% (wenig besser als zufällig)
+Before Phase 4 (Phase 3 SFT):
+  Preference Accuracy:  ~55% (barely better than random)
   MT-Bench:             6.5
   Baseline-50:          80%
-  Floskel-Häufigkeit:   25% der Antworten
+  Filler-phrase rate:   25% of answers
 
-Nach Phase 4 ORPO:
+After Phase 4 ORPO:
   Preference Accuracy:  > 85%
   MT-Bench:             7.2+
-  Baseline-50:          80% (keine Regression!)
-  Floskel-Häufigkeit:   < 5%
+  Baseline-50:          80% (no regression!)
+  Filler-phrase rate:   < 5%
   
-Qualitative Verbesserung:
-  → Weniger "Natürlich/Gerne/Klar" Floskeln
-  → Direktere, fokussiertere Antworten
-  → Bessere Länge (nicht zu lang, nicht zu kurz)
-  → Klareres Deutsch
+Qualitative improvement:
+  → Fewer "Natürlich/Gerne/Klar" filler phrases
+  → More direct, more focused answers
+  → Better length (not too long, not too short)
+  → Clearer German
 ```
 
 ---
 
-## 7. Akzeptanz-Kriterien
+## 7. Acceptance Criteria
 
 ```
 Data:
-  □ 50k+ Preference Pairs generiert
-  □ Validierungs-Set disjunkt
-  □ Verschiedene Rejected-Strategien vertreten
-  □ Qualitätsfilter angewandt
+  □ 50k+ preference pairs generated
+  □ Validation set disjoint
+  □ Various rejected strategies represented
+  □ Quality filter applied
 
 Training:
-  □ ORPO Loss implementiert und stabil
-  □ Preference Accuracy steigt stetig
-  □ Reward Margin > 0 (positiv)
-  □ --reset-optimizer aktiv
-  □ Early Stopping greift sinnvoll
+  □ ORPO loss implemented and stable
+  □ Preference accuracy rises steadily
+  □ Reward margin > 0 (positive)
+  □ --reset-optimizer active
+  □ Early stopping engages sensibly
 
 Quality:
-  □ Val Preference Accuracy > 85%
-  □ Baseline-50 nicht verschlechtert
-  □ MT-Bench Score verbessert
-  □ Keine Floskel-Regressionen
-  □ Sampling-Tests qualitativ gut
+  □ Val preference accuracy > 85%
+  □ Baseline-50 not degraded
+  □ MT-Bench score improved
+  □ No filler-phrase regressions
+  □ Sampling tests qualitatively good
 ```
 
 ---
 
 ## 8. Next Steps
 
-Nach Phase 4 ist das Basismodell "fertig":
-→ SPEC_PHASE_5_LORA_SYSTEM.md (LoRA-basiertes Erweiterungssystem)
+After Phase 4 the base model is "done":
+→ SPEC_PHASE_5_LORA_SYSTEM.md (LoRA-based extension system)
 
 ---
 

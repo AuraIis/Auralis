@@ -1,96 +1,96 @@
-# Post-mortem: „Erst messen, dann die Daten verdächtigen"
+# Post-mortem: "Measure first, then suspect the data"
 
-**Kernlektion in einem Satz:** Fast alles, was bei Helix v2 wie *„das Modell lernt
-nicht / die Daten sind schlecht"* aussah, war in Wahrheit **kaputte oder irreführende
-Messung, ein zu hoher Learning-Rate, ein Guard-Bug oder rohes Decoding** — und wir
-waren mehrfach nahe daran, es fälschlich den Trainingsdaten zuzuschreiben. Erst
-*sauberes Messen* hat den wahren Stand aufgedeckt.
+**Core lesson in one sentence:** Almost everything that looked like *"the model isn't
+learning / the data is bad"* with Helix v2 was in truth **broken or misleading
+measurement, a learning rate set too high, a guard bug, or raw decoding** — and we
+were repeatedly close to wrongly attributing it to the training data. Only *clean
+measurement* revealed the true state.
 
-Kontext: Helix v2, ~954M Hybrid (6× Mamba-2 + 16× GLA + 6× Sparse-Attn), bilingual
-DE/EN, 200k Vokab, Warm-start Continued-Pretraining. Dieses Dokument ist die ehrliche
-Chronik der Fehldiagnosen, damit sie sich nicht wiederholen.
-
----
-
-## Die Fälle (jeweils: Symptom → erste (falsche) Vermutung → wahre Ursache)
-
-### 1. Vermeintlicher val-loss-Rückschritt beim Warm-start
-- **Symptom:** Nach dem LR-Peak stieg der val_loss.
-- **Erste Vermutung:** Die neuen deutschen Daten sind schuld.
-- **Test:** Auf altem **und** neuem Pool reproduziert → **nicht die Daten**.
-- **Wahre Ursache:** LR zu hoch für einen Warm-start (frisches AdamW + Re-Ramp auf den
-  From-scratch-Peak destabilisiert einen bereits konvergierten Checkpoint).
-- **Fix:** niedriger Continuation-LR (3e-5), kurzer Warmup.
-
-### 2. „1.172 → 1.222"-Rückschritt = ungültiger Vergleich
-- **Symptom:** bpb_de scheinbar von 1.172 auf 1.222 verschlechtert.
-- **Erste Vermutung:** Das Modell ist schlechter geworden.
-- **Wahre Ursache:** Die alte „beste" 1.172 war auf einem **anderen Val-Set** gemessen
-  als die neue 1.222. Äpfel mit Birnen.
-- **Fix:** Step-0-Eval (Checkpoint laden, **ohne** Training, identisches Set) → wahre
-  Baseline → kein echter Rückschritt.
-
-### 3. Die Messung selbst war der Hauptschuldige (mehrfach kaputt)
-- `tokens_per_byte` war geraten (0.2338) statt gemessen (**0.176**) → bpb_de ~33%
-  aufgebläht.
-- Die Eval war **stochastisch** (stateful RNG lief weiter → jede Eval zog *andere*
-  Tokens) → die „Kurve" war Sampling-Rauschen, kein sauberes Signal.
-- Das Deutsch-Val war nur der **Wikipedia-Tail** (nicht repräsentativ); der
-  Englisch-Tail war zufällig trivial → der bpb-**Gap sah aus wie 3.2** (Fata Morgana),
-  echt ~**1.04**.
-- **Folge:** „Regression" und „riesige Sprachlücke" waren **Mess-Artefakte**.
-- **Fixes:** deterministische Eval (`reset_rngs`), gemessene tokens/byte,
-  repräsentatives Val-Sampling, Step-0-Diagnose (Kernels an/aus).
-
-### 4. Die Notbremse stoppte den Lauf fälschlich (step 4250)
-- **Symptom:** Auto-Stop „val_regression".
-- **Erste Vermutung:** Das Modell regressiert.
-- **Wahre Ursache:** Der Guard zählte „kein neuer Bestwert" als Rückschritt (statt
-  *echter* aufeinanderfolgender Anstiege, ohne Toleranz). Das Modell war **gesund**.
-- **Fix:** echte Folge-Logik + `min_delta`; `error_if_nonfinite`; harter Tokenizer-Check.
-  Danach resume → sauber bis ~35k.
-
-### 5. „Modell lernt keine Fakten" (München-Flip) = Decoding-Artefakt
-- **Symptom:** Greedy-Generierung: „Hauptstadt = München→Berlin→München" über
-  Checkpoints.
-- **Erste Vermutung (auch von zwei externen Reviewern geteilt):** Wissen ist nicht
-  verankert → Daten-/Skalierungsproblem.
-- **Wahre Ursache:** Eine **rigorose Margin-Messung** (`NLL(falsch) − NLL(richtig)`,
-  mehrere Distraktoren, 5 Kategorien) ergab: **Geschichte 100%, Geografie 86%, gesamt
-  72%** (2-Wege sogar 87,5%). Das Wissen **ist da**. Greedy maß nur das
-  **Antwortverhalten** (driftet beim freien Generieren), nicht das interne Wissen.
-- **Korrektur:** *nicht* „Wissen fehlt", sondern „**Wissen da, Decoding/Answering noch
-  roh**".
+Context: Helix v2, ~954M hybrid (6× Mamba-2 + 16× GLA + 6× Sparse-Attn), bilingual
+DE/EN, 200k vocab, warm-start continued pretraining. This document is the honest
+chronicle of the misdiagnoses, so they don't repeat.
 
 ---
 
-## Begriffe sauber trennen (damit wir nicht wieder vermischen)
-| Messung | misst |
+## The cases (each: symptom → first (wrong) guess → true cause)
+
+### 1. Apparent val-loss regression on warm-start
+- **Symptom:** After the LR peak, val_loss rose.
+- **First guess:** The new German data is to blame.
+- **Test:** Reproduced on the old **and** new pool → **not the data**.
+- **True cause:** LR too high for a warm-start (fresh AdamW + re-ramp to the
+  from-scratch peak destabilizes an already-converged checkpoint).
+- **Fix:** lower continuation LR (3e-5), short warmup.
+
+### 2. The "1.172 → 1.222" regression = invalid comparison
+- **Symptom:** bpb_de seemingly worsened from 1.172 to 1.222.
+- **First guess:** The model got worse.
+- **True cause:** The old "best" 1.172 was measured on a **different val set**
+  than the new 1.222. Apples to oranges.
+- **Fix:** Step-0 eval (load checkpoint, **without** training, identical set) → true
+  baseline → no real regression.
+
+### 3. The measurement itself was the main culprit (broken multiple times)
+- `tokens_per_byte` was guessed (0.2338) instead of measured (**0.176**) → bpb_de ~33%
+  inflated.
+- The eval was **stochastic** (stateful RNG kept running → each eval drew *different*
+  tokens) → the "curve" was sampling noise, not a clean signal.
+- The German val was only the **Wikipedia tail** (not representative); the
+  English tail was accidentally trivial → the bpb **gap looked like 3.2** (mirage),
+  really ~**1.04**.
+- **Consequence:** "regression" and "huge language gap" were **measurement artifacts**.
+- **Fixes:** deterministic eval (`reset_rngs`), measured tokens/byte,
+  representative val sampling, step-0 diagnosis (kernels on/off).
+
+### 4. The emergency brake stopped the run wrongly (step 4250)
+- **Symptom:** Auto-stop "val_regression".
+- **First guess:** The model is regressing.
+- **True cause:** The guard counted "no new best value" as a regression (instead of
+  *real* consecutive increases, with no tolerance). The model was **healthy**.
+- **Fix:** real consecutive-increase logic + `min_delta`; `error_if_nonfinite`; hard tokenizer check.
+  After that, resume → clean up to ~35k.
+
+### 5. "Model learns no facts" (Munich flip) = decoding artifact
+- **Symptom:** Greedy generation: "capital = Munich→Berlin→Munich" across
+  checkpoints.
+- **First guess (also shared by two external reviewers):** Knowledge is not anchored
+  → data/scaling problem.
+- **True cause:** A **rigorous margin measurement** (`NLL(wrong) − NLL(right)`,
+  multiple distractors, 5 categories) yielded: **history 100%, geography 86%, overall
+  72%** (2-way even 87.5%). The knowledge **is there**. Greedy only measured the
+  **answering behavior** (drifts during free generation), not the internal knowledge.
+- **Correction:** *not* "knowledge missing", but "**knowledge present, decoding/answering still
+  raw**".
+
+---
+
+## Separate the terms cleanly (so we don't conflate them again)
+| Measurement | measures |
 |---|---|
-| **Recall-Margin** `NLL(falsch)−NLL(richtig)` | **Wissen im Modell** |
-| **Top-k nach Fakt-Prompt** | **Abruf-Nähe** (kommt der richtige Kandidat oben an?) |
-| **Greedy-Generierung** | **Antwortverhalten** beim freien Erzeugen |
-| **SFT / Instruction** | **Format & Steuerbarkeit** (≠ Faktenwissen) |
+| **Recall margin** `NLL(wrong)−NLL(right)` | **knowledge in the model** |
+| **Top-k after fact prompt** | **retrieval proximity** (does the right candidate come out on top?) |
+| **Greedy generation** | **answering behavior** during free generation |
+| **SFT / instruction** | **format & controllability** (≠ factual knowledge) |
 
-## Korrigierte Meilenstein-Sicht (Stand ~35k/50k)
-- **A — Stabiles Training:** ✅ bestätigt (val↓, grad stabil, 0 Alarme)
-- **B — Sprachlernen (DE/EN flüssig, getrennt):** ✅ bestätigt
-- **C — Instruction Following:** offen (SFT-Phase)
-- **D — Faktenbindung:** ✅ überraschend stark (Geschichte/Geografie), nur
-  **Wissenschaft schwach (29%)**
-- **E — Knowledge-DNA:** unbewiesen, *optionaler* Boost — nicht nötig, um über
-  Faktenbindung zu reden
+## Corrected milestone view (as of ~35k/50k)
+- **A — Stable training:** ✅ confirmed (val↓, grad stable, 0 alerts)
+- **B — Language learning (DE/EN fluent, separated):** ✅ confirmed
+- **C — Instruction following:** open (SFT phase)
+- **D — Factual anchoring:** ✅ surprisingly strong (history/geography), only
+  **science weak (29%)**
+- **E — Knowledge-DNA:** unproven, *optional* boost — not needed to
+  talk about factual anchoring
 
-## Was DATEN wirklich betrifft
-Nur **Wissenschafts-Fakten** sind echt schwach (Au/Ag, Jupiter/Mars, Siedepunkte). Da
-ist **„mehr science-dichte Daten"** der korrekte, *spezifische* Hebel — nicht „mehr
-Daten" pauschal. Alles andere war Messung/Tooling/Decoding.
+## What actually concerns the DATA
+Only **science facts** are genuinely weak (Au/Ag, Jupiter/Mars, boiling points). There
+**"more science-dense data"** is the correct, *specific* lever — not "more
+data" in general. Everything else was measurement/tooling/decoding.
 
-## Konkrete Schutzmaßnahmen (bereits umgesetzt)
-- Deterministische Eval · gemessene tokens/byte · repräsentatives Val · Step-0-Diagnose
-- Korrigierter Regression-Guard (`min_delta`, echte Folge-Logik) · non-finite-Schutz
-- Rigorose Fakten-Recall-Batterie (Margin + Top-k, Mehrfach-Distraktoren, 5 Kategorien)
-  → ab step 50k Pflichtmetrik, nicht Augenmaß.
+## Concrete safeguards (already implemented)
+- Deterministic eval · measured tokens/byte · representative val · step-0 diagnosis
+- Corrected regression guard (`min_delta`, real consecutive-increase logic) · non-finite protection
+- Rigorous fact-recall battery (margin + top-k, multiple distractors, 5 categories)
+  → mandatory metric from step 50k, not eyeballing.
 
-**Merksatz fürs Team:** Bevor eine schlechte Zahl „die Daten" sind — prüfe, ob die
-Zahl überhaupt misst, was du glaubst.
+**Mnemonic for the team:** Before a bad number "is the data" — check whether the
+number actually measures what you think it does.

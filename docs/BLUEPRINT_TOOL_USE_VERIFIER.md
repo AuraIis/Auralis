@@ -1,81 +1,81 @@
-# Blueprint — Tool-Use & Selbst-Verifikation (Helix v2)
+# Blueprint — tool use & self-verification (Helix v2)
 
-> **Status:** Design / beschlossen (Michael + GPT + Claude, Juni 2026). Noch nicht implementiert.
-> **Phase:** kommt NACH dem aktuellen Reasoning-SFT (sft_v2). Siehe `ZUKUNFT_BACKLOG.md` → Phase 3–4.
-> **Leitsatz:** *Ein kleines Modell soll nicht alles wissen oder können. Es soll lernen, wann es prüfen muss.*
-> Nicht raten — verifizieren. Konsequente Fortsetzung des Anti-Halluzinations-USP.
-
----
-
-## 1) Warum (Evidenz, nicht Hoffnung)
-Helix ist ~0,9B und untertrainiert. Benchmarks (Juni 2026) zeigen: das Modell rechnet
-mehrstufige Mathe **nicht** zuverlässig im Kopf — das ist bei der Größe physikalisch normal,
-kein Bug. Mehr Parameter „ins Hirn prügeln" skaliert schlecht.
-
-**Der Hebel ist nicht Rechnen-Können, sondern Prüfen-Lernen.** Ein kleines Modell kann sehr
-gut lernen, ein Muster zu erkennen („das muss geprüft werden") und ein Werkzeug zu rufen.
-Die Korrektheit kommt dann von **außen** (Rechner / Code-Runner), nicht aus dem Modell.
-
-```
-347 × 892 im Kopf      → 0.9B rät, meist falsch
-print(347*892) rufen   → Modell muss nur WISSEN, dass es rufen soll → lernbar
-```
-
-## 2) Ehrliche Decke (was wir NICHT versprechen)
-- Du bekommst zuverlässig das **Verhalten**: testen-vor-akzeptieren, bei Fehler reparieren,
-  bei Unsicherheit ein Tool rufen.
-- Du bekommst **nicht garantiert** gute Code-Qualität oder autonomes Debugging. Die
-  Selbst-Reparatur-Schleife setzt voraus, dass das Modell einen Traceback liest und einen
-  *korrekten* Fix produziert — genau die Fähigkeit, die bei 0,9B wackelt.
-- Reparatur-Traces lehren das **Muster** („Fehler = Feedback, nochmal"), nicht garantiert
-  die Lösung. Trotzdem ein Gewinn und voll auf der USP-Linie.
-
-## 3) Die 80/20-Wahrheit
-> **Die SFT-Traces sind die einfachen 20 %. Das Inferenz-Harness ist die echten 80 %.**
-
-Trainingsdaten mit *vorab ausgerechnetem* `<result>` zu erzeugen ist trivial. Der schwere
-Teil ist der Laufzeit-Loop, der das Tool **wirklich ausführt** und das Ergebnis live einspeist.
-Ohne diesen Loop *halluziniert* das Modell die Zahl nur verkleidet = exakt das Problem,
-das wir lösen wollen.
+> **Status:** design / decided (Michael + GPT + Claude, June 2026). Not yet implemented.
+> **Phase:** comes AFTER the current reasoning-SFT (sft_v2). See `ZUKUNFT_BACKLOG.md` → Phase 3–4.
+> **Guiding principle:** *A small model should not know or be able to do everything. It should learn when it has to verify.*
+> Don't guess — verify. Consistent continuation of the anti-hallucination USP.
 
 ---
 
-## 4) Knallharte Reihenfolge (nicht überspringen)
-| Stufe | Inhalt | Voraussetzung |
+## 1) Why (evidence, not hope)
+Helix is ~0.9B and undertrained. Benchmarks (June 2026) show: the model does **not**
+reliably compute multi-step math in its head — at this size that is physically normal,
+not a bug. "Beating" more parameters into the brain scales poorly.
+
+**The lever is not the ability to compute, but learning to verify.** A small model can
+learn very well to recognize a pattern ("this must be checked") and call a tool.
+The correctness then comes from **outside** (calculator / code runner), not from the model.
+
+```
+347 × 892 in the head  → 0.9B guesses, mostly wrong
+print(347*892) call    → model only has to KNOW that it should call → learnable
+```
+
+## 2) Honest ceiling (what we do NOT promise)
+- You reliably get the **behavior**: test-before-accept, repair on error,
+  call a tool on uncertainty.
+- You do **not get guaranteed** good code quality or autonomous debugging. The
+  self-repair loop presupposes that the model reads a traceback and produces a
+  *correct* fix — exactly the ability that wobbles at 0.9B.
+- Repair traces teach the **pattern** ("error = feedback, try again"), not guaranteed
+  the solution. Still a win and fully on the USP line.
+
+## 3) The 80/20 truth
+> **The SFT traces are the easy 20 %. The inference harness is the real 80 %.**
+
+Producing training data with a *precomputed* `<result>` is trivial. The hard
+part is the runtime loop that **actually executes** the tool and feeds the result in live.
+Without this loop the model just *hallucinates* the number in disguise = exactly the problem
+we want to solve.
+
+---
+
+## 4) Rock-hard order (do not skip)
+| Stage | Content | Prerequisite |
 |---|---|---|
-| 0 | Reasoning-SFT fertig (sft_v2) — prüfen, ob Antworten strukturierter werden | läuft |
-| **1** | **Mathe-Tool-Harness ALLEIN** (simpelster Fall — beweist das Harness) | Stufe 0 |
-| 2 | Tool-Use-SFT: Rechnen / Einheiten / kleine Zahlenlogik | Stufe 1 grün |
-| 3 | Code-Annealing (Python-Edu liegt in `anneal_candidates/`) → Code latent im Base | Stufe 2 |
-| 4 | Code + eigene Tests + Selbst-Reparatur + Hidden-Test-Daten-Gate | Stufe 3 |
-| 5 | *eventuell* Code-DoRA auf annealtem Base | Stufe 4 |
+| 0 | Reasoning-SFT done (sft_v2) — check whether answers become more structured | running |
+| **1** | **Math tool harness ALONE** (simplest case — proves the harness) | stage 0 |
+| 2 | Tool-use SFT: calculations / units / small numeric logic | stage 1 green |
+| 3 | Code annealing (Python-Edu is in `anneal_candidates/`) → code latent in the base | stage 2 |
+| 4 | Code + own tests + self-repair + hidden-test data gate | stage 3 |
+| 5 | *possibly* code-DoRA on an annealed base | stage 4 |
 
-**Begründung Stufe 1 zuerst:** Mathe-Tool prüft nur 5 Dinge, alle isoliert testbar:
-1. Erkennt Helix „ich brauche ein Tool"? 2. Schreibt es den Call korrekt? 3. Stoppt die
-Generierung am Call? 4. Führt das Harness Python aus? 5. Baut Helix das Ergebnis korrekt ein?
-Code bringt sofort 7+ Probleme gleichzeitig (Qualität, Tests, Tracebacks, Reparatur, Spec,
-Hidden Tests, Sandbox) — zu viel auf einmal.
+**Rationale stage 1 first:** the math tool only checks 5 things, all independently testable:
+1. Does Helix recognize "I need a tool"? 2. Does it write the call correctly? 3. Does
+generation stop at the call? 4. Does the harness execute Python? 5. Does Helix incorporate the result correctly?
+Code brings 7+ problems at once (quality, tests, tracebacks, repair, spec,
+hidden tests, sandbox) — too much at once.
 
-**Begründung Code-DoRA zuletzt:** Ein Adapter **verstärkt latente Fähigkeit — er installiert
-keine neue.** Helix hat 0 % echten Code im Pretraining gesehen (nur Code *als Prosa*). Code-DoRA
-auf diesem Base = auf Sand bauen. Erst Code-Annealing (latente Fähigkeit), dann Adapter.
+**Rationale code-DoRA last:** an adapter **amplifies latent ability — it does not install
+a new one.** Helix has seen 0 % real code in pretraining (only code *as prose*). Code-DoRA
+on this base = building on sand. First code annealing (latent ability), then adapter.
 
 ---
 
-## 5) Harness-Architektur (der eigentliche Bau)
+## 5) Harness architecture (the actual build)
 
-### 5.1 Inferenz-Loop (State-Machine)
+### 5.1 Inference loop (state machine)
 ```
-1. Modell generiert Text
-2. Stop-Sequenz </tool> erreicht?  → Generierung anhalten, Kontrolle abgeben
-3. Tool-Call parsen (Sprache + Body zwischen <tool:python> … </tool>)
-4. Sandbox führt aus → stdout/stderr/exit
-5. <result> … </result> in den Kontext injizieren
-6. Modell generiert weiter (zurück zu 1) bis <|end|>
-7. Guard: max. N Tool-Calls pro Antwort (Endlosschleifen-Schutz)
+1. Model generates text
+2. Stop sequence </tool> reached?  → halt generation, hand over control
+3. Parse tool call (language + body between <tool:python> … </tool>)
+4. Sandbox executes → stdout/stderr/exit
+5. Inject <result> … </result> into the context
+6. Model continues generating (back to 1) until <|end|>
+7. Guard: max. N tool calls per answer (infinite-loop protection)
 ```
 
-### 5.2 Format (eine Konvention, byte-exakt, train == inference)
+### 5.2 Format (one convention, byte-exact, train == inference)
 ```
 <|user|>
 Was ist 47 mal 83?
@@ -90,108 +90,108 @@ print(47 * 83)
 47 mal 83 ergibt 3901.
 <|end|>
 ```
-- `</tool>` ist **Stop-Sequenz** der Generierung (zentrale Design-Entscheidung).
-- `<result>…</result>` schreibt **das Harness**, nie das Modell (im Training vorab ausgerechnet,
-  zur Laufzeit live).
-- Tags als Plain-Text lernen (keine zwingenden Spezial-Tokens), aber **konsistent** — sonst
-  bricht der byte-exakte Train/Inference-Match (vgl. L-001: Prompt-Mismatch).
+- `</tool>` is the **stop sequence** of generation (central design decision).
+- `<result>…</result>` is written by **the harness**, never the model (precomputed in training,
+  live at runtime).
+- Learn tags as plain text (no mandatory special tokens), but **consistently** — otherwise
+  the byte-exact train/inference match breaks (cf. L-001: prompt mismatch).
 
-### 5.3 Sandbox (nicht verhandelbar)
-Modell-generierten Code **niemals** ungeschützt laufen lassen.
+### 5.3 Sandbox (non-negotiable)
+**Never** run model-generated code unprotected.
 ```
-Docker-Container · KEIN Netzwerk · Timeout (z.B. 5 s) · RAM-Limit · CPU-Limit
-nur tmpdir · keine Systempfade · read-only Root · non-root user
+Docker container · NO network · timeout (e.g. 5 s) · RAM limit · CPU limit
+only tmpdir · no system paths · read-only root · non-root user
 ```
-Wir sitzen ohnehin in Docker → Substrat vorhanden. Minimal: ephemerer Sub-Container/`nsjail`
-pro Call.
+We sit in Docker anyway → substrate present. Minimal: an ephemeral sub-container/`nsjail`
+per call.
 
-## 6) Trainingsdaten
+## 6) Training data
 
-### 6.1 Mathe-Tool-MVP (Stufe 2)
-Drei Aufgabentypen, klein und messbar:
-- **Rechnen** (`print(347*892)`)
-- **Einheiten** (`print(3*60+25)` → Stunden→Minuten)
-- **kleine Zahlenlogik** (Durchschnitt, Prozent, Verhältnis)
+### 6.1 Math-tool MVP (stage 2)
+Three task types, small and measurable:
+- **Calculation** (`print(347*892)`)
+- **Units** (`print(3*60+25)` → hours→minutes)
+- **Small numeric logic** (average, percentage, ratio)
 
-Generierung: Teacher erzeugt Frage + korrekten Tool-Call; das **Harness** rechnet `<result>`
-deterministisch aus (nicht der Teacher → keine Teacher-Mathe-Fehler). Format byte-exakt wie 5.2.
+Generation: teacher produces question + correct tool call; the **harness** computes `<result>`
+deterministically (not the teacher → no teacher math errors). Format byte-exact as in 5.2.
 
-### 6.2 Code-Phase (Stufe 4) — Datentyp-Mix
+### 6.2 Code phase (stage 4) — data-type mix
 ```
-40 %  einfache Python-Aufgaben mit Tests
-20 %  Fehler → Traceback → Reparatur → erneut testen
-15 %  Randfälle / Edge Cases
-15 %  Code erklären
-10 %  "Spec unklar, ich brauche Details"
+40 %  simple Python tasks with tests
+20 %  error → traceback → repair → test again
+15 %  edge cases
+15 %  explain code
+10 %  "spec unclear, I need details"
 ```
-Aufgaben klein halten (Liste sortieren, Duplikate, Primzahl, Palindrom, CSV/JSON, kleine
-Klassen) — **keine großen Projekte**.
+Keep tasks small (sort a list, duplicates, prime, palindrome, CSV/JSON, small
+classes) — **no large projects**.
 
-### 6.3 Hidden Tests = Daten-/Eval-Werkzeug, NICHT Inferenz
-> Das ist exakt unser gpt-4o-Verify-Muster, nur für Code (= externe, unbestechliche Prüfung).
-- **Daten-Bauen:** Modell schreibt Lösung **+ eigene Tests** → Sandbox führt aus → *unabhängige
-  Hidden Tests* prüfen gegen → nur Traces, die **beide** bestehen, kommen ins SFT-Set.
-  (Verhindert „besteht eigene Tests, ist aber Mist" wie `def addiere(a,b): return 5`.)
-- **Echter User:** es gibt **keine** Hidden Tests (der User *ist* die Spec). Da bleibt nur
-  „eigene Tests schreiben + ausführen". Nicht verwechseln.
+### 6.3 Hidden tests = data/eval tool, NOT inference
+> This is exactly our gpt-4o-verify pattern, just for code (= external, incorruptible check).
+- **Building data:** model writes a solution **+ own tests** → sandbox executes → *independent
+  hidden tests* check against it → only traces that pass **both** go into the SFT set.
+  (Prevents "passes own tests but is junk" like `def addiere(a,b): return 5`.)
+- **Real user:** there are **no** hidden tests (the user *is* the spec). All that remains is
+  "write own tests + run them". Do not confuse the two.
 
-## 6b) STAND: Mathe-Harness MVP gebaut (Juni 2026)
-`scripts/sft/tool_harness.py` — gebaut + getestet:
-- **Sicherer Rechner** (AST-Whitelist, kein RCE): Selftest 14/14, lehnt `import`,
-  `__import__/system`, `open`, Compute-Bombe `9**9**9`, Zuweisung, /0 ab.
-- **Loop bewiesen** (`--selftest-only`, gescriptetes Fake-Modell): Stop@`</tool>`
-  → Executor → `<result>`-Injektion → Resume. Transcript korrekt, Result vom
-  Executor (nicht Modell).
-- **Offen:** Modell *emittiert* noch keine Tool-Calls → braucht Tool-SFT.
-- **Self-generating-Daten:** Mathe-Tool-Traces brauchen KEINEN Teacher/Key — der
-  Rechner IST die Ground Truth (Problem → kanonischer Call → Executor-Result →
-  Antwort-Template). Damit ist Tool-SFT-Daten auch ohne OpenRouter-Key baubar.
+## 6b) STATE: math harness MVP built (June 2026)
+`scripts/sft/tool_harness.py` — built + tested:
+- **Safe calculator** (AST whitelist, no RCE): selftest 14/14, rejects `import`,
+  `__import__/system`, `open`, compute bomb `9**9**9`, assignment, /0.
+- **Loop proven** (`--selftest-only`, scripted fake model): Stop@`</tool>`
+  → executor → `<result>` injection → resume. Transcript correct, result from
+  executor (not model).
+- **Open:** model does not yet *emit* tool calls → needs tool-SFT.
+- **Self-generating data:** math-tool traces need NO teacher/key — the
+  calculator IS the ground truth (problem → canonical call → executor result →
+  answer template). This makes tool-SFT data buildable even without an OpenRouter key.
 
-### Hartes Tool-Gate (vor Promotion eines tool-SFT-Checkpoints)
+### Hard tool gate (before promoting a tool-SFT checkpoint)
 ```
-✗ Modell-Tokenstrom enthält selbst "<result>"  → Stop-Sequenz versagt → FAIL
-✗ kein parsebarer <tool:python>…</tool>          → FAIL
-✗ finale Antwort-Zahl ≠ Executor-Zahl            → Result nicht übernommen → FAIL
-✓ stoppt @</tool> · Executor rechnet · Antwort == Executor-Zahl
+✗ model token stream itself contains "<result>"  → stop sequence failed → FAIL
+✗ no parseable <tool:python>…</tool>             → FAIL
+✗ final answer number ≠ executor number          → result not taken over → FAIL
+✓ stops @</tool> · executor computes · answer == executor number
 ```
-(Im Harness kann das Modell `<result>` gar nicht schreiben — die Generierung stoppt
-bei `</tool>`. „Fake-result" = Stop-Sequenz hat versagt. Genau das prüft das Gate.)
+(In the harness the model cannot write `<result>` at all — generation stops
+at `</tool>`. "Fake-result" = the stop sequence failed. That is exactly what the gate checks.)
 
-**Stand:** Phase-1 (call_only) bestanden — best step_400: tool_rate 100%, false_tool 0%,
-fake_result 0%, parse 97%, correct **68%**. Phase 1.1 (enrichte Übersetzungs-Traces) zielt
-auf correct ≥80% bevor Phase 2. Trainer-`<result>`-Masking gebaut + token-genau verifiziert.
+**State:** Phase-1 (call_only) passed — best step_400: tool_rate 100%, false_tool 0%,
+fake_result 0%, parse 97%, correct **68%**. Phase 1.1 (enriched translation traces) aims
+for correct ≥80% before Phase 2. Trainer `<result>` masking built + token-exact verified.
 
-### Phase-2-End-to-End-Gate (zusätzlich — misst Result-NUTZUNG)
-Phase 2 kann auf 3 Arten scheitern → 3 Metriken:
+### Phase-2 end-to-end gate (additional — measures result USAGE)
+Phase 2 can fail in 3 ways → 3 metrics:
 ```
-result_usage_rate    : nutzt die finale Antwort die Executor-Zahl ueberhaupt?  (Fail 1: ignoriert <result>)
-answer_numeric_match : steht EXAKT die Executor-Zahl in der Antwort?           (Fail 2: Zahl falsch abgeschrieben)
-fake_result_rate     : hat das Modell trotzdem selbst <result> geschrieben?    (Fail 3: halluziniert Block) -> MUSS 0
+result_usage_rate    : does the final answer use the executor number at all?       (Fail 1: ignores <result>)
+answer_numeric_match : is the executor number EXACTLY in the answer?                (Fail 2: number copied wrong)
+fake_result_rate     : did the model write <result> itself anyway?                 (Fail 3: hallucinates block) -> MUST be 0
 ```
-Plus weiterhin: false_tool 0 · parse >95% · correct (gedeckelt durch Phase 1.1). Promotion nur wenn alle grün.
+Plus still: false_tool 0 · parse >95% · correct (capped by Phase 1.1). Promotion only if all green.
 
-## 7) Erfolgskriterien (messbar, nicht „sieht gut aus")
-- **Stufe 1/2:** auf einem Mathe-Probe-Set (n≥200): Tool-Call-Trefferquote ↑, End-Antwort-
-  Korrektheit deutlich > Base-ohne-Tool (Ziel: Korrektheit folgt dem Rechner, nicht dem Raten).
-- Stop-Sequenz greift in ~100 % (kein „Modell schreibt `<result>` selbst").
-- **Stufe 4:** Anteil Lösungen, die unabhängige Hidden Tests bestehen, ↑ ggü. Code-SFT-ohne-Loop.
-- Negativ-Guard: Tool-Use darf die allgemeine SFT-Qualität (Benchmarks de/en) **nicht**
-  verschlechtern (separat gegenmessen).
+## 7) Success criteria (measurable, not "looks good")
+- **Stage 1/2:** on a math probe set (n≥200): tool-call hit rate ↑, end-answer
+  correctness clearly > base-without-tool (goal: correctness follows the calculator, not the guessing).
+- Stop sequence catches in ~100 % (no "model writes `<result>` itself").
+- **Stage 4:** share of solutions that pass independent hidden tests, ↑ vs. code-SFT-without-loop.
+- Negative guard: tool-use must **not** worsen the general SFT quality (benchmarks de/en)
+  (measured separately as a counter-check).
 
-## 8) Bausteine, die schon liegen
-- **Verify-Muster** (gpt-4o-Pass) = Hidden-Test-Mechanik, bereits gebaut & validiert.
-- **Python-Edu** (`data/raw/anneal_candidates/`) = Code-Annealing-Daten, schon geladen.
-- **Docker** = Sandbox-Substrat, vorhanden.
-- **Byte-exakter Prompt-Builder** (L-001-Lektion) = Grundlage für train==inference Format.
+## 8) Building blocks already present
+- **Verify pattern** (gpt-4o pass) = hidden-test mechanism, already built & validated.
+- **Python-Edu** (`data/raw/anneal_candidates/`) = code-annealing data, already loaded.
+- **Docker** = sandbox substrate, present.
+- **Byte-exact prompt builder** (L-001 lesson) = basis for train==inference format.
 
-## 9) Offene Implementierungs-Fragen (vor Stufe 1 klären)
-- Stop-Sequenz im Inferenz-Pfad sauber verdrahten (Sampler muss bei `</tool>` anhalten).
-- Sandbox-Aufruf-Latenz pro Call (Container-Spawn vs. persistenter Worker-Pool).
-- Tokenizer: Tags effizient kodiert? (`<tool:python>` etc. nicht in 10 Tokens zerfallen lassen.)
-- DoRA-Targeting auf Hybrid-Arch (Mamba `in_proj/out_proj`, GLA `q/k/v/g` = linear → adaptierbar,
-  muss aber im Trainer verdrahtet sein) — erst relevant ab Stufe 5.
+## 9) Open implementation questions (clarify before stage 1)
+- Wire the stop sequence cleanly into the inference path (sampler must halt at `</tool>`).
+- Sandbox call latency per call (container spawn vs. persistent worker pool).
+- Tokenizer: are tags encoded efficiently? (don't let `<tool:python>` etc. fall apart into 10 tokens.)
+- DoRA targeting on the hybrid arch (Mamba `in_proj/out_proj`, GLA `q/k/v/g` = linear → adaptable,
+  but must be wired in the trainer) — only relevant from stage 5.
 
 ---
-*Dieses Dokument hält eine dreifach trianguliert beschlossene Richtung fest. Reihenfolge ist
-gegated. Kein Vorziehen von Stufe 4/5, bevor Stufe 1–3 grün sind (Erinnerung 500M-Sackgasse:
-Schicht vor Fundament = Müll).*
+*This document records a triple-triangulated decided direction. The order is
+gated. No pulling stage 4/5 forward before stages 1–3 are green (reminder of the 500M dead end:
+layer before foundation = garbage).*

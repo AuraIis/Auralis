@@ -1,71 +1,71 @@
 # Phase 1 — Pretraining Launch Guide
 
-Dieses Dokument ist die operative Checkliste für den eigentlichen
-Phase-1-Pretraining-Lauf auf einem RunPod-Host (H200 oder 4×A40).
-Alle Code-Pfade sind bereits implementiert und lokal end-to-end per
-`scripts/pretrain/smoke_test.py` validiert.
+This document is the operational checklist for the actual
+Phase-1 pretraining run on a RunPod host (H200 or 4×A40).
+All code paths are already implemented and validated locally end-to-end via
+`scripts/pretrain/smoke_test.py`.
 
 ---
 
-## 1. Voraussetzungen (einmalig)
+## 1. Prerequisites (one-time)
 
 - [ ] `helix_v2_tokenizer.model` committed in `tokenizer/` (✓ Phase 0)
 - [ ] `//BITBASTION/Auralis/AuralisV2/tokenized/phase1/{english,german,code}.bin`
-  vollständig erzeugt via `scripts/data/tokenize_for_pretraining.py`
-  (läuft ~4 h, 88 GB Input → ~40-50 GB Output)
-- [ ] RunPod-Guthaben ≥ **$800** (Phase 1 kostet ~$500-800)
-- [ ] `HF_TOKEN` in der Pod-Environment (für Code-Fetch, nicht für Daten —
-  alle Phase-1-Daten liegen schon auf dem NAS)
-- [ ] `WANDB_API_KEY` in der Pod-Environment (Monitoring)
-- [ ] SSH-Zugriff + SMB-Mount: der Pod muss
-  `//BITBASTION/Auralis/AuralisV2/tokenized/phase1/` lesen können
-  (Alternative: vorab auf das Pod-Volume rsync-en)
+  fully generated via `scripts/data/tokenize_for_pretraining.py`
+  (runs ~4 h, 88 GB input → ~40-50 GB output)
+- [ ] RunPod credit ≥ **$800** (Phase 1 costs ~$500-800)
+- [ ] `HF_TOKEN` in the pod environment (for code fetch, not for data —
+  all Phase-1 data is already on the NAS)
+- [ ] `WANDB_API_KEY` in the pod environment (monitoring)
+- [ ] SSH access + SMB mount: the pod must be able to read
+  `//BITBASTION/Auralis/AuralisV2/tokenized/phase1/`
+  (alternative: rsync to the pod volume beforehand)
 
-## 2. Pod-Konfiguration
+## 2. Pod configuration
 
-**Empfehlung: 1 × H200 SXM (143 GB VRAM)**
+**Recommendation: 1 × H200 SXM (143 GB VRAM)**
 
-| Setup             | VRAM     | $/h       | Phase-1-Kosten |
-|-------------------|---------:|----------:|---------------:|
-| 1 × H200          | 143 GB   | $3.50-4.50 | $600-750      |
-| 4 × A40 48 GB     | 192 GB   | $1.80-2.40 | $300-400      |
-| 1 × H100 80 GB    | 80 GB    | $2.50-3.50 | $450-600      |
+| Setup             | VRAM     | $/h       | Phase-1 cost |
+|-------------------|---------:|----------:|-------------:|
+| 1 × H200          | 143 GB   | $3.50-4.50 | $600-750     |
+| 4 × A40 48 GB     | 192 GB   | $1.80-2.40 | $300-400     |
+| 1 × H100 80 GB    | 80 GB    | $2.50-3.50 | $450-600     |
 
-**4×A40 ist aktuell sweet-spot** (siehe `Doc/SPECs/SPEC_MULTI_GPU_TRAINING.md`).
-H200 ist einfacher (kein FSDP/DeepSpeed-Setup).
+**4×A40 is currently the sweet spot** (see `Doc/SPECs/SPEC_MULTI_GPU_TRAINING.md`).
+H200 is simpler (no FSDP/DeepSpeed setup).
 
-## 3. Setup auf dem Pod
+## 3. Setup on the pod
 
 ```bash
-# 1. Repo klonen
+# 1. Clone repo
 git clone <repo-url> auralis-v2 && cd auralis-v2
 
 # 2. venv + deps
 python -m venv .venv && source .venv/bin/activate
-# all-linux zieht pretrain + posttrain + lora + inference + dev mit allen
-# CUDA-Kernels (mamba-ssm, flash-attn, flash-linear-attention via pretrain-extra).
+# all-linux pulls pretrain + posttrain + lora + inference + dev with all
+# CUDA kernels (mamba-ssm, flash-attn, flash-linear-attention via pretrain-extra).
 pip install -e ".[all-linux]"
-# Triton ≥ 3.6 ist nötig für mamba-ssm / fla auf cu128:
+# Triton ≥ 3.6 is required for mamba-ssm / fla on cu128:
 pip install --upgrade triton
 
-# 3. HF + WandB Login
+# 3. HF + WandB login
 huggingface-cli login
 wandb login
 
-# 4. NAS-Daten prüfen
+# 4. Check NAS data
 ls -la /mnt/nas/Auralis/AuralisV2/tokenized/phase1/
-# Erwartet: english.bin, german.bin, code.bin + *.idx + *.manifest.json
+# Expected: english.bin, german.bin, code.bin + *.idx + *.manifest.json
 ```
 
-### 3a. Kernel aktivieren (wichtig für Speed)
+### 3a. Enable kernels (important for speed)
 
 ```bash
-# H100 / H200 (Hopper): alle Kernels direkt an
+# H100 / H200 (Hopper): all kernels on directly
 export AURALIS_USE_CUDA_KERNELS=1
 
-# RTX PRO 5000 / 6000 Blackwell: Triton kennt sm_120 noch nicht vollständig,
-# Workaround ist die Emulation als sm89 (Ada). Sauberer Speedup, keine
-# Genauigkeitsverluste (Loss byte-identisch zu native verifiziert).
+# RTX PRO 5000 / 6000 Blackwell: Triton doesn't fully know sm_120 yet,
+# the workaround is emulation as sm89 (Ada). Clean speedup, no
+# accuracy loss (loss verified byte-identical to native).
 export TRITON_OVERRIDE_ARCH=sm89
 export AURALIS_USE_CUDA_KERNELS=1
 ```
@@ -73,84 +73,84 @@ export AURALIS_USE_CUDA_KERNELS=1
 ## 4. Preflight
 
 ```bash
-# Dry-Run: preflight-check ohne weights zu laden
+# Dry run: preflight check without loading weights
 python scripts/pretrain/train_phase1.py --dry-run
 ```
 
-Muss ohne Fehler durchlaufen — gibt `preflight ok` aus.
+Must run through without errors — prints `preflight ok`.
 
-Zusätzlich: **End-to-End Smoke Test** (falls Pod frisch ist):
+Additionally: **end-to-end smoke test** (if the pod is fresh):
 ```bash
 python scripts/pretrain/smoke_test.py
 # ~30s, PASS = pipeline wired up correctly
 ```
 
-## 5. Training starten
+## 5. Start training
 
 ```bash
 # Single-GPU (H200/H100):
 python scripts/pretrain/train_phase1.py \
   --config configs/training/phase1_pretrain.yaml
 
-# Multi-GPU (4×A40) via torchrun + FSDP (Config-Erweiterung nötig):
+# Multi-GPU (4×A40) via torchrun + FSDP (config extension needed):
 torchrun --nproc_per_node=4 scripts/pretrain/train_phase1.py \
   --config configs/training/phase1_pretrain.yaml
 ```
 
 **Monitoring:**
 
-- WandB Dashboard: `project=auralis-v2`, Tags `phase1 pretrain helix-v2`
-- Log-Felder: `train/loss`, `train/grad_norm`, `train/lr`, `train/tokens_per_second`
-- Eval alle 1 000 Steps: `eval/val_loss`
-- Alert wenn `val_loss` drei Evals in Folge steigt
+- WandB dashboard: `project=auralis-v2`, tags `phase1 pretrain helix-v2`
+- Log fields: `train/loss`, `train/grad_norm`, `train/lr`, `train/tokens_per_second`
+- Eval every 1,000 steps: `eval/val_loss`
+- Alert when `val_loss` rises for three evals in a row
 
 ## 6. Checkpoints & Resume
 
-- Letzte 3 Step-Checkpoints + `best.pt` in `checkpoints/phase1_pretrain/`
-- Alle 10k Steps: externes Backup nach NAS
+- Last 3 step checkpoints + `best.pt` in `checkpoints/phase1_pretrain/`
+- Every 10k steps: external backup to NAS
   (`//BITBASTION/Auralis/AuralisV2/checkpoints/phase1/`)
-- Resume von Step N:
+- Resume from step N:
   ```bash
   python scripts/pretrain/train_phase1.py \
     --resume checkpoints/phase1_pretrain/step_<N>.pt
   ```
 
-## 7. Erwartete Meilensteine
+## 7. Expected milestones
 
-(aus `Doc/SPECs/SPEC_PHASE_1_PRETRAINING.md` §6)
+(from `Doc/SPECs/SPEC_PHASE_1_PRETRAINING.md` §6)
 
-| Step    | val_loss | Benchmark (ca.)              |
+| Step    | val_loss | Benchmark (approx.)          |
 |--------:|---------:|:-----------------------------|
-| 1 000   | -        | Loss fällt stetig            |
-| 5 000   | < 7.0    | Erste sichtbare Lern-Kurven  |
-| 25 000  | < 5.0    | Baseline-Score > 10 %        |
-| 50 000  | < 4.0    | HellaSwag > 40 %             |
-| 80 000  | < 3.5    | MMLU > 30 %, TRAINING ENDE   |
+| 1,000   | -        | Loss falls steadily          |
+| 5,000   | < 7.0    | First visible learning curves |
+| 25,000  | < 5.0    | Baseline score > 10%         |
+| 50,000  | < 4.0    | HellaSwag > 40%              |
+| 80,000  | < 3.5    | MMLU > 30%, TRAINING END     |
 
-## 8. Was NACH Phase 1
+## 8. What AFTER Phase 1
 
-1. `best.pt` auf NAS und ins Phase-2-Spec übergeben
-2. Baseline gegen die 50 Fragen aus `eval/baseline_questions.yaml`
-3. Manifest (`MANIFEST.yaml` pro Run — siehe `configs/MANIFEST_TEMPLATE.yaml`) ausfüllen und committen
-4. Phase 2 (Continued Bilingual mit KL-Distillation) aufsetzen: siehe
+1. Hand over `best.pt` to the NAS and into the Phase-2 spec
+2. Baseline against the 50 questions in `eval/baseline_questions.yaml`
+3. Fill out the manifest (`MANIFEST.yaml` per run — see `configs/MANIFEST_TEMPLATE.yaml`) and commit
+4. Set up Phase 2 (Continued Bilingual with KL distillation): see
    `Doc/SPECs/SPEC_PHASE_2_CONTINUED_BILINGUAL.md`
 
 ## 9. Rollback
 
-- Pre-Training divergiert (NaN loss, train_loss explodiert, grad_norm > 1000):
-  - Pod stoppen, **nicht terminieren** (Daten auf Volume behalten)
-  - Resume vom letzten gesunden Step-Checkpoint mit
-    `--config <kopierter-config-mit-lr-halbiert.yaml>`
-- Val-Loss steigt persistent:
-  - Data-Mix prüfen (Tokenization-Manifest in `tokenized/phase1/*.manifest.json`)
-  - Ggf. LR-Warm-Restart (scheduler auf `constant_with_warmup` schalten)
+- Pretraining diverges (NaN loss, train_loss explodes, grad_norm > 1000):
+  - Stop the pod, **do not terminate** (keep data on the volume)
+  - Resume from the last healthy step checkpoint with
+    `--config <copied-config-with-lr-halved.yaml>`
+- Val loss rises persistently:
+  - Check the data mix (tokenization manifest in `tokenized/phase1/*.manifest.json`)
+  - If needed, LR warm-restart (switch scheduler to `constant_with_warmup`)
 
 ---
 
-**Pipeline-Status (Stand 2026-04-26):** alle Code-Pfade implementiert + review-validiert,
-**105/105 Unit-Tests grün** auf BITBASTION-Server, end-to-end Smoke-Test (CPU)
-und Blackwell-GPU-Validation PASS, Tokenization fertig (~21B Tokens in
-`tokenized/curated_40b/`), Canary-Runden 2 + 3 abgeschlossen, 1B Batch-Sweep
-liefert finale Hauptlauf-Config (seq=2048, batch=4, gradient_checkpointing=on).
-Einziger offener Blocker: Zielhost-Setup (lokaler Blackwell-Run vs. RunPod
-H200/A40) + Go/No-Go-Entscheidung. Siehe [STATUS.md](../STATUS.md).
+**Pipeline status (as of 2026-04-26):** all code paths implemented + review-validated,
+**105/105 unit tests green** on the BITBASTION server, end-to-end smoke test (CPU)
+and Blackwell GPU validation PASS, tokenization done (~21B tokens in
+`tokenized/curated_40b/`), canary rounds 2 + 3 completed, 1B batch sweep
+delivers the final main-run config (seq=2048, batch=4, gradient_checkpointing=on).
+Only open blocker: target-host setup (local Blackwell run vs. RunPod
+H200/A40) + go/no-go decision. See [STATUS.md](../STATUS.md).

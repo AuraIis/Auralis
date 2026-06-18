@@ -1,73 +1,73 @@
 # Phase 3: Supervised Fine-Tuning (SFT)
 
-**Projekt:** Auralis v2 / Helix v2
-**Phase:** 3 (Instruktions-Folgen lernen)
-**Dauer:** 1 Woche
-**Ziel:** Modell folgt Anweisungen natürlich in DE + EN + Code
-**Voraussetzung:** Phase 2 Checkpoint existiert
-**Hardware:** H200 oder RTX Pro 5000
+**Project:** Auralis v2 / Helix v2
+**Phase:** 3 (learning instruction-following)
+**Duration:** 1 week
+**Goal:** Model follows instructions naturally in DE + EN + Code
+**Prerequisite:** Phase 2 checkpoint exists
+**Hardware:** H200 or RTX Pro 5000
 **Budget:** ~$100-200
 
 ---
 
-## 1. Ziele
+## 1. Goals
 
 ```
-Was das SFT erreicht:
-  ✓ Chat-Format verstehen (<|user|>, <|assistant|>)
-  ✓ Anweisungen natürlich folgen
-  ✓ Format-Konsistenz (saubere Antworten)
-  ✓ Höflichkeit, Hilfsbereitschaft
-  ✓ Unsicherheit ausdrücken können
-  ✓ Smalltalk natürlich führen
+What the SFT achieves:
+  ✓ Understand chat format (<|user|>, <|assistant|>)
+  ✓ Follow instructions naturally
+  ✓ Format consistency (clean answers)
+  ✓ Politeness, helpfulness
+  ✓ Able to express uncertainty
+  ✓ Conduct small talk naturally
 
-Was es NICHT macht:
-  ✗ Neues Weltwissen (kommt aus Pretrain)
-  ✗ Präferenzen (kommt in Phase 4 ORPO)
-  ✗ Fach-Expertise (kommt in Phase 5 LoRAs)
+What it does NOT do:
+  ✗ New world knowledge (comes from pretrain)
+  ✗ Preferences (comes in Phase 4 ORPO)
+  ✗ Domain expertise (comes in Phase 5 LoRAs)
 ```
 
 ---
 
-## 2. Daten-Strategie (Lektion aus v1!)
+## 2. Data Strategy (lesson from v1!)
 
-**Verteilung:**
+**Distribution:**
 
 ```
-Gesamt: 100-200k Samples
+Total: 100-200k samples
 
-Deutsch:   45% (45-90k Samples)
-  → Eigene Generation via DeepSeek V3
+German:    45% (45-90k samples)
+  → Own generation via DeepSeek V3
   → Gemini 2.0 Flash
-  → Tülu 3 deutsch übersetzt
+  → Tülu 3 translated to German
 
-Englisch:  50% (50-100k Samples)
+English:   50% (50-100k samples)
   → Tülu 3 (best-quality)
   → UltraChat 200k
   → HelpSteer2
 
-Code:      5% (5-10k Samples)
+Code:      5% (5-10k samples)
   → MagiCoder
   → OpenCodeInterpreter
   → Tülu-Code
 ```
 
-**Daten-Kategorien (Lücken aus v1 schließen):**
+**Data categories (closing the gaps from v1):**
 
 ```
-Q&A Fakten:            25%  - "Was ist X?"
-Erklärungen:           15%  - "Erkläre Y"
-Anleitungen:           15%  - "Wie macht man Z?"
-Kreatives:             10%  - Texte, Stories
-Code-Hilfe:             5%  - Debugging, Refactoring
+Q&A facts:             25%  - "What is X?"
+Explanations:          15%  - "Explain Y"
+Instructions:          15%  - "How do you do Z?"
+Creative:              10%  - Texts, stories
+Code help:              5%  - Debugging, refactoring
 
-SMALLTALK:             10%  - "Hallo", "Danke", "Wie geht's" ⚠ v1-Lücke!
-UNSICHERHEIT:           5%  - "Weiß ich nicht" ⚠ v1-Lücke!
-REASONING:             10%  - "Warum/Wieso" mit <think>
-MULTI-TURN:             5%  - Längere Gespräche
+SMALL TALK:            10%  - "Hello", "Thanks", "How are you" ⚠ v1 gap!
+UNCERTAINTY:            5%  - "I don't know" ⚠ v1 gap!
+REASONING:             10%  - "Why/How come" with <think>
+MULTI-TURN:             5%  - Longer conversations
 ```
 
-**Qualitäts-Filter (aggressiv, aus v1 gelernt):**
+**Quality filter (aggressive, learned from v1):**
 
 ```python
 BLACKLIST_PHRASES = [
@@ -113,9 +113,9 @@ def is_quality_sample(sample):
 
 ---
 
-## 3. Konfiguration
+## 3. Configuration
 
-**Datei:** `configs/training/phase3_sft.yaml`
+**File:** `configs/training/phase3_sft.yaml`
 
 ```yaml
 experiment:
@@ -240,7 +240,7 @@ monitoring:
 
 ## 4. GaLore Integration
 
-**Datei:** `src/auralis/training/galore.py`
+**File:** `src/auralis/training/galore.py`
 
 ```python
 """
@@ -346,7 +346,7 @@ class GaLoreAdamW(AdamW):
         return full.reshape(original_shape) * self.scale
 ```
 
-**Hinweis:** Production-Ready GaLore verwendet das offizielle Package:
+**Note:** Production-ready GaLore uses the official package:
 
 ```bash
 pip install galore-torch
@@ -358,9 +358,9 @@ from galore_torch import GaLoreAdamW
 
 ---
 
-## 5. Chat-Template im SFT
+## 5. Chat Template in SFT
 
-**Datei:** `src/auralis/training/sft_dataset.py`
+**File:** `src/auralis/training/sft_dataset.py`
 
 ```python
 """
@@ -481,7 +481,7 @@ class SFTDataset(Dataset):
 
 ## 6. Training Script
 
-**Datei:** `scripts/sft/train_phase3.py`
+**File:** `scripts/sft/train_phase3.py`
 
 ```python
 """
@@ -688,56 +688,56 @@ if __name__ == "__main__":
 
 ---
 
-## 7. Erwartete Ergebnisse
+## 7. Expected Results
 
 ```
-Ausgangspunkt (Phase 2 best.pt):
-  Baseline-Fragen: ~30% correct
-  Smalltalk:       schlecht (v1-Problem)
-  Unsicherheit:    halluziniert
+Starting point (Phase 2 best.pt):
+  Baseline questions: ~30% correct
+  Small talk:         poor (v1 problem)
+  Uncertainty:        hallucinates
 
-Nach Phase 3 SFT:
-  Baseline-Fragen: ~80% correct ✓
-  Smalltalk:       natürlich ✓
-  Unsicherheit:    sagt "weiß ich nicht" ✓
-  Format:          sauberes Deutsch ✓
-  Multi-turn:      funktioniert ✓
+After Phase 3 SFT:
+  Baseline questions: ~80% correct ✓
+  Small talk:         natural ✓
+  Uncertainty:        says "I don't know" ✓
+  Format:             clean German ✓
+  Multi-turn:         works ✓
   
 Val Loss Target: < 1.0
 ```
 
 ---
 
-## 8. Akzeptanz-Kriterien
+## 8. Acceptance Criteria
 
 ```
 Data Preparation:
-  □ 100k+ Train Samples, quality filtered
-  □ 2-5k Val Samples (disjunkt!)
-  □ Smalltalk-Samples enthalten
-  □ Unsicherheits-Samples enthalten
-  □ Multi-turn Samples enthalten
+  □ 100k+ train samples, quality filtered
+  □ 2-5k val samples (disjoint!)
+  □ Small-talk samples included
+  □ Uncertainty samples included
+  □ Multi-turn samples included
 
 Training:
-  □ GaLore läuft (official package oder custom)
+  □ GaLore runs (official package or custom)
   □ Val Loss < 1.0
-  □ Early Stopping greift (kein Overfitting)
-  □ --reset-optimizer aktiv
-  □ Chat-Template einheitlich
+  □ Early stopping kicks in (no overfitting)
+  □ --reset-optimizer active
+  □ Chat template consistent
 
 Quality:
   □ Baseline-50 > 80% correct
-  □ MT-Bench subset: gute Antworten
-  □ Smalltalk fühlt sich natürlich an
-  □ Unsicherheit wird angemessen ausgedrückt
-  □ Keine <think>/<lora> Leakage (Post-Processing!)
+  □ MT-Bench subset: good answers
+  □ Small talk feels natural
+  □ Uncertainty is expressed appropriately
+  □ No <think>/<lora> leakage (post-processing!)
 ```
 
 ---
 
 ## 9. Next Steps
 
-Nach Phase 3:
+After Phase 3:
 → SPEC_PHASE_4_ORPO_ALIGNMENT.md
 
 ---

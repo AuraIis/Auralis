@@ -11,9 +11,9 @@ machine and the Linux training host see the same files. **No sync, no
 mirroring, no drift.** Edits in `configs/training/foo.yaml` from Windows
 are immediately visible to the trainer in the container.
 
-Trainings-Daten (`tokenized/`, `cleaned/`, `checkpoints/`, `runs/`) bleiben
-auf der **lokalen SSD** des Trainings-Hosts — sie über SMB zu lesen
-würde die Trainings-Throughput um 50–100× drücken.
+Training data (`tokenized/`, `cleaned/`, `checkpoints/`, `runs/`) stays
+on the **local SSD** of the training host — reading it over SMB
+would push training throughput down by 50–100×.
 
 ```
 ┌───────────────────────┐                    ┌───────────────────────┐
@@ -27,15 +27,15 @@ würde die Trainings-Throughput um 50–100× drücken.
                                              ┌───────────────────────┐
                                              │ Container             │
                                              │   /workspace/auralis  │ ← Code (SMB)
-                                             │   /workspace/v2data   │ ← Daten (lokale SSD)
+                                             │   /workspace/v2data   │ ← Data (local SSD)
                                              └───────────────────────┘
 ```
 
 ## One-time setup
 
-### 1. SMB-Mount auf dem Trainings-Host
+### 1. SMB mount on the training host
 
-`/etc/fstab` ergänzen:
+Add to `/etc/fstab`:
 
 ```fstab
 //BITBASTION/Auralis  /mnt/bitbastion/auralis  cifs  credentials=/root/.smbcreds,uid=0,gid=0,iocharset=utf8,nounix,vers=3.0,cache=strict,actimeo=10  0  0
@@ -49,20 +49,20 @@ password=<pass>
 domain=WORKGROUP
 ```
 
-Mounten:
+Mount:
 
 ```bash
 mkdir -p /mnt/bitbastion/auralis
 mount -a
-ls /mnt/bitbastion/auralis/AuralisV2   # sollte den Repo-Inhalt zeigen
+ls /mnt/bitbastion/auralis/AuralisV2   # should show the repo contents
 ```
 
-**Mount-Optionen erklärt:**
-- `nounix` — verhindert dass cifs versucht Linux-Symlinks zu erzeugen (geht über SMB sowieso nicht)
-- `cache=strict` — sicheres Caching, verhindert Stale-Reads wenn Windows gerade geschrieben hat
-- `actimeo=10` — Attribut-Cache 10 Sekunden, gut für Code/Configs (nicht für hochfrequente IO)
+**Mount options explained:**
+- `nounix` — prevents cifs from trying to create Linux symlinks (doesn't work over SMB anyway)
+- `cache=strict` — safe caching, prevents stale reads when Windows has just written
+- `actimeo=10` — attribute cache 10 seconds, good for code/configs (not for high-frequency IO)
 
-### 2. Container starten mit Bind-Mount
+### 2. Start the container with a bind-mount
 
 ```bash
 docker run -d --name auralis-train --gpus all \
@@ -73,100 +73,100 @@ docker run -d --name auralis-train --gpus all \
   <image>
 ```
 
-Wichtig:
-- `PYTHONDONTWRITEBYTECODE=1` — verhindert dass der Container `__pycache__/` auf den SMB-Share schreibt (würde mit Windows kollidieren)
-- `TRITON_OVERRIDE_ARCH=sm89` — Blackwell sm_120 Triton-Workaround (siehe LESSONS.md L-012)
+Important:
+- `PYTHONDONTWRITEBYTECODE=1` — prevents the container from writing `__pycache__/` to the SMB share (would collide with Windows)
+- `TRITON_OVERRIDE_ARCH=sm89` — Blackwell sm_120 Triton workaround (see LESSONS.md L-012)
 
-### 3. Windows-Seite
+### 3. Windows side
 
 ```cmd
 setx PYTHONDONTWRITEBYTECODE 1
 ```
 
-(neues Terminal öffnen, damit es greift). Verhindert die `__pycache__`-Kollision auch von Windows aus.
+(open a new terminal so it takes effect). Prevents the `__pycache__` collision from Windows as well.
 
-### 4. Editor-Konfiguration
+### 4. Editor configuration
 
-**VS Code** (`.vscode/settings.json` ist schon im Repo, falls nicht):
+**VS Code** (`.vscode/settings.json` is already in the repo, if not):
 ```json
 {
   "files.eol": "\n"
 }
 ```
 
-Andere Editoren: auf LF stellen. Die `.gitattributes` im Repo erzwingt LF beim Commit, aber dein Editor sollte gar nicht erst CRLF schreiben.
+Other editors: set to LF. The `.gitattributes` in the repo enforces LF on commit, but your editor should not write CRLF in the first place.
 
-## Stolpersteine (KNOWN ISSUES)
+## Pitfalls (KNOWN ISSUES)
 
-### Git-Operationen nur von einer Seite
+### Git operations only from one side
 
-Git-Repo liegt auf SMB. Wenn du von Windows **und** Linux parallel `git commit`/`git pull` machst, kann das Repo korrupt werden (Lock-Files, Index-Race).
+The git repo lives on SMB. If you run `git commit`/`git pull` from Windows **and** Linux in parallel, the repo can get corrupted (lock files, index race).
 
-**Regel:** Git-Operationen ausschließlich von Windows. Auf Linux nur **lesen**, nie commits oder branches.
+**Rule:** Git operations exclusively from Windows. On Linux, only **read**, never commits or branches.
 
-### Zeilenenden
+### Line endings
 
-`.gitattributes` ist konfiguriert (`* text=auto eol=lf`). Das deckt den Commit-Pfad ab. Im Working-Tree musst du selbst aufpassen dass dein Windows-Editor LF schreibt (siehe oben).
+`.gitattributes` is configured (`* text=auto eol=lf`). That covers the commit path. In the working tree you have to make sure yourself that your Windows editor writes LF (see above).
 
-Symptom bei CRLF-Bug auf Linux:
+Symptom of the CRLF bug on Linux:
 ```
 /usr/bin/env: 'python\r': No such file or directory
 ```
-Fix: Datei mit `dos2unix scripts/foo.py` konvertieren.
+Fix: convert the file with `dos2unix scripts/foo.py`.
 
 ### Symlinks
 
-Gehen über SMB mit `nounix` nicht. Wenn du einen Symlink im Repo brauchst: nutz stattdessen einen relativen Pfad in der Config oder kopier die Datei.
+Don't work over SMB with `nounix`. If you need a symlink in the repo: use a relative path in the config instead, or copy the file.
 
-### `__pycache__` Kollisionen
+### `__pycache__` collisions
 
-Mit `PYTHONDONTWRITEBYTECODE=1` auf beiden Seiten gelöst. Falls du das Env-Var vergisst, siehst du `__pycache__/` Verzeichnisse die zwischen Windows und Linux hin und her flackern — keine Datenkorruption, nur unschön.
+Solved with `PYTHONDONTWRITEBYTECODE=1` on both sides. If you forget the env var, you'll see `__pycache__/` directories flickering back and forth between Windows and Linux — no data corruption, just unsightly.
 
-### SMB-Performance
+### SMB performance
 
-Code/Configs lesen ist OK (~10-30 MB/s reicht für `import` in Sekunden). **Niemals** Trainings-Daten oder Checkpoints über SMB pumpen — die müssen auf lokaler SSD bleiben.
+Reading code/configs is OK (~10-30 MB/s is enough for `import` in seconds). **Never** pump training data or checkpoints over SMB — those must stay on the local SSD.
 
-Wenn `python -c "import auralis"` plötzlich >5s braucht: wahrscheinlich SMB-Cache cold. Einmal `find /workspace/auralis -name "*.py" > /dev/null` warmt den Cache auf.
+If `python -c "import auralis"` suddenly takes >5s: the SMB cache is probably cold. Running `find /workspace/auralis -name "*.py" > /dev/null` once warms the cache.
 
-### File-Locking
+### File locking
 
-CIFS hat kein POSIX-Locking by default. Wenn du auf Linux mit `tail -f train.log` mitliest während der Trainer schreibt: meist OK, kann aber gelegentlich hängen. Workaround: log-Files in `runs/` halten — die liegen sowieso auf der lokalen SSD, nicht auf SMB.
+CIFS has no POSIX locking by default. If you follow along on Linux with `tail -f train.log` while the trainer is writing: usually OK, but can occasionally hang. Workaround: keep log files in `runs/` — those live on the local SSD anyway, not on SMB.
 
-## Verifikation
+## Verification
 
-Nach dem Setup, schneller Smoke-Test:
+After setup, quick smoke test:
 
 ```bash
-# Auf Windows:
+# On Windows:
 echo "ping from win" > I:\AuralisV2\.smb_test
 
-# Auf Linux Trainings-Host:
+# On the Linux training host:
 cat /mnt/bitbastion/auralis/AuralisV2/.smb_test
 # → "ping from win"
 
-# Im Container:
+# In the container:
 docker exec auralis-train cat /workspace/auralis/.smb_test
 # → "ping from win"
 
-# Aufräumen:
+# Clean up:
 rm I:\AuralisV2\.smb_test
 ```
 
-Wenn alle drei den Inhalt sofort sehen: Setup steht.
+If all three see the content immediately: setup is in place.
 
-## Was damit weg ist
+## What this removes
 
-- `scripts/dev/auto_sync.*` (gelöscht 2026-04-25, war Workaround für genau dieses Problem)
-- Manuelle scp-Aufrufe nach Config-Edits
-- `docker cp` für Konfig-Updates
-- "warum funktioniert die neue Config nicht" Debug-Sessions
+- `scripts/dev/auto_sync.*` (deleted 2026-04-25, was a workaround for exactly this problem)
+- Manual scp calls after config edits
+- `docker cp` for config updates
+- "why doesn't the new config work" debug sessions
 
-## Was damit weiterhin nötig bleibt
+## What is still necessary with this
 
-- Container-Restart nach Code-Änderungen die nur beim Import gelesen werden
-  (Python lädt Module einmal — laufende Trainings-Prozesse sehen Code-Edits
-  erst nach Restart, das ist ein Python-Sache, nicht SMB-spezifisch)
-- Daten-Pipeline-Outputs (`cleaned/`, `tokenized/`) liegen auf der NAS-SSD,
-  nicht auf SMB — die müssen weiterhin separat orchestriert werden
-- Checkpoints und Runs landen auf der lokalen Trainings-SSD — Backup/Sync
-  davon ist eine andere Frage als "Code-Sync"
+- Container restart after code changes that are only read at import time
+  (Python loads modules once — running training processes don't see code edits
+  until restart, that's a Python thing, not SMB-specific)
+- Data pipeline outputs (`cleaned/`, `tokenized/`) live on the NAS SSD,
+  not on SMB — those still have to be orchestrated separately
+- Checkpoints and runs land on the local training SSD — backup/sync
+  of those is a different question than "code sync"

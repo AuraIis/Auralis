@@ -1,80 +1,80 @@
-# SFT Teacher Pipeline — Grobentwurf (nach Phase 1)
+# SFT Teacher Pipeline — rough draft (after Phase 1)
 
-Status: **Grobentwurf**. Detail + Qwen-Prompt-Templates + Judge-Kalibrations-
-Set werden nach Canary Runde 2 in `INVESTIGATIVE_SYNTH_DATA.md` ausgearbeitet.
+Status: **rough draft**. Detail + Qwen prompt templates + judge calibration
+set will be worked out after Canary round 2 in `INVESTIGATIVE_SYNTH_DATA.md`.
 
-## Leitgedanke
+## Guiding idea
 
-Zwei getrennte SFT-Ströme, beide aus denselben Seed-Passagen gespeist:
+Two separate SFT streams, both fed from the same seed passages:
 
-1. **Content-SFT** — lehrt Domänenwissen  
-   Input: Frage über Thema X  
-   Output: faktenpräzise Antwort, mit Quellenanker wenn der Seed-Text einen bot
+1. **Content-SFT** — teaches domain knowledge  
+   Input: question about topic X  
+   Output: fact-precise answer, with source anchor when the seed text offered one
 
-2. **Structural-SFT** — lehrt **Prozess** statt Fakt ("learn to learn")  
-   Input: Rohinhalt aus Seed  
-   Output: strukturierte Zerlegung (Q&A-Liste, Causal-Chain, Bullet-Summary,
-   Confidence-markierte Unterfragen)
+2. **Structural-SFT** — teaches **process** instead of fact ("learn to learn")  
+   Input: raw content from seed  
+   Output: structured decomposition (Q&A list, causal chain, bullet summary,
+   confidence-marked sub-questions)
 
-Michaels Kernformulierung: „das Modell soll mit seinen vorhandenen Daten
-lernen zu lernen". Strom 2 ist exakt das.
+Michael's core formulation: "the model should learn to learn with its existing
+data". Stream 2 is exactly that.
 
-## Pipeline-Phasen
+## Pipeline phases
 
 ```
 cleaned/*.filtered.txt
        ↓
-[ seed_collector.py ]           <- CPU, jetzt implementiert
+[ seed_collector.py ]           <- CPU, now implemented
        ↓
 seeds/YYYY-MM-DD/{technical,factual,procedural,opinion,narrative,general}.jsonl
        ↓
-[ qwen_synth_sft.py ]           <- nach Phase 1; Qwen 3.6 35B Apex via LocalAI
-       ↓                           (zwei Output-Pfade pro Seed)
+[ qwen_synth_sft.py ]           <- after Phase 1; Qwen 3.6 35B Apex via LocalAI
+       ↓                           (two output paths per seed)
 sft_synth/YYYY-MM-DD/
-    content/*.jsonl             ← OSS-Instruct Output
-    structural/*.jsonl          ← "zerlege diesen Text"-Output
+    content/*.jsonl             ← OSS-Instruct output
+    structural/*.jsonl          ← "decompose this text" output
        ↓
-[ qwen_evol_instruct.py ]       <- optional, iterative Komplexitätssteigerung
+[ qwen_evol_instruct.py ]       <- optional, iterative complexity increase
        ↓
 sft_synth_evolved/YYYY-MM-DD/...
        ↓
-[ qwen_judge.py ]               <- Judge-LLM gates
+[ qwen_judge.py ]               <- judge-LLM gates
        ↓
-sft_curated/YYYY-MM-DD/...      ← endgültige SFT-Trainingsdaten
+sft_curated/YYYY-MM-DD/...      ← final SFT training data
 ```
 
-## Warum OSS-Instruct + Evol-Instruct kombiniert?
+## Why combine OSS-Instruct + Evol-Instruct?
 
-- **OSS-Instruct** (WizardCoder / Magicoder): Seed-Dokument inspiriert
-  realistische User-Aufgaben. Verhindert „KI-imitiert-Benchmark"-Sound.
-- **Evol-Instruct** (WizardLM): einfache Aufgabe → komplexer durch
-  Constraints / Reasoning-Tiefe / Breite. Löst das Problem dass reine
-  OSS-Instruct-Aufgaben meist zu einfach sind.
+- **OSS-Instruct** (WizardCoder / Magicoder): seed document inspires
+  realistic user tasks. Prevents the "AI-imitates-benchmark" sound.
+- **Evol-Instruct** (WizardLM): simple task → more complex through
+  constraints / reasoning depth / breadth. Solves the problem that pure
+  OSS-Instruct tasks are mostly too easy.
 
-Kombiniert: OSS gibt Realismus + thematische Verankerung, Evol gibt
-Schwierigkeitsgrade. Curriculum-Effekt in den Trainingsdaten.
+Combined: OSS gives realism + topical grounding, Evol gives
+difficulty levels. Curriculum effect in the training data.
 
-## Judge-LLM-Gates (Pflicht für alle Samples)
+## Judge-LLM gates (mandatory for all samples)
 
-Aus `DATA_PIPELINE_V2.md` §4:
+From `DATA_PIPELINE_V2.md` §4:
 
-1. Dedup gegen bestehende Train-Samples
-2. Dedup innerhalb Batch (near-dup MinHash)
-3. Widerspruch zu `facts.yaml` → drop (für Topic-LoRAs später)
-4. Length-Gate (20 ≤ answer_len ≤ 800 chars)
-5. Stil-Konsistenz (Cosine-Sim vs. Referenz-Stil)
+1. Dedup against existing train samples
+2. Dedup within batch (near-dup MinHash)
+3. Contradiction to `facts.yaml` → drop (for topic LoRAs later)
+4. Length gate (20 ≤ answer_len ≤ 800 chars)
+5. Style consistency (cosine-sim vs. reference style)
 
-**Zusätzlich für factual / wissenschafts-nahe Kategorien** (aus
-Modus-B-Vereinbarung 2026-04-24):
+**Additionally for factual / science-adjacent categories** (from
+Mode-B agreement 2026-04-24):
 
-6. Ground-Truth-Anker Pflicht (Quelle zitiert, Judge prüft Existenz)
-7. Konsens-Kalibrationsset-Check: widerspricht Sample einer der ~100
-   Konsens-Positionen → drop oder nur mit peer-review-Quelle
-8. Keine „cui bono"-Narrative in Modus-B-Themen (laufende Wissenschaft)
+6. Ground-truth anchor mandatory (source cited, judge checks existence)
+7. Consensus calibration-set check: if a sample contradicts one of the ~100
+   consensus positions → drop or only with peer-reviewed source
+8. No "cui bono" narratives in Mode-B topics (ongoing science)
 
-## Zwei konkrete Prompt-Typen (Detail in INVESTIGATIVE_SYNTH_DATA.md)
+## Two concrete prompt types (detail in INVESTIGATIVE_SYNTH_DATA.md)
 
-### (A) Content-SFT Prompt an Qwen
+### (A) Content-SFT prompt to Qwen
 
 ```
 SYSTEM: Du bist Lehrer-Assistent. Aus dem folgenden Textausschnitt
@@ -86,7 +86,7 @@ Format: JSON {frage, antwort, quellen_zitat}.
 USER: [SEED-PASSAGE hier]
 ```
 
-### (B) Structural-SFT Prompt an Qwen
+### (B) Structural-SFT prompt to Qwen
 
 ```
 SYSTEM: Du bist Wissens-Strukturator. Der folgende Rohtext soll in
@@ -101,124 +101,124 @@ Kein externer Kontext. Nur das was der Text hergibt.
 USER: [SEED-PASSAGE hier]
 ```
 
-## Wichtige Nicht-Ziele
+## Important non-goals
 
-- **Kein** endloser Crawl. Die Seed-Zahlen pro Source sind deckelbar;
-  Masse bringt ohne Qualität nichts.
-- **Keine** synthetische Generierung *während* Phase 1 läuft —
-  GPU-Konflikt mit Canary-Runs + Pretraining wäre tödlich.
-- **Kein** separater „kreativer Generator"-Modus. Wir bleiben bei Seed →
-  Transformation. Rein generativ (Qwen erfindet Thema + Text) ohne Seed
-  neigt zu Benchmark-Sound und Stil-Kollaps.
+- **No** endless crawl. The seed numbers per source are cappable;
+  mass without quality is worthless.
+- **No** synthetic generation *while* Phase 1 is running —
+  a GPU conflict with canary runs + pretraining would be fatal.
+- **No** separate "creative generator" mode. We stay with seed →
+  transformation. Purely generative (Qwen invents topic + text) without a seed
+  tends toward benchmark sound and style collapse.
 
-## Nächste konkrete Schritte
+## Next concrete steps
 
-Jetzt:
-- [x] `scripts/data/seed_collector.py` existiert
-- [x] `configs/data/seed_collection.yaml` existiert
-- [ ] Collector im Container laufen lassen (CPU-only, parallel zur Pipeline)
+Now:
+- [x] `scripts/data/seed_collector.py` exists
+- [x] `configs/data/seed_collection.yaml` exists
+- [ ] Run the collector in the container (CPU-only, parallel to the pipeline)
 
-Nach Canary Runde 2 fertig:
-- [ ] `INVESTIGATIVE_SYNTH_DATA.md` mit vollen Prompts (Modus A / Modus B)
-- [ ] `eval/scientific_consensus.yaml` mit 100 Kalibrations-Fragen
-- [ ] `scripts/data/qwen_client.py` — OpenAI-kompatibler LocalAI-Wrapper
+After Canary round 2 is done:
+- [ ] `INVESTIGATIVE_SYNTH_DATA.md` with full prompts (Mode A / Mode B)
+- [ ] `eval/scientific_consensus.yaml` with 100 calibration questions
+- [ ] `scripts/data/qwen_client.py` — OpenAI-compatible LocalAI wrapper
 - [ ] `scripts/data/qwen_synth_sft.py`
 - [ ] `scripts/data/qwen_judge.py`
 
-Nach Phase 1 Pretraining:
-- [ ] Erste volle SFT-Generation-Runde auf ~300k Seeds
-- [ ] QC-Statistiken, Sample-Review, Judge-Kalibrierung
-- [ ] Phase 3 SFT-Training mit TRL auf den kuratierten Samples
+After Phase 1 pretraining:
+- [ ] First full SFT generation round on ~300k seeds
+- [ ] QC statistics, sample review, judge calibration
+- [ ] Phase 3 SFT training with TRL on the curated samples
 
-## §7. Creative Writing — Songs / Texte (vier Säulen, keine Lyrics-Reproduktion)
+## §7. Creative writing — songs / texts (four pillars, no lyrics reproduction)
 
-Ziel: Modell kann eigenständig Texte schreiben (Songs, Gedichte, Prosa) und
-versteht **warum** bestimmte Texte Menschen berühren. Das letzte Stück ist
-das wichtigere — Struktur allein macht keinen Song funktionieren, die
-**emotionale Resonanz** tut es.
+Goal: the model can independently write texts (songs, poems, prose) and
+understands **why** certain texts move people. The latter piece is the more
+important one — structure alone does not make a song work, the
+**emotional resonance** does.
 
-Vier Säulen, die parallel gespeist werden:
+Four pillars fed in parallel:
 
-| Säule | Datenquelle | Was gelernt wird |
+| Pillar | Data source | What is learned |
 |---|---|---|
-| **A — Theorie** | Songwriting-Bücher, Blogs, Music-Theory-Papers (S2ORC-Subset) | Handwerk: Form, Reim, Metrik, Hook-Prinzipien |
-| **B — Public-Domain-Texte** | Gutenberg-Volkslieder, Kirchenlieder vor 1925, klass. Gedichte (Goethe, Heine, Shakespeare) | Wie konkrete Texte in der Form aussehen |
-| **C — Qwen-Generation** | Teacher erzeugt originale Texte nach expliziten Struktur-Vorgaben | Anwendung + Variation |
-| **D — Reception-Discourse** | Music-Reviews, Genius-Annotations (Analyse-Text, NICHT Lyrics), Songwriter-Interviews, Music-Psychology-Papers, Reddit r/Music-Diskussionen | **Warum** Menschen Songs mögen |
+| **A — theory** | songwriting books, blogs, music-theory papers (S2ORC subset) | craft: form, rhyme, meter, hook principles |
+| **B — public-domain texts** | Gutenberg folk songs, hymns before 1925, classical poems (Goethe, Heine, Shakespeare) | what concrete texts look like in form |
+| **C — Qwen generation** | teacher produces original texts following explicit structural specs | application + variation |
+| **D — reception discourse** | music reviews, Genius annotations (analytical text, NOT lyrics), songwriter interviews, music-psychology papers, Reddit r/Music discussions | **why** people like songs |
 
-**Urheberrechts-Regel, nicht verhandelbar**: Kein Training auf urheberrechtlich
-geschützten Songtexten, auch nicht als KI-Paraphrase. Paraphrase ist
-rechtlich eine Bearbeitung (UrhG § 23) und benötigt Zustimmung. Säule C
-(Qwen generiert komplett neu) liefert die "hat-einen-Text"-Fähigkeit; Säule
-D (Diskurs über Songs) liefert die "weiß-was-berührt"-Fähigkeit. Zusammen
-erreichen sie das Ziel ohne Lizenzrisiko.
+**Copyright rule, non-negotiable**: no training on copyright-protected song
+lyrics, not even as an AI paraphrase. A paraphrase is legally an
+adaptation (UrhG § 23) and requires consent. Pillar C
+(Qwen generates entirely new) delivers the "has-a-text" ability; pillar
+D (discourse about songs) delivers the "knows-what-moves" ability. Together
+they reach the goal without license risk.
 
-**Emotional-Resonance-Patterns** (Unterkategorie von Säule D):
-- Spezifität → Universalität ("deine schwarze Katze schlief auf dem
-  Kissen" statt abstrakt "Trauer") — konkrete Bilder triggern geteilte
-  Erinnerungen
-- Anker an den großen Sechs: Liebe, Verlust, Verlangen, Trotz, Verachtung,
-  Verbundenheit
-- Wahrheit > Konformität — warum Cash' "Hurt"-Cover härter trifft als
-  das Original
-- Kontext-Sensitivität: welcher Stil zu welcher Emotion passt
-  (Battle-Rap ≠ Wiegenlied, beide gültig in ihrem Kontext)
+**Emotional-resonance patterns** (subcategory of pillar D):
+- Specificity → universality ("your black cat slept on the
+  pillow" instead of abstract "grief") — concrete images trigger shared
+  memories
+- Anchor to the big six: love, loss, longing, defiance, contempt,
+  connectedness
+- Truth > conformity — why Cash's "Hurt" cover hits harder than
+  the original
+- Context sensitivity: which style fits which emotion
+  (battle rap ≠ lullaby, both valid in their context)
 
-Reception-Lizenzmatrix (Säule D):
+Reception license matrix (pillar D):
 
-| Quelle | Lizenz | Status |
+| Source | License | Status |
 |---|---|:-:|
-| Genius-Annotations (via API) | CC-BY-SA (analytischer Text) | ✓ |
-| Music-Psychology-Papers via OpenAlex | Open Access / CC-Varianten | ✓ |
-| Pitchfork / Rolling Stone / laut.de Reviews | Pressezitatrecht, Einzelzitate OK, Massen-Crawl ToS-heikel | ⚠ manuell kuratieren |
-| Reddit r/Music, r/hiphopheads etc. | ältere Pushshift-Dumps auf HF, neue API dicht | ⚠ Snapshot-basiert |
-| Songwriter-Interviews (NPR Tiny Desk, Song Exploder) | Pressezitat, Transcripts teils frei | ✓ einzelne Folgen |
-| Songfacts / SongMeanings | User-Content, Einzelzitat OK | ⚠ |
+| Genius annotations (via API) | CC-BY-SA (analytical text) | ✓ |
+| Music-psychology papers via OpenAlex | Open Access / CC variants | ✓ |
+| Pitchfork / Rolling Stone / laut.de reviews | press-quotation right, individual quotes OK, mass crawl ToS-tricky | ⚠ curate manually |
+| Reddit r/Music, r/hiphopheads etc. | older Pushshift dumps on HF, new API closed | ⚠ snapshot-based |
+| Songwriter interviews (NPR Tiny Desk, Song Exploder) | press quotation, transcripts partly free | ✓ individual episodes |
+| Songfacts / SongMeanings | user content, individual quote OK | ⚠ |
 
-Download-Pfad in der Pipeline: W1.3+W1.4 heute (Theorie + Public Domain),
-W1.5 erst nach Einzel-Lizenz-Check (Reception-Quellen).
+Download path in the pipeline: W1.3+W1.4 today (theory + public domain),
+W1.5 only after individual license check (reception sources).
 
-## §8. Troubleshooting / Problem-Solving (Windows, Hardware, Handy, Netzwerk)
+## §8. Troubleshooting / problem-solving (Windows, hardware, phone, network)
 
-Ziel: Modell kann strukturiert diagnostizieren. Das gleiche Meta-Pattern wie
-code-write+test aus §1 — nur auf System-/Hardware-Ebene.
+Goal: the model can diagnose in a structured way. The same meta-pattern as
+code-write+test from §1 — only at the system/hardware level.
 
-**Training-Pattern** (jedes SFT-Sample hat diese Struktur):
+**Training pattern** (every SFT sample has this structure):
 
 ```
-1. Problem-Beschreibung (oft vage / emotional: "mein pc ist langsam")
-2. Clarification-Runde (OS-Version? Was wurde schon versucht? Seit wann?)
-3. Diagnose-Chain (systematisch: Kabel → Treiber → Config → Software → Hardware)
-4. Lösung (konkrete Schritte, einer nach dem anderen)
-5. Verifikation (woran erkennst du dass es jetzt geht?)
-6. Escalation (wenn nicht: was als nächstes? Wer kann noch helfen?)
+1. Problem description (often vague / emotional: "my pc is slow")
+2. Clarification round (OS version? What was already tried? Since when?)
+3. Diagnosis chain (systematic: cable → driver → config → software → hardware)
+4. Solution (concrete steps, one after another)
+5. Verification (how do you know it works now?)
+6. Escalation (if not: what next? Who else can help?)
 ```
 
-Das Modell lernt: **erst klären, dann lösen**. Wichtiger Unterschied zu
-"Google-Suchergebnis wiedergeben" — echte User beschreiben Probleme ungenau;
-die KI muss gezielt nachfragen bevor sie vermutet.
+The model learns: **clarify first, then solve**. Important difference from
+"reproduce a Google search result" — real users describe problems imprecisely;
+the AI must ask targeted questions before it speculates.
 
-**Datenquellen (W1.6, läuft gerade):**
+**Data sources (W1.6, currently running):**
 
-- `HuggingFaceH4/stack-exchange-preferences` — Q&A mit Upvote-basierten
-  Präferenzen. Enthält Stack Overflow + superuser + serverfault +
+- `HuggingFaceH4/stack-exchange-preferences` — Q&A with upvote-based
+  preferences. Contains Stack Overflow + superuser + serverfault +
   askubuntu + apple + android + electronics + networkengineering.
-  CC-BY-SA. Perfekt für Phase 4 ORPO-Preference-Paare zusätzlich.
+  CC-BY-SA. Perfect for Phase 4 ORPO preference pairs additionally.
 
-**Später (W2):**
-- Vollständige per-Site-Dumps pro Stack-Exchange-Subdomain, wo wir nach
-  "superuser", "serverfault", "askubuntu" zielgenau filtern können
-- Arch Wiki, Ubuntu Wiki, Gentoo Wiki als Linux-Troubleshooting-Kern
-- Subset aus `bigcode/the-stack-github-issues` für Bug-Report → Fix-PR-Paare
+**Later (W2):**
+- Full per-site dumps per Stack-Exchange subdomain, where we can filter
+  precisely for "superuser", "serverfault", "askubuntu"
+- Arch Wiki, Ubuntu Wiki, Gentoo Wiki as the Linux troubleshooting core
+- Subset from `bigcode/the-stack-github-issues` for bug-report → fix-PR pairs
 
-**Später (W3, Qwen-Stage nach Phase 1):**
-- **Deutsche Übersetzung + Adaption** der englischen Stack-Exchange-Seeds
-  durch Qwen. 90 % der Troubleshooting-Welt ist englisch, aber ein
-  deutscher User sucht deutsch — wir schließen die Lücke synthetisch.
-- Evol-Instruct auf Problem-Beschreibungen: einfach ("Maus geht nicht")
-  → komplex ("Maus macht komische Dinge bei USB-Hub mit Drucker + anderen
-  Geräten auf Win11 24H2 nach letztem Update")
-- **Emotions-Kalibrierung**: viele Troubleshooting-Anfragen kommen genervt
-  ("seit 3 Stunden versuch ich..."). Modell soll: kurz acknowledgen
-  (nicht übertrieben), dann strukturiert helfen. Stack-Exchange-Ton ist
-  die Referenz: knapp, empathisch, sachlich.
+**Later (W3, Qwen stage after Phase 1):**
+- **German translation + adaptation** of the English Stack-Exchange seeds
+  by Qwen. 90 % of the troubleshooting world is English, but a
+  German user searches in German — we close the gap synthetically.
+- Evol-Instruct on problem descriptions: simple ("mouse doesn't work")
+  → complex ("mouse does weird things with a USB hub plus a printer + other
+  devices on Win11 24H2 after the last update")
+- **Emotion calibration**: many troubleshooting requests come in annoyed
+  ("I've been trying for 3 hours..."). The model should: acknowledge briefly
+  (not over the top), then help in a structured way. The Stack-Exchange tone is
+  the reference: terse, empathetic, factual.

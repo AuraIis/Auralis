@@ -1,24 +1,24 @@
-# Phase 0.5: Modell-Architektur
+# Phase 0.5: Model Architecture
 
 > Current note (2026-05-17): This is the main architecture spec for Helix v2.
 > It describes the intended hybrid stack. Some production-size examples
 > mention 2B/3B, while current canary work uses smaller 100M/500M configs.
 > For live run state, use `STATUS.md`.
 
-**Projekt:** Auralis v2 / Helix v2
-**Phase:** 0.5 (zwischen Tokenizer und Pretraining)
-**Dauer:** 1 Woche
-**Ziel:** Modulare, skalierbare Architektur implementiert + getestet
+**Project:** Auralis v2 / Helix v2
+**Phase:** 0.5 (between tokenizer and pretraining)
+**Duration:** 1 week
+**Goal:** Modular, scalable architecture implemented + tested
 
 ---
 
-## 1. Ziele
+## 1. Goals
 
-- Modulare Architektur die MoE, MTP, verschiedene Attention-Typen später unterstützt
-- Heterogener Layer-Stack (Mamba + GLA + Sparse Attention)
-- Vollständig config-driven (kein Hardcoding)
-- Kleine Version (100M) für Tests, große Version (3B) für Production
-- 100% Unit-Test-Abdeckung der Kernkomponenten
+- Modular architecture that later supports MoE, MTP, various attention types
+- Heterogeneous layer stack (Mamba + GLA + Sparse Attention)
+- Fully config-driven (no hardcoding)
+- Small version (100M) for tests, large version (3B) for production
+- 100% unit-test coverage of the core components
 
 ---
 
@@ -64,9 +64,9 @@
 
 ---
 
-## 3. Architektur-Details
+## 3. Architecture Details
 
-### 3.1 Layer-Stack (für 28-Layer Modell)
+### 3.1 Layer Stack (for 28-layer model)
 
 ```
 Layer 0-5:    Mamba-2 (6 Layers)
@@ -85,13 +85,13 @@ Layer 22-27:  Sparse Attention (6 Layers)
               → Needle-in-Haystack fähig
 ```
 
-**Warum dieser Stack:**
+**Why this stack:**
 
-- Frühe Layers lernen Tokenized Patterns (SSM perfekt)
-- Mittlere Layers bauen Features (GLA effizient)
-- Späte Layers machen "global reasoning" (Attention nötig)
+- Early layers learn tokenized patterns (SSM perfect)
+- Middle layers build features (GLA efficient)
+- Late layers do "global reasoning" (attention needed)
 
-### 3.2 Dimensionen (Helix v2 Standard)
+### 3.2 Dimensions (Helix v2 Standard)
 
 ```yaml
 # configs/model/helix_v2_3b.yaml
@@ -192,9 +192,9 @@ advanced:
 
 ---
 
-## 4. Modulare Config-Klasse
+## 4. Modular Config Class
 
-**Datei:** `src/auralis/model/config.py`
+**File:** `src/auralis/model/config.py`
 
 ```python
 """
@@ -420,11 +420,11 @@ class AuralisConfig:
 
 ---
 
-## 5. Layer-Implementationen
+## 5. Layer Implementations
 
 ### 5.1 Mamba-2 Layer
 
-**Datei:** `src/auralis/model/layers/mamba_layer.py`
+**File:** `src/auralis/model/layers/mamba_layer.py`
 
 ```python
 """
@@ -582,16 +582,16 @@ class Mamba2Layer(nn.Module):
         return y
 ```
 
-**Hinweis:** Production-Ready Mamba-2 verwendet das `mamba_ssm` Package.
-Obiger Code ist pädagogisch — ersetze durch Library-Import:
+**Note:** Production-ready Mamba-2 uses the `mamba_ssm` package.
+The code above is pedagogical — replace with a library import:
 
 ```python
 from mamba_ssm import Mamba2
 ```
 
-### 5.2 GLA Layer (aus v1 portieren)
+### 5.2 GLA Layer (port from v1)
 
-Du hast das aus Helix v1 — einfach übertragen + aufräumen.
+You have this from Helix v1 — just transfer + clean up.
 
 ```python
 # src/auralis/model/layers/gla_layer.py
@@ -758,7 +758,7 @@ class SparseAttentionLayer(nn.Module):
         return output.transpose(1, 2)  # [B, L, H, D]
 ```
 
-### 5.4 FFN (mit MoE-Ready Interface)
+### 5.4 FFN (with MoE-Ready Interface)
 
 ```python
 # src/auralis/model/layers/ffn.py
@@ -843,7 +843,7 @@ def build_ffn(config) -> nn.Module:
 
 ## 6. Main Model
 
-**Datei:** `src/auralis/model/helix_model.py`
+**File:** `src/auralis/model/helix_model.py`
 
 ```python
 """
@@ -1083,7 +1083,7 @@ def build_model(config_path: str | Path) -> HelixModel:
 
 ## 7. Tests
 
-**Datei:** `tests/model/test_helix_model.py`
+**File:** `tests/model/test_helix_model.py`
 
 ```python
 """
@@ -1184,7 +1184,7 @@ class TestLayerTypes:
 
 ---
 
-## 8. Akzeptanz-Kriterien
+## 8. Acceptance Criteria
 
 ```
 □ AuralisConfig lädt YAML korrekt
@@ -1204,7 +1204,7 @@ class TestLayerTypes:
 
 ---
 
-## 9. Dauer & Aufwand
+## 9. Duration & Effort
 
 ```
 Tag 1: Config + Helper Utilities
@@ -1220,8 +1220,8 @@ Tag 7: Code Review, Commit, Tag
 
 ## 10. Next Steps
 
-Nach Phase 0.5:
-→ SPEC_PHASE_1_PRETRAINING.md (Englisch-Heavy Pretraining)
+After Phase 0.5:
+→ SPEC_PHASE_1_PRETRAINING.md (English-heavy pretraining)
 
 ---
 

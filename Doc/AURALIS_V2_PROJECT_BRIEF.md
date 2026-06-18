@@ -1,84 +1,84 @@
-# Auralis v2 — Projekt-Einweisung für Claude Code
+# Auralis v2 — Project Briefing for Claude Code
 
 > Current note (2026-05-17): This is the original master brief and still the
 > best source for the Auralis/Helix idea. Some concrete numbers and schedules
 > are historical. For the current run state, use `STATUS.md`.
 
-**Projekt:** Auralis (das System/der Assistent)
-**Modell-Name:** Helix v2 (das LLM darunter)
+**Project:** Auralis (the system / the assistant)
+**Model name:** Helix v2 (the LLM underneath)
 **Maintainer:** Michael Speckels
-**Start-Datum:** April 2026
-**Vorgänger:** Auralis v1 / Helix v1 (v33/v35) — siehe PROJEKT_HISTORIE.md
+**Start date:** April 2026
+**Predecessor:** Auralis v1 / Helix v1 (v33/v35) — see PROJEKT_HISTORIE.md
 
 ---
 
-## 1. Kontext & Motivation
+## 1. Context & Motivation
 
-Auralis v1 war der Prototyp der bewiesen hat dass das modulare Konzept
-(kleines Basismodell + LoRAs + Tools) funktioniert. In 4 Wochen wurde
-ein funktionierender 1.2B deutscher Chat-Assistent gebaut.
+Auralis v1 was the prototype that proved the modular concept
+(small base model + LoRAs + tools) works. In 4 weeks a working
+1.2B German chat assistant was built.
 
-**Was aus v1 gelernt wurde (kritische Erkenntnisse):**
+**What was learned from v1 (critical insights):**
 
-1. **Prompt-Format-Konsistenz ist kritisch** — ein einziger Bug (`<|user|>`
-   statt `User:\n`) hat wochenlang die Inference-Qualität verschleiert.
-   Lösung in v2: EIN Prompt-Builder für Training + Inference + Eval + API.
+1. **Prompt-format consistency is critical** — a single bug (`<|user|>`
+   instead of `User:\n`) obscured inference quality for weeks.
+   Solution in v2: ONE prompt builder for training + inference + eval + API.
 
-2. **LoRA kann Patterns, nicht immer Fakten** — Blutdruck-Adapter v1 hat
-   bei 212 Samples Loss 0.0099 erreicht (Memorization). Neue Fragen
-   scheiterten teilweise. Lösung: MoRA für Fakten, DoRA für Patterns,
-   Val-Split mit disjunkten Fakten, Early-Stopping bei Val ~0.2-0.3.
+2. **LoRA can learn patterns, not always facts** — the blood-pressure adapter v1
+   reached loss 0.0099 on 212 samples (memorization). New questions
+   partly failed. Solution: MoRA for facts, DoRA for patterns,
+   val split with disjoint facts, early stopping at val ~0.2-0.3.
 
-3. **Tokenizer matters** — GPT-2 Tokenizer war ineffizient für Deutsch
-   (~50% mehr Tokens als nötig). Lösung: eigener 200k Multilingual
-   Tokenizer (EN/DE/Code).
+3. **Tokenizer matters** — the GPT-2 tokenizer was inefficient for German
+   (~50% more tokens than necessary). Solution: own 200k multilingual
+   tokenizer (EN/DE/Code).
 
-4. **Daten-Mischung vor dem Training prüfen** — german-commons Cultural
-   Subset dominierte → historischer Deutsch-Bias. Lösung: bewusste Mix-
-   Ratios, Stichproben-Reviews vor Training.
+4. **Check the data mix before training** — the german-commons cultural
+   subset dominated → historical German bias. Solution: deliberate mix
+   ratios, sample reviews before training.
 
-5. **Baseline-Tests ab Tag 1** — ohne feste Eval-Questions keine ehrliche
-   Progress-Messung. Lösung: 50 Baseline-Fragen ins Repo committed,
-   automatisierte Ausführung bei jedem Checkpoint.
+5. **Baseline tests from day 1** — without fixed eval questions there is no honest
+   progress measurement. Solution: 50 baseline questions committed into the repo,
+   automated execution at every checkpoint.
 
-6. **Optimizer-State bewusst behandeln** — `--reset-optimizer` ist Standard,
-   nicht Ausnahme. Drei Versionen (v20, v28, v30) wurden durch vergessene
-   Resets verloren.
-
----
-
-## 2. Architektur-Philosophie
-
-**Leitprinzip:** Kleines, aber gutes Basismodell. Alles Spezifische kommt
-über LoRAs und Tools. Das Gegenteil zu GPT-4's "alles in einem riesigen
-Modell" — eher nach dem Vorbild des menschlichen Gehirns:
-
-- **Thalamus** = Router-LoRA (entscheidet: einfach oder komplex?)
-- **Broca/Wernicke** = Basismodell (Sprache)
-- **Präfrontaler Kortex** = Denk-LoRA (Reasoning)
-- **Logik-Zentrum** = Logik-LoRA (Selbstprüfung)
-- **Hippocampus** = Memory-LoRA + JSON-Dict
-- **Temporal-Lappen** = Topic-LoRAs (on-demand Fachwissen)
-- **Cerebellum** = Autopilot-Patterns im Basismodell
-- **Tools** = erweiterter Körper (Python, Web, Code)
-
-**Fundamentaler Unterschied zu GPT-4:**
-
-GPT-4 nutzt für "Hallo" die gleiche Rechenleistung wie für eine
-komplexe Analyse. Helix v2 skaliert Compute mit Komplexität:
-
-- Level 0 (Autopilot): <100ms, kein Denken
-- Level 1 (einfach): <500ms, direkt antworten
-- Level 2 (Spezialwissen): <2s, Topic-LoRA laden
-- Level 3 (Reasoning): <5s, Denk-LoRA + Topic-LoRA
-- Level 4 (Tools nötig): <10s, Python-Calls
-- Level 5 (kritisch): <15s, alles + Self-Verification
+6. **Handle optimizer state deliberately** — `--reset-optimizer` is the standard,
+   not the exception. Three versions (v20, v28, v30) were lost due to forgotten
+   resets.
 
 ---
 
-## 3. Technische Spezifikation
+## 2. Architecture Philosophy
 
-### 3.1 Basismodell
+**Guiding principle:** small but good base model. Everything specific comes
+via LoRAs and tools. The opposite of GPT-4's "everything in one giant
+model" — rather modeled on the human brain:
+
+- **Thalamus** = router LoRA (decides: simple or complex?)
+- **Broca/Wernicke** = base model (language)
+- **Prefrontal cortex** = thinking LoRA (reasoning)
+- **Logic center** = logic LoRA (self-checking)
+- **Hippocampus** = memory LoRA + JSON dict
+- **Temporal lobe** = topic LoRAs (on-demand domain knowledge)
+- **Cerebellum** = autopilot patterns in the base model
+- **Tools** = extended body (Python, Web, Code)
+
+**Fundamental difference from GPT-4:**
+
+GPT-4 uses the same compute for "Hello" as for a
+complex analysis. Helix v2 scales compute with complexity:
+
+- Level 0 (autopilot): <100ms, no thinking
+- Level 1 (simple): <500ms, answer directly
+- Level 2 (specialized knowledge): <2s, load topic LoRA
+- Level 3 (reasoning): <5s, thinking LoRA + topic LoRA
+- Level 4 (tools needed): <10s, Python calls
+- Level 5 (critical): <15s, everything + self-verification
+
+---
+
+## 3. Technical Specification
+
+### 3.1 Base model
 
 ```
 Name:           Helix v2
@@ -137,15 +137,14 @@ Ziel-Effizienz:
   Code:         ~160 tokens/100 words
 ```
 
-### 3.3 Trainings-Strategie
+### 3.3 Training strategy
 
-**Phase 0: Tokenizer-Training (2-3 Tage)**
+**Phase 0: Tokenizer training (2-3 days)**
 
-Voraussetzung für alles andere. Korpus zusammenstellen, SentencePiece
-trainieren, Effizienz-Tests. Einmal richtig machen — Tokenizer-Wechsel
-später = neues Pretraining.
+A prerequisite for everything else. Assemble the corpus, train SentencePiece,
+efficiency tests. Do it right once — a later tokenizer swap = new pretraining.
 
-**Phase 1: Englisch-Heavy Pretraining (3-4 Wochen, H200)**
+**Phase 1: English-heavy pretraining (3-4 weeks, H200)**
 
 ```
 Ziel:         Starke englische Basis (Weltwissen, Reasoning)
@@ -162,7 +161,7 @@ Benchmarks alle 1000 Steps:
   Code:       HumanEval-subset
 ```
 
-**Phase 2: Bilingual Continued Pretraining (1-2 Wochen)**
+**Phase 2: Bilingual continued pretraining (1-2 weeks)**
 
 ```
 Ziel:         Deutsch-Skills ohne Englisch zu verlieren
@@ -185,7 +184,7 @@ Monitoring:
   Wenn Deutsch stagniert: Lambda senken
 ```
 
-**Phase 3: SFT (1 Woche)**
+**Phase 3: SFT (1 week)**
 
 ```
 Mix:          50% EN (Tülu 3) + 45% DE (eigene) + 5% Code
@@ -203,7 +202,7 @@ Daten-Quellen:
   Unsicherheit: Explizit generiert ("weiß ich nicht")
 ```
 
-**Phase 4: Alignment via ORPO (3-5 Tage)**
+**Phase 4: Alignment via ORPO (3-5 days)**
 
 ```
 Ziel:         Präferenz-Alignment ohne komplexes RLHF
@@ -215,7 +214,7 @@ Methode:      ORPO (SFT + Alignment in einem Schritt)
 LR:           1e-5
 ```
 
-**Phase 5: LoRA-System aufbauen (2 Wochen)**
+**Phase 5: Build up the LoRA system (2 weeks)**
 
 ```
 Meta-LoRAs (permanent aktiv):
@@ -241,12 +240,12 @@ Nicht gleiche Lektion wie v1 wiederholen:
   ✓ ~800-1500 Samples pro Topic minimum
 ```
 
-### 3.4 Anti-Forgetting Strategie (KL-Distillation)
+### 3.4 Anti-forgetting strategy (KL distillation)
 
-**Das Kernproblem:** Wenn man nach Englisch auf Deutsch continued
-pretrained, vergisst das Modell Englisch (catastrophic forgetting).
+**The core problem:** when you continued-pretrain on German after English,
+the model forgets English (catastrophic forgetting).
 
-**Die Lösung:** KL-Divergence Loss hält Student nah am Teacher.
+**The solution:** KL-divergence loss keeps the student close to the teacher.
 
 ```python
 # Kern-Formel:
@@ -256,7 +255,7 @@ total_loss = task_loss + lambda * kl_loss(student_logits, teacher_logits)
 # Student lernt Neues (task_loss), bleibt aber dem Teacher ähnlich (kl_loss)
 ```
 
-**Implementation (kurz):**
+**Implementation (brief):**
 
 ```python
 class KLDistillationTrainer:
@@ -285,7 +284,7 @@ class KLDistillationTrainer:
         return task_loss + self.lambda_kd * kl_loss
 ```
 
-**Adaptive Lambda während Training:**
+**Adaptive lambda during training:**
 
 ```
 Alle 1000 Steps evaluieren:
@@ -299,9 +298,9 @@ Alle 1000 Steps evaluieren:
 
 ---
 
-## 4. Datenquellen
+## 4. Data Sources
 
-### 4.1 Pretraining-Daten
+### 4.1 Pretraining data
 
 ```
 Englisch (Priorität):
@@ -329,7 +328,7 @@ Filter-Regeln:
   → Toxicity: Standard-Filter
 ```
 
-### 4.2 SFT-Daten
+### 4.2 SFT data
 
 ```
 Englisch:
@@ -357,7 +356,7 @@ Spezial-Kategorien (Lücken aus v1 schließen):
   → Fakten-Q&A (~20000 pairs)
 ```
 
-### 4.3 LoRA-Training-Daten
+### 4.3 LoRA training data
 
 ```
 Pro Topic-Adapter:
@@ -384,7 +383,7 @@ Pro Topic-Adapter:
 
 ---
 
-## 5. Infrastruktur-Anforderungen
+## 5. Infrastructure Requirements
 
 ### 5.1 Hardware
 
@@ -404,7 +403,7 @@ Local Development:
   Nutzung:    LoRA-Training, Inference-Tests, kleine Experimente
 ```
 
-### 5.2 Software-Stack
+### 5.2 Software stack
 
 ```
 Training Framework:
@@ -434,7 +433,7 @@ LoRA/Adapter:
   → GaLore (für Basis-Finetuning)
 ```
 
-### 5.3 Datenmanagement
+### 5.3 Data management
 
 ```
 Struktur:
@@ -471,11 +470,11 @@ Wichtig:
 
 ---
 
-## 6. Qualitäts-Sicherung
+## 6. Quality Assurance
 
-### 6.1 Baseline-Test (Tag 1!)
+### 6.1 Baseline test (day 1!)
 
-50 feste Testfragen committen, die bei JEDEM Checkpoint durchlaufen:
+Commit 50 fixed test questions that run at EVERY checkpoint:
 
 ```yaml
 # eval/baseline_questions.yaml
@@ -509,9 +508,9 @@ def evaluate_checkpoint(checkpoint_path):
     return aggregate_score(results)
 ```
 
-**Nach JEDEM Training-Run: Baseline laufen lassen, Regression prüfen.**
+**After EVERY training run: run the baseline, check for regression.**
 
-### 6.2 Prompt-Builder Test (kritisch!)
+### 6.2 Prompt-builder test (critical!)
 
 ```python
 # tests/test_prompt_builder.py
@@ -540,9 +539,9 @@ def test_training_inference_identical():
     assert tokens_t == tokens_i
 ```
 
-### 6.3 Preflight-Checklist
+### 6.3 Preflight checklist
 
-Vor jedem Training-Run durchgehen:
+Go through this before every training run:
 
 ```
 □ Config-File existiert und ist valid YAML
@@ -559,7 +558,7 @@ Vor jedem Training-Run durchgehen:
 □ Auto-Refill auf RunPod aktiv
 ```
 
-### 6.4 Monitoring während Training
+### 6.4 Monitoring during training
 
 ```
 Alle 100 Steps:
@@ -588,7 +587,7 @@ Alarme:
 
 ---
 
-## 7. Projekt-Phasen & Timeline
+## 7. Project Phases & Timeline
 
 ```
 Monat 1: Vorbereitung
@@ -622,19 +621,19 @@ Total: 5 Monate, ~$1000-1500 Kosten
 
 ---
 
-## 8. Arbeits-Anweisungen für Claude Code
+## 8. Working Instructions for Claude Code
 
-### 8.1 Grundregeln
+### 8.1 Ground rules
 
-1. **Alles modular** — keine Hardcoded-Werte, alles über Config-Files
-2. **Type Hints überall** — Python 3.11+ Syntax
-3. **Docstrings für jede Funktion** — Args, Returns, Examples
-4. **Tests für kritische Komponenten** — besonders Prompt-Builder, Tokenizer
-5. **Git-Commit nach jeder funktionalen Einheit** — atomare Commits
-6. **MANIFEST.yaml pro Experiment** — Reproduzierbarkeit
-7. **Kein "schnell mal was" machen** — immer sauber, immer dokumentiert
+1. **Everything modular** — no hardcoded values, everything via config files
+2. **Type hints everywhere** — Python 3.11+ syntax
+3. **Docstrings for every function** — args, returns, examples
+4. **Tests for critical components** — especially prompt builder, tokenizer
+5. **Git commit after every functional unit** — atomic commits
+6. **MANIFEST.yaml per experiment** — reproducibility
+7. **No "quick hacks"** — always clean, always documented
 
-### 8.2 Reihenfolge der Implementation
+### 8.2 Order of implementation
 
 ```
 1. Projekt-Struktur aufsetzen
@@ -682,7 +681,7 @@ Total: 5 Monate, ~$1000-1500 Kosten
 12. FastAPI + Open WebUI Integration
 ```
 
-### 8.3 Code-Style
+### 8.3 Code style
 
 ```python
 # GUT: Modular, typed, documented
@@ -731,7 +730,7 @@ def train(data):  # was ist data?
     pass
 ```
 
-### 8.4 Git-Commit-Format
+### 8.4 Git commit format
 
 ```
 <type>(<scope>): <subject>
@@ -748,7 +747,7 @@ Beispiele:
   docs(readme): document phase 1 pretrain configuration
 ```
 
-### 8.5 Wichtige Anti-Patterns (aus v1 gelernt)
+### 8.5 Important anti-patterns (learned from v1)
 
 ```
 ✗ NICHT: Adapter trainieren ohne Val-Split
@@ -774,9 +773,9 @@ Beispiele:
 
 ---
 
-## 9. Erfolgskriterien
+## 9. Success Criteria
 
-**Helix v2 ist "fertig" wenn:**
+**Helix v2 is "done" when:**
 
 ```
 Pretraining:
@@ -806,69 +805,69 @@ Deployment:
 
 ---
 
-## 10. Besonderheiten & Konstraints
+## 10. Specifics & Constraints
 
-### 10.1 Sprachen-Regeln
+### 10.1 Language rules
 
-- **Code/Kommentare im Repo:** Englisch
-- **Dokumentation:** Deutsch (außer API-Docs)
-- **Git-Commits:** Englisch
-- **Variablen/Funktionen:** Englisch
-- **Konfig-Keys:** Englisch
-- **User-facing Output:** je nach User-Sprache (deutsch-first)
+- **Code/comments in the repo:** English
+- **Documentation:** German (except API docs)
+- **Git commits:** English
+- **Variables/functions:** English
+- **Config keys:** English
+- **User-facing output:** depending on the user's language (German-first)
 
-### 10.2 Datenschutz
+### 10.2 Data protection
 
-- Keine Training-Daten mit PII (Personally Identifiable Information)
-- DSGVO-konform: keine Namen, Adressen, Telefonnummern in Daten
-- Gesundheitsdaten: nur anonymisierte/synthetische
-- User-Conversations: optional, explizites Opt-in
+- No training data with PII (Personally Identifiable Information)
+- GDPR-compliant: no names, addresses, phone numbers in the data
+- Health data: only anonymized/synthetic
+- User conversations: optional, explicit opt-in
 
-### 10.3 Ethik
+### 10.3 Ethics
 
-- Keine Erzeugung von Malware, Exploits, Waffen-Anleitungen
-- Keine Deepfakes von real existierenden Personen
-- Medizinische Beratung: immer Hinweis "kein Arzt"
-- Rechtliche Beratung: immer Hinweis "kein Anwalt"
-- Transparenz: Modell soll wissen was es ist (KI-Assistent)
+- No generation of malware, exploits, weapons instructions
+- No deepfakes of real existing persons
+- Medical advice: always include the note "not a doctor"
+- Legal advice: always include the note "not a lawyer"
+- Transparency: the model should know what it is (AI assistant)
 
-### 10.4 Lizenzierung
+### 10.4 Licensing
 
-- Training-Code: MIT oder Apache 2.0 (open)
-- Modell-Gewichte: zu entscheiden (open weights vs. proprietary)
-- Trainings-Daten: alle License-kompatibel verwenden
-- Dependencies: License-Check pro Library
-
----
-
-## 11. Kommunikation
-
-**Bei Fragen/Unsicherheit:**
-- Immer Rückfrage stellen statt raten
-- Alternativen mit Trade-offs präsentieren
-- Bei kritischen Entscheidungen: User-Approval einholen
-
-**Bei Fehlern:**
-- Nicht verstecken, direkt ansprechen
-- Root-Cause analysieren, nicht nur Symptom-Fix
-- Lesson learned in LESSONS.md dokumentieren
-
-**Bei Erfolgen:**
-- Kurz feiern, dann nächster Schritt
-- Benchmark ins Repo committen
-- Progress in STATUS.md aktualisieren
-
-**Dokumentations-Regel:**
-- EIN aktives STATUS.md (der aktuelle Stand)
-- EIN LESSONS.md (Append-Only, beste Erkenntnisse)
-- EIN HISTORY.md (chronologisch, Milestones)
-- Alle anderen Docs: /docs/archive/
+- Training code: MIT or Apache 2.0 (open)
+- Model weights: to be decided (open weights vs. proprietary)
+- Training data: use all license-compatible
+- Dependencies: license check per library
 
 ---
 
-## 12. Ressourcen & Referenzen
+## 11. Communication
 
-**Forschungspapers die die v2-Architektur inspirieren:**
+**On questions/uncertainty:**
+- Always ask back instead of guessing
+- Present alternatives with trade-offs
+- For critical decisions: obtain user approval
+
+**On errors:**
+- Don't hide, address directly
+- Analyze root cause, not just a symptom fix
+- Document the lesson learned in LESSONS.md
+
+**On successes:**
+- Celebrate briefly, then the next step
+- Commit the benchmark into the repo
+- Update progress in STATUS.md
+
+**Documentation rule:**
+- ONE active STATUS.md (the current state)
+- ONE LESSONS.md (append-only, best insights)
+- ONE HISTORY.md (chronological, milestones)
+- All other docs: /docs/archive/
+
+---
+
+## 12. Resources & References
+
+**Research papers inspiring the v2 architecture:**
 - Mamba-2: State Space Duality
 - Gated Linear Attention (GLA)
 - Mixture of Experts (Mixtral)
@@ -878,22 +877,22 @@ Deployment:
 - ORPO: Monolithic Preference Optimization
 - KL-Distillation for Continual Learning
 
-**Open Source Referenzen:**
-- Llama 3 (Meta) — Architektur-Referenz
-- Gemma 3 (Google) — Multilingual Tokenizer
-- DeepSeek V3 — Moderne Training-Tricks
-- Mistral 7B — Effiziente Inference
+**Open source references:**
+- Llama 3 (Meta) — architecture reference
+- Gemma 3 (Google) — multilingual tokenizer
+- DeepSeek V3 — modern training tricks
+- Mistral 7B — efficient inference
 
-**Auralis v1 Dokumentation:**
-- PROJEKT_HISTORIE.md — Was lief gut/schlecht
-- 24 dokumentierte Bugs — was NICHT wiederholen
-- helix_api.py — API-Referenz (funktioniert!)
+**Auralis v1 documentation:**
+- PROJEKT_HISTORIE.md — what went well/badly
+- 24 documented bugs — what NOT to repeat
+- helix_api.py — API reference (works!)
 
 ---
 
-## 13. Start-Checkliste
+## 13. Start Checklist
 
-**Bevor du anfängst zu programmieren:**
+**Before you start programming:**
 
 ```
 □ Diese Einweisung vollständig gelesen
@@ -908,13 +907,13 @@ Deployment:
 □ MANIFEST.yaml Template angelegt
 ```
 
-**Los geht's!**
+**Let's go!**
 
 ---
 
-*Dieses Dokument ist die Master-Einweisung für Auralis v2. Alle Details,
-Code-Beispiele, und spezifische Implementationen werden in begleitenden
-Dokumenten (SPEC_*.md, IMPLEMENTATION_*.md) ausgearbeitet.*
+*This document is the master briefing for Auralis v2. All details,
+code examples, and specific implementations are elaborated in accompanying
+documents (SPEC_*.md, IMPLEMENTATION_*.md).*
 
 *Version: 1.0 — April 2026*
-*Autor: Auralis Team (Michael + Claude)*
+*Author: Auralis Team (Michael + Claude)*

@@ -1,14 +1,14 @@
 # Auralis v2 — Dataset Specification
 
-**Projekt:** Auralis v2 / Helix v2 (1B Model)
-**Strategie:** EN-first (75/20/5) → Continued DE
+**Project:** Auralis v2 / Helix v2 (1B Model)
+**Strategy:** EN-first (75/20/5) → Continued DE
 **Token Budget Phase 1:** 25B Tokens
-**Daten-Quelle:** Maximum Open-Source (HuggingFace)
-**Letzter Stand:** April 2026
+**Data source:** Maximum Open-Source (HuggingFace)
+**Last updated:** April 2026
 
 ---
 
-## 1. Gesamt-Übersicht
+## 1. Overall Overview
 
 ```
 Phase 1 Pretraining:      25B Tokens  (EN-heavy)
@@ -23,11 +23,11 @@ Total Download (raw):     ~120 GB
 
 ---
 
-## 2. Phase 1 Pretraining Daten (25B Tokens)
+## 2. Phase 1 Pretraining Data (25B Tokens)
 
-### 2.1 Englisch (75% = 18.75B Tokens)
+### 2.1 English (75% = 18.75B Tokens)
 
-**Hauptquelle: FineWeb-Edu**
+**Main source: FineWeb-Edu**
 
 ```yaml
 source:
@@ -52,7 +52,7 @@ filters:
   language: "en"
 ```
 
-**Zweitquelle: Wikipedia Englisch**
+**Second source: Wikipedia English**
 
 ```yaml
 source:
@@ -76,7 +76,7 @@ filters:
   exclude_list_articles: true
 ```
 
-**Drittquelle: Diverse Text (SlimPajama subset)**
+**Third source: Diverse Text (SlimPajama subset)**
 
 ```yaml
 source:
@@ -107,7 +107,7 @@ filters:
     - "github"      # haben wir eigene Code-Quelle
 ```
 
-**Viertquelle: OpenMath / Reasoning**
+**Fourth source: OpenMath / Reasoning**
 
 ```yaml
 source:
@@ -128,7 +128,7 @@ disk_size: ~6 GB
 format: "pretraining-ready als Text-Konkatenation"
 ```
 
-**Englisch Total:**
+**English Total:**
 
 ```
 FineWeb-Edu:              10.0 B tokens   (53%)
@@ -137,12 +137,12 @@ SlimPajama subset:         3.0 B tokens   (16%)
 OpenMathInstruct:          2.0 B tokens   (11%)
 Reserve/Diversity:         0.75 B tokens  (4%)
 ─────────────────────────────────────────────
-Total Englisch:           18.75 B tokens  (75% of 25B)
+Total English:            18.75 B tokens  (75% of 25B)
 ```
 
-### 2.2 Deutsch (20% = 5B Tokens)
+### 2.2 German (20% = 5B Tokens)
 
-**Hauptquelle: german-commons**
+**Main source: german-commons**
 
 ```yaml
 source:
@@ -182,7 +182,7 @@ filters:
   language_check: "fastText must be 'de'"
 ```
 
-**Zweitquelle: Wikipedia Deutsch**
+**Second source: Wikipedia German**
 
 ```yaml
 source:
@@ -200,7 +200,7 @@ filters:
   exclude_disambiguation: true
 ```
 
-**Drittquelle: OSCAR-2301 Deutsch (modern filtered)**
+**Third source: OSCAR-2301 German (modern filtered)**
 
 ```yaml
 source:
@@ -230,19 +230,19 @@ filters:
   min_length: 400
 ```
 
-**Deutsch Total:**
+**German Total:**
 
 ```
 german-commons (filtered): 3.0 B tokens   (60%)
 Wikipedia DE:              1.0 B tokens   (20%)
 OSCAR-2301 DE:             1.0 B tokens   (20%)
 ─────────────────────────────────────────────
-Total Deutsch:             5.0 B tokens   (20% of 25B)
+Total German:              5.0 B tokens   (20% of 25B)
 ```
 
 ### 2.3 Code (5% = 1.25B Tokens)
 
-**Hauptquelle: StarCoderData**
+**Main source: StarCoderData**
 
 ```yaml
 source:
@@ -277,7 +277,7 @@ filters:
   exclude_auto_generated: true
 ```
 
-**Zweitquelle: ProofPile-2 (Reasoning/Math)**
+**Second source: ProofPile-2 (Reasoning/Math)**
 
 ```yaml
 source:
@@ -308,11 +308,11 @@ Proof-Pile-2:              0.25 B tokens   (20%)
 Total Code:                1.25 B tokens   (5% of 25B)
 ```
 
-### 2.4 Phase 1 Gesamt
+### 2.4 Phase 1 Total
 
 ```
-Englisch:        18.75 B tokens  (75%)   ~49 GB disk
-Deutsch:          5.00 B tokens  (20%)   ~15 GB disk
+English:         18.75 B tokens  (75%)   ~49 GB disk
+German:           5.00 B tokens  (20%)   ~15 GB disk
 Code:             1.25 B tokens  ( 5%)   ~4 GB disk
 ─────────────────────────────────────────────────
 Total Phase 1:   25.00 B tokens          ~68 GB raw
@@ -321,9 +321,9 @@ Tokenized:                              ~100 GB (uint32)
 
 ---
 
-## 3. Phase 2 Continued Pretraining Daten (15B Tokens)
+## 3. Phase 2 Continued Pretraining Data (15B Tokens)
 
-### 3.1 Strategie
+### 3.1 Strategy
 
 ```
 Phase 2 dreht das Verhältnis um:
@@ -334,7 +334,7 @@ Ziel: Deutsch aufbauen ohne Englisch zu verlieren.
       KL-Distillation bewahrt Phase-1-Wissen.
 ```
 
-### 3.2 Englisch Replay (30% = 4.5B)
+### 3.2 English Replay (30% = 4.5B)
 
 ```yaml
 source_1:
@@ -356,9 +356,9 @@ source_3:
   note: "Reasoning-Schutz"
 ```
 
-### 3.3 Deutsch Stark (60% = 9B)
+### 3.3 German Strong (60% = 9B)
 
-Hier kommt jetzt Deutsch richtig rein:
+Now German really comes in:
 
 ```yaml
 source_1:
@@ -395,7 +395,7 @@ source_4:
     Falls nicht: durch OSCAR ersetzen.
 ```
 
-### 3.4 Code Verstärkung (10% = 1.5B)
+### 3.4 Code Reinforcement (10% = 1.5B)
 
 ```yaml
 source_1:
@@ -408,11 +408,11 @@ source_2:
   target_tokens: 250M
 ```
 
-### 3.5 Phase 2 Gesamt
+### 3.5 Phase 2 Total
 
 ```
-Englisch Replay:   4.50 B tokens  (30%)   ~12 GB
-Deutsch:           9.00 B tokens  (60%)   ~27 GB
+English Replay:    4.50 B tokens  (30%)   ~12 GB
+German:            9.00 B tokens  (60%)   ~27 GB
 Code:              1.50 B tokens  (10%)   ~4 GB
 ─────────────────────────────────────────────────
 Total Phase 2:    15.00 B tokens          ~43 GB raw
@@ -423,7 +423,7 @@ Tokenized:                              ~60 GB
 
 ## 4. Phase 3 SFT Datasets (~200k Samples)
 
-### 4.1 Englisch SFT (50% = 100k Samples)
+### 4.1 English SFT (50% = 100k Samples)
 
 **Tülu 3 SFT Mixture**
 
@@ -486,11 +486,11 @@ target_samples: 5k
 focus: "FLAN-style reasoning prompts"
 ```
 
-### 4.2 Deutsch SFT (45% = 90k Samples)
+### 4.2 German SFT (45% = 90k Samples)
 
-**Hier ist Deutsch-Lage schlechter. Die beste verfügbaren Open-Source DE SFT Datasets:**
+**Here the German situation is worse. The best available open-source DE SFT datasets:**
 
-**LAION-GPT4-prompts Deutsch**
+**LAION-GPT4-prompts German**
 
 ```yaml
 source:
@@ -502,7 +502,7 @@ source:
 target_samples: 30k
 ```
 
-**Sauerkraut / Hermes DPO übersetzt**
+**Sauerkraut / Hermes DPO translated**
 
 ```yaml
 source:
@@ -514,7 +514,7 @@ target_samples: 20k
 note: "Mixtral-quality translated instructions"
 ```
 
-**OpenAssistant Deutsch**
+**OpenAssistant German**
 
 ```yaml
 source:
@@ -527,7 +527,7 @@ target_samples: 10k
 quality: "human-curated, sehr hochwertig"
 ```
 
-**Alpaca-DE (VORSICHT!)**
+**Alpaca-DE (CAUTION!)**
 
 ```yaml
 source:
@@ -542,7 +542,7 @@ source:
 target_samples: 0  # besser komplett weglassen
 ```
 
-**Deutsch Smalltalk (generieren)**
+**German Smalltalk (generate)**
 
 ```yaml
 source:
@@ -569,7 +569,7 @@ rationale: |
   weil keine expliziten Smalltalk-Samples im Training.
 ```
 
-**Deutsch Unsicherheit (generieren)**
+**German Uncertainty (generate)**
 
 ```yaml
 source:
@@ -591,7 +591,7 @@ rationale: |
   Explizites Training nötig.
 ```
 
-**Deutsch Reasoning**
+**German Reasoning**
 
 ```yaml
 source:
@@ -603,7 +603,7 @@ target_samples: 10k
 focus: "Multi-step reasoning in Deutsch"
 ```
 
-**Multi-turn Deutsch**
+**Multi-turn German**
 
 ```yaml
 source:
@@ -631,11 +631,11 @@ source_2:
   target_samples: 3k
 ```
 
-### 4.4 Phase 3 SFT Gesamt
+### 4.4 Phase 3 SFT Total
 
 ```
-Englisch:    100k samples   (50%)   ~250 MB
-Deutsch:      90k samples   (45%)   ~200 MB
+English:     100k samples   (50%)   ~250 MB
+German:       90k samples   (45%)   ~200 MB
 Code:         10k samples   ( 5%)   ~30 MB
 ─────────────────────────────────────────
 Total:       200k samples           ~480 MB
@@ -646,7 +646,7 @@ Tokenized:                        ~3 GB
 
 ## 5. Phase 4 ORPO Preference Pairs (~60k)
 
-### 5.1 Englisch Preferences (30k Pairs)
+### 5.1 English Preferences (30k Pairs)
 
 **UltraFeedback (Gold Standard)**
 
@@ -678,11 +678,11 @@ target_pairs: 5k
 filter: "helpful-base only (skip harmful)"
 ```
 
-### 5.2 Deutsch Preferences (27k Pairs)
+### 5.2 German Preferences (27k Pairs)
 
-**Hier wird's knapp — es gibt wenig DE Preference Data:**
+**Here it gets tight — there is little DE preference data:**
 
-**Orca DPO Deutsch (übersetzt)**
+**Orca DPO German (translated)**
 
 ```yaml
 source:
@@ -693,7 +693,7 @@ source:
 target_pairs: 15k
 ```
 
-**Selbst generieren (Hauptstrategie)**
+**Self-generate (main strategy)**
 
 ```yaml
 approach: |
@@ -720,11 +720,11 @@ source:
   target_pairs: 3k
 ```
 
-### 5.4 Phase 4 ORPO Gesamt
+### 5.4 Phase 4 ORPO Total
 
 ```
-Englisch:  30k pairs   (50%)   ~200 MB
-Deutsch:   27k pairs   (45%)   ~180 MB
+English:   30k pairs   (50%)   ~200 MB
+German:    27k pairs   (45%)   ~180 MB
 Code:       3k pairs   ( 5%)    ~20 MB
 ─────────────────────────────────────
 Total:     60k pairs           ~400 MB
@@ -846,7 +846,7 @@ categories:
 
 ---
 
-## 7. Storage-Planung
+## 7. Storage Planning
 
 ### 7.1 Disk Space Requirements
 
@@ -872,10 +872,10 @@ Tokenized (uint32, 4 bytes/token):
 
 Working Space Buffer:    ~50 GB
 ─────────────────────────────
-Empfohlener Platz:       250-300 GB
+Recommended space:       250-300 GB
 ```
 
-### 7.2 Storage-Strategie für Unraid
+### 7.2 Storage Strategy for Unraid
 
 ```
 /mnt/user/auralis_v2/
@@ -914,12 +914,12 @@ Empfohlener Platz:       250-300 GB
     └── topics/
         └── medizin/
 
-Empfehlung: auf SSD Pool (schneller I/O während Training)
+Recommendation: on SSD Pool (faster I/O during Training)
 ```
 
 ---
 
-## 8. Downloaden & Vorbereiten
+## 8. Downloading & Preparing
 
 ### 8.1 HuggingFace Token Setup
 
@@ -933,7 +933,7 @@ huggingface-cli login
 huggingface-cli whoami
 ```
 
-### 8.2 Download-Reihenfolge (nach Priorität)
+### 8.2 Download Order (by priority)
 
 ```bash
 # Download-Skript
@@ -964,7 +964,7 @@ python scripts/data/download_sft.py
 python scripts/data/download_orpo.py
 ```
 
-### 8.3 Download-Geschwindigkeit Realistisch
+### 8.3 Download Speed Realistic
 
 ```
 Mit 500 Mbit/s Connection:
@@ -983,9 +983,9 @@ nicht deine Bandbreite.
 
 ## 9. Download Scripts
 
-### 9.1 Englisch Download
+### 9.1 English Download
 
-**Datei:** `scripts/data/download_english.py`
+**File:** `scripts/data/download_english.py`
 
 ```python
 """
@@ -1181,9 +1181,9 @@ if __name__ == "__main__":
         print(f"  {f.name}: {size_gb:.2f} GB")
 ```
 
-### 9.2 Deutsch Download
+### 9.2 German Download
 
-**Datei:** `scripts/data/download_german.py`
+**File:** `scripts/data/download_german.py`
 
 ```python
 """
@@ -1358,7 +1358,7 @@ if __name__ == "__main__":
 
 ### 9.3 SFT Download
 
-**Datei:** `scripts/data/download_sft.py`
+**File:** `scripts/data/download_sft.py`
 
 ```python
 """
@@ -1596,9 +1596,9 @@ if __name__ == "__main__":
 
 ### 10.1 Tokenization Script
 
-Nach dem Download: Tokenisieren in Binary für Training.
+After the download: tokenize into Binary for training.
 
-**Datei:** `scripts/data/tokenize_for_pretraining.py`
+**File:** `scripts/data/tokenize_for_pretraining.py`
 
 ```python
 """
@@ -1703,13 +1703,13 @@ if __name__ == "__main__":
 
 ---
 
-## 11. Quality-Checks (vor Training!)
+## 11. Quality Checks (before training!)
 
 ### 11.1 Sanity-Check Script
 
-Bevor du das 12-Tage Training startest: prüfe ob die Daten ok sind.
+Before you start the 12-day training: check whether the data is ok.
 
-**Datei:** `scripts/data/sanity_check.py`
+**File:** `scripts/data/sanity_check.py`
 
 ```python
 """
@@ -1802,9 +1802,9 @@ if __name__ == "__main__":
 
 ---
 
-## 12. Fehlerbehebung
+## 12. Troubleshooting
 
-### 12.1 Häufige Download-Probleme
+### 12.1 Common Download Problems
 
 ```
 Problem: "Rate limited" bei HuggingFace
@@ -1843,7 +1843,7 @@ Check: https://huggingface.co/datasets/... vor Download
 
 ## 13. Next Steps
 
-Nach dieser Dataset-Spec:
+After this dataset spec:
 
 ```
 1. Download-Scripts implementieren
@@ -1874,7 +1874,7 @@ Nach dieser Dataset-Spec:
 
 ---
 
-## 14. Zusammenfassung
+## 14. Summary
 
 ```
 Phase 1 (Pretraining 25B):     ~68 GB raw, 100 GB tokenized
@@ -1885,17 +1885,17 @@ Phase 5 (LoRA):                ~50 MB
 
 Total Download:                ~120 GB
 Total Storage after prep:      ~165 GB
-Empfohlener Disk-Platz:        300 GB
+Recommended disk space:        300 GB
 ```
 
-Die Datasets sind pragmatisch gewählt:
-- Hauptsächlich aus HuggingFace (wie gewünscht)
-- Qualitäts-gefiltert (aus v1-Lessons)
-- Mix-Ratios realistisch (75/20/5 → 30/60/10)
-- Alles reproduzierbar (Seeds gesetzt)
-- Alles lizenz-konform (ODC-BY, Apache, MIT, CC)
+The datasets are chosen pragmatically:
+- Mainly from HuggingFace (as desired)
+- Quality-filtered (from v1 lessons)
+- Mix ratios realistic (75/20/5 → 30/60/10)
+- Everything reproducible (seeds set)
+- Everything license-compliant (ODC-BY, Apache, MIT, CC)
 
 ---
 
 *Dataset Specification Version 1.0 — April 2026*
-*Für Auralis v2 / Helix v2 1B Model*
+*For Auralis v2 / Helix v2 1B Model*

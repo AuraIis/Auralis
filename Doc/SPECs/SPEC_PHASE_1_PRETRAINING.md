@@ -1,66 +1,66 @@
-# Phase 1: Pretraining (Englisch-Heavy)
+# Phase 1: Pretraining (English-Heavy)
 
-**Projekt:** Auralis v2 / Helix v2
-**Phase:** 1 (erstes echtes Training)
-**Dauer:** 3-4 Wochen
-**Ziel:** Starke englische Basis + schwaches Deutsch + Code-Grundlagen
-**Hardware:** H200 (143GB) oder H100 (80GB)
+**Project:** Auralis v2 / Helix v2
+**Phase:** 1 (first real training)
+**Duration:** 3-4 weeks
+**Goal:** Strong English base + weak German + code fundamentals
+**Hardware:** H200 (143GB) or H100 (80GB)
 **Budget:** ~$500-800 (RunPod)
 
 ---
 
-## 1. Ziele
+## 1. Goals
 
-**Was dieses Training erreichen soll:**
-
-```
-Englisch:    Starke Basis (MMLU 40+, HellaSwag 65+)
-Deutsch:     Grundlagen (verstehen + generieren, aber schwach)
-Code:        Basis-Syntax beherrschen
-Weltwissen:  Breite Konzepte gelernt
-Reasoning:   Simple Logik-Ketten
-```
-
-**Was dieses Training NICHT erreichen soll:**
+**What this training should achieve:**
 
 ```
-✗ Perfektes Deutsch (kommt in Phase 2)
-✗ Instruktions-Folgen (kommt in Phase 3 SFT)
-✗ Präferenzen/Alignment (kommt in Phase 4)
-✗ Spezialisierte Fähigkeiten (kommt über LoRAs in Phase 5)
+English:     Strong base (MMLU 40+, HellaSwag 65+)
+German:      Fundamentals (understand + generate, but weak)
+Code:        Master basic syntax
+World knowledge:  Broad concepts learned
+Reasoning:   Simple logic chains
+```
+
+**What this training should NOT achieve:**
+
+```
+✗ Perfect German (comes in Phase 2)
+✗ Instruction following (comes in Phase 3 SFT)
+✗ Preferences/alignment (comes in Phase 4)
+✗ Specialized capabilities (comes via LoRAs in Phase 5)
 ```
 
 ---
 
-## 2. Daten-Mix
+## 2. Data Mix
 
-### 2.1 Verhältnisse
+### 2.1 Ratios
 
 ```
-75% Englisch
-20% Deutsch
+75% English
+20% German
  5% Code
 
-Total Tokens: 30-50B
+Total tokens: 30-50B
 ```
 
-**Warum diese Gewichtung:**
+**Why this weighting:**
 
-- Englisch dominiert, weil:
-  - Mehr und bessere Daten verfügbar
-  - Weltwissen dort konzentriert
-  - Englische Konzepte übertragen cross-lingual
+- English dominates because:
+  - More and better data available
+  - World knowledge concentrated there
+  - English concepts transfer cross-lingually
 
-- 20% Deutsch weil:
-  - Tokenizer braucht Deutsch-Exposure
-  - Basis-Syntax-Lernen
-  - Zu wenig = Phase 2 hat nichts aufzubauen
+- 20% German because:
+  - Tokenizer needs German exposure
+  - Basic syntax learning
+  - Too little = Phase 2 has nothing to build on
 
-- 5% Code weil:
-  - Syntax-Grundlagen lernen
-  - Nicht als Haupt-Fähigkeit, eher als "Domäne"
+- 5% Code because:
+  - Learning syntax fundamentals
+  - Not as a main capability, more as a "domain"
 
-### 2.2 Konkrete Datenquellen
+### 2.2 Concrete Data Sources
 
 ```yaml
 # configs/data/phase1_mix.yaml
@@ -149,7 +149,7 @@ code:
         max_length: 30000
 ```
 
-### 2.3 Daten-Preparation
+### 2.3 Data Preparation
 
 **Script:** `scripts/pretrain/prepare_phase1_data.py`
 
@@ -270,9 +270,9 @@ if __name__ == "__main__":
 
 ---
 
-## 3. Training-Konfiguration
+## 3. Training Configuration
 
-**Datei:** `configs/training/phase1_pretrain.yaml`
+**File:** `configs/training/phase1_pretrain.yaml`
 
 ```yaml
 # Phase 1 Pretraining Configuration
@@ -393,9 +393,9 @@ monitoring:
 
 ---
 
-## 4. Training-Script
+## 4. Training Script
 
-**Datei:** `scripts/pretrain/train_phase1.py`
+**File:** `scripts/pretrain/train_phase1.py`
 
 ```python
 """
@@ -547,9 +547,9 @@ if __name__ == "__main__":
 
 ---
 
-## 5. Trainer-Implementation
+## 5. Trainer Implementation
 
-**Datei:** `src/auralis/training/trainer.py`
+**File:** `src/auralis/training/trainer.py`
 
 ```python
 """
@@ -788,28 +788,28 @@ class PretrainTrainer:
 
 ---
 
-## 6. Akzeptanz-Kriterien
+## 6. Acceptance Criteria
 
 ```
 Start:
-  □ Alle Daten-Files vorbereitet (.bin + .idx)
-  □ Pretrain-Config valid
-  □ Model baut erfolgreich
-  □ Dry-Run läuft durch
-  □ RunPod Guthaben > $800
+  □ All data files prepared (.bin + .idx)
+  □ Pretrain config valid
+  □ Model builds successfully
+  □ Dry run runs through
+  □ RunPod credit > $800
 
 Training Milestones:
-  □ Step 1000: Loss sinkt stetig
-  □ Step 5000: Erste Eval, val_loss < 7
-  □ Step 25000: Benchmarks zeigen Fortschritt
+  □ Step 1000: Loss decreases steadily
+  □ Step 5000: First eval, val_loss < 7
+  □ Step 25000: Benchmarks show progress
   □ Step 50000: val_loss < 4, HellaSwag > 40%
   □ Step 100000: val_loss < 3, MMLU > 30%
   □ Step 115000: TRAINING COMPLETE
 
 End State:
-  □ best.pt gespeichert
-  □ Externes Backup existiert
-  □ Full Benchmark-Report
+  □ best.pt saved
+  □ External backup exists
+  □ Full benchmark report
   □ HellaSwag > 55
   □ Belebele-DE > 45
   □ HumanEval > 15%
@@ -817,38 +817,38 @@ End State:
 
 ---
 
-## 7. Fehlerbehebung
+## 7. Troubleshooting
 
 ```
 Problem: Training diverges (NaN loss)
-  → LR zu hoch? Auf 2e-4 senken
-  → Gradient Clipping zu hoch? Auf 0.5 setzen
-  → Daten-Bug? Batch vor dem NaN prüfen
+  → LR too high? Lower to 2e-4
+  → Gradient clipping too high? Set to 0.5
+  → Data bug? Check the batch before the NaN
 
-Problem: Training zu langsam
-  → torch.compile aktivieren
-  → Flash Attention prüfen
-  → batch_size_per_device erhöhen
-  → gradient_accumulation senken
+Problem: Training too slow
+  → Enable torch.compile
+  → Check Flash Attention
+  → Increase batch_size_per_device
+  → Lower gradient_accumulation
 
 Problem: VRAM OOM
-  → batch_size senken
-  → gradient_checkpointing aktivieren
-  → seq_length auf 1024 senken
+  → Lower batch_size
+  → Enable gradient_checkpointing
+  → Lower seq_length to 1024
 
-Problem: Val Loss stagniert
+Problem: Val loss stagnates
   → LR warm restart
-  → Daten-Mix prüfen
-  → Ggf. frühe Stoppen, continuen mit anderem Mix
+  → Check data mix
+  → If needed, stop early, continue with a different mix
 ```
 
 ---
 
 ## 8. Next Steps
 
-Nach Phase 1 erfolgreich:
+After Phase 1 succeeds:
 → SPEC_PHASE_2_CONTINUED_BILINGUAL.md
-   (mit KL-Distillation gegen Forgetting)
+   (with KL distillation against forgetting)
 
 ---
 

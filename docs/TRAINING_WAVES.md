@@ -1,116 +1,116 @@
-# Training Waves — von 250M zu 1B
+# Training Waves — from 250M to 1B
 
-Verbindlicher Ablauf für Phase 1. Basiert auf Michaels Vorgehen
-(2026-04-23): **250M = Entscheidungs-Simulator, 1B = Produktionslauf.**
-Nicht alles gleichzeitig kippen.
+Binding procedure for Phase 1. Based on Michael's approach
+(2026-04-23): **250M = decision simulator, 1B = production run.**
+Don't tip everything over at once.
 
-Vorher festziehen:
-- Daten-Mix: [`configs/data/phase1_mix.yaml`](../configs/data/phase1_mix.yaml)
-- Canary-Modell: [`configs/model/helix_v2_mid_500m.yaml`](../configs/model/helix_v2_mid_500m.yaml) (bevorzugt) oder [`helix_v2_250m.yaml`](../configs/model/helix_v2_250m.yaml) (wenn Tokenbudget knapp)
-- Produktions-Modell: [`configs/model/helix_v2_1b.yaml`](../configs/model/helix_v2_1b.yaml)
+Lock down beforehand:
+- Data mix: [`configs/data/phase1_mix.yaml`](../configs/data/phase1_mix.yaml)
+- Canary model: [`configs/model/helix_v2_mid_500m.yaml`](../configs/model/helix_v2_mid_500m.yaml) (preferred) or [`helix_v2_250m.yaml`](../configs/model/helix_v2_250m.yaml) (when token budget is tight)
+- Production model: [`configs/model/helix_v2_1b.yaml`](../configs/model/helix_v2_1b.yaml)
 
-## Warum überhaupt Wellen?
+## Why waves at all?
 
-Ein 250M-Run macht das 1B-Training nicht schneller. Er macht es
-**ent-risktr**. Zeitvorteil ergibt sich aus weniger Fehlstarts, nicht aus
-weniger FLOPs. Deshalb ist das 250M ein **skalierter Zwilling** — gleicher
-Tokenizer, gleiche Layer-Reihenfolge-Logik, gleiche Pipeline, nur schmaler.
+A 250M run doesn't make the 1B training faster. It makes it
+**de-risked**. The time advantage comes from fewer false starts, not from
+fewer FLOPs. That's why the 250M is a **scaled twin** — same
+tokenizer, same layer-order logic, same pipeline, just narrower.
 
-## Parameter-Größen im Überblick
+## Parameter sizes at a glance
 
-| Config | Rolle | Params | Begründung |
+| Config | Role | Params | Rationale |
 |---|---|--:|---|
-| `helix_v2_100m.yaml` | CPU/Test | 135 M | schnelle Unit-/Smoke-Tests |
-| `helix_v2_250m.yaml` | Canary (wenn Budget knapp) | 261 M | d=768, 12 Layer |
-| **`helix_v2_mid_500m.yaml`** | **Canary (bevorzugt)** | **517 M** | d=1024, 20 Layer — echter skalierter Zwilling |
-| `helix_v2_1b.yaml` | Hauptlauf | 954 M | d=1280, 28 Layer |
+| `helix_v2_100m.yaml` | CPU/test | 135 M | fast unit/smoke tests |
+| `helix_v2_250m.yaml` | Canary (when budget is tight) | 261 M | d=768, 12 layers |
+| **`helix_v2_mid_500m.yaml`** | **Canary (preferred)** | **517 M** | d=1024, 20 layers — true scaled twin |
+| `helix_v2_1b.yaml` | Main run | 954 M | d=1280, 28 layers |
 
-*Anmerkung zur 250M-Benamung:* Die explizit gewünschte Architektur
-(`d_model=1024, 20 Layer, n_heads=16, d_head=64, d_ffn=2816, tied, 200k
-vocab`) ergibt arithmetisch ~517 M, weil das 200 k-Vocab allein 205 M
-Embedding-Params frisst. Wir benennen sie daher sauber als „mid_500m" und
-behalten `helix_v2_250m.yaml` als Fallback für engere Budgets.
+*Note on the 250M naming:* The explicitly desired architecture
+(`d_model=1024, 20 layers, n_heads=16, d_head=64, d_ffn=2816, tied, 200k
+vocab`) works out arithmetically to ~517 M, because the 200k vocab alone eats 205 M
+embedding params. We therefore name it cleanly as "mid_500m" and
+keep `helix_v2_250m.yaml` as a fallback for tighter budgets.
 
-## Die vier Runden
+## The four rounds
 
-### Runde 1 — Infrastruktur (Kurz-Canary)
-**Ziel:** Bugs finden, nicht benchmarken.
+### Round 1 — Infrastructure (short canary)
+**Goal:** find bugs, not benchmark.
 
-- **Modell:** `helix_v2_250m.yaml` oder `helix_v2_mid_500m.yaml`
+- **Model:** `helix_v2_250m.yaml` or `helix_v2_mid_500m.yaml`
 - **Tokens:** 50 M – 200 M
-- **Dauer:** 1-3 h auf H100, ~$3-10
-- **Eingangsgate:** `inference_compat.py` auf einem frischen Checkpoint PASS
-- **Ausgangsgate alle JA:**
-  - Forward/Backward stabil, keine NaN
-  - `grad_norm` gesund (keine explosion / keine collapse)
-  - BF16-autocast stabil
+- **Duration:** 1-3 h on H100, ~$3-10
+- **Entry gate:** `inference_compat.py` on a fresh checkpoint PASS
+- **Exit gate all YES:**
+  - Forward/backward stable, no NaN
+  - `grad_norm` healthy (no explosion / no collapse)
+  - BF16 autocast stable
   - Checkpoint save + reload OK
-  - Val-loss fällt sichtbar in 20-50 Eval-Punkten
-  - Keine Health-Alerts mit `level=STOP`
+  - Val loss falls visibly over 20-50 eval points
+  - No health alerts with `level=STOP`
 
-### Runde 2 — Datenmix-Ablation
-**Ziel:** den besseren Datenmix wählen — nicht raten.
+### Round 2 — Data-mix ablation
+**Goal:** pick the better data mix — not guess.
 
-- **Modell:** `helix_v2_mid_500m.yaml` (oder 250m falls Budget knapp)
-- **Konfig:** [`configs/ablation/mix_variants.yaml`](../configs/ablation/mix_variants.yaml)
-- **Drei Kandidaten (nicht mehr):**
-  1. `baseline_75_20_5` — Referenzpunkt
-  2. `de_heavy_70_25_5` — mehr modernes Deutsch
-  3. `code_heavy_72_20_8` — mehr Struktur
-- **Tokens:** 0.75-1.0 B pro Variante (≈ 2.5-3 B total)
-- **Dauer:** 6-12 h auf H100, ~$30-60
-- **Ausgangsgate:**
-  - ein Sieger nach `decision_gates` in `mix_variants.yaml`
-  - kein Per-Language-Regress > 0.05 gegenüber baseline
-  - Tiebreak: DE val_loss bei Gleichstand
+- **Model:** `helix_v2_mid_500m.yaml` (or 250m if budget is tight)
+- **Config:** [`configs/ablation/mix_variants.yaml`](../configs/ablation/mix_variants.yaml)
+- **Three candidates (no more):**
+  1. `baseline_75_20_5` — reference point
+  2. `de_heavy_70_25_5` — more modern German
+  3. `code_heavy_72_20_8` — more structure
+- **Tokens:** 0.75-1.0 B per variant (≈ 2.5-3 B total)
+- **Duration:** 6-12 h on H100, ~$30-60
+- **Exit gate:**
+  - one winner by `decision_gates` in `mix_variants.yaml`
+  - no per-language regression > 0.05 vs. baseline
+  - tiebreak: DE val_loss in a tie
 
 Starter: `python scripts/pretrain/mix_ablation.py`
 
-### Runde 3 — Sieger-Validierung
-**Ziel:** finaler Go/No-Go für 1B.
+### Round 3 — Winner validation
+**Goal:** final go/no-go for 1B.
 
-- **Modell:** gleicher Canary
-- **Mix:** Runde-2-Sieger
+- **Model:** same canary
+- **Mix:** round-2 winner
 - **Tokens:** 1.5 – 2.0 B
-- **Dauer:** 12-18 h auf H100, ~$60-90
-- **Ausgangsgate:**
-  - val_loss-Trend zeigt weitere Verbesserung (nicht nur Rauschen)
-  - per-Language-val_loss gleichmäßig fallend
-  - kumulierte Health-Alerts < 5 (WARN), 0 STOP
-  - Baseline-Score (50 Fragen) zeigt messbaren Lerneffekt
+- **Duration:** 12-18 h on H100, ~$60-90
+- **Exit gate:**
+  - val_loss trend shows further improvement (not just noise)
+  - per-language val_loss falling evenly
+  - cumulative health alerts < 5 (WARN), 0 STOP
+  - baseline score (50 questions) shows a measurable learning effect
 
-### Runde 4 — 1B Hauptlauf
-**Ziel:** produktive Phase 1, keine offenen Fragen mehr.
+### Round 4 — 1B main run
+**Goal:** productive Phase 1, no open questions left.
 
-- **Modell:** `helix_v2_1b.yaml`
-- **Mix:** Runde-3-validierter Mix (wahrscheinlich `baseline_75_20_5`)
-- **Tokens:** 21 B (tatsächlich verfügbar) bzw. 25 B (Brief-Ziel)
-- **Dauer:** 3-4 Wochen H100 / ~16 Tage H100 bei guten Kerneln
-- **Kosten:** $500-800
+- **Model:** `helix_v2_1b.yaml`
+- **Mix:** round-3-validated mix (probably `baseline_75_20_5`)
+- **Tokens:** 21 B (actually available) or 25 B (brief target)
+- **Duration:** 3-4 weeks H100 / ~16 days H100 with good kernels
+- **Cost:** $500-800
 
-## Was in welcher Runde **nicht** erlaubt ist
+## What is **not** allowed in which round
 
-| Runde | Tabu |
+| Round | Taboo |
 |---|---|
-| 1 | Neue Hyperparameter-Ideen, LR-Sweeps, Daten-Experimente |
-| 2 | Seq-Length-Sweeps, Architektur-Änderungen, zusätzliche Quellen |
-| 3 | Mix-Änderungen, LR-Änderungen |
-| 4 | Alles außer genau dem validierten Setup |
+| 1 | New hyperparameter ideas, LR sweeps, data experiments |
+| 2 | Seq-length sweeps, architecture changes, additional sources |
+| 3 | Mix changes, LR changes |
+| 4 | Anything except exactly the validated setup |
 
-## Was zwischen den Runden dokumentiert wird
+## What gets documented between rounds
 
-Nach jeder Runde:
-1. `MANIFEST.yaml` im Checkpoint-Ordner (automatisch von `run_report.py`)
-2. `scripts/eval/regression_dashboard.py --ckpt-dir …` ausführen
-3. Entscheidung in `HISTORY.md` festhalten mit Datum + Referenz auf Dashboard
+After each round:
+1. `MANIFEST.yaml` in the checkpoint folder (automatically by `run_report.py`)
+2. Run `scripts/eval/regression_dashboard.py --ckpt-dir …`
+3. Record the decision in `HISTORY.md` with date + reference to the dashboard
 
-## Downloads die der Pod zusätzlich ziehen muss
+## Downloads the pod additionally has to pull
 
-Nicht auf NAS:
-- `HuggingFaceFW/fineweb-2` `eng_Latn` (für EN-Top-up)
-- `bigcode/the-stack-v2` (ersetzt StarCoderData)
+Not on the NAS:
+- `HuggingFaceFW/fineweb-2` `eng_Latn` (for EN top-up)
+- `bigcode/the-stack-v2` (replaces StarCoderData)
 
-Scripts dafür werden in den Download-Modulen vorbereitet
+Scripts for that are prepared in the download modules
 (`scripts/data/download_english.py --sources fineweb2_en`,
-`scripts/data/download_code.py --sources the_stack_v2`). Nichts davon
-startet lokal — nur auf dem Pod mit Gigabit-HF-Anbindung.
+`scripts/data/download_code.py --sources the_stack_v2`). None of it
+starts locally — only on the pod with a gigabit HF connection.

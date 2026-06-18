@@ -1,53 +1,53 @@
-# Datenstrategie: Wissensprofile statt Gesamt-Val-Loss
+# Data Strategy: Knowledge Profiles instead of Overall Val-Loss
 
-**Leitprinzip:**
-> **Weitere Datensammlung erfolgt auf Basis von *Wissensprofilen*, nicht auf Basis des
-> Gesamt-Val-Loss.**
+**Guiding principle:**
+> **Further data collection is done on the basis of *knowledge profiles*, not on the basis of
+> the overall val-loss.**
 
-Viele Projekte trainieren blind mehr Webtext und hoffen auf Wunder. Wir messen
-stattdessen *welche Wissensart* das Modell gut/schlecht lernt und sammeln dann
-**gezielt** für die Lücken. Das ist für die Skalierung auf 3B+ wertvoller als weitere
-0,05 Val-Loss.
+Many projects blindly train more web text and hope for miracles. Instead, we measure
+*which kind of knowledge* the model learns well/poorly and then collect
+**targeted** data for the gaps. For scaling to 3B+, that is more valuable than another
+0.05 val-loss.
 
-## Wie das Profil gemessen wird (`scripts/eval/fact_recall_eval.py`)
-- Contrastive Margin `NLL(falsch) − NLL(richtig)` pro Fakt, **mehrere Distraktoren**.
-- **Distraktor-Härtegrade getrennt** (easy / med / hard), um *Wissensqualität* von
-  *Test-Härte* zu entkoppeln (z.B. Gold-Symbol: Au vs Berlin = easy, vs Fe = med, vs Ag
+## How the profile is measured (`scripts/eval/fact_recall_eval.py`)
+- Contrastive margin `NLL(wrong) − NLL(right)` per fact, **multiple distractors**.
+- **Distractor difficulty levels separated** (easy / med / hard), to decouple *knowledge quality* from
+  *test difficulty* (e.g. gold symbol: Au vs Berlin = easy, vs Fe = med, vs Ag
   = hard).
-- **Top-k**-Check = Abrufnähe (kommt der richtige Kandidat oben an?).
-- 5 Kategorien: geo / sci / hist / lang / **tech** (= *Konzepte*, **kein** trainierter
-  Code — dieser Lauf hatte 0% Code; hohe tech-Werte ≠ Programmierfähigkeit).
+- **Top-k** check = recall proximity (does the right candidate come out on top?).
+- 5 categories: geo / sci / hist / lang / **tech** (= *concepts*, **not** trained
+  code — this run had 0% code; high tech values ≠ programming ability).
 
-## Profil — Stand step 35k (n=57)
-| Kategorie | strict | easy | med | hard | top-10 |
+## Profile — as of step 35k (n=57)
+| Category | strict | easy | med | hard | top-10 |
 |---|---|---|---|---|---|
-| Geschichte | 92% | 100% | 100% | 92% | 58% |
-| Geografie | 83% | 100% | 100% | 83% | 100% |
-| Tech-Konzepte | 80% | 100% | 90% | 80% | 30% |
-| Wissenschaft | 67% | 100% | 67% | 67% | 17% |
-| Sprache/Übersetzung | 64% | 73% | 91% | 64% | 18% |
-| **Gesamt** | **77%** | **95%** | **89%** | **77%** | **46%** |
+| History | 92% | 100% | 100% | 92% | 58% |
+| Geography | 83% | 100% | 100% | 83% | 100% |
+| Tech concepts | 80% | 100% | 90% | 80% | 30% |
+| Science | 67% | 100% | 67% | 67% | 17% |
+| Language/Translation | 64% | 73% | 91% | 64% | 18% |
+| **Overall** | **77%** | **95%** | **89%** | **77%** | **46%** |
 
-## Lesart (ehrlich)
-- **95% easy** = solider Boden, **kein Raten**. Die Architektur nimmt Wissen auf.
-- **Gradient 95→89→77** = die Schwäche ist **feine Unterscheidung**, nicht fehlendes Wissen.
-- **Stark:** Geschichte, Geografie (Wikipedia-Stärke; bei Geo ist die richtige Stadt
-  zu 100% ein Top-Token).
-- **Schwächer:** **Wissenschaft** (Symbole/Feinwerte: Au/Ag, Jupiter/Saturn) und
-  **Sprache/Übersetzung** (cross-lingual). Beide auch mit **niedriger Abrufnähe**
-  (top-10 17-18%) → Wissen vorhanden, aber nicht gut „an der Oberfläche".
-- **„29% Wissenschaft" von früher war überzeichnet** (kleine Batterie + nur harte
-  Distraktoren). Mit Härtegraden: science easy 100%, strict 67%.
+## Reading (honest)
+- **95% easy** = solid floor, **no guessing**. The architecture takes up knowledge.
+- **Gradient 95→89→77** = the weakness is **fine discrimination**, not missing knowledge.
+- **Strong:** history, geography (Wikipedia strength; for geo the correct city
+  is a top token 100% of the time).
+- **Weaker:** **science** (symbols/fine values: Au/Ag, Jupiter/Saturn) and
+  **language/translation** (cross-lingual). Both also with **low recall proximity**
+  (top-10 17-18%) → knowledge present, but not well "at the surface".
+- **"29% science" from earlier was overstated** (small battery + only hard
+  distractors). With difficulty levels: science easy 100%, strict 67%.
 
-## Abgeleitete Daten-Prioritäten (falls 50k das Profil bestätigt)
-NICHT mehr blind Webtext. Gezielt:
-1. **Wissenschaft / Schulwissen / Lehrbücher / Fakten-QA / Symboltabellen** — die fein-
-   symbolische Lücke (Chemie, Physik, Astronomie).
-2. **Cross-linguale / Übersetzungs-Daten** — paralleler de↔en-Text, Wörterbücher.
-3. **Echter Code** — *nur falls Coding ein Ziel ist*: aktuell 0% Code trainiert
-   (~677M Code-Tokens liegen bereit, aber das ist für solides Coding eher wenig).
+## Derived data priorities (if 50k confirms the profile)
+NO more blind web text. Targeted:
+1. **Science / school knowledge / textbooks / fact-QA / symbol tables** — the fine-
+   symbolic gap (chemistry, physics, astronomy).
+2. **Cross-lingual / translation data** — parallel de↔en text, dictionaries.
+3. **Real code** — *only if coding is a goal*: currently 0% code trained
+   (~677M code tokens are ready, but that is rather little for solid coding).
 
 ## Gate
-Diese Prioritäten werden **erst nach dem 50k-Lauf** verbindlich: das Profil wird bei
-step 50k mit derselben (erweiterten) Batterie neu gemessen. Bleibt das Muster, ist die
-gezielte Datensammlung gerechtfertigt — nicht vorher aus dem Bauch.
+These priorities become binding **only after the 50k run**: the profile will be re-measured at
+step 50k with the same (extended) battery. If the pattern holds, the targeted data collection
+is justified — not before, from the gut.
