@@ -1,10 +1,11 @@
 """CLI entry point for Phase-1 pretraining.
 
-Runs a single-device training loop backed by :class:`PretrainTrainer`. For
-multi-GPU runs on RunPod, invoke via ``torchrun`` and wrap the model with
-FSDP or DeepSpeed outside this script — the module deliberately stays
-single-process so the smoke-test path (CPU) and the production path share
-the same code.
+Runs a training loop backed by :class:`PretrainTrainer`. Single-device by
+default; for multi-GPU, launch via ``torchrun`` — the script detects the
+process group (``_setup_distributed``) and wraps the model in
+``DistributedDataParallel`` automatically. The CPU smoke-test path and the
+single-/multi-GPU production paths share the same code. (FSDP/DeepSpeed are
+NOT wired in; DDP is the only built-in data-parallel backend.)
 
 What this wires up from ``configs/training/phase1_pretrain.yaml``:
 
