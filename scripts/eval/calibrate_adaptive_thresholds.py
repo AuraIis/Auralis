@@ -40,8 +40,9 @@ def _load_state_dict(path: Path):
             break
     if not isinstance(state, dict):
         raise SystemExit(f"{path}: could not find a state_dict")
-    return { (k[len("_orig_mod."):] if k.startswith("_orig_mod.") else k): v
-             for k, v in state.items() }
+    return {
+        (k[len("_orig_mod.") :] if k.startswith("_orig_mod.") else k): v for k, v in state.items()
+    }
 
 
 def main() -> int:
@@ -53,13 +54,14 @@ def main() -> int:
     ap.add_argument("--device", default="cuda")
     args = ap.parse_args()
 
+    from statistics import median
+
     import torch
 
-    from auralis.model.helix_model import build_model
     from auralis.adaptive.adapters import ModelAdapter, TokenizerAdapter
     from auralis.adaptive.monitor import LearningMonitor
     from auralis.adaptive.probes import DEFAULT_PROBES, load_margin_probes
-    from statistics import mean, median
+    from auralis.model.helix_model import build_model
 
     model = build_model(args.model_config)
     model.to(args.device)
@@ -91,7 +93,9 @@ def main() -> int:
         suggested_target_thr = round(max(0.5, 0.8 * anchor), 2)
         suggested_guard_drop = round(max(0.1, 0.25 * abs(anchor)), 2)
         print("\n=== Suggested curriculum thresholds (starting points) ===")
-        print(f"# retention (known-fact) margin scale ~ {anchor:.3f} nats -> the 'mastered' reference")
+        print(
+            f"# retention (known-fact) margin scale ~ {anchor:.3f} nats -> the 'mastered' reference"
+        )
         print("mastery:")
         print("  metric: target_margin_mean")
         print("  mode: either")
@@ -105,7 +109,9 @@ def main() -> int:
         print("\nNote: these are starting points. The 1B run should beat the best target")
         print("margin you saw above; set 'threshold' above that if you want true gains.")
     else:
-        print("\n[warn] no retention probes -> cannot anchor thresholds. Add split: retention probes.")
+        print(
+            "\n[warn] no retention probes -> cannot anchor thresholds. Add split: retention probes."
+        )
     return 0
 
 

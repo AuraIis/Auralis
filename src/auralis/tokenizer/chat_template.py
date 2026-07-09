@@ -135,12 +135,12 @@ def build_inference_prompt(
 
 __all__ = [
     "ASSISTANT_OPEN",
-    "ChatMessage",
     "DEFAULT_SYSTEM",
     "END",
-    "Role",
     "SYSTEM_OPEN",
     "USER_OPEN",
+    "ChatMessage",
+    "Role",
     "build_chat_prompt",
     "build_inference_prompt",
     "build_training_prompt",

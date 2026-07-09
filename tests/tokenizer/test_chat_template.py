@@ -20,8 +20,8 @@ from auralis.tokenizer.chat_template import (
     build_training_prompt,
 )
 
-
 # --- 1. Training vs. inference paths must be identical where they overlap ---
+
 
 def test_training_and_inference_agree_on_shared_prefix() -> None:
     """The shared prefix (system + user turns) must be byte-identical."""
@@ -57,6 +57,7 @@ def test_training_includes_end_after_assistant_turn() -> None:
 
 # --- 2. Default system prompt is auto-injected, consistently ---
 
+
 def test_default_system_injected_when_missing() -> None:
     messages = [{"role": "user", "content": "Hi"}]
     inf = build_inference_prompt(messages)
@@ -74,6 +75,7 @@ def test_explicit_system_is_respected() -> None:
 
 
 # --- 3. Round-trip: the same message list must produce the same bytes ---
+
 
 def test_identical_inputs_produce_identical_outputs() -> None:
     messages = [
@@ -97,6 +99,7 @@ def test_dataclass_and_dict_inputs_are_equivalent() -> None:
 
 # --- 4. Role validation and edge cases ---
 
+
 def test_training_requires_trailing_assistant() -> None:
     with pytest.raises(ValueError):
         build_training_prompt([{"role": "user", "content": "Hi"}])
@@ -104,10 +107,12 @@ def test_training_requires_trailing_assistant() -> None:
 
 def test_inference_requires_trailing_user() -> None:
     with pytest.raises(ValueError):
-        build_inference_prompt([
-            {"role": "user", "content": "Hi"},
-            {"role": "assistant", "content": "Hello"},
-        ])
+        build_inference_prompt(
+            [
+                {"role": "user", "content": "Hi"},
+                {"role": "assistant", "content": "Hello"},
+            ]
+        )
 
 
 def test_unknown_role_rejected() -> None:
@@ -116,6 +121,7 @@ def test_unknown_role_rejected() -> None:
 
 
 # --- 5. Pinned byte-level snapshot — v1-bug tripwire ---
+
 
 def test_pinned_snapshot_inference() -> None:
     """Explicit byte-level pin. Do NOT edit unless you are intentionally
@@ -126,9 +132,7 @@ def test_pinned_snapshot_inference() -> None:
         default_system="Du bist Helix.",
     )
     expected = (
-        f"{SYSTEM_OPEN}\nDu bist Helix.\n{END}\n"
-        f"{USER_OPEN}\nHallo\n{END}\n"
-        f"{ASSISTANT_OPEN}\n"
+        f"{SYSTEM_OPEN}\nDu bist Helix.\n{END}\n{USER_OPEN}\nHallo\n{END}\n{ASSISTANT_OPEN}\n"
     )
     assert prompt == expected, f"Snapshot diverged:\ngot : {prompt!r}\nwant: {expected!r}"
 

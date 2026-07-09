@@ -11,9 +11,8 @@ Defaults to intfloat/multilingual-e5-large, which expects a 'passage: ' prefix
 for documents. The SAME embedder config must be used at train and score time —
 the trained artifact stores emb_model / prefix / max_length so they stay in sync.
 """
-from __future__ import annotations
 
-from typing import List, Optional
+from __future__ import annotations
 
 import torch
 
@@ -26,9 +25,9 @@ class EduEmbedder:
         self,
         model_name: str = DEFAULT_MODEL,
         prefix: str = DEFAULT_PREFIX,
-        device: Optional[str] = None,
+        device: str | None = None,
         max_length: int = 512,
-        dtype: Optional[torch.dtype] = None,
+        dtype: torch.dtype | None = None,
     ):
         from transformers import AutoModel, AutoTokenizer
 
@@ -53,15 +52,20 @@ class EduEmbedder:
         return summed / counts
 
     @torch.no_grad()
-    def embed(self, texts: List[str], batch_size: int = 32, progress_every: int = 0) -> torch.Tensor:
+    def embed(
+        self, texts: list[str], batch_size: int = 32, progress_every: int = 0
+    ) -> torch.Tensor:
         """Return an (N, dim) float32 CPU tensor of L2-normalised embeddings."""
         out = []
         n = len(texts)
         for i in range(0, n, batch_size):
             batch = [self.prefix + (t or "") for t in texts[i : i + batch_size]]
             enc = self.tok(
-                batch, padding=True, truncation=True,
-                max_length=self.max_length, return_tensors="pt",
+                batch,
+                padding=True,
+                truncation=True,
+                max_length=self.max_length,
+                return_tensors="pt",
             ).to(self.device)
             res = self.model(**enc)
             emb = self._mean_pool(res.last_hidden_state, enc["attention_mask"])

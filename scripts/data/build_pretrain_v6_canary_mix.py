@@ -7,9 +7,9 @@ import argparse
 import json
 import re
 from collections import Counter
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable
-
+from typing import Any
 
 BAD_RE = re.compile(
     r"\[(?:deleted|removed)\]|onlyfans|discord\.gg|telegram|whatsapp|free karma|"
@@ -18,12 +18,22 @@ BAD_RE = re.compile(
     re.I,
 )
 URL_RE = re.compile(r"https?://|www\.", re.I)
-HTML_RE = re.compile(r"<\s*/?\s*(html|body|div|script|style|iframe)\b|href=|&(?:amp|gt|lt|quot);", re.I)
-COMMERCE_RE = re.compile(r"\b(warenkorb|rabatt|gutschein|checkout|kaufen|shop|preis|automarkt)\b", re.I)
-BOILER_RE = re.compile(r"\b(cookie|privacy policy|datenschutz|impressum|all rights reserved)\b", re.I)
-LIST_TABLE_RE = re.compile(r"(^|\s)([-*\u2022]|\d{1,3}[.)])\s+|\|\s*[-:]+\s*\||\t|\.{3,}\s*\d{1,5}", re.I)
+HTML_RE = re.compile(
+    r"<\s*/?\s*(html|body|div|script|style|iframe)\b|href=|&(?:amp|gt|lt|quot);", re.I
+)
+COMMERCE_RE = re.compile(
+    r"\b(warenkorb|rabatt|gutschein|checkout|kaufen|shop|preis|automarkt)\b", re.I
+)
+BOILER_RE = re.compile(
+    r"\b(cookie|privacy policy|datenschutz|impressum|all rights reserved)\b", re.I
+)
+LIST_TABLE_RE = re.compile(
+    r"(^|\s)([-*\u2022]|\d{1,3}[.)])\s+|\|\s*[-:]+\s*\||\t|\.{3,}\s*\d{1,5}", re.I
+)
 EN_SENT_RE = re.compile(r"\b(the|and|you|write|explain|answer|question|therefore|because)\b", re.I)
-DE_SENT_RE = re.compile(r"\b(der|die|das|und|ist|nicht|frage|antwort|schritt|erklaere|erkl\u00e4re)\b", re.I)
+DE_SENT_RE = re.compile(
+    r"\b(der|die|das|und|ist|nicht|frage|antwort|schritt|erklaere|erkl\u00e4re)\b", re.I
+)
 SECRET_RE = re.compile(r"api[_-]?key|secret|password|private key|token", re.I)
 
 
@@ -137,8 +147,16 @@ def keep_code(obj: dict[str, Any]) -> tuple[str | None, str | None]:
 
 SOURCES = {
     "oasst1_de": ("oasst1_de/oasst1_de.jsonl", "oasst1_de", keep_oasst),
-    "fineweb2_deu_latn": ("fineweb2_deu_latn/fineweb2_deu_latn.jsonl", "fineweb2_deu_latn", keep_fineweb),
-    "openmathinstruct2": ("openmathinstruct2_capped/openmathinstruct2_capped.jsonl", "openmathinstruct2", keep_openmath),
+    "fineweb2_deu_latn": (
+        "fineweb2_deu_latn/fineweb2_deu_latn.jsonl",
+        "fineweb2_deu_latn",
+        keep_fineweb,
+    ),
+    "openmathinstruct2": (
+        "openmathinstruct2_capped/openmathinstruct2_capped.jsonl",
+        "openmathinstruct2",
+        keep_openmath,
+    ),
     "codeparrot_permissive": (
         "codeparrot_clean_python_permissive/codeparrot_clean_python_permissive.jsonl",
         "codeparrot_permissive",
@@ -149,8 +167,12 @@ SOURCES = {
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input-dir", type=Path, default=Path("data/training/pretrain_v6_candidates"))
-    parser.add_argument("--out-dir", type=Path, default=Path("data/training/pretrain_v6_canary_strict"))
+    parser.add_argument(
+        "--input-dir", type=Path, default=Path("data/training/pretrain_v6_candidates")
+    )
+    parser.add_argument(
+        "--out-dir", type=Path, default=Path("data/training/pretrain_v6_canary_strict")
+    )
     parser.add_argument("--manifest", type=Path, default=None)
     parser.add_argument("--max-per-source", type=int, default=5000)
     return parser.parse_args()
@@ -171,9 +193,10 @@ def main() -> None:
     }
     total_docs = 0
     total_bytes = 0
-    with out_path.open("w", encoding="utf-8", newline="\n") as out, reject_path.open(
-        "w", encoding="utf-8", newline="\n"
-    ) as rejects:
+    with (
+        out_path.open("w", encoding="utf-8", newline="\n") as out,
+        reject_path.open("w", encoding="utf-8", newline="\n") as rejects,
+    ):
         for public_name, (rel_path, manifest_name, keeper) in SOURCES.items():
             path = args.input_dir / rel_path
             counts: Counter[str] = Counter()
@@ -192,7 +215,12 @@ def main() -> None:
                     if counts[f"reject_{reason}"] <= 5:
                         rejects.write(
                             json.dumps(
-                                {"source": public_name, "line_no": line_no, "reason": reason, "preview": str(obj)[:500]},
+                                {
+                                    "source": public_name,
+                                    "line_no": line_no,
+                                    "reason": reason,
+                                    "preview": str(obj)[:500],
+                                },
                                 ensure_ascii=False,
                                 sort_keys=True,
                             )
@@ -209,7 +237,9 @@ def main() -> None:
     stats["documents"] = total_docs
     stats["bytes"] = total_bytes
     stats["estimated_tokens_4bpt"] = int(total_bytes / 4)
-    (args.out_dir / "manifest.json").write_text(json.dumps(stats, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    (args.out_dir / "manifest.json").write_text(
+        json.dumps(stats, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
     print(json.dumps(stats, ensure_ascii=False, indent=2, sort_keys=True))
 
 

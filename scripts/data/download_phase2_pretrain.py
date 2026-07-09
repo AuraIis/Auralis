@@ -19,15 +19,14 @@ Run alle drei parallel im background:
     nohup python download_phase2_pretrain.py --source smollm_python_edu  > logs/dl_smollm.log   2>&1 &
     nohup python download_phase2_pretrain.py --source fineweb_10bt       > logs/dl_fineweb.log  2>&1 &
 """
+
 from __future__ import annotations
 
 import argparse
 import json
 import os
-import sys
 import time
 from pathlib import Path
-
 
 # --- ROOT: where the downloads land. -----------------------------------------
 # The container runs with /staging mounted to disk7, the host sees /mnt/disk7
@@ -139,7 +138,10 @@ def write_jsonl_to_text(out_file: Path, ds_iter, content_field: str, max_bytes: 
             docs += 1
             if time.time() - last_log > 30:
                 rate = bytes_written / max(time.time() - t0, 0.01) / 1e6
-                print(f"  [{out_file.name}] {docs:,} docs, {bytes_written/1e9:.2f} GB, {rate:.1f} MB/s", flush=True)
+                print(
+                    f"  [{out_file.name}] {docs:,} docs, {bytes_written / 1e9:.2f} GB, {rate:.1f} MB/s",
+                    flush=True,
+                )
                 last_log = time.time()
             if max_bytes and bytes_written >= max_bytes:
                 print(f"  [{out_file.name}] reached max_bytes cap — stopping", flush=True)
@@ -147,7 +149,9 @@ def write_jsonl_to_text(out_file: Path, ds_iter, content_field: str, max_bytes: 
     return docs, bytes_written, skipped
 
 
-def manifest(out_dir: Path, src: str, docs: int, bytes_out: int, started: float, skipped: int = 0, **extra):
+def manifest(
+    out_dir: Path, src: str, docs: int, bytes_out: int, started: float, skipped: int = 0, **extra
+):
     info = {
         "source": src,
         "documents": docs,
@@ -179,8 +183,8 @@ def _dl_stack_v2_lang(out_subdir: str, languages: list[str], max_bytes: int):
     Language tokens are lower-case in starcoderdata, but we accept the original
     capitalisation for backward compatibility and lower-case them here.
     """
-    from huggingface_hub import HfApi, hf_hub_download
     import pyarrow.parquet as pq
+    from huggingface_hub import HfApi, hf_hub_download
 
     out_dir = ROOT / out_subdir
     out_file = out_dir / f"{out_subdir}.txt"
@@ -199,7 +203,9 @@ def _dl_stack_v2_lang(out_subdir: str, languages: list[str], max_bytes: int):
     with out_file.open("w", encoding="utf-8", buffering=1024 * 1024) as f:
         for lang in languages:
             lang_lc = lang.lower()
-            lang_files = sorted(p for p in repo_files if p.startswith(f"{lang_lc}/") and p.endswith(".parquet"))
+            lang_files = sorted(
+                p for p in repo_files if p.startswith(f"{lang_lc}/") and p.endswith(".parquet")
+            )
             print(f"  --- {lang} ({len(lang_files)} parquet files) ---", flush=True)
             if not lang_files:
                 print(f"  WARN: no parquet files for language {lang_lc!r}", flush=True)
@@ -236,7 +242,10 @@ def _dl_stack_v2_lang(out_subdir: str, languages: list[str], max_bytes: int):
                         total_docs += 1
                         if total_docs % 10000 == 0:
                             rate = total_bytes / max(time.time() - t0, 0.01) / 1e6
-                            print(f"  [{out_file.name}] {total_docs:,} docs, {total_bytes/1e9:.2f} GB, {rate:.1f} MB/s, skipped {total_skipped:,}", flush=True)
+                            print(
+                                f"  [{out_file.name}] {total_docs:,} docs, {total_bytes / 1e9:.2f} GB, {rate:.1f} MB/s, skipped {total_skipped:,}",
+                                flush=True,
+                            )
                         if total_bytes >= max_bytes:
                             break
                     if total_bytes >= max_bytes:
@@ -251,9 +260,18 @@ def _dl_stack_v2_lang(out_subdir: str, languages: list[str], max_bytes: int):
             if total_bytes >= max_bytes:
                 break
 
-    manifest(out_dir, f"bigcode/starcoderdata [{'+'.join(languages)}]",
-             total_docs, total_bytes, t0, total_skipped, languages=languages)
-    print(f"=== DONE: {total_docs:,} docs, {total_bytes/1e9:.1f} GB in {(time.time()-t0)/60:.1f} min ===")
+    manifest(
+        out_dir,
+        f"bigcode/starcoderdata [{'+'.join(languages)}]",
+        total_docs,
+        total_bytes,
+        t0,
+        total_skipped,
+        languages=languages,
+    )
+    print(
+        f"=== DONE: {total_docs:,} docs, {total_bytes / 1e9:.1f} GB in {(time.time() - t0) / 60:.1f} min ==="
+    )
 
 
 def dl_the_stack_v2_python():
@@ -285,7 +303,9 @@ def dl_smollm_python_edu():
     )
     docs, bytes_out, skipped = write_jsonl_to_text(out_file, ds, content_field="text")
     manifest(out_dir, "HuggingFaceTB/smollm-corpus [python-edu]", docs, bytes_out, t0, skipped)
-    print(f"=== DONE: {docs:,} docs, {bytes_out/1e9:.1f} GB in {(time.time()-t0)/60:.1f} min ===")
+    print(
+        f"=== DONE: {docs:,} docs, {bytes_out / 1e9:.1f} GB in {(time.time() - t0) / 60:.1f} min ==="
+    )
 
 
 def dl_fineweb_10bt():
@@ -302,18 +322,26 @@ def dl_fineweb_10bt():
     )
     docs, bytes_out, skipped = write_jsonl_to_text(out_file, ds, content_field="text")
     manifest(out_dir, "HuggingFaceFW/fineweb [sample-10BT]", docs, bytes_out, t0, skipped)
-    print(f"=== DONE: {docs:,} docs, {bytes_out/1e9:.1f} GB in {(time.time()-t0)/60:.1f} min ===")
+    print(
+        f"=== DONE: {docs:,} docs, {bytes_out / 1e9:.1f} GB in {(time.time() - t0) / 60:.1f} min ==="
+    )
 
 
-def _dl_parquet_corpus(out_subdir: str, repo_id: str, file_prefix: str,
-                      content_field: str, max_bytes: int, label: str | None = None):
+def _dl_parquet_corpus(
+    out_subdir: str,
+    repo_id: str,
+    file_prefix: str,
+    content_field: str,
+    max_bytes: int,
+    label: str | None = None,
+):
     """Generic parquet-corpus downloader using hf_hub_download per file.
 
     Used for non-streaming, non-script-loader datasets where each parquet is a
     self-contained chunk (fineweb-2, wikipedia, starcoderdata, …).
     """
-    from huggingface_hub import HfApi, hf_hub_download
     import pyarrow.parquet as pq
+    from huggingface_hub import HfApi, hf_hub_download
 
     out_dir = ROOT / out_subdir
     out_file = out_dir / f"{out_subdir}.txt"
@@ -324,8 +352,9 @@ def _dl_parquet_corpus(out_subdir: str, repo_id: str, file_prefix: str,
 
     api = HfApi()
     repo_files = api.list_repo_files(repo_id=repo_id, repo_type="dataset")
-    target_files = sorted(p for p in repo_files
-                          if p.startswith(file_prefix) and p.endswith(".parquet"))
+    target_files = sorted(
+        p for p in repo_files if p.startswith(file_prefix) and p.endswith(".parquet")
+    )
     print(f"  {len(target_files)} parquet files matching prefix {file_prefix!r}", flush=True)
 
     total_docs = 0
@@ -359,7 +388,10 @@ def _dl_parquet_corpus(out_subdir: str, repo_id: str, file_prefix: str,
                     total_docs += 1
                     if total_docs % 10000 == 0:
                         rate = total_bytes / max(time.time() - t0, 0.01) / 1e6
-                        print(f"  [{out_file.name}] {total_docs:,} docs, {total_bytes/1e9:.2f} GB, {rate:.1f} MB/s, skipped {total_skipped:,}", flush=True)
+                        print(
+                            f"  [{out_file.name}] {total_docs:,} docs, {total_bytes / 1e9:.2f} GB, {rate:.1f} MB/s, skipped {total_skipped:,}",
+                            flush=True,
+                        )
                     if total_bytes >= max_bytes:
                         break
                 if total_bytes >= max_bytes:
@@ -370,8 +402,19 @@ def _dl_parquet_corpus(out_subdir: str, repo_id: str, file_prefix: str,
             except Exception:
                 pass
 
-    manifest(out_dir, label, total_docs, total_bytes, t0, total_skipped, repo_id=repo_id, file_prefix=file_prefix)
-    print(f"=== DONE: {total_docs:,} docs, {total_bytes/1e9:.1f} GB in {(time.time()-t0)/60:.1f} min ===")
+    manifest(
+        out_dir,
+        label,
+        total_docs,
+        total_bytes,
+        t0,
+        total_skipped,
+        repo_id=repo_id,
+        file_prefix=file_prefix,
+    )
+    print(
+        f"=== DONE: {total_docs:,} docs, {total_bytes / 1e9:.1f} GB in {(time.time() - t0) / 60:.1f} min ==="
+    )
 
 
 def dl_fineweb2_de():

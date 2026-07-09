@@ -7,6 +7,7 @@ source: we stream it, light-clean, and stop at a byte budget. Once edu-scored it
 competes with the other sources by score, so better HPLT docs naturally displace
 weaker docs from the kept pool.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -16,7 +17,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from scripts.data._common import (  # noqa: E402
+from scripts.data._common import (
     atomic_text_writer,
     check_free_space,
     clean_text,
@@ -44,8 +45,11 @@ def main() -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     check_free_space(out.parent, args.target_gb + 5.0)
 
-    print(f"streaming HPLT2.0_cleaned deu_Latn, skip={args.skip_docs:,}, "
-          f"target={args.target_gb}GB -> {out}", flush=True)
+    print(
+        f"streaming HPLT2.0_cleaned deu_Latn, skip={args.skip_docs:,}, "
+        f"target={args.target_gb}GB -> {out}",
+        flush=True,
+    )
     ds = load_dataset("HPLT/HPLT2.0_cleaned", name="deu_Latn", split="train", streaming=True)
     if args.skip_docs > 0:
         ds = ds.skip(args.skip_docs)
@@ -73,7 +77,9 @@ def main() -> None:
             written += len(line.encode("utf-8")) + 1
             docs += 1
             if args.progress_every and docs % args.progress_every == 0:
-                print(f"  written {docs:,} docs / {written/1e9:.2f} GB (seen {seen:,})", flush=True)
+                print(
+                    f"  written {docs:,} docs / {written / 1e9:.2f} GB (seen {seen:,})", flush=True
+                )
             if written >= target_bytes:
                 break
 
@@ -91,8 +97,9 @@ def main() -> None:
         "finished_at": now_iso(),
     }
     out.with_suffix(out.suffix + ".manifest.json").write_text(
-        json.dumps(manifest, indent=2), encoding="utf-8")
-    print(f"DONE docs={docs:,} bytes={written/1e9:.2f}GB", flush=True)
+        json.dumps(manifest, indent=2), encoding="utf-8"
+    )
+    print(f"DONE docs={docs:,} bytes={written / 1e9:.2f}GB", flush=True)
     sys.stdout.flush()
     os._exit(0)
 

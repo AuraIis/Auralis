@@ -30,15 +30,13 @@ Usage (from inside the container):
     python scripts/data/download_kaggle_seeds.py bulk \\
         --query "customer support" --license-class permissive --limit 5
 """
+
 from __future__ import annotations
 
 import argparse
 import json
-import os
-import shutil
 import subprocess
 import sys
-import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
@@ -151,7 +149,7 @@ class AuditEntry:
     slug: str
     license_literal: str
     license_class: str
-    decision: str                # "accepted" | "rejected"
+    decision: str  # "accepted" | "rejected"
     reason: str = ""
     files: list = field(default_factory=list)
     bytes_total: int = 0
@@ -186,7 +184,11 @@ def is_acceptable(license_literal: str, class_name: str) -> tuple[bool, str]:
     raw_lower = license_literal.lower()
     has_nc = ("-nc" in norm) or ("noncommercial" in raw_lower) or ("non-commercial" in raw_lower)
     has_sa = ("-sa" in norm) or ("share-alike" in raw_lower) or ("sharealike" in raw_lower)
-    has_nd = any(k in norm for k in ALWAYS_FORBIDDEN_KEYWORDS) or ("noderivatives" in raw_lower) or ("no-derivatives" in raw_lower)
+    has_nd = (
+        any(k in norm for k in ALWAYS_FORBIDDEN_KEYWORDS)
+        or ("noderivatives" in raw_lower)
+        or ("no-derivatives" in raw_lower)
+    )
 
     if has_nd:
         return False, "NoDerivatives forbidden (training is a derivative)"
@@ -232,17 +234,22 @@ def _run(cmd: list, capture: bool = True) -> tuple[int, str, str]:
     return proc.returncode, proc.stdout, proc.stderr
 
 
-def search_datasets(query: str, license_coarse: str = "cc",
-                    max_size: int | None = None,
-                    limit: int = 20) -> list:
+def search_datasets(
+    query: str, license_coarse: str = "cc", max_size: int | None = None, limit: int = 20
+) -> list:
     """Use kaggle CLI to search; returns list of dicts with at least
     {ref, title, size, lastUpdated}."""
     cmd = [
-        "kaggle", "datasets", "list",
-        "--search", query,
-        "--license", license_coarse,
+        "kaggle",
+        "datasets",
+        "list",
+        "--search",
+        query,
+        "--license",
+        license_coarse,
         "--csv",
-        "-p", "1",
+        "-p",
+        "1",
     ]
     if max_size is not None:
         cmd += ["--max-size", str(max_size)]
@@ -253,6 +260,7 @@ def search_datasets(query: str, license_coarse: str = "cc",
     # output (which uses commas inside title strings).
     import csv
     from io import StringIO
+
     rows = list(csv.DictReader(StringIO(out)))
     return rows[:limit]
 
@@ -290,18 +298,23 @@ def download_dataset(slug: str, out_dir: Path, unzip: bool = True) -> list:
 
 
 def cmd_search(args) -> None:
-    rows = search_datasets(args.query, license_coarse=args.kaggle_license,
-                           max_size=args.max_size_mb * 1024 * 1024 if args.max_size_mb else None,
-                           limit=args.limit)
-    print(f"\nfound {len(rows)} candidate(s) for query={args.query!r} "
-          f"under coarse={args.kaggle_license}, fine-class={args.license_class}\n")
+    rows = search_datasets(
+        args.query,
+        license_coarse=args.kaggle_license,
+        max_size=args.max_size_mb * 1024 * 1024 if args.max_size_mb else None,
+        limit=args.limit,
+    )
+    print(
+        f"\nfound {len(rows)} candidate(s) for query={args.query!r} "
+        f"under coarse={args.kaggle_license}, fine-class={args.license_class}\n"
+    )
     accepted = []
     for row in rows:
         slug = row.get("ref", "?")
         try:
             meta = get_metadata(slug)
             lic = meta.get("info", {}).get("licenses", [{}])[0].get("name", "")
-        except Exception as e:                   # noqa: BLE001
+        except Exception as e:
             lic = ""
             print(f"  ! {slug}  (metadata error: {e})")
             continue
@@ -310,7 +323,9 @@ def cmd_search(args) -> None:
         print(f"  [{mark}] {slug}")
         print(f"       license: {lic!r}  ({reason})")
         print(f"       title:   {row.get('title', '')}")
-        print(f"       size:    {row.get('size', '')}    updated: {row.get('lastUpdated', '')[:19]}")
+        print(
+            f"       size:    {row.get('size', '')}    updated: {row.get('lastUpdated', '')[:19]}"
+        )
         if ok:
             accepted.append(slug)
     print(f"\n{len(accepted)} dataset(s) pass {args.license_class!r} filter:")
@@ -341,8 +356,9 @@ def cmd_fetch(args) -> None:
         print(f"  REJECTED: {reason!r}  (license={lic!r})")
         # Write rejection audit too — useful evidence later.
         rej_path = out_root / f"{slug.replace('/', '__')}_REJECTED.json"
-        rej_path.write_text(json.dumps(asdict(audit), indent=2, ensure_ascii=False),
-                            encoding="utf-8")
+        rej_path.write_text(
+            json.dumps(asdict(audit), indent=2, ensure_ascii=False), encoding="utf-8"
+        )
         return
 
     print(f"  ACCEPTED: license={lic!r}")
@@ -351,16 +367,19 @@ def cmd_fetch(args) -> None:
     files = download_dataset(slug, dest, unzip=not args.no_unzip)
     audit.files = [f.name for f in files]
     audit.bytes_total = sum(f.stat().st_size for f in files)
-    (dest / "_audit.json").write_text(json.dumps(asdict(audit), indent=2, ensure_ascii=False),
-                                      encoding="utf-8")
-    print(f"  downloaded {len(files)} file(s), "
-          f"{audit.bytes_total / 1e6:.1f} MB to {dest}")
+    (dest / "_audit.json").write_text(
+        json.dumps(asdict(audit), indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+    print(f"  downloaded {len(files)} file(s), {audit.bytes_total / 1e6:.1f} MB to {dest}")
 
 
 def cmd_bulk(args) -> None:
-    rows = search_datasets(args.query, license_coarse=args.kaggle_license,
-                           max_size=args.max_size_mb * 1024 * 1024 if args.max_size_mb else None,
-                           limit=args.limit)
+    rows = search_datasets(
+        args.query,
+        license_coarse=args.kaggle_license,
+        max_size=args.max_size_mb * 1024 * 1024 if args.max_size_mb else None,
+        limit=args.limit,
+    )
     out_root = args.output_dir
     out_root.mkdir(parents=True, exist_ok=True)
 
@@ -382,45 +401,57 @@ def cmd_bulk(args) -> None:
                 accepted_count += 1
             else:
                 rejected_count += 1
-        except Exception as e:                  # noqa: BLE001
+        except Exception as e:
             print(f"  ! {slug} fetch error: {e}")
             rejected_count += 1
     print(f"\nbulk done: {accepted_count} fetched, {rejected_count} skipped/failed")
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description=__doc__,
-                                formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     sub = p.add_subparsers(dest="cmd", required=True)
 
     common = argparse.ArgumentParser(add_help=False)
-    common.add_argument("--license-class",
-                        choices=list(LICENSE_CLASSES),
-                        default="commercial",
-                        help="A=research, B=permissive, C=commercial-safe (default).")
-    common.add_argument("--kaggle-license", default="cc",
-                        choices=("cc", "gpl", "odb", "other", "all"),
-                        help="Coarse pre-filter passed to kaggle CLI.")
+    common.add_argument(
+        "--license-class",
+        choices=list(LICENSE_CLASSES),
+        default="commercial",
+        help="A=research, B=permissive, C=commercial-safe (default).",
+    )
+    common.add_argument(
+        "--kaggle-license",
+        default="cc",
+        choices=("cc", "gpl", "odb", "other", "all"),
+        help="Coarse pre-filter passed to kaggle CLI.",
+    )
     common.add_argument("--output-dir", type=Path, default=DEFAULT_OUT_DIR)
-    common.add_argument("--max-size-mb", type=int, default=None,
-                        help="Skip datasets larger than this many MB.")
-    common.add_argument("--no-unzip", action="store_true",
-                        help="Do not auto-unzip downloaded archives.")
+    common.add_argument(
+        "--max-size-mb", type=int, default=None, help="Skip datasets larger than this many MB."
+    )
+    common.add_argument(
+        "--no-unzip", action="store_true", help="Do not auto-unzip downloaded archives."
+    )
 
-    p_search = sub.add_parser("search", parents=[common],
-                              help="List datasets matching query (no download).")
+    p_search = sub.add_parser(
+        "search", parents=[common], help="List datasets matching query (no download)."
+    )
     p_search.add_argument("--query", required=True)
     p_search.add_argument("--limit", type=int, default=20)
     p_search.set_defaults(func=cmd_search)
 
-    p_fetch = sub.add_parser("fetch", parents=[common],
-                             help="Download one dataset by slug (license still checked).")
-    p_fetch.add_argument("--slug", required=True,
-                         help="owner/dataset-name (as shown on Kaggle URL).")
+    p_fetch = sub.add_parser(
+        "fetch", parents=[common], help="Download one dataset by slug (license still checked)."
+    )
+    p_fetch.add_argument(
+        "--slug", required=True, help="owner/dataset-name (as shown on Kaggle URL)."
+    )
     p_fetch.set_defaults(func=cmd_fetch)
 
-    p_bulk = sub.add_parser("bulk", parents=[common],
-                            help="Search + download all matching datasets.")
+    p_bulk = sub.add_parser(
+        "bulk", parents=[common], help="Search + download all matching datasets."
+    )
     p_bulk.add_argument("--query", required=True)
     p_bulk.add_argument("--limit", type=int, default=10)
     p_bulk.set_defaults(func=cmd_bulk)

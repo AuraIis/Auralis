@@ -14,17 +14,17 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import platform
 import re
 import shutil
 import socket
 import subprocess
 import time
+from collections.abc import Callable, Iterator
 from contextlib import nullcontext
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Iterator
+from typing import Any
 
 import torch
 import torch.nn as nn
@@ -33,12 +33,10 @@ from torch.optim.lr_scheduler import LambdaLR
 
 from auralis.adaptive.bpb import bits_per_byte, bpb_gap
 from auralis.training.health import (
-    AlertLevel,
     HealthConfig,
     HealthMonitor,
     HealthStop,
 )
-
 
 _AMP_DTYPES: dict[str, torch.dtype] = {
     "fp32": torch.float32,
@@ -51,21 +49,27 @@ _AMP_DTYPES: dict[str, torch.dtype] = {
 
 def _safe_log(logger: Callable[[dict[str, float], int], None]):
     """Wrap a metrics logger so a logging error never kills training."""
+
     def inner(metrics: dict[str, float], step: int) -> None:
         try:
             logger(metrics, step)
-        except Exception as e:                                 # noqa: BLE001
+        except Exception as e:
             # Very noisy to print every failure; emit the type once per call.
             print(f"  warn: metrics logger failed: {type(e).__name__}: {e}", flush=True)
+
     return inner
 
 
 def _git_sha(repo_root: Path) -> str:
     try:
-        return subprocess.check_output(
-            ["git", "-C", str(repo_root), "rev-parse", "HEAD"],
-            stderr=subprocess.DEVNULL,
-        ).decode().strip()
+        return (
+            subprocess.check_output(
+                ["git", "-C", str(repo_root), "rev-parse", "HEAD"],
+                stderr=subprocess.DEVNULL,
+            )
+            .decode()
+            .strip()
+        )
     except Exception:
         return "unknown"
 
@@ -172,9 +176,7 @@ class PretrainTrainer:
         # Checkpoints stay DDP-agnostic: save/load the underlying module so a
         # multi-GPU checkpoint reloads single-GPU (no "module." key prefix).
         self._core_model = (
-            model.module
-            if isinstance(model, nn.parallel.DistributedDataParallel)
-            else model
+            model.module if isinstance(model, nn.parallel.DistributedDataParallel) else model
         )
 
         # Unpack knobs that get hit every step.
@@ -238,9 +240,11 @@ class PretrainTrainer:
 
         # ---- Health monitor (auto-stop guards) ----
         mon_cfg = (config.get("monitoring") or {}).get("health") or {}
-        self.health = HealthMonitor(HealthConfig(
-            **{k: v for k, v in mon_cfg.items() if k in HealthConfig.__dataclass_fields__}
-        ))
+        self.health = HealthMonitor(
+            HealthConfig(
+                **{k: v for k, v in mon_cfg.items() if k in HealthConfig.__dataclass_fields__}
+            )
+        )
         # Tolerance (nats) below which a val change is treated as noise, not a
         # real improvement OR a real rise. Stops the guard tripping on the
         # normal sub-noise wobble of a converged checkpoint. 0.0 = exact.
@@ -255,15 +259,22 @@ class PretrainTrainer:
         repo_root = Path(__file__).resolve().parents[3]
         self.metadata = RunMetadata(
             git_sha=str(_git_sha(repo_root)),
-            config_sha16=hashlib.sha256(json.dumps(config, sort_keys=True, default=str)
-                                        .encode("utf-8")).hexdigest()[:16],
+            config_sha16=hashlib.sha256(
+                json.dumps(config, sort_keys=True, default=str).encode("utf-8")
+            ).hexdigest()[:16],
             config_path=str(config.get("_source_path", "")),
-            tokenizer_sha16=str(_sha256_short(Path(
+            tokenizer_sha16=str(
+                _sha256_short(
+                    Path(
+                        config.get("data", {}).get("tokenizer_path")
+                        or repo_root / "tokenizer" / "helix_v2_tokenizer.model"
+                    )
+                )
+            ),
+            tokenizer_path=str(
                 config.get("data", {}).get("tokenizer_path")
                 or repo_root / "tokenizer" / "helix_v2_tokenizer.model"
-            ))),
-            tokenizer_path=str(config.get("data", {}).get("tokenizer_path")
-                               or repo_root / "tokenizer" / "helix_v2_tokenizer.model"),
+            ),
             hostname=str(socket.gethostname()),
             python_version=str(platform.python_version()),
             # torch.__version__ is a TorchVersion object; str() makes it yaml-safe.
@@ -391,7 +402,9 @@ class PretrainTrainer:
                     metrics["train/vram_total_gb"] = total_vram_gb
                     # VRAM-pressure alert (may request STOP)
                     for level, msg in self.health.observe_vram(
-                        metrics["train/vram_alloc_gb"], total_vram_gb, self.state.step,
+                        metrics["train/vram_alloc_gb"],
+                        total_vram_gb,
+                        self.state.step,
                     ):
                         print(f"  health[{level.value}]: {msg}", flush=True)
 
@@ -400,13 +413,22 @@ class PretrainTrainer:
                     hours = self.state.wall_clock_seconds / 3600.0
                     spent = hours * self._cost_per_gpu_hour
                     steps_per_hour = self.state.step / max(hours, 1e-9)
-                    eta_hours = max(0, (self._total_steps - self.state.step)) / max(steps_per_hour, 1e-9)
+                    eta_hours = max(0, (self._total_steps - self.state.step)) / max(
+                        steps_per_hour, 1e-9
+                    )
                     metrics["cost/usd_spent"] = spent
-                    metrics["cost/usd_projected_total"] = spent + eta_hours * self._cost_per_gpu_hour
+                    metrics["cost/usd_projected_total"] = (
+                        spent + eta_hours * self._cost_per_gpu_hour
+                    )
                     metrics["cost/usd_per_1k_steps"] = (spent / max(self.state.step, 1)) * 1000
-                    metrics["cost/usd_per_1b_tokens"] = (spent / max(self.state.tokens_seen, 1)) * 1e9
+                    metrics["cost/usd_per_1b_tokens"] = (
+                        spent / max(self.state.tokens_seen, 1)
+                    ) * 1e9
                     metrics["cost/eta_hours"] = eta_hours
-                    if self._cost_budget > 0 and metrics["cost/usd_projected_total"] > self._cost_budget:
+                    if (
+                        self._cost_budget > 0
+                        and metrics["cost/usd_projected_total"] > self._cost_budget
+                    ):
                         # Not a hard stop by default — alert level. Raise to STOP
                         # by setting monitoring.health.grad_explosion_threshold=0 etc.
                         self.state.alerts.append(
@@ -429,8 +451,8 @@ class PretrainTrainer:
                     print(
                         f"step {self.state.step:6d} | loss {avg_loss:6.4f} | "
                         f"lr {lr:.2e} | grad_norm {float(grad_norm):5.2f} | "
-                        f"tok/s {tps/1e3:6.1f}k | "
-                        f"data {metrics['train/data_frac']*100:4.1f}%"
+                        f"tok/s {tps / 1e3:6.1f}k | "
+                        f"data {metrics['train/data_frac'] * 100:4.1f}%"
                         f"{extra}",
                         flush=True,
                     )
@@ -511,8 +533,7 @@ class PretrainTrainer:
         max_batches = int(eval_cfg.get("max_val_batches", 50))
         per_lang_batches = int(eval_cfg.get("per_language_batches", 8))
         tokens_per_byte = {
-            str(k): float(v)
-            for k, v in (eval_cfg.get("tokens_per_byte") or {}).items()
+            str(k): float(v) for k, v in (eval_cfg.get("tokens_per_byte") or {}).items()
         }
 
         metrics: dict[str, float] = {}
@@ -557,16 +578,16 @@ class PretrainTrainer:
                     if lang in tokens_per_byte:
                         metrics[f"eval/bpb/{lang}"] = bits_per_byte(lang_val, tokens_per_byte[lang])
             bpbs = {
-                k.rsplit("/", 1)[-1]: v
-                for k, v in metrics.items()
-                if k.startswith("eval/bpb/")
+                k.rsplit("/", 1)[-1]: v for k, v in metrics.items() if k.startswith("eval/bpb/")
             }
             if len(bpbs) >= 2:
                 metrics["eval/bpb_gap_max"] = bpb_gap(bpbs)
 
         self.model.train()
         self.log(metrics, self.state.step)
-        pretty = " ".join(f"{k.removeprefix('eval/').replace('/', '_')}={v:.3f}" for k, v in metrics.items())
+        pretty = " ".join(
+            f"{k.removeprefix('eval/').replace('/', '_')}={v:.3f}" for k, v in metrics.items()
+        )
         print(f"  eval @ step {self.state.step}: {pretty}", flush=True)
         for level, msg in self.health.observe_bpb(metrics, self.state.step):
             print(f"  health[{level.value}]: {msg}", flush=True)
@@ -708,8 +729,7 @@ class PretrainTrainer:
         # Ckpt-write anomaly detection (over rolling median)
         for level, msg in self.health.observe_checkpoint_write(write_seconds, self.state.step):
             print(f"  health[{level.value}]: {msg}", flush=True)
-        note = f"  ckpt {name} written in {write_seconds:.1f}s" \
-               f" ({path.stat().st_size/1e9:.2f} GB)"
+        note = f"  ckpt {name} written in {write_seconds:.1f}s ({path.stat().st_size / 1e9:.2f} GB)"
         if backup_ran:
             note += " + backup OK"
         print(note, flush=True)
@@ -776,8 +796,11 @@ class PretrainTrainer:
             if rng.get("python") is not None:
                 random.setstate(rng["python"])
             cuda_rng = rng.get("cuda")
-            if (cuda_rng is not None and torch.cuda.is_available()
-                    and len(cuda_rng) == torch.cuda.device_count()):
+            if (
+                cuda_rng is not None
+                and torch.cuda.is_available()
+                and len(cuda_rng) == torch.cuda.device_count()
+            ):
                 torch.cuda.set_rng_state_all(cuda_rng)
         except Exception as exc:  # RNG mismatch must not block a resume
             print(f"  warn: could not fully restore RNG state: {exc}", flush=True)

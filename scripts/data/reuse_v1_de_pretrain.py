@@ -31,9 +31,9 @@ import argparse
 import hashlib
 import json
 import sys
+from collections.abc import Iterator
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Iterator
 
 from tqdm import tqdm
 
@@ -191,15 +191,20 @@ def run_reuse(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--config", type=Path, default=None)
     parser.add_argument("--preset", choices=list(PRESETS), default="deduped_only")
-    parser.add_argument("--dedup", action=argparse.BooleanOptionalAction, default=None,
-                        help="Content-hash dedup. Default: auto (on unless preset is deduped_only).")
+    parser.add_argument(
+        "--dedup",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Content-hash dedup. Default: auto (on unless preset is deduped_only).",
+    )
     parser.add_argument("--min-len", type=int, default=300)
     parser.add_argument("--max-len", type=int, default=100_000)
-    parser.add_argument("--dry", action="store_true",
-                        help="Count docs/bytes but write nothing.")
+    parser.add_argument("--dry", action="store_true", help="Count docs/bytes but write nothing.")
     parser.add_argument("--required-free-gb", type=float, default=15.0)
     args = parser.parse_args()
 
@@ -235,13 +240,14 @@ def main() -> None:
 
     if not args.dry:
         manifest_path = output_path.with_suffix(".txt.manifest.json")
-        manifest_path.write_text(json.dumps(asdict(stats), ensure_ascii=False, indent=2),
-                                 encoding="utf-8")
+        manifest_path.write_text(
+            json.dumps(asdict(stats), ensure_ascii=False, indent=2), encoding="utf-8"
+        )
         print(f"\nManifest: {manifest_path}")
 
     print("\n=== Summary ===")
     print(f"  docs_written   : {stats.docs_written:>10,}")
-    print(f"  bytes_written  : {stats.bytes_written/1e9:>10.2f} GB")
+    print(f"  bytes_written  : {stats.bytes_written / 1e9:>10.2f} GB")
     print(f"  docs_duplicate : {stats.docs_duplicate:>10,}")
     print(f"  docs_too_short : {stats.docs_too_short:>10,}")
     print(f"  docs_too_long  : {stats.docs_too_long:>10,}")

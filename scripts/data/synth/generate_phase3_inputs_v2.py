@@ -14,6 +14,7 @@ Usage:
         --output raw/sft/synth/inputs/phase3_batch2.jsonl \\
         --seed 43
 """
+
 from __future__ import annotations
 
 import argparse
@@ -285,25 +286,82 @@ REFACTOR_TASKS = [
 
 DEBUG_TASKS = [
     ("Find the bug:", "```python\ndef avg(nums): return sum(nums) / len(nums) - 1\n```"),
-    ("Find the bug:", "```python\ndef factorial(n):\n    result = 0\n    for i in range(1, n+1):\n        result *= i\n    return result\n```"),
-    ("Find the bug:", "```python\ndef contains_duplicates(lst):\n    return len(lst) != len(set(lst))\n```"),
-    ("Find the bug:", "```python\ndef binary_search(arr, target):\n    lo, hi = 0, len(arr)\n    while lo < hi:\n        mid = (lo + hi) // 2\n        if arr[mid] < target: lo = mid\n        elif arr[mid] > target: hi = mid\n        else: return mid\n    return -1\n```"),
-    ("Find the bug:", "```python\ndef parse_int(s, default=0):\n    if s.isdigit():\n        return int(s)\n    return default\n```"),
-    ("Find the bug:", "```python\ndef merge_dicts(*dicts):\n    result = {}\n    for d in dicts:\n        result.update(d)\n```"),
-    ("Find the bug:", "```python\nasync def fetch_all(urls):\n    results = []\n    for url in urls:\n        results.append(await fetch(url))\n    return results\n```"),
-    ("Find the bug:", "```python\ndef strip_extension(filename):\n    return filename.split('.')[0]\n```"),
-    ("Find the bug:", "```python\ndef remove_first_match(lst, x):\n    for item in lst:\n        if item == x:\n            lst.remove(item)\n            return\n```"),
-    ("Find the bug:", "```python\ndef days_between(d1_str, d2_str):\n    d1 = datetime.strptime(d1_str, '%Y-%m-%d')\n    d2 = datetime.strptime(d2_str, '%d-%m-%Y')\n    return (d2 - d1).days\n```"),
-    ("Find the bug:", "```python\ndef get_user(uid):\n    cursor.execute('SELECT * FROM users WHERE id=' + str(uid))\n    return cursor.fetchone()\n```"),
-    ("Find the bug:", "```python\nclass Counter:\n    count = 0\n    def increment(self):\n        Counter.count += 1\n```"),
-    ("Find the bug:", "```python\ndef tax(amount, rate=None):\n    if rate is None:\n        rate = []\n    rate.append(amount * 0.19)\n    return rate\n```"),
-    ("Find the bug:", "```python\ndef batch_iter(items, n):\n    for i in range(0, len(items), n):\n        yield items[i:i+n+1]\n```"),
-    ("Find the bug:", "```python\ndef reverse_words(s):\n    words = s.split()\n    return ' '.join(words.reverse())\n```"),
-    ("Find the bug:", "```python\ndef average(nums):\n    if not nums:\n        return None\n    return sum(nums) / len(nums)\n# subtle: integer division on Python 2?\n```"),
-    ("Find the bug:", "```python\ndef get_or_create(d, key):\n    if not d.get(key):\n        d[key] = []\n    return d[key]\n# bug: was wenn key existiert mit value 0 oder ''?\n```"),
-    ("Find the bug:", "```python\nfor i, item in enumerate(items):\n    if item.expired:\n        del items[i]\n```"),
-    ("Find the bug:", "```python\nimport threading\ncounter = 0\ndef inc():\n    global counter\n    counter += 1\n# ohne lock — race condition\n```"),
-    ("Find the bug:", "```python\ndef serialize(d):\n    return json.dumps(d, default=str)\n# subtle: bei dict mit datetime keys verhalten?\n```"),
+    (
+        "Find the bug:",
+        "```python\ndef factorial(n):\n    result = 0\n    for i in range(1, n+1):\n        result *= i\n    return result\n```",
+    ),
+    (
+        "Find the bug:",
+        "```python\ndef contains_duplicates(lst):\n    return len(lst) != len(set(lst))\n```",
+    ),
+    (
+        "Find the bug:",
+        "```python\ndef binary_search(arr, target):\n    lo, hi = 0, len(arr)\n    while lo < hi:\n        mid = (lo + hi) // 2\n        if arr[mid] < target: lo = mid\n        elif arr[mid] > target: hi = mid\n        else: return mid\n    return -1\n```",
+    ),
+    (
+        "Find the bug:",
+        "```python\ndef parse_int(s, default=0):\n    if s.isdigit():\n        return int(s)\n    return default\n```",
+    ),
+    (
+        "Find the bug:",
+        "```python\ndef merge_dicts(*dicts):\n    result = {}\n    for d in dicts:\n        result.update(d)\n```",
+    ),
+    (
+        "Find the bug:",
+        "```python\nasync def fetch_all(urls):\n    results = []\n    for url in urls:\n        results.append(await fetch(url))\n    return results\n```",
+    ),
+    (
+        "Find the bug:",
+        "```python\ndef strip_extension(filename):\n    return filename.split('.')[0]\n```",
+    ),
+    (
+        "Find the bug:",
+        "```python\ndef remove_first_match(lst, x):\n    for item in lst:\n        if item == x:\n            lst.remove(item)\n            return\n```",
+    ),
+    (
+        "Find the bug:",
+        "```python\ndef days_between(d1_str, d2_str):\n    d1 = datetime.strptime(d1_str, '%Y-%m-%d')\n    d2 = datetime.strptime(d2_str, '%d-%m-%Y')\n    return (d2 - d1).days\n```",
+    ),
+    (
+        "Find the bug:",
+        "```python\ndef get_user(uid):\n    cursor.execute('SELECT * FROM users WHERE id=' + str(uid))\n    return cursor.fetchone()\n```",
+    ),
+    (
+        "Find the bug:",
+        "```python\nclass Counter:\n    count = 0\n    def increment(self):\n        Counter.count += 1\n```",
+    ),
+    (
+        "Find the bug:",
+        "```python\ndef tax(amount, rate=None):\n    if rate is None:\n        rate = []\n    rate.append(amount * 0.19)\n    return rate\n```",
+    ),
+    (
+        "Find the bug:",
+        "```python\ndef batch_iter(items, n):\n    for i in range(0, len(items), n):\n        yield items[i:i+n+1]\n```",
+    ),
+    (
+        "Find the bug:",
+        "```python\ndef reverse_words(s):\n    words = s.split()\n    return ' '.join(words.reverse())\n```",
+    ),
+    (
+        "Find the bug:",
+        "```python\ndef average(nums):\n    if not nums:\n        return None\n    return sum(nums) / len(nums)\n# subtle: integer division on Python 2?\n```",
+    ),
+    (
+        "Find the bug:",
+        "```python\ndef get_or_create(d, key):\n    if not d.get(key):\n        d[key] = []\n    return d[key]\n# bug: was wenn key existiert mit value 0 oder ''?\n```",
+    ),
+    (
+        "Find the bug:",
+        "```python\nfor i, item in enumerate(items):\n    if item.expired:\n        del items[i]\n```",
+    ),
+    (
+        "Find the bug:",
+        "```python\nimport threading\ncounter = 0\ndef inc():\n    global counter\n    counter += 1\n# ohne lock — race condition\n```",
+    ),
+    (
+        "Find the bug:",
+        "```python\ndef serialize(d):\n    return json.dumps(d, default=str)\n# subtle: bei dict mit datetime keys verhalten?\n```",
+    ),
 ]
 
 # ---------------------------------------------------------------------------
@@ -311,44 +369,132 @@ DEBUG_TASKS = [
 # ---------------------------------------------------------------------------
 
 MATH_TEMPLATES = [
-    ("Anna hat {a} Tüten mit je {b} Bonbons. Sie gibt {frac} aller Bonbons an ihre Schwester. Wie viele behält sie?", ["1/3", "1/4", "1/2", "2/5", "3/7"]),
+    (
+        "Anna hat {a} Tüten mit je {b} Bonbons. Sie gibt {frac} aller Bonbons an ihre Schwester. Wie viele behält sie?",
+        ["1/3", "1/4", "1/2", "2/5", "3/7"],
+    ),
     ("Ein Zug fährt {h1}h mit {v1} km/h, dann {h2}h mit {v2} km/h. Wie viele km insgesamt?", None),
-    ("Eine Pizza kostet {p}€, ein Getränk {g}€. Eine Familie bestellt {n_p} Pizzen und {n_g} Getränke. Wie viel kostet das gesamt?", None),
-    ("In einer Klasse mit {n} Schülern sind {p}% Mädchen. Wie viele Jungen sind in der Klasse?", None),
-    ("Ein Auto verbraucht im Schnitt {v} Liter pro 100 km. Wie viel Benzin braucht es für eine Strecke von {d} km?", None),
-    ("Ein Kapital von {k}€ wird mit {r}% jährlich verzinst. Wie viel Zinsen nach {y} Jahren Zinseszins?", None),
-    ("Eine Wand ist {w} m breit und {h} m hoch. Eine Tapetenrolle deckt {f} m². Wie viele Rollen braucht man (aufrunden)?", None),
-    ("Ein Rezept für {orig} Personen braucht {x} g Mehl. Wie viel Mehl für {target} Personen?", None),
-    ("Auf einer Karte 1:{scale} sind zwei Städte {cm} cm voneinander entfernt. Wie weit liegen sie wirklich auseinander?", None),
-    ("Ein Behälter ist {l1} L groß und zu {p1}% gefüllt. Es werden {l2} L hinzugefügt. Wie voll ist er jetzt prozentual?", None),
-    ("Ein Tank fasst {v} Liter und ist mit {p}% gefüllt. Pro Stunde laufen {l} Liter aus. Wie lange bis er leer ist?", None),
-    ("Eine Aktie kostet {pi}€ und steigt um {p1}%, dann fällt sie um {p2}%. Wie viel ist sie nun wert?", None),
+    (
+        "Eine Pizza kostet {p}€, ein Getränk {g}€. Eine Familie bestellt {n_p} Pizzen und {n_g} Getränke. Wie viel kostet das gesamt?",
+        None,
+    ),
+    (
+        "In einer Klasse mit {n} Schülern sind {p}% Mädchen. Wie viele Jungen sind in der Klasse?",
+        None,
+    ),
+    (
+        "Ein Auto verbraucht im Schnitt {v} Liter pro 100 km. Wie viel Benzin braucht es für eine Strecke von {d} km?",
+        None,
+    ),
+    (
+        "Ein Kapital von {k}€ wird mit {r}% jährlich verzinst. Wie viel Zinsen nach {y} Jahren Zinseszins?",
+        None,
+    ),
+    (
+        "Eine Wand ist {w} m breit und {h} m hoch. Eine Tapetenrolle deckt {f} m². Wie viele Rollen braucht man (aufrunden)?",
+        None,
+    ),
+    (
+        "Ein Rezept für {orig} Personen braucht {x} g Mehl. Wie viel Mehl für {target} Personen?",
+        None,
+    ),
+    (
+        "Auf einer Karte 1:{scale} sind zwei Städte {cm} cm voneinander entfernt. Wie weit liegen sie wirklich auseinander?",
+        None,
+    ),
+    (
+        "Ein Behälter ist {l1} L groß und zu {p1}% gefüllt. Es werden {l2} L hinzugefügt. Wie voll ist er jetzt prozentual?",
+        None,
+    ),
+    (
+        "Ein Tank fasst {v} Liter und ist mit {p}% gefüllt. Pro Stunde laufen {l} Liter aus. Wie lange bis er leer ist?",
+        None,
+    ),
+    (
+        "Eine Aktie kostet {pi}€ und steigt um {p1}%, dann fällt sie um {p2}%. Wie viel ist sie nun wert?",
+        None,
+    ),
     ("Ein Würfel hat eine Kantenlänge von {a} cm. Wie groß sind Volumen und Oberfläche?", None),
-    ("Ein Kreis hat den Radius {r} cm. Wie groß ist der Umfang und die Fläche (zwei Nachkommastellen)?", None),
-    ("Eine Maschine produziert {n} Teile pro Stunde. Wie viele Teile in einer 8-Stunden-Schicht und wie viele in einer Woche bei 5 Schichten?", None),
-    ("Ein Sportler trinkt pro Tag {l} Liter Wasser. Wie viel Wasser im Jahr ({y}) und entspricht das wie vielen 1.5-L-Flaschen?", None),
-    ("Ein Hotel hat {n} Zimmer, davon {m} Doppelzimmer und der Rest Einzelzimmer. Wie groß ist der Anteil Einzelzimmer (in Prozent)?", None),
-    ("Bei einer Befragung von {n} Personen sagen {a} 'ja', {b} 'nein', der Rest 'weiß nicht'. Wie viele 'weiß nicht'?", None),
-    ("Eine Druckerei berechnet {p}€ Grundgebühr plus {pp}ct pro Seite. Was kostet ein Auftrag mit {pages} Seiten?", None),
-    ("Ein Auto kostet {price}€ neu und verliert {p}% pro Jahr an Wert. Was ist es nach {y} Jahren wert?", None),
-    ("Eine Rechtecksfläche misst {a} m × {b} m. Wie groß ist Fläche und Diagonale (auf cm gerundet)?", None),
-    ("Ein Reifen hat {km1} km gehalten. Bei jährlicher Fahrleistung von {km2} km — wie viele Jahre?", None),
-    ("Ein Sparbuch wird mit {r}% jährlich verzinst. Wie lange dauert es bis sich {k}€ verdoppeln (Zinseszins, ungefähr)?", None),
+    (
+        "Ein Kreis hat den Radius {r} cm. Wie groß ist der Umfang und die Fläche (zwei Nachkommastellen)?",
+        None,
+    ),
+    (
+        "Eine Maschine produziert {n} Teile pro Stunde. Wie viele Teile in einer 8-Stunden-Schicht und wie viele in einer Woche bei 5 Schichten?",
+        None,
+    ),
+    (
+        "Ein Sportler trinkt pro Tag {l} Liter Wasser. Wie viel Wasser im Jahr ({y}) und entspricht das wie vielen 1.5-L-Flaschen?",
+        None,
+    ),
+    (
+        "Ein Hotel hat {n} Zimmer, davon {m} Doppelzimmer und der Rest Einzelzimmer. Wie groß ist der Anteil Einzelzimmer (in Prozent)?",
+        None,
+    ),
+    (
+        "Bei einer Befragung von {n} Personen sagen {a} 'ja', {b} 'nein', der Rest 'weiß nicht'. Wie viele 'weiß nicht'?",
+        None,
+    ),
+    (
+        "Eine Druckerei berechnet {p}€ Grundgebühr plus {pp}ct pro Seite. Was kostet ein Auftrag mit {pages} Seiten?",
+        None,
+    ),
+    (
+        "Ein Auto kostet {price}€ neu und verliert {p}% pro Jahr an Wert. Was ist es nach {y} Jahren wert?",
+        None,
+    ),
+    (
+        "Eine Rechtecksfläche misst {a} m × {b} m. Wie groß ist Fläche und Diagonale (auf cm gerundet)?",
+        None,
+    ),
+    (
+        "Ein Reifen hat {km1} km gehalten. Bei jährlicher Fahrleistung von {km2} km — wie viele Jahre?",
+        None,
+    ),
+    (
+        "Ein Sparbuch wird mit {r}% jährlich verzinst. Wie lange dauert es bis sich {k}€ verdoppeln (Zinseszins, ungefähr)?",
+        None,
+    ),
 ]
 
 MATH_VAR_RANGES = {
-    "a": (2, 8), "b": (4, 25),
-    "h1": (1, 5), "h2": (1, 5), "v1": (50, 140), "v2": (50, 140),
-    "p": (5, 20), "g": (2, 6), "n_p": (1, 5), "n_g": (1, 8),
-    "n": (15, 40), "v": (4, 10), "d": (50, 1200),
-    "k": (1000, 25000), "r": (1, 8), "y": (1, 15),
-    "w": (3, 10), "h": (2, 5), "f": (4, 14),
-    "orig": (2, 8), "x": (150, 800), "target": (3, 18),
-    "scale": (10000, 250000), "cm": (2, 30),
-    "l1": (10, 200), "l2": (5, 60), "p1": (10, 90),
-    "l": (5, 50), "pi": (10, 200), "p1%": (3, 25), "p2%": (3, 20),
-    "pp": (3, 15), "pages": (10, 500), "price": (15000, 60000),
-    "m": (5, 20), "km1": (40000, 80000), "km2": (10000, 30000),
+    "a": (2, 8),
+    "b": (4, 25),
+    "h1": (1, 5),
+    "h2": (1, 5),
+    "v1": (50, 140),
+    "v2": (50, 140),
+    "p": (5, 20),
+    "g": (2, 6),
+    "n_p": (1, 5),
+    "n_g": (1, 8),
+    "n": (15, 40),
+    "v": (4, 10),
+    "d": (50, 1200),
+    "k": (1000, 25000),
+    "r": (1, 8),
+    "y": (1, 15),
+    "w": (3, 10),
+    "h": (2, 5),
+    "f": (4, 14),
+    "orig": (2, 8),
+    "x": (150, 800),
+    "target": (3, 18),
+    "scale": (10000, 250000),
+    "cm": (2, 30),
+    "l1": (10, 200),
+    "l2": (5, 60),
+    "p1": (10, 90),
+    "l": (5, 50),
+    "pi": (10, 200),
+    "p1%": (3, 25),
+    "p2%": (3, 20),
+    "pp": (3, 15),
+    "pages": (10, 500),
+    "price": (15000, 60000),
+    "m": (5, 20),
+    "km1": (40000, 80000),
+    "km2": (10000, 30000),
 }
 
 # ---------------------------------------------------------------------------
@@ -399,57 +545,133 @@ REASONING_TASKS = [
 
 CONCEPTS_DE = [
     # Bio
-    "Photosynthese", "Mitose", "Meiose", "DNA-Replikation", "Translation (Bio)",
-    "Proteinbiosynthese", "Evolution durch natürliche Selektion", "Mendelsche Regeln",
-    "Endokrines System", "Synapse", "Mitochondrien", "Zellatmung", "Enzymkatalyse",
-    "Biotop", "Symbiose", "Ökosystem", "Nahrungskette",
+    "Photosynthese",
+    "Mitose",
+    "Meiose",
+    "DNA-Replikation",
+    "Translation (Bio)",
+    "Proteinbiosynthese",
+    "Evolution durch natürliche Selektion",
+    "Mendelsche Regeln",
+    "Endokrines System",
+    "Synapse",
+    "Mitochondrien",
+    "Zellatmung",
+    "Enzymkatalyse",
+    "Biotop",
+    "Symbiose",
+    "Ökosystem",
+    "Nahrungskette",
     # Physik
-    "Quantenverschränkung", "Welle-Teilchen-Dualismus", "Schwarze Löcher",
-    "Spezielle Relativitätstheorie", "Allgemeine Relativitätstheorie",
-    "Heisenbergsche Unschärferelation", "Doppler-Effekt", "Resonanz",
-    "Magnetfeld", "Lorentzkraft", "Photonen", "Halbleiter",
-    "Supraleitung", "Brownsche Bewegung", "Gravitationswellen",
+    "Quantenverschränkung",
+    "Welle-Teilchen-Dualismus",
+    "Schwarze Löcher",
+    "Spezielle Relativitätstheorie",
+    "Allgemeine Relativitätstheorie",
+    "Heisenbergsche Unschärferelation",
+    "Doppler-Effekt",
+    "Resonanz",
+    "Magnetfeld",
+    "Lorentzkraft",
+    "Photonen",
+    "Halbleiter",
+    "Supraleitung",
+    "Brownsche Bewegung",
+    "Gravitationswellen",
     # Chemie
-    "Periodensystem (Aufbau)", "Ionenbindung vs Atombindung",
-    "Reduktion und Oxidation", "Säure-Base-Theorie nach Brønsted",
-    "Stereoisomerie", "Polymere", "Katalysator (chemisch)",
+    "Periodensystem (Aufbau)",
+    "Ionenbindung vs Atombindung",
+    "Reduktion und Oxidation",
+    "Säure-Base-Theorie nach Brønsted",
+    "Stereoisomerie",
+    "Polymere",
+    "Katalysator (chemisch)",
     # Geo
-    "Plattentektonik", "Treibhauseffekt", "El Niño", "Wasserkreislauf",
-    "Magnetfeld der Erde", "Gezeitenkraft", "Vulkanismus",
+    "Plattentektonik",
+    "Treibhauseffekt",
+    "El Niño",
+    "Wasserkreislauf",
+    "Magnetfeld der Erde",
+    "Gezeitenkraft",
+    "Vulkanismus",
     # Informatik
-    "Maschinelles Lernen", "Neuronale Netze", "Backpropagation",
-    "Gradient-Descent", "Overfitting", "Cross-Validation",
-    "Big-O-Notation", "Hash-Funktionen", "Public-Key-Kryptographie",
-    "TCP/IP", "DNS", "REST-API", "Container (Docker)",
-    "Versionskontrolle (Git)", "Datenbanken (relational vs NoSQL)",
-    "Compiler vs Interpreter", "Garbage Collection",
+    "Maschinelles Lernen",
+    "Neuronale Netze",
+    "Backpropagation",
+    "Gradient-Descent",
+    "Overfitting",
+    "Cross-Validation",
+    "Big-O-Notation",
+    "Hash-Funktionen",
+    "Public-Key-Kryptographie",
+    "TCP/IP",
+    "DNS",
+    "REST-API",
+    "Container (Docker)",
+    "Versionskontrolle (Git)",
+    "Datenbanken (relational vs NoSQL)",
+    "Compiler vs Interpreter",
+    "Garbage Collection",
     # Recht/Politik DE
-    "Bundesverfassungsgericht", "Föderalismus", "Soziale Marktwirtschaft",
-    "Gewaltenteilung", "Subsidiaritätsprinzip", "Bundesrat (DE)",
-    "Verhältniswahlrecht", "Tarifautonomie", "Mitbestimmung",
-    "Grundrechte", "Föderalismusreform", "EU-Mehrheitsentscheidung",
+    "Bundesverfassungsgericht",
+    "Föderalismus",
+    "Soziale Marktwirtschaft",
+    "Gewaltenteilung",
+    "Subsidiaritätsprinzip",
+    "Bundesrat (DE)",
+    "Verhältniswahlrecht",
+    "Tarifautonomie",
+    "Mitbestimmung",
+    "Grundrechte",
+    "Föderalismusreform",
+    "EU-Mehrheitsentscheidung",
     # Wirtschaft
-    "Grenznutzen", "Inflation", "Bruttoinlandsprodukt", "Wechselkurs",
-    "Marktmechanismus", "Externe Effekte", "Monopolstellung",
-    "Konjunkturzyklus", "Geldpolitik", "Steuerprogression",
+    "Grenznutzen",
+    "Inflation",
+    "Bruttoinlandsprodukt",
+    "Wechselkurs",
+    "Marktmechanismus",
+    "Externe Effekte",
+    "Monopolstellung",
+    "Konjunkturzyklus",
+    "Geldpolitik",
+    "Steuerprogression",
     # Philosophie
-    "Kant's kategorischer Imperativ", "Utilitarismus", "Existenzialismus",
-    "Determinismus", "Sokratische Methode", "Stoizismus",
-    "Hegelsche Dialektik", "Rawls' Schleier des Nichtwissens",
+    "Kant's kategorischer Imperativ",
+    "Utilitarismus",
+    "Existenzialismus",
+    "Determinismus",
+    "Sokratische Methode",
+    "Stoizismus",
+    "Hegelsche Dialektik",
+    "Rawls' Schleier des Nichtwissens",
     # Lit/Kunst
-    "Goethe's Faust (Grundkonflikt)", "Kafkaesk",
-    "Romantik (Literaturepoche)", "Expressionismus",
-    "Bauhaus (Stilrichtung)", "Die Aufklärung",
-    "Sturm und Drang", "Brechts episches Theater",
+    "Goethe's Faust (Grundkonflikt)",
+    "Kafkaesk",
+    "Romantik (Literaturepoche)",
+    "Expressionismus",
+    "Bauhaus (Stilrichtung)",
+    "Die Aufklärung",
+    "Sturm und Drang",
+    "Brechts episches Theater",
     # Sport/Spiele
-    "Fußball-Abseitsregel", "Tennis-Tiebreak", "Schach-Eröffnungstheorie",
-    "Doppel-Tiebreak (Tennis)", "Drei-Punkte-Regel (Fußball)",
+    "Fußball-Abseitsregel",
+    "Tennis-Tiebreak",
+    "Schach-Eröffnungstheorie",
+    "Doppel-Tiebreak (Tennis)",
+    "Drei-Punkte-Regel (Fußball)",
     # Politik aktuell
-    "Brexit (Auswirkungen)", "Klimawandel-Kipppunkte", "Green-Deal der EU",
-    "Energiewende", "Schuldenbremse",
+    "Brexit (Auswirkungen)",
+    "Klimawandel-Kipppunkte",
+    "Green-Deal der EU",
+    "Energiewende",
+    "Schuldenbremse",
     # DE-Kultur
-    "Karneval vs Fasching vs Fastnacht", "Reinheitsgebot (Bier)",
-    "Oktoberfest", "Tag der Deutschen Einheit", "Sankt Martinszug",
+    "Karneval vs Fasching vs Fastnacht",
+    "Reinheitsgebot (Bier)",
+    "Oktoberfest",
+    "Tag der Deutschen Einheit",
+    "Sankt Martinszug",
 ]
 
 # ---------------------------------------------------------------------------
@@ -732,25 +954,76 @@ REFUSAL_TASKS = [
 
 TRANSLATION_TASKS = [
     ("DE→EN", "Die Mamba-Schicht implementiert state-space-modelle mit selektiver Update-Regel."),
-    ("DE→EN", "Gradient checkpointing tauscht Rechenzeit gegen Speicherverbrauch beim Backward-Pass."),
+    (
+        "DE→EN",
+        "Gradient checkpointing tauscht Rechenzeit gegen Speicherverbrauch beim Backward-Pass.",
+    ),
     ("DE→EN", "Die Tokenisierung mit byte-fallback garantiert eine Unknown-Rate von null Prozent."),
-    ("DE→EN", "Layer-Normalisierung stabilisiert das Training tiefer Netze unabhängig von der Batch-Größe."),
-    ("DE→EN", "Bei der Aufmerksamkeit mit linearer Komplexität wird der Speicheraufwand vom quadratischen auf linearen Verlauf reduziert."),
-    ("DE→EN", "Die Verlustfunktion misst die Abweichung zwischen Vorhersage und Zielwert auf Token-Ebene."),
+    (
+        "DE→EN",
+        "Layer-Normalisierung stabilisiert das Training tiefer Netze unabhängig von der Batch-Größe.",
+    ),
+    (
+        "DE→EN",
+        "Bei der Aufmerksamkeit mit linearer Komplexität wird der Speicheraufwand vom quadratischen auf linearen Verlauf reduziert.",
+    ),
+    (
+        "DE→EN",
+        "Die Verlustfunktion misst die Abweichung zwischen Vorhersage und Zielwert auf Token-Ebene.",
+    ),
     ("DE→EN", "Die Lernrate wird per Cosinus-Decay über die gesamte Trainingsdauer reduziert."),
-    ("DE→EN", "Mixed Precision Training mit bfloat16 verkürzt die Trainingszeit ohne signifikante Genauigkeitsverluste."),
-    ("DE→EN", "Eine Datenpipeline mit Mehrfach-Workern verhindert dass die GPU auf Daten warten muss."),
-    ("DE→EN", "Die Tokenizer-Vokabular-Größe beeinflusst sowohl Trainings-Speicherbedarf als auch Inference-Geschwindigkeit."),
-    ("EN→DE", "The model uses rotary positional embeddings (RoPE) with a base frequency of 10,000."),
-    ("EN→DE", "Mixed-precision training in bfloat16 yields significant memory savings without loss in accuracy."),
-    ("EN→DE", "Knowledge distillation transfers a teacher model's behavior into a smaller student via KL divergence on output logits."),
-    ("EN→DE", "Sparse mixture-of-experts gating routes each token to k of N experts, activating only a fraction of total parameters."),
-    ("EN→DE", "Curriculum learning orders training samples by difficulty to improve convergence on hard examples."),
-    ("EN→DE", "Gradient accumulation simulates a larger effective batch size by summing gradients over multiple micro-batches."),
-    ("EN→DE", "Flash Attention computes attention in tiles to fit within fast on-chip SRAM and avoid HBM round-trips."),
-    ("EN→DE", "Quantization-aware training prepares a model for low-precision inference by simulating quantization noise during training."),
-    ("EN→DE", "Self-supervised pretraining builds general representations from raw data without any human-provided labels."),
-    ("EN→DE", "Catastrophic forgetting refers to the loss of previously learned capabilities when fine-tuning on a new task distribution."),
+    (
+        "DE→EN",
+        "Mixed Precision Training mit bfloat16 verkürzt die Trainingszeit ohne signifikante Genauigkeitsverluste.",
+    ),
+    (
+        "DE→EN",
+        "Eine Datenpipeline mit Mehrfach-Workern verhindert dass die GPU auf Daten warten muss.",
+    ),
+    (
+        "DE→EN",
+        "Die Tokenizer-Vokabular-Größe beeinflusst sowohl Trainings-Speicherbedarf als auch Inference-Geschwindigkeit.",
+    ),
+    (
+        "EN→DE",
+        "The model uses rotary positional embeddings (RoPE) with a base frequency of 10,000.",
+    ),
+    (
+        "EN→DE",
+        "Mixed-precision training in bfloat16 yields significant memory savings without loss in accuracy.",
+    ),
+    (
+        "EN→DE",
+        "Knowledge distillation transfers a teacher model's behavior into a smaller student via KL divergence on output logits.",
+    ),
+    (
+        "EN→DE",
+        "Sparse mixture-of-experts gating routes each token to k of N experts, activating only a fraction of total parameters.",
+    ),
+    (
+        "EN→DE",
+        "Curriculum learning orders training samples by difficulty to improve convergence on hard examples.",
+    ),
+    (
+        "EN→DE",
+        "Gradient accumulation simulates a larger effective batch size by summing gradients over multiple micro-batches.",
+    ),
+    (
+        "EN→DE",
+        "Flash Attention computes attention in tiles to fit within fast on-chip SRAM and avoid HBM round-trips.",
+    ),
+    (
+        "EN→DE",
+        "Quantization-aware training prepares a model for low-precision inference by simulating quantization noise during training.",
+    ),
+    (
+        "EN→DE",
+        "Self-supervised pretraining builds general representations from raw data without any human-provided labels.",
+    ),
+    (
+        "EN→DE",
+        "Catastrophic forgetting refers to the loss of previously learned capabilities when fine-tuning on a new task distribution.",
+    ),
 ]
 
 # ---------------------------------------------------------------------------
@@ -784,6 +1057,7 @@ CREATIVE_TASKS = [
 # ---------------------------------------------------------------------------
 # Generation
 # ---------------------------------------------------------------------------
+
 
 def generate_records(rng: random.Random) -> list[dict]:
     records: list[dict] = []
@@ -930,6 +1204,7 @@ def main() -> None:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
 
     from collections import Counter
+
     counts = Counter(r["task_type"] for r in records)
     print(f"=== Generated {len(records)} prompts → {args.output} ===")
     for tt, c in sorted(counts.items(), key=lambda kv: -kv[1]):

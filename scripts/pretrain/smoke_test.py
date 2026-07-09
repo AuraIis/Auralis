@@ -53,7 +53,6 @@ from auralis.training.optimizer import build_optimizer, build_scheduler
 from auralis.training.trainer import PretrainTrainer
 from auralis.training.utils import load_yaml, set_seed
 
-
 DTYPES: dict[str, torch.dtype] = {
     "fp32": torch.float32,
     "bf16": torch.bfloat16,
@@ -86,29 +85,53 @@ def _make_autocast_ctx(device: torch.device, dtype: torch.dtype):
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--config", type=Path, default=REPO / "configs" / "training" / "phase1_pretrain.yaml")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "--config", type=Path, default=REPO / "configs" / "training" / "phase1_pretrain.yaml"
+    )
     parser.add_argument("--device", default="auto", choices=["auto", "cpu", "cuda"])
     parser.add_argument("--dtype", default="fp32", choices=list(DTYPES))
-    parser.add_argument("--model-config", type=Path,
-                        default=REPO / "configs" / "model" / "helix_v2_100m.yaml")
+    parser.add_argument(
+        "--model-config", type=Path, default=REPO / "configs" / "model" / "helix_v2_100m.yaml"
+    )
     parser.add_argument("--steps", type=int, default=20)
     parser.add_argument("--batch-size", type=int, default=2)
     parser.add_argument("--seq-length", type=int, default=64)
     parser.add_argument("--grad-accum", type=int, default=1)
-    parser.add_argument("--warmup-steps", type=int, default=None,
-                        help="Override scheduler.warmup_steps (default: take from config).")
-    parser.add_argument("--lr", type=float, default=None,
-                        help="Override optimizer.lr (default: from config).")
-    parser.add_argument("--use-real-data", action="store_true",
-                        help="Read actual tokenized .bin files from the NAS.")
-    parser.add_argument("--val-split-bytes", type=int, default=0,
-                        help="If > 0, reserve a tail slice per .bin as held-out val; "
-                             "the trainer will then compute val_loss mid-run.")
-    parser.add_argument("--eval-every", type=int, default=0,
-                        help="Run evaluation every N steps (requires --val-split-bytes).")
-    parser.add_argument("--gradient-checkpointing", action="store_true",
-                        help="Enable torch gradient checkpointing on the model.")
+    parser.add_argument(
+        "--warmup-steps",
+        type=int,
+        default=None,
+        help="Override scheduler.warmup_steps (default: take from config).",
+    )
+    parser.add_argument(
+        "--lr", type=float, default=None, help="Override optimizer.lr (default: from config)."
+    )
+    parser.add_argument(
+        "--use-real-data",
+        action="store_true",
+        help="Read actual tokenized .bin files from the NAS.",
+    )
+    parser.add_argument(
+        "--val-split-bytes",
+        type=int,
+        default=0,
+        help="If > 0, reserve a tail slice per .bin as held-out val; "
+        "the trainer will then compute val_loss mid-run.",
+    )
+    parser.add_argument(
+        "--eval-every",
+        type=int,
+        default=0,
+        help="Run evaluation every N steps (requires --val-split-bytes).",
+    )
+    parser.add_argument(
+        "--gradient-checkpointing",
+        action="store_true",
+        help="Enable torch gradient checkpointing on the model.",
+    )
     args = parser.parse_args()
 
     # ---- Resolve device ----
@@ -124,7 +147,7 @@ def main() -> None:
     if device.type == "cuda":
         torch.cuda.reset_peak_memory_stats()
         props = torch.cuda.get_device_properties(0)
-        print(f"gpu: {props.name} ({props.total_memory/1e9:.1f} GB VRAM)")
+        print(f"gpu: {props.name} ({props.total_memory / 1e9:.1f} GB VRAM)")
 
     set_seed(0)
 
@@ -132,11 +155,13 @@ def main() -> None:
     t_build_0 = time.time()
     model = build_model(args.model_config)
     n_params = sum(p.numel() for p in model.parameters())
-    print(f"model: {n_params/1e6:.1f} M params from {args.model_config.name}")
+    print(f"model: {n_params / 1e6:.1f} M params from {args.model_config.name}")
     if args.gradient_checkpointing:
         model.gradient_checkpointing_enable()
-        print(f"  gradient_checkpointing: ENABLED (is_gradient_checkpointing="
-              f"{model.is_gradient_checkpointing})")
+        print(
+            f"  gradient_checkpointing: ENABLED (is_gradient_checkpointing="
+            f"{model.is_gradient_checkpointing})"
+        )
     model = model.to(device)
     if device.type == "cuda":
         torch.cuda.synchronize()
@@ -150,18 +175,22 @@ def main() -> None:
 
     if args.use_real_data:
         data_dir = _resolve_real_data_dir()
-        if not all((data_dir / f"{lang}.bin").exists()
-                   for lang in full_cfg["data"]["mix_ratios"]):
-            missing = [l for l in full_cfg["data"]["mix_ratios"]
-                       if not (data_dir / f"{l}.bin").exists()]
+        if not all((data_dir / f"{lang}.bin").exists() for lang in full_cfg["data"]["mix_ratios"]):
+            missing = [
+                l for l in full_cfg["data"]["mix_ratios"] if not (data_dir / f"{l}.bin").exists()
+            ]
             sys.exit(f"real data requested but missing on NAS: {missing}\n  in {data_dir}")
         print(f"data: {data_dir} (real tokenized NAS data)")
         ckpt_dir = Path(tempfile.mkdtemp(prefix="ckpt_")) / "ckpt"
     else:
         assert tmp_path is not None
-        data_dir = tmp_path / "data"; data_dir.mkdir()
-        _write_synthetic_bins(data_dir, vocab_size=model.config.vocab_size,
-                              tokens_per_lang=max(10_000, args.seq_length * 200))
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+        _write_synthetic_bins(
+            data_dir,
+            vocab_size=model.config.vocab_size,
+            tokens_per_lang=max(10_000, args.seq_length * 200),
+        )
         ckpt_dir = tmp_path / "ckpt"
         print(f"data: synthetic random tokens in {data_dir}")
 
@@ -185,7 +214,7 @@ def main() -> None:
             split="val",
             val_split_bytes=args.val_split_bytes,
         )
-        print(f"  val enabled: {args.val_split_bytes/1e6:.1f} MB per lang held out")
+        print(f"  val enabled: {args.val_split_bytes / 1e6:.1f} MB per lang held out")
 
     # ---- Optim + sched (with optional CLI overrides for fast smoke) ----
     opt_cfg = dict(full_cfg["training"]["optimizer"])
@@ -206,18 +235,25 @@ def main() -> None:
             "gradient_accumulation": args.grad_accum,
             "gradient_clip_norm": 1.0,
             "total_steps": args.steps,
-            "dtype": args.dtype,                       # trainer reads this for autocast
+            "dtype": args.dtype,  # trainer reads this for autocast
         },
-        "logging": {"log_every": max(1, args.steps // 10),
-                    "eval_every": eval_every, "save_every": args.steps},
+        "logging": {
+            "log_every": max(1, args.steps // 10),
+            "eval_every": eval_every,
+            "save_every": args.steps,
+        },
         "checkpointing": {"output_dir": str(ckpt_dir), "save_last_n": 1},
         "evaluation": {"max_val_batches": 4},
     }
 
     trainer = PretrainTrainer(
-        model=model, optimizer=opt, scheduler=sched,
-        dataloader=loader, val_dataloader=val_loader,
-        config=run_cfg, device=device,
+        model=model,
+        optimizer=opt,
+        scheduler=sched,
+        dataloader=loader,
+        val_dataloader=val_loader,
+        config=run_cfg,
+        device=device,
     )
     print(f"  trainer amp_dtype: {trainer._amp_dtype}")
 
@@ -233,6 +269,7 @@ def main() -> None:
         if "eval/val_loss" in metrics:
             val_losses.append(metrics["eval/val_loss"])
         original_log(metrics, step)
+
     trainer.log = capture
 
     peak_vram_gb = 0.0
@@ -259,10 +296,12 @@ def main() -> None:
     print("=" * 60)
     print(f"  device            : {device}")
     print(f"  dtype             : {args.dtype}")
-    print(f"  model params      : {n_params/1e6:.1f} M")
+    print(f"  model params      : {n_params / 1e6:.1f} M")
     print(f"  steps             : {args.steps}")
-    print(f"  batch × seq       : {args.batch_size} × {args.seq_length}"
-          f" (grad-accum {args.grad_accum})")
+    print(
+        f"  batch × seq       : {args.batch_size} × {args.seq_length}"
+        f" (grad-accum {args.grad_accum})"
+    )
     print(f"  tokens total      : {tokens_total:,}")
     print(f"  wall time         : {total_dt:.1f} s")
     print(f"  tokens / second   : {tok_per_sec:,.0f}")

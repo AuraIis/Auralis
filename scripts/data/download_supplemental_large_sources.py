@@ -19,7 +19,6 @@ from typing import Any
 
 from datasets import load_dataset
 
-
 WORD_RE = re.compile(r"[A-Za-z][A-Za-z']+")
 BAD_RE = re.compile(
     r"\[(?:deleted|removed)\]|onlyfans|discord\.gg|telegram|whatsapp|free karma|"
@@ -28,7 +27,9 @@ BAD_RE = re.compile(
     re.I,
 )
 URL_RE = re.compile(r"https?://|www\.", re.I)
-REDDIT_META_RE = re.compile(r"\b(upvote|downvote|karma|mods?|subreddit|crosspost|thanks for the gold)\b", re.I)
+REDDIT_META_RE = re.compile(
+    r"\b(upvote|downvote|karma|mods?|subreddit|crosspost|thanks for the gold)\b", re.I
+)
 
 
 def clean(text: Any) -> str:
@@ -75,7 +76,15 @@ def safe_detox(row: dict[str, Any], threshold: float) -> bool:
     for mod in mods:
         if not isinstance(mod, dict):
             continue
-        for key in ("toxicity", "severe_toxicity", "obscene", "identity_attack", "sexual_explicit", "threat", "insult"):
+        for key in (
+            "toxicity",
+            "severe_toxicity",
+            "obscene",
+            "identity_attack",
+            "sexual_explicit",
+            "threat",
+            "insult",
+        ):
             try:
                 if float(mod.get(key) or 0.0) > threshold:
                     return False
@@ -90,9 +99,10 @@ def write_wildchat(args: argparse.Namespace, out: Path) -> dict[str, Any]:
     seen = written = 0
     txt_path = out / "wildchat_en.txt"
     jsonl_path = out / "wildchat_en.jsonl"
-    with jsonl_path.open("w", encoding="utf-8", newline="\n") as jsonl, txt_path.open(
-        "w", encoding="utf-8", newline="\n"
-    ) as txt:
+    with (
+        jsonl_path.open("w", encoding="utf-8", newline="\n") as jsonl,
+        txt_path.open("w", encoding="utf-8", newline="\n") as txt,
+    ):
         for row in ds:
             seen += 1
             if row.get("language") != "English":
@@ -130,7 +140,9 @@ def write_wildchat(args: argparse.Namespace, out: Path) -> dict[str, Any]:
                 continue
             rec = {"source": "allenai/WildChat-4.8M", "model": row.get("model"), "turns": turns}
             jsonl.write(json.dumps(rec, ensure_ascii=False, sort_keys=True) + "\n")
-            rendered = "\n".join(("Nutzer: " if t["role"] == "user" else "Assistent: ") + t["content"] for t in turns)
+            rendered = "\n".join(
+                ("Nutzer: " if t["role"] == "user" else "Assistent: ") + t["content"] for t in turns
+            )
             txt.write(rendered + "\n\n")
             written += 1
             stats["written"] += 1
@@ -138,19 +150,28 @@ def write_wildchat(args: argparse.Namespace, out: Path) -> dict[str, Any]:
                 break
             if seen % args.log_every == 0:
                 print(f"wildchat_en: seen={seen:,} written={written:,}", flush=True)
-    return {"source": "wildchat_en", "seen": seen, "written": written, "bytes_text": txt_path.stat().st_size, "stats": dict(stats)}
+    return {
+        "source": "wildchat_en",
+        "seen": seen,
+        "written": written,
+        "bytes_text": txt_path.stat().st_size,
+        "stats": dict(stats),
+    }
 
 
 def write_reddit_title_body(args: argparse.Namespace, out: Path) -> dict[str, Any]:
-    ds = load_dataset("BEE-spoke-data/reddit-title-body-hf", "deduped", split="train", streaming=True)
+    ds = load_dataset(
+        "BEE-spoke-data/reddit-title-body-hf", "deduped", split="train", streaming=True
+    )
     stats: Counter[str] = Counter()
     seen = written = 0
     txt_path = out / "reddit_title_body.txt"
     jsonl_path = out / "reddit_title_body.jsonl"
     subreddit_keep = {s.lower() for s in args.reddit_subreddit_keep}
-    with jsonl_path.open("w", encoding="utf-8", newline="\n") as jsonl, txt_path.open(
-        "w", encoding="utf-8", newline="\n"
-    ) as txt:
+    with (
+        jsonl_path.open("w", encoding="utf-8", newline="\n") as jsonl,
+        txt_path.open("w", encoding="utf-8", newline="\n") as txt,
+    ):
         for row in ds:
             seen += 1
             subreddit = clean(row.get("subreddit")).lower()
@@ -171,7 +192,12 @@ def write_reddit_title_body(args: argparse.Namespace, out: Path) -> dict[str, An
             if reason:
                 stats[reason] += 1
                 continue
-            rec = {"source": "BEE-spoke-data/reddit-title-body-hf", "subreddit": subreddit, "title": title, "body": body}
+            rec = {
+                "source": "BEE-spoke-data/reddit-title-body-hf",
+                "subreddit": subreddit,
+                "title": title,
+                "body": body,
+            }
             jsonl.write(json.dumps(rec, ensure_ascii=False, sort_keys=True) + "\n")
             txt.write(f"Titel: {title}\nText: {body}\n\n")
             written += 1
@@ -180,7 +206,13 @@ def write_reddit_title_body(args: argparse.Namespace, out: Path) -> dict[str, An
                 break
             if seen % args.log_every == 0:
                 print(f"reddit_title_body: seen={seen:,} written={written:,}", flush=True)
-    return {"source": "reddit_title_body", "seen": seen, "written": written, "bytes_text": txt_path.stat().st_size, "stats": dict(stats)}
+    return {
+        "source": "reddit_title_body",
+        "seen": seen,
+        "written": written,
+        "bytes_text": txt_path.stat().st_size,
+        "stats": dict(stats),
+    }
 
 
 def write_openmath_reasoning(args: argparse.Namespace, out: Path) -> dict[str, Any]:
@@ -191,9 +223,10 @@ def write_openmath_reasoning(args: argparse.Namespace, out: Path) -> dict[str, A
         seen = written = 0
         txt_path = out / f"openmath_reasoning_{split}.txt"
         jsonl_path = out / f"openmath_reasoning_{split}.jsonl"
-        with jsonl_path.open("w", encoding="utf-8", newline="\n") as jsonl, txt_path.open(
-            "w", encoding="utf-8", newline="\n"
-        ) as txt:
+        with (
+            jsonl_path.open("w", encoding="utf-8", newline="\n") as jsonl,
+            txt_path.open("w", encoding="utf-8", newline="\n") as txt,
+        ):
             for row in ds:
                 seen += 1
                 problem = clean(row.get("problem"))
@@ -202,10 +235,27 @@ def write_openmath_reasoning(args: argparse.Namespace, out: Path) -> dict[str, A
                     stats["no_solution"] += 1
                     continue
                 if args.strip_think:
-                    solution = re.sub(r"<think>.*?</think>", "", solution, flags=re.I | re.S).strip() or solution
+                    solution = (
+                        re.sub(r"<think>.*?</think>", "", solution, flags=re.I | re.S).strip()
+                        or solution
+                    )
                     solution = solution.replace("<think>", "").replace("</think>", "").strip()
-                p_reason = ok_text(problem, min_chars=20, max_chars=6000, min_words=3, allow_urls=True, reject_reddit_meta=False)
-                s_reason = ok_text(solution, min_chars=80, max_chars=args.max_math_solution_chars, min_words=8, allow_urls=True, reject_reddit_meta=False)
+                p_reason = ok_text(
+                    problem,
+                    min_chars=20,
+                    max_chars=6000,
+                    min_words=3,
+                    allow_urls=True,
+                    reject_reddit_meta=False,
+                )
+                s_reason = ok_text(
+                    solution,
+                    min_chars=80,
+                    max_chars=args.max_math_solution_chars,
+                    min_words=8,
+                    allow_urls=True,
+                    reject_reddit_meta=False,
+                )
                 if p_reason:
                     stats[f"problem_{p_reason}"] += 1
                     continue
@@ -227,8 +277,16 @@ def write_openmath_reasoning(args: argparse.Namespace, out: Path) -> dict[str, A
                 if seen >= args.max_scan_per_source or written >= args.max_records_per_source:
                     break
                 if seen % args.log_every == 0:
-                    print(f"openmath_reasoning/{split}: seen={seen:,} written={written:,}", flush=True)
-        split_stats = {"split": split, "seen": seen, "written": written, "bytes_text": txt_path.stat().st_size, "stats": dict(stats)}
+                    print(
+                        f"openmath_reasoning/{split}: seen={seen:,} written={written:,}", flush=True
+                    )
+        split_stats = {
+            "split": split,
+            "seen": seen,
+            "written": written,
+            "bytes_text": txt_path.stat().st_size,
+            "stats": dict(stats),
+        }
         stats_total["splits"].append(split_stats)
         stats_total["written"] += written
         stats_total["bytes_text"] += txt_path.stat().st_size
@@ -238,7 +296,12 @@ def write_openmath_reasoning(args: argparse.Namespace, out: Path) -> dict[str, A
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", type=Path, required=True)
-    parser.add_argument("--source", action="append", choices=["wildchat", "reddit_title_body", "openmath_reasoning"], default=None)
+    parser.add_argument(
+        "--source",
+        action="append",
+        choices=["wildchat", "reddit_title_body", "openmath_reasoning"],
+        default=None,
+    )
     parser.add_argument("--max-records-per-source", type=int, default=200_000)
     parser.add_argument("--max-scan-per-source", type=int, default=1_000_000)
     parser.add_argument("--log-every", type=int, default=50_000)
@@ -288,10 +351,14 @@ def main() -> None:
         else:
             raise AssertionError(source)
         manifest["sources"].append(result)
-        (args.output_dir / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+        (args.output_dir / "manifest.json").write_text(
+            json.dumps(manifest, ensure_ascii=False, indent=2, default=str), encoding="utf-8"
+        )
     manifest["documents"] = sum(s.get("written", 0) for s in manifest["sources"])
     manifest["bytes_text"] = sum(s.get("bytes_text", 0) for s in manifest["sources"])
-    (args.output_dir / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+    (args.output_dir / "manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2, default=str), encoding="utf-8"
+    )
     print(f"wrote {manifest['documents']:,} docs ({manifest['bytes_text'] / 1e9:.2f} GB)")
     sys.stdout.flush()
     sys.stderr.flush()

@@ -11,7 +11,6 @@ import re
 from collections import Counter
 from pathlib import Path
 
-
 REPO = Path(__file__).resolve().parents[2]
 SYSTEM_DE = (
     "Du bist Auralis, ein hilfreicher deutscher KI-Assistent. "
@@ -44,39 +43,102 @@ def key(text: str) -> str:
 
 def rows() -> list[dict]:
     negative = [
-        ("Ist Bonn heute die Hauptstadt von Deutschland?", "Nein. Die Hauptstadt von Deutschland ist Berlin."),
-        ("Ist Bonn aktuell die Hauptstadt von Deutschland?", "Nein. Die Hauptstadt von Deutschland ist Berlin."),
-        ("Ist die deutsche Hauptstadt zurzeit Bonn?", "Nein. Die Hauptstadt von Deutschland ist Berlin."),
-        ("Trifft es zu, dass Bonn die Hauptstadt von Deutschland ist?", "Nein. Die Hauptstadt von Deutschland ist Berlin."),
-        ("Ist Bonn Deutschlands heutige Hauptstadt?", "Nein. Die heutige Hauptstadt von Deutschland ist Berlin."),
+        (
+            "Ist Bonn heute die Hauptstadt von Deutschland?",
+            "Nein. Die Hauptstadt von Deutschland ist Berlin.",
+        ),
+        (
+            "Ist Bonn aktuell die Hauptstadt von Deutschland?",
+            "Nein. Die Hauptstadt von Deutschland ist Berlin.",
+        ),
+        (
+            "Ist die deutsche Hauptstadt zurzeit Bonn?",
+            "Nein. Die Hauptstadt von Deutschland ist Berlin.",
+        ),
+        (
+            "Trifft es zu, dass Bonn die Hauptstadt von Deutschland ist?",
+            "Nein. Die Hauptstadt von Deutschland ist Berlin.",
+        ),
+        (
+            "Ist Bonn Deutschlands heutige Hauptstadt?",
+            "Nein. Die heutige Hauptstadt von Deutschland ist Berlin.",
+        ),
         ("Ist Hamburg die Hauptstadt von Bayern?", "Nein. Die Hauptstadt von Bayern ist Muenchen."),
-        ("Liegt die Landeshauptstadt Bayerns in Hamburg?", "Nein. Die Hauptstadt von Bayern ist Muenchen."),
-        ("Ist Hamburg die Landeshauptstadt von Bayern?", "Nein. Die Landeshauptstadt von Bayern ist Muenchen."),
-        ("Ist Wasser ein chemisches Element?", "Nein. Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff."),
-        ("Ist H2O ein chemisches Element?", "Nein. H2O ist Wasser und damit eine chemische Verbindung, kein Element."),
-        ("Ist Wasser ein Element in der Chemie?", "Nein. Wasser ist eine chemische Verbindung, kein Element."),
-        ("Schrieb Goethe Mein Kampf?", "Nein. Mein Kampf stammt von Adolf Hitler, nicht von Goethe."),
-        ("Hat Johann Wolfgang von Goethe Mein Kampf verfasst?", "Nein. Mein Kampf stammt von Adolf Hitler, nicht von Goethe."),
+        (
+            "Liegt die Landeshauptstadt Bayerns in Hamburg?",
+            "Nein. Die Hauptstadt von Bayern ist Muenchen.",
+        ),
+        (
+            "Ist Hamburg die Landeshauptstadt von Bayern?",
+            "Nein. Die Landeshauptstadt von Bayern ist Muenchen.",
+        ),
+        (
+            "Ist Wasser ein chemisches Element?",
+            "Nein. Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.",
+        ),
+        (
+            "Ist H2O ein chemisches Element?",
+            "Nein. H2O ist Wasser und damit eine chemische Verbindung, kein Element.",
+        ),
+        (
+            "Ist Wasser ein Element in der Chemie?",
+            "Nein. Wasser ist eine chemische Verbindung, kein Element.",
+        ),
+        (
+            "Schrieb Goethe Mein Kampf?",
+            "Nein. Mein Kampf stammt von Adolf Hitler, nicht von Goethe.",
+        ),
+        (
+            "Hat Johann Wolfgang von Goethe Mein Kampf verfasst?",
+            "Nein. Mein Kampf stammt von Adolf Hitler, nicht von Goethe.",
+        ),
         ("Ist Mein Kampf von Goethe?", "Nein. Mein Kampf wurde von Adolf Hitler geschrieben."),
     ]
     positive = [
-        ("Ist Berlin heute die Hauptstadt von Deutschland?", "Ja. Berlin ist die Hauptstadt von Deutschland."),
+        (
+            "Ist Berlin heute die Hauptstadt von Deutschland?",
+            "Ja. Berlin ist die Hauptstadt von Deutschland.",
+        ),
         ("Ist Muenchen die Hauptstadt von Bayern?", "Ja. Muenchen ist die Hauptstadt von Bayern."),
-        ("Ist Wien die Hauptstadt von Oesterreich?", "Ja. Wien ist die Hauptstadt von Oesterreich."),
+        (
+            "Ist Wien die Hauptstadt von Oesterreich?",
+            "Ja. Wien ist die Hauptstadt von Oesterreich.",
+        ),
         ("Ist Bern die Hauptstadt der Schweiz?", "Ja. Bern ist die Hauptstadt der Schweiz."),
         ("Welche Stadt ist die Hauptstadt der Schweiz?", "Die Hauptstadt der Schweiz ist Bern."),
         ("Wer schrieb Faust?", "Faust wurde von Johann Wolfgang von Goethe geschrieben."),
         ("Von welchem Autor stammt Faust?", "Faust stammt von Johann Wolfgang von Goethe."),
         ("Wer schrieb Mein Kampf?", "Mein Kampf wurde von Adolf Hitler geschrieben."),
-        ("Ist Wasser eine chemische Verbindung?", "Ja. Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff."),
-        ("Was ist Sauerstoff?", "Sauerstoff ist ein chemisches Element und ein wichtiger Bestandteil der Luft."),
-        ("Was ist ein Computer?", "Ein Computer ist eine Maschine, die Daten verarbeitet und Programme ausfuehrt."),
+        (
+            "Ist Wasser eine chemische Verbindung?",
+            "Ja. Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.",
+        ),
+        (
+            "Was ist Sauerstoff?",
+            "Sauerstoff ist ein chemisches Element und ein wichtiger Bestandteil der Luft.",
+        ),
+        (
+            "Was ist ein Computer?",
+            "Ein Computer ist eine Maschine, die Daten verarbeitet und Programme ausfuehrt.",
+        ),
     ]
     instruction = [
-        ("Korrigiere die Antwort: Ja. Bonn ist die Hauptstadt von Deutschland.", "Nein. Die Hauptstadt von Deutschland ist Berlin."),
-        ("Korrigiere die Antwort: Ja. Wasser ist ein chemisches Element.", "Nein. Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff."),
-        ("Korrigiere die Antwort: Ja. Goethe schrieb Mein Kampf.", "Nein. Mein Kampf stammt von Adolf Hitler, nicht von Goethe."),
-        ("Korrigiere die Antwort: Nein. Bern ist die Hauptstadt der Schweiz.", "Ja. Bern ist die Hauptstadt der Schweiz."),
+        (
+            "Korrigiere die Antwort: Ja. Bonn ist die Hauptstadt von Deutschland.",
+            "Nein. Die Hauptstadt von Deutschland ist Berlin.",
+        ),
+        (
+            "Korrigiere die Antwort: Ja. Wasser ist ein chemisches Element.",
+            "Nein. Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.",
+        ),
+        (
+            "Korrigiere die Antwort: Ja. Goethe schrieb Mein Kampf.",
+            "Nein. Mein Kampf stammt von Adolf Hitler, nicht von Goethe.",
+        ),
+        (
+            "Korrigiere die Antwort: Nein. Bern ist die Hauptstadt der Schweiz.",
+            "Ja. Bern ist die Hauptstadt der Schweiz.",
+        ),
     ]
     out: list[dict] = []
     for q, a in negative:
@@ -104,7 +166,11 @@ def write_jsonl(path: Path, items: list[dict]) -> int:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--output-dir", type=Path, default=REPO / "data/training/sft_response_fix_de_v4_polarity_patch")
+    ap.add_argument(
+        "--output-dir",
+        type=Path,
+        default=REPO / "data/training/sft_response_fix_de_v4_polarity_patch",
+    )
     ap.add_argument("--seed", type=int, default=20260528)
     args = ap.parse_args()
     items = rows()
@@ -120,7 +186,9 @@ def main() -> None:
         "train_categories": dict(Counter(x["category"] for x in items).most_common()),
         "train_blocks": dict(Counter(x["block"] for x in items).most_common()),
     }
-    (args.output_dir / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    (args.output_dir / "manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     print(json.dumps(manifest, ensure_ascii=False, indent=2))
 
 

@@ -51,4 +51,3 @@ def test_plain_baseline_contains_same_core_fact() -> None:
 
     assert "Berlin ist die Hauptstadt" in plain
     assert "Berlin ist die Hauptstadt" in structured
-

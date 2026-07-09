@@ -105,11 +105,7 @@ def write_operator_summary(prof, out_txt: Path, row_limit: int) -> None:
         row_limit=row_limit,
     )
     out_txt.write_text(
-        "# CUDA time\n\n"
-        + table_cuda
-        + "\n\n# CPU time\n\n"
-        + table_cpu
-        + "\n",
+        "# CUDA time\n\n" + table_cuda + "\n\n# CPU time\n\n" + table_cpu + "\n",
         encoding="utf-8",
     )
 

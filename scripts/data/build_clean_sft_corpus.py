@@ -20,10 +20,9 @@ import json
 import random
 import re
 from collections import Counter
-from dataclasses import asdict, dataclass, field
+from collections.abc import Iterable
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable
-
 
 REPO = Path(__file__).resolve().parents[2]
 SYSTEM_DE = "Du bist Auralis, ein hilfreicher KI-Assistent. Antworte auf Deutsch."
@@ -45,24 +44,100 @@ ROLE_RE = re.compile(r"<\|(system|user|assistant)\|>\n(.*?)\n<\|end\|>", re.DOTA
 WORD_RE = re.compile(r"[A-Za-z\u00c4\u00d6\u00dc\u00e4\u00f6\u00fc\u00df]+")
 HTML_RE = re.compile(r"<\s*/?\s*(?:html|body|div|script|style|a|span|table|iframe|form)\b", re.I)
 URL_RE = re.compile(r"https?://|www\.", re.I)
-COMPLETE_RE = re.compile(r'(\.|\!|\?|\u2026|```|\)|\]|\}|\"|\'|\u00bb|\u201d)$')
+COMPLETE_RE = re.compile(r"(\.|\!|\?|\u2026|```|\)|\]|\}|\"|\'|\u00bb|\u201d)$")
 
 DE_WORDS = {
-    "der", "die", "das", "und", "oder", "nicht", "ist", "sind", "ein", "eine",
-    "einer", "einen", "mit", "fuer", "fur", "auf", "von", "zu", "im", "den",
-    "dem", "des", "dass", "ich", "du", "sie", "wir", "kann", "koennen",
-    "konnen", "wird", "werden", "wenn", "weil", "aber", "auch", "als", "wie",
-    "was", "warum", "bitte", "erklaere", "erklare", "beispiel", "loesung",
-    "losung", "antwort", "deutsch", "nein", "ja", "dies", "diese", "dieser",
+    "der",
+    "die",
+    "das",
+    "und",
+    "oder",
+    "nicht",
+    "ist",
+    "sind",
+    "ein",
+    "eine",
+    "einer",
+    "einen",
+    "mit",
+    "fuer",
+    "fur",
+    "auf",
+    "von",
+    "zu",
+    "im",
+    "den",
+    "dem",
+    "des",
+    "dass",
+    "ich",
+    "du",
+    "sie",
+    "wir",
+    "kann",
+    "koennen",
+    "konnen",
+    "wird",
+    "werden",
+    "wenn",
+    "weil",
+    "aber",
+    "auch",
+    "als",
+    "wie",
+    "was",
+    "warum",
+    "bitte",
+    "erklaere",
+    "erklare",
+    "beispiel",
+    "loesung",
+    "losung",
+    "antwort",
+    "deutsch",
+    "nein",
+    "ja",
+    "dies",
+    "diese",
+    "dieser",
 }
 EN_WORDS = {
-    "the", "and", "or", "not", "is", "are", "a", "an", "with", "for", "to",
-    "of", "in", "that", "this", "you", "your", "we", "can", "will", "if",
-    "because", "please", "explain", "example", "solution", "answer",
+    "the",
+    "and",
+    "or",
+    "not",
+    "is",
+    "are",
+    "a",
+    "an",
+    "with",
+    "for",
+    "to",
+    "of",
+    "in",
+    "that",
+    "this",
+    "you",
+    "your",
+    "we",
+    "can",
+    "will",
+    "if",
+    "because",
+    "please",
+    "explain",
+    "example",
+    "solution",
+    "answer",
 }
 MOJIBAKE_HINTS = (
-    "\ufffd", "\u00c3\u00a4", "\u00c3\u00b6", "\u00c3\u00bc", "\u00c3\u009f",
-    "\u00c3\u00a2\u00e2\u201a\u00ac", "\u00c2 ",
+    "\ufffd",
+    "\u00c3\u00a4",
+    "\u00c3\u00b6",
+    "\u00c3\u00bc",
+    "\u00c3\u009f",
+    "\u00c3\u00a2\u00e2\u201a\u00ac",
+    "\u00c2 ",
 )
 GENERIC_NO_INPUT_RE = re.compile(
     r"(bitte\s+(poste|gib|sende|teile).{0,80}(text|kommentar|code|datei|frage)|"
@@ -145,7 +220,9 @@ def max_line_repeat(text: str) -> int:
 
 
 def role_messages_from_helix(text: str) -> list[dict[str, str]] | None:
-    turns = [{"role": m.group(1), "content": clean_text(m.group(2))} for m in ROLE_RE.finditer(text)]
+    turns = [
+        {"role": m.group(1), "content": clean_text(m.group(2))} for m in ROLE_RE.finditer(text)
+    ]
     return turns or None
 
 
@@ -231,7 +308,11 @@ def reject_reason(messages: list[dict[str, str]], record: dict) -> str | None:
     users = [m["content"] for m in messages if m["role"] == "user"]
     assistant_text = "\n".join(assistants)
 
-    if len(non_system) < 48 or min(len(u) for u in users) < 8 or min(len(a) for a in assistants) < 20:
+    if (
+        len(non_system) < 48
+        or min(len(u) for u in users) < 8
+        or min(len(a) for a in assistants) < 20
+    ):
         return "too_short"
     if len(non_system) > 24_000 or max(len(a) for a in assistants) > 12_000:
         return "too_long"
@@ -344,8 +425,17 @@ def collect_rows(
                 if len(rejects) < reject_sample_limit:
                     preview = ""
                     if messages:
-                        preview = "\n".join(m["content"] for m in messages if m["role"] != "system")[:600]
-                    rejects.append({"source": source_name, "line": lineno, "reason": reason, "preview": preview})
+                        preview = "\n".join(
+                            m["content"] for m in messages if m["role"] != "system"
+                        )[:600]
+                    rejects.append(
+                        {
+                            "source": source_name,
+                            "line": lineno,
+                            "reason": reason,
+                            "preview": preview,
+                        }
+                    )
                 continue
 
             assert messages is not None
@@ -387,8 +477,12 @@ def write_jsonl(path: Path, rows: Iterable[dict]) -> int:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--output-dir", type=Path, default=REPO / "data" / "training" / "sft_clean_de_v1")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "--output-dir", type=Path, default=REPO / "data" / "training" / "sft_clean_de_v1"
+    )
     parser.add_argument("--val-ratio", type=float, default=0.02)
     parser.add_argument("--seed", type=int, default=1337)
     parser.add_argument("--reject-sample-limit", type=int, default=500)
@@ -398,7 +492,9 @@ def main() -> None:
         default=3,
         help="Keep at most this many records with exactly the same assistant text.",
     )
-    parser.add_argument("--source", action="append", default=None, help="Source JSONL path. Repeatable.")
+    parser.add_argument(
+        "--source", action="append", default=None, help="Source JSONL path. Repeatable."
+    )
     args = parser.parse_args()
 
     source_args = args.source if args.source else list(DEFAULT_SOURCES)

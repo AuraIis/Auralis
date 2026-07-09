@@ -25,6 +25,7 @@ from auralis.model.utils.rotary import apply_rotary_pos_emb
 
 try:
     from flash_attn import flash_attn_func as _flash_attn_func  # type: ignore
+
     _FLASH_AVAILABLE = True
 except Exception:
     _flash_attn_func = None
@@ -35,7 +36,7 @@ def _use_flash(on_cuda: bool, global_tokens: int) -> bool:
     if not (_FLASH_AVAILABLE and on_cuda):
         return False
     if global_tokens != 0:
-        return False                               # stock flash-attn has no global-tokens
+        return False  # stock flash-attn has no global-tokens
     if os.environ.get("AURALIS_USE_FLASH_ATTN", "") == "1":
         return True
     return os.environ.get("AURALIS_USE_CUDA_KERNELS", "0") == "1"
@@ -92,10 +93,12 @@ class SparseAttentionLayer(nn.Module):
                 v = v.to(target_dtype)
             # flash_attn expects [B, L, H, D] and takes window_size=(left, right)
             out = _flash_attn_func(
-                q, k, v,
+                q,
+                k,
+                v,
                 causal=True,
-                window_size=(self.window_size - 1, 0),        # causal → right=0
-                softmax_scale=None,                            # uses 1/sqrt(d_head) by default
+                window_size=(self.window_size - 1, 0),  # causal → right=0
+                softmax_scale=None,  # uses 1/sqrt(d_head) by default
             )
         else:
             out = self._native(q, k, v)
@@ -107,7 +110,7 @@ class SparseAttentionLayer(nn.Module):
         q = q.transpose(1, 2)
         k = k.transpose(1, 2)
         v = v.transpose(1, 2)
-        scores = torch.matmul(q, k.transpose(-2, -1)) * (D ** -0.5)
+        scores = torch.matmul(q, k.transpose(-2, -1)) * (D**-0.5)
         mask = self._build_mask(L, device=q.device)
         scores = scores.masked_fill(mask.unsqueeze(0).unsqueeze(0), float("-inf"))
         attn = F.softmax(scores, dim=-1, dtype=torch.float32).to(q.dtype)

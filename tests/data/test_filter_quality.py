@@ -21,32 +21,41 @@ def test_normalise_preserves_code_newlines_mode() -> None:
 
 def test_boilerplate_is_rejected() -> None:
     line = "Please accept all cookies before reading the rest of this article."
-    assert _passes(
-        line,
-        min_length=10,
-        max_length=1000,
-        preserve_newlines=False,
-        allow_mojibake=False,
-    ) == "boilerplate"
+    assert (
+        _passes(
+            line,
+            min_length=10,
+            max_length=1000,
+            preserve_newlines=False,
+            allow_mojibake=False,
+        )
+        == "boilerplate"
+    )
 
 
 def test_repetitive_text_is_rejected() -> None:
     line = "spam " * 30
-    assert _passes(
-        line,
-        min_length=10,
-        max_length=1000,
-        preserve_newlines=False,
-        allow_mojibake=False,
-    ) == "repetitive"
+    assert (
+        _passes(
+            line,
+            min_length=10,
+            max_length=1000,
+            preserve_newlines=False,
+            allow_mojibake=False,
+        )
+        == "repetitive"
+    )
 
 
 def test_clean_line_passes() -> None:
     line = "This is a clean sentence about machine learning and data curation."
-    assert _passes(
-        line,
-        min_length=10,
-        max_length=1000,
-        preserve_newlines=False,
-        allow_mojibake=False,
-    ) is None
+    assert (
+        _passes(
+            line,
+            min_length=10,
+            max_length=1000,
+            preserve_newlines=False,
+            allow_mojibake=False,
+        )
+        is None
+    )

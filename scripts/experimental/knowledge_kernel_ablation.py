@@ -19,7 +19,6 @@ import sys
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any
 
 import sentencepiece as spm
 import torch
@@ -95,12 +94,7 @@ def encode_answer_loss_batch(
     encoded: list[tuple[list[int], list[int]]] = []
     for row in rows:
         if style == "kernel":
-            prefix = (
-                "<recall>\n"
-                f"Begriff: {row['term']}\n"
-                f"Frage: {row['instruction']}\n"
-                "Antwort: "
-            )
+            prefix = f"<recall>\nBegriff: {row['term']}\nFrage: {row['instruction']}\nAntwort: "
             suffix = f"{row['output']}\n</recall>\n"
         else:
             prefix = f"Begriff: {row['term']}\nFrage: {row['instruction']}\nAntwort: "
@@ -201,12 +195,7 @@ def train_one(
     generations: dict[str, str] = {}
     for row in qa_rows[: args.generations]:
         if qa_style == "kernel":
-            prompt = (
-                "<recall>\n"
-                f"Begriff: {row['term']}\n"
-                f"Frage: {row['instruction']}\n"
-                "Antwort: "
-            )
+            prompt = f"<recall>\nBegriff: {row['term']}\nFrage: {row['instruction']}\nAntwort: "
         else:
             prompt = f"Begriff: {row['term']}\nFrage: {row['instruction']}\nAntwort: "
         generations[row["instruction"]] = generate(
@@ -273,9 +262,15 @@ def write_report(path: Path, results: list[AblationResult]) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--kernel-dir", type=Path, default=Path("data/eval/knowledge_kernel_smoke"))
-    parser.add_argument("--output-dir", type=Path, default=Path("data/eval/knowledge_kernel_ablation"))
-    parser.add_argument("--model-config", type=Path, default=Path("configs/model/helix_v2_debug_tiny.yaml"))
-    parser.add_argument("--tokenizer", type=Path, default=Path("tokenizer/helix_v2_tokenizer.model"))
+    parser.add_argument(
+        "--output-dir", type=Path, default=Path("data/eval/knowledge_kernel_ablation")
+    )
+    parser.add_argument(
+        "--model-config", type=Path, default=Path("configs/model/helix_v2_debug_tiny.yaml")
+    )
+    parser.add_argument(
+        "--tokenizer", type=Path, default=Path("tokenizer/helix_v2_tokenizer.model")
+    )
     parser.add_argument("--device", default="auto")
     parser.add_argument("--steps", type=int, default=80)
     parser.add_argument("--lr", type=float, default=3e-3)
@@ -292,7 +287,9 @@ def main() -> None:
     parser.add_argument("--max-new-tokens", type=int, default=24)
     args = parser.parse_args()
 
-    device = torch.device("cuda" if args.device == "auto" and torch.cuda.is_available() else args.device)
+    device = torch.device(
+        "cuda" if args.device == "auto" and torch.cuda.is_available() else args.device
+    )
     if args.device == "auto":
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"device={device}", flush=True)

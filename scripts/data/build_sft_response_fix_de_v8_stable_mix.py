@@ -17,7 +17,6 @@ import re
 from collections import Counter
 from pathlib import Path
 
-
 REPO = Path(__file__).resolve().parents[2]
 DEFAULT_INPUTS = [
     REPO / "data/training/sft_response_fix_de_v5/core_train.helix.jsonl",
@@ -32,7 +31,9 @@ DEFAULT_VAL_INPUTS = [
 
 
 def norm_key(text: str) -> str:
-    return hashlib.blake2b(re.sub(r"\s+", " ", text.lower()).encode("utf-8"), digest_size=16).hexdigest()
+    return hashlib.blake2b(
+        re.sub(r"\s+", " ", text.lower()).encode("utf-8"), digest_size=16
+    ).hexdigest()
 
 
 def load_jsonl(path: Path, source_prefix: str) -> list[dict]:
@@ -73,7 +74,9 @@ def write_jsonl(path: Path, items: list[dict]) -> int:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--output-dir", type=Path, default=REPO / "data/training/sft_response_fix_de_v8_stable_mix")
+    ap.add_argument(
+        "--output-dir", type=Path, default=REPO / "data/training/sft_response_fix_de_v8_stable_mix"
+    )
     ap.add_argument("--seed", type=int, default=20260528)
     args = ap.parse_args()
 
@@ -97,11 +100,15 @@ def main() -> None:
         "goal": "Stabilize v6 with broad v5 data plus v6/v7 targeted repairs.",
         "train_records": train_n,
         "val_records": val_n,
-        "train_categories": dict(Counter(x.get("category", "unknown") for x in train).most_common()),
+        "train_categories": dict(
+            Counter(x.get("category", "unknown") for x in train).most_common()
+        ),
         "train_families": len(set(x.get("family", "unknown") for x in train)),
         "inputs": [str(p.relative_to(REPO)) for p in DEFAULT_INPUTS],
     }
-    (args.output_dir / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    (args.output_dir / "manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     print(json.dumps(manifest, ensure_ascii=False, indent=2))
 
 

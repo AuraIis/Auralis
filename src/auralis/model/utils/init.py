@@ -10,7 +10,6 @@ Uses the "scaled_normal" scheme from the config:
 
 from __future__ import annotations
 
-import torch
 import torch.nn as nn
 
 

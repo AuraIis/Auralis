@@ -11,6 +11,7 @@ Features:
   - per-call token + cost accounting
   - JSONL append-only output so a crashed run can resume
 """
+
 from __future__ import annotations
 
 import argparse
@@ -20,9 +21,9 @@ import os
 import random
 import sys
 import time
+from collections.abc import AsyncIterator
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import AsyncIterator, Optional
 
 try:
     import httpx
@@ -34,12 +35,12 @@ except ImportError:
 @dataclass
 class GenRequest:
     request_id: str
-    messages: list                              # [{'role','content'}, ...]
+    messages: list  # [{'role','content'}, ...]
     max_tokens: int = 1024
     temperature: float = 0.7
     top_p: float = 0.95
-    extra: dict = field(default_factory=dict)        # arbitrary metadata to round-trip
-    extra_body: dict = field(default_factory=dict)   # extra request fields (e.g. reasoning_effort)
+    extra: dict = field(default_factory=dict)  # arbitrary metadata to round-trip
+    extra_body: dict = field(default_factory=dict)  # extra request fields (e.g. reasoning_effort)
 
 
 @dataclass
@@ -50,7 +51,7 @@ class GenResult:
     prompt_tokens: int = 0
     completion_tokens: int = 0
     total_tokens: int = 0
-    error: Optional[str] = None
+    error: str | None = None
     elapsed_ms: int = 0
     extra: dict = field(default_factory=dict)
 
@@ -122,14 +123,14 @@ class QwenClient:
                     )
                 if resp.status_code in (429, 500, 502, 503, 504):
                     last_error = f"http {resp.status_code}: {resp.text[:200]}"
-                    backoff = min(2 ** attempt + random.random(), 60.0)
+                    backoff = min(2**attempt + random.random(), 60.0)
                     await asyncio.sleep(backoff)
                     continue
                 last_error = f"http {resp.status_code}: {resp.text[:200]}"
                 break
             except (httpx.TimeoutException, httpx.NetworkError) as e:
                 last_error = f"{type(e).__name__}: {str(e)[:200]}"
-                backoff = min(2 ** attempt + random.random(), 60.0)
+                backoff = min(2**attempt + random.random(), 60.0)
                 await asyncio.sleep(backoff)
             except Exception as e:
                 last_error = f"{type(e).__name__}: {str(e)[:200]}"
@@ -161,7 +162,7 @@ class QwenClient:
     async def run_batch(
         self,
         requests: list,
-        output_jsonl: Optional[Path] = None,
+        output_jsonl: Path | None = None,
     ) -> AsyncIterator[GenResult]:
         """Run all requests concurrently. If output_jsonl is set, each result
         is appended as it completes (one JSON per line) — robust against
@@ -195,7 +196,9 @@ class QwenClient:
 # ---------------------------------------------------------------------------
 def _smoke_main() -> None:
     ap = argparse.ArgumentParser(description="Smoke-test the QwenClient against a live endpoint.")
-    ap.add_argument("--base-url", default=os.environ.get("OPENAI_API_BASE", "http://localhost:8000/v1"))
+    ap.add_argument(
+        "--base-url", default=os.environ.get("OPENAI_API_BASE", "http://localhost:8000/v1")
+    )
     ap.add_argument("--api-key", default=os.environ.get("OPENAI_API_KEY", "EMPTY"))
     ap.add_argument("--model", default=os.environ.get("OPENAI_MODEL", "Qwen2.5-32B-Instruct"))
     ap.add_argument("--n", type=int, default=3)

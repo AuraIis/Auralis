@@ -9,8 +9,8 @@ this fact" signal than free-form generation, and it needs no sampler.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from contextlib import contextmanager
-from typing import Sequence
 
 import torch
 
@@ -44,7 +44,7 @@ def continuation_nll(
     full = list(prompt_ids) + list(continuation_ids)
     input_ids = torch.tensor([full], dtype=torch.long, device=device)
     labels = torch.full((1, len(full)), -100, dtype=torch.long, device=device)
-    labels[0, len(prompt_ids):] = torch.tensor(continuation_ids, dtype=torch.long, device=device)
+    labels[0, len(prompt_ids) :] = torch.tensor(continuation_ids, dtype=torch.long, device=device)
     with _eval_mode(model):
         out = model(input_ids=input_ids, labels=labels)
     loss = out.get("loss_main")
@@ -113,7 +113,7 @@ def greedy_generate(
             ids.append(nxt)
             if eos_id is not None and nxt == eos_id:
                 break
-    return ids[len(prompt_ids):]
+    return ids[len(prompt_ids) :]
 
 
-__all__ = ["continuation_nll", "margin", "canary_loss", "greedy_generate"]
+__all__ = ["canary_loss", "continuation_nll", "greedy_generate", "margin"]

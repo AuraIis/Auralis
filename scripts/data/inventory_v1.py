@@ -104,10 +104,14 @@ def inventory(root: Path, limit: int | None) -> dict[str, Any]:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Inventory reusable Auralis v1 data.")
     parser.add_argument("--config", type=Path, default=None)
-    parser.add_argument("--output", type=Path,
-                        default=Path(__file__).resolve().parents[2] / "data" / "eval" / "v1_inventory.json")
-    parser.add_argument("--limit", type=int, default=None,
-                        help="Max files to scan (useful for quick runs).")
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=Path(__file__).resolve().parents[2] / "data" / "eval" / "v1_inventory.json",
+    )
+    parser.add_argument(
+        "--limit", type=int, default=None, help="Max files to scan (useful for quick runs)."
+    )
     args = parser.parse_args()
 
     cfg = load_paths(args.config) if args.config else load_paths()
@@ -119,9 +123,11 @@ def main() -> None:
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"Wrote {args.output}")
-    print(f"  files={report['totals']['files']}  "
-          f"size={report['totals']['total_size_gb']} GB  "
-          f"lines={report['totals']['total_lines']:,}")
+    print(
+        f"  files={report['totals']['files']}  "
+        f"size={report['totals']['total_size_gb']} GB  "
+        f"lines={report['totals']['total_lines']:,}"
+    )
 
 
 if __name__ == "__main__":

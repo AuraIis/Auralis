@@ -24,6 +24,7 @@ def _gla_backend(layer: nn.Module) -> str:
     # The runtime decision is made inside forward(); check module-level flag.
     try:
         from auralis.model.layers import gla_layer
+
         fla = gla_layer._FLA_AVAILABLE and gla_layer._use_fla(on_cuda=True)
         return "fla" if fla else "native"
     except Exception:
@@ -33,8 +34,11 @@ def _gla_backend(layer: nn.Module) -> str:
 def _sparse_backend(layer: nn.Module) -> str:
     try:
         from auralis.model.layers import sparse_attn_layer
+
         gt = getattr(layer, "global_tokens", 0) or 0
-        flash = sparse_attn_layer._FLASH_AVAILABLE and sparse_attn_layer._use_flash(on_cuda=True, global_tokens=gt)
+        flash = sparse_attn_layer._FLASH_AVAILABLE and sparse_attn_layer._use_flash(
+            on_cuda=True, global_tokens=gt
+        )
         return "flash_attn" if flash else "native"
     except Exception:
         return "native"

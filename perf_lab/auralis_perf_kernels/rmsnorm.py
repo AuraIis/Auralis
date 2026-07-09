@@ -67,4 +67,3 @@ def rmsnorm(x: torch.Tensor, weight: torch.Tensor, eps: float = 1e-6) -> torch.T
     if x.dim() < 2 or x.shape[-1] != weight.numel():
         raise ValueError(f"bad RMSNorm shape: x={tuple(x.shape)} weight={tuple(weight.shape)}")
     return _RMSNormFn.apply(x, weight, float(eps))
-

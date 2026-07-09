@@ -16,7 +16,6 @@ import re
 from collections import Counter
 from pathlib import Path
 
-
 REPO = Path(__file__).resolve().parents[2]
 DEFAULT_OUT = REPO / "data/training/helix_sft_de_10k"
 SEED = 20260605
@@ -65,45 +64,120 @@ FACTS = [
     ("Wie viele Grad hat ein rechter Winkel?", "Ein rechter Winkel hat 90 Grad."),
     ("Was ist H2O?", "H2O ist die chemische Formel für Wasser."),
     ("Welcher Planet ist der Sonne am nächsten?", "Merkur ist der Sonne am nächsten."),
-    ("Wie heißt der natürliche Satellit der Erde?", "Der natürliche Satellit der Erde ist der Mond."),
-    ("Welches Gas atmen Menschen hauptsächlich aus?", "Menschen atmen vor allem Stickstoff, Sauerstoff, Kohlendioxid und Wasserdampf aus; der Anteil an Kohlendioxid ist dabei höher als in der eingeatmeten Luft."),
+    (
+        "Wie heißt der natürliche Satellit der Erde?",
+        "Der natürliche Satellit der Erde ist der Mond.",
+    ),
+    (
+        "Welches Gas atmen Menschen hauptsächlich aus?",
+        "Menschen atmen vor allem Stickstoff, Sauerstoff, Kohlendioxid und Wasserdampf aus; der Anteil an Kohlendioxid ist dabei höher als in der eingeatmeten Luft.",
+    ),
     ("Was ist die kleinste Primzahl?", "Die kleinste Primzahl ist 2."),
     ("Ist 1 eine Primzahl?", "Nein. 1 ist keine Primzahl."),
-    ("Wie viele Kontinente werden meist unterschieden?", "Meist werden 7 Kontinente unterschieden."),
+    (
+        "Wie viele Kontinente werden meist unterschieden?",
+        "Meist werden 7 Kontinente unterschieden.",
+    ),
     ("Was misst ein Thermometer?", "Ein Thermometer misst die Temperatur."),
     ("Was misst ein Barometer?", "Ein Barometer misst den Luftdruck."),
-    ("Was ist die chemische Formel von Kohlendioxid?", "Die chemische Formel von Kohlendioxid ist CO2."),
-    ("Wie heißt die größte Wüste der Erde?", "Die Antarktis ist die größte Wüste der Erde, wenn man Kältewüsten mitzählt."),
+    (
+        "Was ist die chemische Formel von Kohlendioxid?",
+        "Die chemische Formel von Kohlendioxid ist CO2.",
+    ),
+    (
+        "Wie heißt die größte Wüste der Erde?",
+        "Die Antarktis ist die größte Wüste der Erde, wenn man Kältewüsten mitzählt.",
+    ),
     ("Wie viele Bundesländer hat Deutschland?", "Deutschland hat 16 Bundesländer."),
-    ("Wie viele Zähne hat ein erwachsener Mensch normalerweise?", "Ein erwachsener Mensch hat normalerweise 32 Zähne, einschließlich Weisheitszähnen."),
-    ("Welche Einheit wird für elektrische Spannung verwendet?", "Elektrische Spannung wird in Volt angegeben."),
-    ("Welche Einheit wird für elektrische Stromstärke verwendet?", "Elektrische Stromstärke wird in Ampere angegeben."),
+    (
+        "Wie viele Zähne hat ein erwachsener Mensch normalerweise?",
+        "Ein erwachsener Mensch hat normalerweise 32 Zähne, einschließlich Weisheitszähnen.",
+    ),
+    (
+        "Welche Einheit wird für elektrische Spannung verwendet?",
+        "Elektrische Spannung wird in Volt angegeben.",
+    ),
+    (
+        "Welche Einheit wird für elektrische Stromstärke verwendet?",
+        "Elektrische Stromstärke wird in Ampere angegeben.",
+    ),
     ("Welche Einheit wird für Leistung verwendet?", "Leistung wird in Watt angegeben."),
     ("Was ist die SI-Einheit der Masse?", "Die SI-Einheit der Masse ist das Kilogramm."),
     ("Was ist die SI-Einheit der Länge?", "Die SI-Einheit der Länge ist der Meter."),
-    ("Wie viele Byte hat ein Kilobyte im Dezimalsystem?", "Ein Kilobyte hat im Dezimalsystem 1.000 Byte."),
+    (
+        "Wie viele Byte hat ein Kilobyte im Dezimalsystem?",
+        "Ein Kilobyte hat im Dezimalsystem 1.000 Byte.",
+    ),
     ("Wie viele Bit hat ein Byte?", "Ein Byte hat 8 Bit."),
-    ("Was ist ein Synonym?", "Ein Synonym ist ein Wort mit gleicher oder sehr ähnlicher Bedeutung."),
+    (
+        "Was ist ein Synonym?",
+        "Ein Synonym ist ein Wort mit gleicher oder sehr ähnlicher Bedeutung.",
+    ),
     ("Was ist ein Antonym?", "Ein Antonym ist ein Wort mit gegenteiliger Bedeutung."),
     ("Was ist ein Verb?", "Ein Verb ist ein Tätigkeits- oder Zustandswort."),
 ]
 
 CONCEPTS = [
-    ("Was ist Photosynthese?", "Photosynthese ist ein Prozess, bei dem Pflanzen, Algen und einige Bakterien Lichtenergie nutzen, um aus Wasser und Kohlendioxid energiereiche Stoffe aufzubauen. Dabei entsteht oft Sauerstoff als Nebenprodukt."),
-    ("Was ist ein Vulkan?", "Ein Vulkan ist eine Öffnung in der Erdkruste, durch die Magma, Gase und Asche an die Oberfläche gelangen können. Bei einem Ausbruch spricht man von einer vulkanischen Eruption."),
-    ("Was ist Inflation?", "Inflation bedeutet, dass das allgemeine Preisniveau steigt. Dadurch verliert Geld an Kaufkraft, weil man für denselben Betrag weniger kaufen kann."),
-    ("Was ist Demokratie?", "Demokratie ist eine Staatsform, in der politische Macht vom Volk ausgeht. Bürgerinnen und Bürger entscheiden direkt oder wählen Vertreter."),
-    ("Was ist ein Algorithmus?", "Ein Algorithmus ist eine eindeutige Schrittfolge zur Lösung eines Problems. Er beschreibt, was in welcher Reihenfolge getan werden soll."),
-    ("Was ist ein Ökosystem?", "Ein Ökosystem besteht aus Lebewesen und ihrer unbelebten Umwelt. Beide beeinflussen sich gegenseitig, zum Beispiel durch Nahrungsketten, Wasser und Nährstoffe."),
-    ("Was ist ein Atom?", "Ein Atom ist ein sehr kleiner Baustein der Materie. Es besteht aus einem Atomkern und einer Hülle aus Elektronen."),
-    ("Was ist Gravitation?", "Gravitation ist die Anziehung zwischen Massen. Sie sorgt zum Beispiel dafür, dass Dinge auf der Erde nach unten fallen."),
-    ("Was ist ein Budget?", "Ein Budget ist ein Plan für Einnahmen und Ausgaben. Es hilft, Geld gezielt einzuteilen und Überblick zu behalten."),
-    ("Was ist ein Backup?", "Ein Backup ist eine Sicherheitskopie von Daten. Es dient dazu, Daten nach Verlust oder Beschädigung wiederherzustellen."),
-    ("Was ist ein Passwort-Manager?", "Ein Passwort-Manager speichert Passwörter verschlüsselt. Er hilft, für verschiedene Dienste starke und unterschiedliche Passwörter zu verwenden."),
-    ("Was ist ein Stromkreis?", "Ein Stromkreis ist ein geschlossener Weg, durch den elektrischer Strom fließen kann. Wird der Weg unterbrochen, fließt kein Strom."),
-    ("Was ist ein Bruch in der Mathematik?", "Ein Bruch beschreibt einen Teil eines Ganzen oder ein Verhältnis zweier Zahlen. Der Zähler steht oben, der Nenner unten."),
-    ("Was ist eine Metapher?", "Eine Metapher ist ein sprachliches Bild. Ein Ausdruck wird nicht wörtlich verwendet, sondern überträgt eine Bedeutung."),
-    ("Was ist eine These?", "Eine These ist eine Behauptung, die begründet oder überprüft werden kann. In Texten dient sie oft als Ausgangspunkt einer Argumentation."),
+    (
+        "Was ist Photosynthese?",
+        "Photosynthese ist ein Prozess, bei dem Pflanzen, Algen und einige Bakterien Lichtenergie nutzen, um aus Wasser und Kohlendioxid energiereiche Stoffe aufzubauen. Dabei entsteht oft Sauerstoff als Nebenprodukt.",
+    ),
+    (
+        "Was ist ein Vulkan?",
+        "Ein Vulkan ist eine Öffnung in der Erdkruste, durch die Magma, Gase und Asche an die Oberfläche gelangen können. Bei einem Ausbruch spricht man von einer vulkanischen Eruption.",
+    ),
+    (
+        "Was ist Inflation?",
+        "Inflation bedeutet, dass das allgemeine Preisniveau steigt. Dadurch verliert Geld an Kaufkraft, weil man für denselben Betrag weniger kaufen kann.",
+    ),
+    (
+        "Was ist Demokratie?",
+        "Demokratie ist eine Staatsform, in der politische Macht vom Volk ausgeht. Bürgerinnen und Bürger entscheiden direkt oder wählen Vertreter.",
+    ),
+    (
+        "Was ist ein Algorithmus?",
+        "Ein Algorithmus ist eine eindeutige Schrittfolge zur Lösung eines Problems. Er beschreibt, was in welcher Reihenfolge getan werden soll.",
+    ),
+    (
+        "Was ist ein Ökosystem?",
+        "Ein Ökosystem besteht aus Lebewesen und ihrer unbelebten Umwelt. Beide beeinflussen sich gegenseitig, zum Beispiel durch Nahrungsketten, Wasser und Nährstoffe.",
+    ),
+    (
+        "Was ist ein Atom?",
+        "Ein Atom ist ein sehr kleiner Baustein der Materie. Es besteht aus einem Atomkern und einer Hülle aus Elektronen.",
+    ),
+    (
+        "Was ist Gravitation?",
+        "Gravitation ist die Anziehung zwischen Massen. Sie sorgt zum Beispiel dafür, dass Dinge auf der Erde nach unten fallen.",
+    ),
+    (
+        "Was ist ein Budget?",
+        "Ein Budget ist ein Plan für Einnahmen und Ausgaben. Es hilft, Geld gezielt einzuteilen und Überblick zu behalten.",
+    ),
+    (
+        "Was ist ein Backup?",
+        "Ein Backup ist eine Sicherheitskopie von Daten. Es dient dazu, Daten nach Verlust oder Beschädigung wiederherzustellen.",
+    ),
+    (
+        "Was ist ein Passwort-Manager?",
+        "Ein Passwort-Manager speichert Passwörter verschlüsselt. Er hilft, für verschiedene Dienste starke und unterschiedliche Passwörter zu verwenden.",
+    ),
+    (
+        "Was ist ein Stromkreis?",
+        "Ein Stromkreis ist ein geschlossener Weg, durch den elektrischer Strom fließen kann. Wird der Weg unterbrochen, fließt kein Strom.",
+    ),
+    (
+        "Was ist ein Bruch in der Mathematik?",
+        "Ein Bruch beschreibt einen Teil eines Ganzen oder ein Verhältnis zweier Zahlen. Der Zähler steht oben, der Nenner unten.",
+    ),
+    (
+        "Was ist eine Metapher?",
+        "Eine Metapher ist ein sprachliches Bild. Ein Ausdruck wird nicht wörtlich verwendet, sondern überträgt eine Bedeutung.",
+    ),
+    (
+        "Was ist eine These?",
+        "Eine These ist eine Behauptung, die begründet oder überprüft werden kann. In Texten dient sie oft als Ausgangspunkt einer Argumentation.",
+    ),
 ]
 
 UNKNOWN_TERMS = [
@@ -146,9 +220,7 @@ CORRECTIONS = [
         "Sind Tomaten Gemüse?",
         "Botanisch sind Tomaten Früchte, genauer Beeren. Im Alltag und in der Küche werden sie meist als Gemüse behandelt.",
     ),
-    (
-        "Ist ein Wal ein Fisch?",
-        "Nein. Wale sind Säugetiere, keine Fische."),
+    ("Ist ein Wal ein Fisch?", "Nein. Wale sind Säugetiere, keine Fische."),
     (
         "Kann man eine Erkältung direkt durch Kälte bekommen?",
         "Kälte allein verursacht keine Erkältung. Erkältungen werden durch Viren ausgelöst, auch wenn Kälte und trockene Luft die Anfälligkeit beeinflussen können.",
@@ -185,7 +257,7 @@ def norm(text: str) -> str:
 
 
 def key(user: str, assistant: str) -> str:
-    return hashlib.blake2b(f"{norm(user)}\n{norm(assistant)}".encode("utf-8"), digest_size=16).hexdigest()
+    return hashlib.blake2b(f"{norm(user)}\n{norm(assistant)}".encode(), digest_size=16).hexdigest()
 
 
 def add(
@@ -217,7 +289,9 @@ def add(
     return True
 
 
-def build_short_direct(rows: list[dict[str, str]], seen: set[str], counts: Counter[str], target: int) -> None:
+def build_short_direct(
+    rows: list[dict[str, str]], seen: set[str], counts: Counter[str], target: int
+) -> None:
     rng = random.Random(SEED + 1)
     family_counts: Counter[str] = Counter()
     quotas = {
@@ -242,7 +316,15 @@ def build_short_direct(rows: list[dict[str, str]], seen: set[str], counts: Count
                 break
             if (a + b) % 3 == 0:
                 q = rng.choice(variants).format(a=a, b=b)
-                if add(rows, seen, counts, q, f"{a} plus {b} ergibt {a + b}.", "short_direct", "addition"):
+                if add(
+                    rows,
+                    seen,
+                    counts,
+                    q,
+                    f"{a} plus {b} ergibt {a + b}.",
+                    "short_direct",
+                    "addition",
+                ):
                     family_counts["addition"] += 1
         if family_counts["addition"] >= quotas["addition"]:
             break
@@ -251,8 +333,18 @@ def build_short_direct(rows: list[dict[str, str]], seen: set[str], counts: Count
         for b in range(2, 29):
             if family_counts["subtraction"] >= quotas["subtraction"]:
                 break
-            q = rng.choice(["Was ist {a} minus {b}?", "Rechne {a} - {b}.", "Wie viel ergibt {a} - {b}?"]).format(a=a, b=b)
-            if add(rows, seen, counts, q, f"{a} minus {b} ergibt {a - b}.", "short_direct", "subtraction"):
+            q = rng.choice(
+                ["Was ist {a} minus {b}?", "Rechne {a} - {b}.", "Wie viel ergibt {a} - {b}?"]
+            ).format(a=a, b=b)
+            if add(
+                rows,
+                seen,
+                counts,
+                q,
+                f"{a} minus {b} ergibt {a - b}.",
+                "short_direct",
+                "subtraction",
+            ):
                 family_counts["subtraction"] += 1
         if family_counts["subtraction"] >= quotas["subtraction"]:
             break
@@ -261,8 +353,18 @@ def build_short_direct(rows: list[dict[str, str]], seen: set[str], counts: Count
         for b in range(2, 31):
             if family_counts["multiplication"] >= quotas["multiplication"]:
                 break
-            q = rng.choice(["Was ist {a} mal {b}?", "Rechne {a} * {b}.", "Wie viel ergibt {a} mal {b}?"]).format(a=a, b=b)
-            if add(rows, seen, counts, q, f"{a} mal {b} ergibt {a * b}.", "short_direct", "multiplication"):
+            q = rng.choice(
+                ["Was ist {a} mal {b}?", "Rechne {a} * {b}.", "Wie viel ergibt {a} mal {b}?"]
+            ).format(a=a, b=b)
+            if add(
+                rows,
+                seen,
+                counts,
+                q,
+                f"{a} mal {b} ergibt {a * b}.",
+                "short_direct",
+                "multiplication",
+            ):
                 family_counts["multiplication"] += 1
         if family_counts["multiplication"] >= quotas["multiplication"]:
             break
@@ -272,8 +374,22 @@ def build_short_direct(rows: list[dict[str, str]], seen: set[str], counts: Count
             if family_counts["division"] >= quotas["division"]:
                 break
             dividend = result * divisor
-            q = rng.choice(["Was ist {a} geteilt durch {b}?", "Rechne {a} / {b}.", "Wie viel ergibt {a} durch {b}?"]).format(a=dividend, b=divisor)
-            if add(rows, seen, counts, q, f"{dividend} geteilt durch {divisor} ergibt {result}.", "short_direct", "division"):
+            q = rng.choice(
+                [
+                    "Was ist {a} geteilt durch {b}?",
+                    "Rechne {a} / {b}.",
+                    "Wie viel ergibt {a} durch {b}?",
+                ]
+            ).format(a=dividend, b=divisor)
+            if add(
+                rows,
+                seen,
+                counts,
+                q,
+                f"{dividend} geteilt durch {divisor} ergibt {result}.",
+                "short_direct",
+                "division",
+            ):
                 family_counts["division"] += 1
         if family_counts["division"] >= quotas["division"]:
             break
@@ -285,7 +401,9 @@ def build_short_direct(rows: list[dict[str, str]], seen: set[str], counts: Count
             if a == b or (a + b) % 11 != 0:
                 continue
             bigger = max(a, b)
-            q = rng.choice(["Welche Zahl ist größer: {a} oder {b}?", "Was ist größer, {a} oder {b}?"]).format(a=a, b=b)
+            q = rng.choice(
+                ["Welche Zahl ist größer: {a} oder {b}?", "Was ist größer, {a} oder {b}?"]
+            ).format(a=a, b=b)
             if add(rows, seen, counts, q, f"{bigger} ist größer.", "short_direct", "comparison"):
                 family_counts["comparison"] += 1
         if family_counts["comparison"] >= quotas["comparison"]:
@@ -303,8 +421,18 @@ def build_short_direct(rows: list[dict[str, str]], seen: set[str], counts: Count
         for n in range(2, 500):
             if family_counts["unit_conversion"] >= quotas["unit_conversion"]:
                 break
-            q = rng.choice([f"Wie viele {dst} sind {n} {src}?", f"Wandle {n} {src_short} in {dst_short} um."])
-            if add(rows, seen, counts, q, f"{n} {src} sind {n * factor} {dst}.", "short_direct", "unit_conversion"):
+            q = rng.choice(
+                [f"Wie viele {dst} sind {n} {src}?", f"Wandle {n} {src_short} in {dst_short} um."]
+            )
+            if add(
+                rows,
+                seen,
+                counts,
+                q,
+                f"{n} {src} sind {n * factor} {dst}.",
+                "short_direct",
+                "unit_conversion",
+            ):
                 family_counts["unit_conversion"] += 1
         if family_counts["unit_conversion"] >= quotas["unit_conversion"]:
             break
@@ -329,7 +457,15 @@ def build_short_direct(rows: list[dict[str, str]], seen: set[str], counts: Count
         ]:
             if family_counts["capital"] >= quotas["capital"]:
                 break
-            if add(rows, seen, counts, q, f"Die Hauptstadt von {country} ist {capital}.", "short_direct", "capital"):
+            if add(
+                rows,
+                seen,
+                counts,
+                q,
+                f"Die Hauptstadt von {country} ist {capital}.",
+                "short_direct",
+                "capital",
+            ):
                 family_counts["capital"] += 1
         if family_counts["capital"] >= quotas["capital"]:
             break
@@ -383,12 +519,22 @@ def build_short_direct(rows: list[dict[str, str]], seen: set[str], counts: Count
             value = base * percent // 100
             if base * percent % 100 != 0:
                 continue
-            q = rng.choice([
-                "Was sind {p} Prozent von {b}?",
-                "Berechne {p}% von {b}.",
-                "Wie viel sind {p}% von {b}?",
-            ]).format(p=percent, b=base)
-            if add(rows, seen, counts, q, f"{percent} Prozent von {base} sind {value}.", "short_direct", "percentage"):
+            q = rng.choice(
+                [
+                    "Was sind {p} Prozent von {b}?",
+                    "Berechne {p}% von {b}.",
+                    "Wie viel sind {p}% von {b}?",
+                ]
+            ).format(p=percent, b=base)
+            if add(
+                rows,
+                seen,
+                counts,
+                q,
+                f"{percent} Prozent von {base} sind {value}.",
+                "short_direct",
+                "percentage",
+            ):
                 family_counts["percentage"] += 1
         if counts["short_direct"] >= target:
             break
@@ -397,7 +543,9 @@ def build_short_direct(rows: list[dict[str, str]], seen: set[str], counts: Count
         raise ValueError(f"short_direct target not reached: {counts['short_direct']} != {target}")
 
 
-def build_explanations(rows: list[dict[str, str]], seen: set[str], counts: Counter[str], target: int) -> None:
+def build_explanations(
+    rows: list[dict[str, str]], seen: set[str], counts: Counter[str], target: int
+) -> None:
     starters = [
         'Erkläre den Begriff "{concept}".',
         'Was bedeutet der Begriff "{concept}"?',
@@ -436,7 +584,9 @@ def build_explanations(rows: list[dict[str, str]], seen: set[str], counts: Count
             raise ValueError("could not create enough explanation rows")
 
 
-def build_uncertainty(rows: list[dict[str, str]], seen: set[str], counts: Counter[str], target: int) -> None:
+def build_uncertainty(
+    rows: list[dict[str, str]], seen: set[str], counts: Counter[str], target: int
+) -> None:
     rng = random.Random(SEED + 3)
     templates = [
         "Was bedeutet {term} genau?",
@@ -521,7 +671,9 @@ def build_uncertainty(rows: list[dict[str, str]], seen: set[str], counts: Counte
             raise ValueError("could not create enough uncertainty rows")
 
 
-def build_corrections(rows: list[dict[str, str]], seen: set[str], counts: Counter[str], target: int) -> None:
+def build_corrections(
+    rows: list[dict[str, str]], seen: set[str], counts: Counter[str], target: int
+) -> None:
     prefixes = [
         "",
         "Korrigiere knapp: ",
@@ -548,7 +700,9 @@ def build_corrections(rows: list[dict[str, str]], seen: set[str], counts: Counte
                 for suffix in suffixes:
                     if counts["correction"] >= target:
                         return
-                    made_progress |= add(rows, seen, counts, prefix + q + suffix, a, "correction", "misconception")
+                    made_progress |= add(
+                        rows, seen, counts, prefix + q + suffix, a, "correction", "misconception"
+                    )
         if not made_progress:
             raise ValueError("could not create enough correction rows")
 
@@ -561,7 +715,11 @@ def validate(rows: list[dict[str, str]], expected: int) -> dict[str, object]:
         raise ValueError("duplicate user/assistant pairs found")
     for idx, row in enumerate(rows, 1):
         text = row["text"]
-        if text.count("<|user|>") != 1 or text.count("<|assistant|>") != 1 or text.count("<|end|>") != 1:
+        if (
+            text.count("<|user|>") != 1
+            or text.count("<|assistant|>") != 1
+            or text.count("<|end|>") != 1
+        ):
             raise ValueError(f"bad marker count in row {idx}")
         if not row["messages"][0]["content"] or not row["messages"][1]["content"]:
             raise ValueError(f"empty message in row {idx}")
@@ -629,7 +787,9 @@ def main() -> None:
             ],
         }
     )
-    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    manifest_path.write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
     print(json.dumps(manifest, ensure_ascii=False, indent=2))
 
 

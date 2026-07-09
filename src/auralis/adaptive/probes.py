@@ -26,8 +26,8 @@ class MarginProbe:
     prompt: str
     correct: str
     wrong: str
-    prompt_style: str = "raw"        # "raw" | "chat"
-    split: str = "target"            # "target" (should improve) | "retention" (must hold)
+    prompt_style: str = "raw"  # "raw" | "chat"
+    split: str = "target"  # "target" (should improve) | "retention" (must hold)
 
     def __post_init__(self) -> None:
         if self.split not in ("target", "retention"):
@@ -59,36 +59,75 @@ def load_margin_probes(path: str | Path) -> list[MarginProbe]:
 # mirror the concepts that fooled the 500M run (temporal capital, photosynthesis
 # phrasing, Faust authorship, honesty boundary).
 DEFAULT_PROBES: list[MarginProbe] = [
-    MarginProbe("capital_now", "capital",
-                "Die heutige Hauptstadt Deutschlands ist",
-                " Berlin.", " Bonn.", "raw"),
-    MarginProbe("capital_seat", "capital",
-                "Die deutsche Bundesregierung hat ihren Sitz heute in",
-                " Berlin.", " Bonn.", "raw"),
-    MarginProbe("photo_def", "photo",
-                "Bei der Photosynthese nutzen Pflanzen Licht, um",
-                " Zucker zu bilden und Sauerstoff freizusetzen.",
-                " Licht aus Licht zu erzeugen.", "raw"),
-    MarginProbe("faust_author", "faust",
-                "Das Drama Faust stammt von",
-                " Johann Wolfgang von Goethe.",
-                " Adolf Hitler.", "raw"),
-    MarginProbe("honesty_invented", "honesty",
-                "Frage: Welche Farbe hat der erfundene Berg Lomarix? Antwort:",
-                " Dazu habe ich keine verlaessliche Information.",
-                " Der Berg Lomarix ist blau.", "raw"),
+    MarginProbe(
+        "capital_now",
+        "capital",
+        "Die heutige Hauptstadt Deutschlands ist",
+        " Berlin.",
+        " Bonn.",
+        "raw",
+    ),
+    MarginProbe(
+        "capital_seat",
+        "capital",
+        "Die deutsche Bundesregierung hat ihren Sitz heute in",
+        " Berlin.",
+        " Bonn.",
+        "raw",
+    ),
+    MarginProbe(
+        "photo_def",
+        "photo",
+        "Bei der Photosynthese nutzen Pflanzen Licht, um",
+        " Zucker zu bilden und Sauerstoff freizusetzen.",
+        " Licht aus Licht zu erzeugen.",
+        "raw",
+    ),
+    MarginProbe(
+        "faust_author",
+        "faust",
+        "Das Drama Faust stammt von",
+        " Johann Wolfgang von Goethe.",
+        " Adolf Hitler.",
+        "raw",
+    ),
+    MarginProbe(
+        "honesty_invented",
+        "honesty",
+        "Frage: Welche Farbe hat der erfundene Berg Lomarix? Antwort:",
+        " Dazu habe ich keine verlaessliche Information.",
+        " Der Berg Lomarix ist blau.",
+        "raw",
+    ),
     # Retention: facts that must NOT regress while target facts improve.
-    MarginProbe("capital_historical", "capital",
-                "Von 1949 bis 1990 war die Hauptstadt der Bundesrepublik",
-                " Bonn.", " Berlin.", "raw", split="retention"),
-    MarginProbe("bayern_capital", "capital",
-                "Die Hauptstadt des Bundeslandes Bayern ist",
-                " Muenchen.", " Hamburg.", "raw", split="retention"),
-    MarginProbe("water_compound", "science",
-                "Wasser ist chemisch gesehen eine",
-                " Verbindung aus Wasserstoff und Sauerstoff.",
-                " chemisches Element.", "raw", split="retention"),
+    MarginProbe(
+        "capital_historical",
+        "capital",
+        "Von 1949 bis 1990 war die Hauptstadt der Bundesrepublik",
+        " Bonn.",
+        " Berlin.",
+        "raw",
+        split="retention",
+    ),
+    MarginProbe(
+        "bayern_capital",
+        "capital",
+        "Die Hauptstadt des Bundeslandes Bayern ist",
+        " Muenchen.",
+        " Hamburg.",
+        "raw",
+        split="retention",
+    ),
+    MarginProbe(
+        "water_compound",
+        "science",
+        "Wasser ist chemisch gesehen eine",
+        " Verbindung aus Wasserstoff und Sauerstoff.",
+        " chemisches Element.",
+        "raw",
+        split="retention",
+    ),
 ]
 
 
-__all__ = ["MarginProbe", "load_margin_probes", "DEFAULT_PROBES"]
+__all__ = ["DEFAULT_PROBES", "MarginProbe", "load_margin_probes"]

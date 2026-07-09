@@ -18,7 +18,6 @@ found (so CI can gate launch).
 from __future__ import annotations
 
 import argparse
-import json
 import re
 import sys
 from pathlib import Path
@@ -27,7 +26,7 @@ import yaml
 
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO))
-from scripts.data._common import load_paths                    # noqa: E402
+from scripts.data._common import load_paths  # noqa: E402
 
 
 def _normalise(s: str) -> str:
@@ -37,14 +36,20 @@ def _normalise(s: str) -> str:
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--questions", type=Path,
-                   default=REPO / "eval" / "baseline_questions.yaml")
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    p.add_argument("--questions", type=Path, default=REPO / "eval" / "baseline_questions.yaml")
     p.add_argument("--data-config", type=Path, default=None)
-    p.add_argument("--output-md", type=Path,
-                   default=REPO / "data" / "eval" / "contamination_report.md")
-    p.add_argument("--min-question-length", type=int, default=20,
-                   help="Skip questions shorter than this (would over-match trivially).")
+    p.add_argument(
+        "--output-md", type=Path, default=REPO / "data" / "eval" / "contamination_report.md"
+    )
+    p.add_argument(
+        "--min-question-length",
+        type=int,
+        default=20,
+        help="Skip questions shorter than this (would over-match trivially).",
+    )
     args = p.parse_args()
 
     qdoc = yaml.safe_load(args.questions.read_text(encoding="utf-8"))
@@ -93,11 +98,13 @@ def main() -> None:
     fraction = len(contaminated) / max(len(targets), 1)
 
     args.output_md.parent.mkdir(parents=True, exist_ok=True)
-    md = ["# Contamination Report\n",
-          f"Questions scanned  : {len(targets)}",
-          f"Sources scanned    : {len(sources)}",
-          f"Contaminated IDs   : {len(contaminated)}",
-          f"Contamination rate : {fraction*100:.2f}%"]
+    md = [
+        "# Contamination Report\n",
+        f"Questions scanned  : {len(targets)}",
+        f"Sources scanned    : {len(sources)}",
+        f"Contaminated IDs   : {len(contaminated)}",
+        f"Contamination rate : {fraction * 100:.2f}%",
+    ]
     if contaminated:
         md.append("\n## Hits\n")
         for qid in contaminated:

@@ -18,9 +18,9 @@ import argparse
 import json
 import math
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
 
 import torch
 import torch.nn.functional as F
@@ -47,7 +47,9 @@ def dtype_from_name(name: str) -> torch.dtype:
     return {"bf16": torch.bfloat16, "fp16": torch.float16, "fp32": torch.float32}[name]
 
 
-def make_optimizer(name: str, params: list[torch.Tensor], lr: float, weight_decay: float) -> torch.optim.Optimizer:
+def make_optimizer(
+    name: str, params: list[torch.Tensor], lr: float, weight_decay: float
+) -> torch.optim.Optimizer:
     if name == "sgd":
         return torch.optim.SGD(params, lr=lr, weight_decay=weight_decay)
     if name == "adamw":
@@ -80,8 +82,9 @@ def make_batch(
     return x, labels
 
 
-def reference_ce(hidden: torch.Tensor, weight: torch.Tensor, labels: torch.Tensor,
-                 fp32: bool = False) -> torch.Tensor:
+def reference_ce(
+    hidden: torch.Tensor, weight: torch.Tensor, labels: torch.Tensor, fp32: bool = False
+) -> torch.Tensor:
     if fp32:
         # fp32 "ground-truth" reference: upcast logits + CE to full precision so a
         # candidate can be measured against the true answer. Paired with
@@ -102,8 +105,13 @@ def accumulation_stats(values: list[float]) -> dict[str, float | int | None]:
     """
     n = len(values)
     if n < 4:
-        return {"n": n, "slope_per_step": None, "early_mean": None,
-                "late_mean": None, "late_over_early": None}
+        return {
+            "n": n,
+            "slope_per_step": None,
+            "early_mean": None,
+            "late_mean": None,
+            "late_over_early": None,
+        }
     xs = list(range(n))
     mx = sum(xs) / n
     my = sum(values) / n
@@ -112,11 +120,18 @@ def accumulation_stats(values: list[float]) -> dict[str, float | int | None]:
     k = max(1, n // 5)
     early = sum(values[:k]) / k
     late = sum(values[-k:]) / k
-    return {"n": n, "slope_per_step": slope, "early_mean": early,
-            "late_mean": late, "late_over_early": (late / early if early > 0 else None)}
+    return {
+        "n": n,
+        "slope_per_step": slope,
+        "early_mean": early,
+        "late_mean": late,
+        "late_over_early": (late / early if early > 0 else None),
+    }
 
 
-def make_candidate_loss(args: argparse.Namespace) -> Callable[[torch.Tensor, torch.Tensor, torch.Tensor], torch.Tensor]:
+def make_candidate_loss(
+    args: argparse.Namespace,
+) -> Callable[[torch.Tensor, torch.Tensor, torch.Tensor], torch.Tensor]:
     if args.impl == "pytorch":
         # PyTorch full-logits CE in the run dtype. Paired with --reference-fp32
         # this run measures the inherent bf16-vs-fp32 noise floor — the bar a
@@ -156,7 +171,10 @@ def make_candidate_loss(args: argparse.Namespace) -> Callable[[torch.Tensor, tor
         # atomics). accum_dtype=fp32 forces fp32 gradient accumulation for bf16.
         accum = torch.float32 if args.accum_dtype == "fp32" else None
         return lambda hidden, weight, labels: liger_linear_cross_entropy(
-            hidden, weight, labels, accum_dtype=accum,
+            hidden,
+            weight,
+            labels,
+            accum_dtype=accum,
         )
     raise ValueError(f"unknown impl: {args.impl}")
 
@@ -206,10 +224,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--weight-scale", type=float, default=0.05)
     parser.add_argument("--ignore-frac", type=float, default=0.0)
     parser.add_argument("--fixed-batch", action="store_true")
-    parser.add_argument("--impl", choices=["pytorch", "auto", "cpp", "python", "triton", "triton_fused", "liger"], default="triton_fused")
-    parser.add_argument("--accum-dtype", choices=["none", "fp32"], default="fp32",
-                        help="Liger gradient accumulation dtype (--impl liger only). "
-                             "fp32 forces fp32 accumulation for bf16 inputs (recommended).")
+    parser.add_argument(
+        "--impl",
+        choices=["pytorch", "auto", "cpp", "python", "triton", "triton_fused", "liger"],
+        default="triton_fused",
+    )
+    parser.add_argument(
+        "--accum-dtype",
+        choices=["none", "fp32"],
+        default="fp32",
+        help="Liger gradient accumulation dtype (--impl liger only). "
+        "fp32 forces fp32 accumulation for bf16 inputs (recommended).",
+    )
     parser.add_argument("--chunk-size", type=int, default=8192)
     parser.add_argument("--block-m", type=int, default=32)
     parser.add_argument("--block-v", type=int, default=32)
@@ -234,12 +260,19 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--fail-loss-abs", type=float, default=None)
     parser.add_argument("--fail-param-rel", type=float, default=None)
     parser.add_argument("--fail-param-l2-rel", type=float, default=None)
-    parser.add_argument("--fail-grad-l2-rel", type=float, default=None,
-                        help="Fail if max upstream-gradient (proj/head) L2-rel drift exceeds this. "
-                             "This is the metric that actually decides promotability.")
-    parser.add_argument("--reference-fp32", action="store_true",
-                        help="Compute the reference loss/grad in fp32 (ground truth) instead of the "
-                             "run dtype. With --impl pytorch this measures the bf16 noise floor.")
+    parser.add_argument(
+        "--fail-grad-l2-rel",
+        type=float,
+        default=None,
+        help="Fail if max upstream-gradient (proj/head) L2-rel drift exceeds this. "
+        "This is the metric that actually decides promotability.",
+    )
+    parser.add_argument(
+        "--reference-fp32",
+        action="store_true",
+        help="Compute the reference loss/grad in fp32 (ground truth) instead of the "
+        "run dtype. With --impl pytorch this measures the bf16 noise floor.",
+    )
     return parser.parse_args()
 
 
@@ -259,9 +292,14 @@ def main() -> None:
     torch.set_float32_matmul_precision("high")
 
     gen = torch.Generator(device=device).manual_seed(args.seed)
-    proj0 = (torch.randn((args.input_dim, args.d_model), device=device, dtype=dtype, generator=gen) * args.proj_scale)
+    proj0 = (
+        torch.randn((args.input_dim, args.d_model), device=device, dtype=dtype, generator=gen)
+        * args.proj_scale
+    )
     weight0 = (
-        torch.randn((args.vocab_size, args.d_model), device=device, dtype=weight_dtype, generator=gen)
+        torch.randn(
+            (args.vocab_size, args.d_model), device=device, dtype=weight_dtype, generator=gen
+        )
         * args.weight_scale
     )
 
@@ -299,7 +337,9 @@ def main() -> None:
     # Per-step drift series (every step, independent of --history-every) so we can
     # tell accumulating bias from flat noise.
     series: dict[str, list[float]] = {
-        "proj_grad_l2_rel": [], "head_grad_l2_rel": [], "loss_abs": [],
+        "proj_grad_l2_rel": [],
+        "head_grad_l2_rel": [],
+        "loss_abs": [],
     }
     for step_idx in range(1, args.steps + 1):
         x, labels = make_batch(
@@ -358,7 +398,9 @@ def main() -> None:
             max_metrics[key] = max(max_metrics[key], float(current[key]))
         for key in series:
             series[key].append(float(current[key]))
-        if args.history_every > 0 and (step_idx == 1 or step_idx == args.steps or step_idx % args.history_every == 0):
+        if args.history_every > 0 and (
+            step_idx == 1 or step_idx == args.steps or step_idx % args.history_every == 0
+        ):
             history.append(current)
         if not current["finite"]:
             break
@@ -407,7 +449,9 @@ def main() -> None:
     max_param_l2_rel = max(max_metrics["proj_param_l2_rel"], max_metrics["head_param_l2_rel"])
     if args.fail_param_l2_rel is not None and max_param_l2_rel > args.fail_param_l2_rel:
         failed = True
-        failure_reasons.append(f"param_l2_rel {max_param_l2_rel:.6g} > {args.fail_param_l2_rel:.6g}")
+        failure_reasons.append(
+            f"param_l2_rel {max_param_l2_rel:.6g} > {args.fail_param_l2_rel:.6g}"
+        )
     max_grad_l2_rel = max(max_metrics["proj_grad_l2_rel"], max_metrics["head_grad_l2_rel"])
     if args.fail_grad_l2_rel is not None and max_grad_l2_rel > args.fail_grad_l2_rel:
         failed = True

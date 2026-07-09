@@ -22,10 +22,9 @@ import json
 import math
 import re
 from collections import Counter, defaultdict
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable, Iterator
-
 
 CODE_START_RE = re.compile(r"^<\|code\|>\[(?P<lang>[A-Za-z0-9_+#.-]+)\]\s*$")
 CODE_END = "<|endcode|>"
@@ -35,7 +34,9 @@ SECRET_PATTERNS = {
     "aws_access_key": re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
     "private_key": re.compile(r"-----BEGIN (?:RSA |OPENSSH |EC |DSA )?PRIVATE KEY-----"),
     "github_token": re.compile(r"\bgh[pousr]_[A-Za-z0-9_]{30,}\b"),
-    "generic_token": re.compile(r"(?i)\b(api[_-]?key|secret|token|password|passwd)\b\s*[:=]\s*['\"][^'\"\s]{12,}['\"]"),
+    "generic_token": re.compile(
+        r"(?i)\b(api[_-]?key|secret|token|password|passwd)\b\s*[:=]\s*['\"][^'\"\s]{12,}['\"]"
+    ),
 }
 
 GENERATED_RE = re.compile(
@@ -44,12 +45,18 @@ GENERATED_RE = re.compile(
     r"minified|sourceMappingURL|protobuf generated|eslint-disable"
     r")\b"
 )
-VENDOR_RE = re.compile(r"(?i)(^|/)(node_modules|vendor|dist|build|third_party|externals|site-packages)(/|$)")
-LICENSE_RE = re.compile(r"(?i)\b(mit license|apache license|gnu general public license|copyright)\b")
+VENDOR_RE = re.compile(
+    r"(?i)(^|/)(node_modules|vendor|dist|build|third_party|externals|site-packages)(/|$)"
+)
+LICENSE_RE = re.compile(
+    r"(?i)\b(mit license|apache license|gnu general public license|copyright)\b"
+)
 HTML_RE = re.compile(r"(?i)</?(html|body|div|script|style|span|table)\b|&(?:nbsp|lt|gt|amp);")
 URL_RE = re.compile(r"https?://|www\.")
 NOTEBOOK_RE = re.compile(r'"cells"\s*:\s*\[|"nbformat"\s*:')
-LOG_RE = re.compile(r"(?i)\b(traceback \(most recent call last\)|exception in thread|stack trace|error:|warning:)\b")
+LOG_RE = re.compile(
+    r"(?i)\b(traceback \(most recent call last\)|exception in thread|stack trace|error:|warning:)\b"
+)
 TODO_RE = re.compile(r"(?i)\b(todo|fixme|hack|xxx)\b")
 FENCED_CODE_RE = re.compile(
     r"(?:```|''')(?P<lang>[A-Za-z0-9_+#.-]*)\n(?P<code>.*?)(?:```|''')",
@@ -333,7 +340,8 @@ def score_payload(audit: Audit) -> dict:
         audit.flags[k]
         for k in audit.flags
         if k.startswith("possible_secret_")
-        or k in {
+        or k
+        in {
             "control_chars",
             "replacement_chars",
             "notebook_json",
@@ -350,7 +358,9 @@ def score_payload(audit: Audit) -> dict:
         "categories": dict(audit.categories.most_common()),
         "flags": dict(audit.flags.most_common()),
         "flag_rates": {k: round(v * 100 / total, 4) for k, v in audit.flags.most_common()},
-        "flag_by_lang": {lang: dict(counter.most_common()) for lang, counter in audit.flag_by_lang.items()},
+        "flag_by_lang": {
+            lang: dict(counter.most_common()) for lang, counter in audit.flag_by_lang.items()
+        },
         "exact_duplicate_hashes": audit.duplicate_hashes,
         "python_syntax": dict(audit.python_syntax),
         "high_risk_flag_events": high_risk,
@@ -401,9 +411,17 @@ def write_markdown(payload: dict, output: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Audit code corpora/SFT data.")
     parser.add_argument("--input", nargs="+", type=Path, required=True)
-    parser.add_argument("--mode", choices=["auto", "code-wrapped", "helix-jsonl", "plain-lines"], default="auto")
-    parser.add_argument("--code-only", action="store_true", help="For Helix JSONL, only inspect code-related categories.")
-    parser.add_argument("--max-docs", type=int, default=0, help="Stop after this many audited docs across inputs.")
+    parser.add_argument(
+        "--mode", choices=["auto", "code-wrapped", "helix-jsonl", "plain-lines"], default="auto"
+    )
+    parser.add_argument(
+        "--code-only",
+        action="store_true",
+        help="For Helix JSONL, only inspect code-related categories.",
+    )
+    parser.add_argument(
+        "--max-docs", type=int, default=0, help="Stop after this many audited docs across inputs."
+    )
     parser.add_argument("--output-json", type=Path, required=True)
     parser.add_argument("--output-md", type=Path, required=True)
     args = parser.parse_args()
@@ -417,7 +435,9 @@ def main() -> None:
                 payload = score_payload(audit)
                 args.output_json.parent.mkdir(parents=True, exist_ok=True)
                 args.output_md.parent.mkdir(parents=True, exist_ok=True)
-                args.output_json.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+                args.output_json.write_text(
+                    json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
+                )
                 write_markdown(payload, args.output_md)
                 return
 

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from auralis.model.config import AuralisConfig, LayerConfig
+from auralis.model.config import AuralisConfig
 
 REPO = Path(__file__).resolve().parents[2]
 CFG_100M = REPO / "configs" / "model" / "helix_v2_100m.yaml"
@@ -46,9 +46,11 @@ def test_layer_stack_ordering_1b():
 
 def test_n_layers_mismatch_raises():
     import yaml
+
     bad = yaml.safe_load(CFG_100M.read_text(encoding="utf-8"))
     bad["model"]["n_layers"] = 16  # config has 8, say 16
     import tempfile
+
     with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False, encoding="utf-8") as fh:
         yaml.safe_dump(bad, fh)
         tmp_path = fh.name
@@ -62,8 +64,10 @@ def test_n_layers_mismatch_raises():
 def test_d_head_mismatch_raises():
     c = AuralisConfig.from_yaml(CFG_100M)
     # Build a new config with a deliberately bad combination by editing YAML.
-    import yaml
     import tempfile
+
+    import yaml
+
     bad = yaml.safe_load(CFG_100M.read_text(encoding="utf-8"))
     bad["model"]["d_head"] = 17  # 8 * 17 != 512
     with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False, encoding="utf-8") as fh:
@@ -92,6 +96,7 @@ def test_param_estimate_1b_range():
 
 def test_mid_500m_config_loads_and_sizes():
     from pathlib import Path
+
     p = Path(__file__).resolve().parents[2] / "configs" / "model" / "helix_v2_mid_500m.yaml"
     c = AuralisConfig.from_yaml(p)
     assert c.n_layers == 20

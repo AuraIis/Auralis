@@ -49,7 +49,9 @@ class FrozenGateMetricsTests(unittest.TestCase):
 
         evaluator._generate = fake_generate
         evaluator.probes = [type("Probe", (), {"prompt": "p"})()]
-        evaluator.tok = type("Tok", (), {"encode": lambda self, x: [1], "chat_prompt": lambda self, x: x})()
+        evaluator.tok = type(
+            "Tok", (), {"encode": lambda self, x: [1], "chat_prompt": lambda self, x: x}
+        )()
         evaluator.evaluate_answer = lambda probe, answer: {"split": "target", "semantic_score": 1.0}
 
         first = evaluator(10)

@@ -14,12 +14,21 @@ second, independent gate (the code analog of math's calculator+cross-solve):
 Scope (narrow on purpose): small pure Python functions, NO imports beyond math, simple types
 (int/str/list/dict/bool). No files/web/classes/frameworks. Runs on HOST (Ollama local).
 """
-import os, sys, re, json, argparse, pathlib, tempfile, subprocess
+
+import argparse
+import json
+import os
+import pathlib
+import re
+import subprocess
+import sys
+import tempfile
 
 HERE = pathlib.Path(__file__).resolve().parent
-sys.path.insert(0, str(HERE)); sys.path.insert(0, str(HERE.parent / "data"))
-from gen_verified_code import ollama, safe_code, run_tests, read_jsonl, helix  # reuse v1 helpers
+sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(HERE.parent / "data"))
 from code_format import tab_indent  # pretrain code corpus is tab-indented -> SFT code must match
+from gen_verified_code import helix, ollama, read_jsonl, run_tests, safe_code  # reuse v1 helpers
 
 GEN_PROMPT = """Erzeuge {k} kleine PYTHON-PROGRAMMIERAUFGABEN mit Loesung und Testfaellen.
 STRIKTE Vorgaben:
@@ -45,12 +54,28 @@ Aufgabe: {q}
 Gib AUSSCHLIESSLICH ein JSON-Objekt aus:
 {{"code":"def {fname}(...):\\n    ...","inputs":[[...],[...],[...],[...],[...]]}}"""
 
-TOPICS = ["Zahlen/Arithmetik", "Strings/Text-Analyse", "Listen verarbeiten", "Dictionaries/Haeufigkeiten",
-          "Rekursion", "Lineares Suchen", "Sortier-Logik", "Primzahlen/Teiler", "Fibonacci/Zahlenfolgen",
-          "String-Manipulation (umkehren, ersetzen)", "Listen filtern", "Listen transformieren (map)",
-          "Mengen/Duplikate entfernen", "Zaehlen/Gruppieren", "Min/Max/Durchschnitt", "Basis-Umwandlung",
-          "Eingabe-Validierung/Bedingungen", "Verschachtelte Listen/Dicts", "Zeit/Datum-Berechnung (ohne Imports)",
-          "Geometrie-Formeln"]
+TOPICS = [
+    "Zahlen/Arithmetik",
+    "Strings/Text-Analyse",
+    "Listen verarbeiten",
+    "Dictionaries/Haeufigkeiten",
+    "Rekursion",
+    "Lineares Suchen",
+    "Sortier-Logik",
+    "Primzahlen/Teiler",
+    "Fibonacci/Zahlenfolgen",
+    "String-Manipulation (umkehren, ersetzen)",
+    "Listen filtern",
+    "Listen transformieren (map)",
+    "Mengen/Duplikate entfernen",
+    "Zaehlen/Gruppieren",
+    "Min/Max/Durchschnitt",
+    "Basis-Umwandlung",
+    "Eingabe-Validierung/Bedingungen",
+    "Verschachtelte Listen/Dicts",
+    "Zeit/Datum-Berechnung (ohne Imports)",
+    "Geometrie-Formeln",
+]
 
 
 def _norm_code(c):
@@ -80,7 +105,9 @@ def run_pair(codeA, fa, codeB, fb, inputs, timeout=6):
         fp = os.path.join(td, "pair.py")
         open(fp, "w", encoding="utf-8").write(h)
         try:
-            r = subprocess.run([sys.executable, fp], capture_output=True, text=True, timeout=timeout, cwd=td)
+            r = subprocess.run(
+                [sys.executable, fp], capture_output=True, text=True, timeout=timeout, cwd=td
+            )
         except Exception:
             return False
     out = (r.stdout or "").strip().splitlines()
@@ -93,14 +120,16 @@ def gen_phase(a, raw_path):
     fout = open(raw_path, "a", encoding="utf-8")
     call = 0
     while len(seen) < a.gen_target and call < a.max_calls:
-        topic = TOPICS[call % len(TOPICS)]; call += 1
+        topic = TOPICS[call % len(TOPICS)]
+        call += 1
         prompt = GEN_PROMPT.format(k=a.per_call, topic=topic)
         if call > len(TOPICS):
             prompt += "\n(Waehle ANDERE konkrete Aufgaben/Funktionen als in fruehzeitigen Chargen.)"
         try:
             txt = ollama(a.teacher, prompt, temp=a.temp)
         except Exception as e:
-            print(f"[gen] err {e}", file=sys.stderr, flush=True); continue
+            print(f"[gen] err {e}", file=sys.stderr, flush=True)
+            continue
         added = 0
         for line in txt.splitlines():
             line = line.strip().strip("`")
@@ -111,9 +140,18 @@ def gen_phase(a, raw_path):
             except Exception:
                 continue
             q = (r.get("aufgabe") or "").strip()
-            if not q or q in seen or not r.get("code") or not r.get("funktion") or len(r.get("tests") or []) < 8:
+            if (
+                not q
+                or q in seen
+                or not r.get("code")
+                or not r.get("funktion")
+                or len(r.get("tests") or []) < 8
+            ):
                 continue
-            seen.add(q); fout.write(json.dumps(r, ensure_ascii=False) + "\n"); fout.flush(); added += 1
+            seen.add(q)
+            fout.write(json.dumps(r, ensure_ascii=False) + "\n")
+            fout.flush()
+            added += 1
         print(f"[gen {call}] +{added} -> {len(seen)}", flush=True)
     fout.close()
     print(f"[gen] done {len(seen)}", flush=True)
@@ -128,8 +166,11 @@ def verify_phase(a, raw_path, out_path):
         q = (r.get("aufgabe") or "").strip()
         if not q or q in done:
             continue
-        done.add(q); st["seen"] += 1
-        codeA = _norm_code(r.get("code", "")); fa = r.get("funktion", "").strip(); tests = r.get("tests") or []
+        done.add(q)
+        st["seen"] += 1
+        codeA = _norm_code(r.get("code", ""))
+        fa = r.get("funktion", "").strip()
+        tests = r.get("tests") or []
         ok, _ = safe_code(codeA)
         if not ok:
             continue
@@ -173,9 +214,20 @@ def verify_phase(a, raw_path, out_path):
         erkl = (r.get("erklaerung") or "").strip()
         # gates ran on the ORIGINAL spaces version above; tab-indent only the rendered target
         answer = f"```python\n{tab_indent(codeA.strip())}\n```" + (f"\n\n{erkl}" if erkl else "")
-        fout.write(json.dumps({"text": helix(q, answer), "source": "code_verified_v2",
-                               "has_tool": False, "meta": {"q": q, "funktion": fa}}, ensure_ascii=False) + "\n")
-        fout.flush(); st["kept"] += 1
+        fout.write(
+            json.dumps(
+                {
+                    "text": helix(q, answer),
+                    "source": "code_verified_v2",
+                    "has_tool": False,
+                    "meta": {"q": q, "funktion": fa},
+                },
+                ensure_ascii=False,
+            )
+            + "\n"
+        )
+        fout.flush()
+        st["kept"] += 1
         if st["kept"] % 25 == 0:
             print(f"  [verify] kept {st['kept']} (seen {st['seen']})", flush=True)
     fout.close()
@@ -183,7 +235,9 @@ def verify_phase(a, raw_path, out_path):
     for k in ["seen", "g1", "solveB", "g2", "kept"]:
         print(f"  {k:8} {st[k]}")
     if st["seen"]:
-        print(f"  gate1(tests) {st['g1']/st['seen']:.0%} | gate2(cross-impl agree) {st['g2']/max(1,st['g1']):.0%} | overall {st['kept']/st['seen']:.0%}")
+        print(
+            f"  gate1(tests) {st['g1'] / st['seen']:.0%} | gate2(cross-impl agree) {st['g2'] / max(1, st['g1']):.0%} | overall {st['kept'] / st['seen']:.0%}"
+        )
     print(f"  -> {out_path} (TOTAL {len(read_jsonl(out_path))})")
 
 
@@ -201,8 +255,12 @@ def main():
     a = ap.parse_args()
     if not a.gen_target:
         a.gen_target = int(a.target / 0.4) + 10  # v2 yield lower (two gates)
-    out = pathlib.Path(a.out_dir); out.mkdir(parents=True, exist_ok=True)
-    print(f"=== verified-code-v2 | teacher={a.teacher} cross={a.cross_model} phase={a.phase} target={a.target} gen_target={a.gen_target} ===", flush=True)
+    out = pathlib.Path(a.out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    print(
+        f"=== verified-code-v2 | teacher={a.teacher} cross={a.cross_model} phase={a.phase} target={a.target} gen_target={a.gen_target} ===",
+        flush=True,
+    )
     if a.phase in ("gen", "all"):
         gen_phase(a, out / "raw_code.jsonl")
     if a.phase in ("verify", "all"):

@@ -17,10 +17,10 @@ def test_copy_budget_stops_at_whole_lines(tmp_path: Path) -> None:
     source.write_text("aaaa\nbbbb\ncccc\n", encoding="utf-8")
     out = io.StringIO()
 
-    lines_written, bytes_written = _copy_budget(source, out, target_bytes=len("aaaa\nbbbb\n".encode("utf-8")))
+    lines_written, bytes_written = _copy_budget(source, out, target_bytes=len(b"aaaa\nbbbb\n"))
 
     assert lines_written == 2
-    assert bytes_written == len("aaaa\nbbbb\n".encode("utf-8"))
+    assert bytes_written == len(b"aaaa\nbbbb\n")
     assert out.getvalue() == "aaaa\nbbbb\n"
 
 
@@ -32,5 +32,5 @@ def test_copy_budget_writes_first_line_even_if_target_is_tiny(tmp_path: Path) ->
     lines_written, bytes_written = _copy_budget(source, out, target_bytes=1)
 
     assert lines_written == 1
-    assert bytes_written == len("abcdef\n".encode("utf-8"))
+    assert bytes_written == len(b"abcdef\n")
     assert out.getvalue() == "abcdef\n"

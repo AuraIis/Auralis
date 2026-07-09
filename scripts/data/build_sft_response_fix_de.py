@@ -21,9 +21,8 @@ import json
 import random
 import re
 from collections import Counter
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
-
 
 REPO = Path(__file__).resolve().parents[2]
 SYSTEM_DE = (
@@ -62,35 +61,77 @@ GENERIC_NO_INPUT_RE = re.compile(
 )
 
 DE_WORDS = {
-    "der", "die", "das", "und", "oder", "nicht", "ist", "sind", "ein", "eine",
-    "mit", "auf", "von", "zu", "im", "den", "dem", "dass", "ich", "du",
-    "sie", "wir", "kann", "koennen", "wird", "werden", "wenn", "weil",
-    "aber", "auch", "als", "wie", "was", "warum", "bitte", "erklaere",
-    "antwort", "deutsch", "nein", "ja", "diese", "dieser", "quelle",
+    "der",
+    "die",
+    "das",
+    "und",
+    "oder",
+    "nicht",
+    "ist",
+    "sind",
+    "ein",
+    "eine",
+    "mit",
+    "auf",
+    "von",
+    "zu",
+    "im",
+    "den",
+    "dem",
+    "dass",
+    "ich",
+    "du",
+    "sie",
+    "wir",
+    "kann",
+    "koennen",
+    "wird",
+    "werden",
+    "wenn",
+    "weil",
+    "aber",
+    "auch",
+    "als",
+    "wie",
+    "was",
+    "warum",
+    "bitte",
+    "erklaere",
+    "antwort",
+    "deutsch",
+    "nein",
+    "ja",
+    "diese",
+    "dieser",
+    "quelle",
 }
 EN_WORDS = {
-    "the", "and", "or", "not", "is", "are", "with", "for", "to", "of",
-    "that", "this", "you", "your", "please", "explain", "answer",
+    "the",
+    "and",
+    "or",
+    "not",
+    "is",
+    "are",
+    "with",
+    "for",
+    "to",
+    "of",
+    "that",
+    "this",
+    "you",
+    "your",
+    "please",
+    "explain",
+    "answer",
 }
 
 
 def ascii_fold(text: str) -> str:
-    return (
-        text.lower()
-        .replace("ä", "ae")
-        .replace("ö", "oe")
-        .replace("ü", "ue")
-        .replace("ß", "ss")
-    )
+    return text.lower().replace("ä", "ae").replace("ö", "oe").replace("ü", "ue").replace("ß", "ss")
 
 
 def mojibake_score(text: str) -> int:
-    return (
-        text.count("Ã")
-        + text.count("Â")
-        + text.count("â")
-        + text.count("�") * 3
-    )
+    return text.count("Ã") + text.count("Â") + text.count("â") + text.count("�") * 3
 
 
 def repair_mojibake(text: str) -> str:
@@ -131,7 +172,9 @@ def repetition_score(text: str) -> float:
 
 
 def parse_helix(text: str) -> list[dict[str, str]] | None:
-    turns = [{"role": m.group(1), "content": clean_text(m.group(2))} for m in ROLE_RE.finditer(text)]
+    turns = [
+        {"role": m.group(1), "content": clean_text(m.group(2))} for m in ROLE_RE.finditer(text)
+    ]
     return turns or None
 
 
@@ -202,7 +245,11 @@ def reject_reason(messages: list[dict[str, str]], rec: dict) -> str | None:
 
     if CODE_HINT_RE.search(user_text) or CODE_HINT_RE.search(str(rec.get("category", ""))):
         return "code_filtered"
-    if len(non_system) < 48 or min(len(u) for u in users) < 8 or min(len(a) for a in assistants) < 16:
+    if (
+        len(non_system) < 48
+        or min(len(u) for u in users) < 8
+        or min(len(a) for a in assistants) < 16
+    ):
         return "too_short"
     if len(non_system) > 12000 or max(len(a) for a in assistants) > 5000:
         return "too_long"
@@ -270,18 +317,48 @@ def iter_jsonl(path: Path) -> Iterable[tuple[int, dict]]:
 
 def synthetic_train_rows() -> list[dict]:
     pairs: list[tuple[str, str, str]] = [
-        ("Schrieb Goethe Mein Kampf? Antworte kurz.", "Nein. Goethe schrieb das nicht; Mein Kampf stammt von Adolf Hitler."),
-        ("Ist Bonn heute die Hauptstadt von Deutschland?", "Nein. Heute ist Berlin die Hauptstadt Deutschlands."),
-        ("Welche Stadt ist die Hauptstadt von Deutschland?", "Berlin ist die Hauptstadt von Deutschland."),
-        ("Was ist Wasser bei Raumtemperatur?", "Wasser ist bei Raumtemperatur normalerweise fluessig."),
-        ("Wenn du eine Quelle nicht kennst, wie solltest du antworten?", "Ich sollte sagen, dass ich die Quelle nicht kenne, und keine Details erfinden."),
-        ("Welche Farbe hatte der erfundene Planet Xylar-9?", "Dazu gibt es keine verlaessliche Information; Xylar-9 klingt erfunden."),
-        ("Warum friert Wasser bei Kaelte?", "Wenn die Temperatur tief genug sinkt, ordnen sich Wassermolekuele zu Eis an."),
+        (
+            "Schrieb Goethe Mein Kampf? Antworte kurz.",
+            "Nein. Goethe schrieb das nicht; Mein Kampf stammt von Adolf Hitler.",
+        ),
+        (
+            "Ist Bonn heute die Hauptstadt von Deutschland?",
+            "Nein. Heute ist Berlin die Hauptstadt Deutschlands.",
+        ),
+        (
+            "Welche Stadt ist die Hauptstadt von Deutschland?",
+            "Berlin ist die Hauptstadt von Deutschland.",
+        ),
+        (
+            "Was ist Wasser bei Raumtemperatur?",
+            "Wasser ist bei Raumtemperatur normalerweise fluessig.",
+        ),
+        (
+            "Wenn du eine Quelle nicht kennst, wie solltest du antworten?",
+            "Ich sollte sagen, dass ich die Quelle nicht kenne, und keine Details erfinden.",
+        ),
+        (
+            "Welche Farbe hatte der erfundene Planet Xylar-9?",
+            "Dazu gibt es keine verlaessliche Information; Xylar-9 klingt erfunden.",
+        ),
+        (
+            "Warum friert Wasser bei Kaelte?",
+            "Wenn die Temperatur tief genug sinkt, ordnen sich Wassermolekuele zu Eis an.",
+        ),
         ("In welchem Bundesland liegt Muenchen?", "Muenchen liegt in Bayern."),
         ("Wer schrieb Faust?", "Faust wurde von Johann Wolfgang von Goethe geschrieben."),
-        ("Antworte mit genau einem kurzen Satz: Was ist ein Apfel?", "Ein Apfel ist eine essbare Frucht."),
-        ("Was solltest du tun, wenn eine Frage eine falsche Annahme enthaelt?", "Ich sollte die falsche Annahme freundlich korrigieren und dann kurz antworten."),
-        ("Ist Paris die Hauptstadt von Deutschland?", "Nein. Paris ist die Hauptstadt von Frankreich, nicht von Deutschland."),
+        (
+            "Antworte mit genau einem kurzen Satz: Was ist ein Apfel?",
+            "Ein Apfel ist eine essbare Frucht.",
+        ),
+        (
+            "Was solltest du tun, wenn eine Frage eine falsche Annahme enthaelt?",
+            "Ich sollte die falsche Annahme freundlich korrigieren und dann kurz antworten.",
+        ),
+        (
+            "Ist Paris die Hauptstadt von Deutschland?",
+            "Nein. Paris ist die Hauptstadt von Frankreich, nicht von Deutschland.",
+        ),
     ]
 
     facts = [
@@ -294,30 +371,68 @@ def synthetic_train_rows() -> list[dict]:
         ("Nordrhein-Westfalen", "Duesseldorf", "Koeln"),
     ]
     for place, correct, wrong in facts:
-        pairs.extend([
-            (f"Ist {wrong} die Hauptstadt von {place}? Antworte kurz.", f"Nein. Die Hauptstadt von {place} ist {correct}.", "hallucination_guard"),
-            (f"Welche Hauptstadt hat {place}?", f"Die Hauptstadt von {place} ist {correct}.", "qa_de"),
-            (f"Korrigiere die Aussage: {wrong} ist die Hauptstadt von {place}.", f"Die Aussage ist falsch. Richtig ist: {correct} ist die Hauptstadt von {place}.", "hallucination_guard"),
-        ])
+        pairs.extend(
+            [
+                (
+                    f"Ist {wrong} die Hauptstadt von {place}? Antworte kurz.",
+                    f"Nein. Die Hauptstadt von {place} ist {correct}.",
+                    "hallucination_guard",
+                ),
+                (
+                    f"Welche Hauptstadt hat {place}?",
+                    f"Die Hauptstadt von {place} ist {correct}.",
+                    "qa_de",
+                ),
+                (
+                    f"Korrigiere die Aussage: {wrong} ist die Hauptstadt von {place}.",
+                    f"Die Aussage ist falsch. Richtig ist: {correct} ist die Hauptstadt von {place}.",
+                    "hallucination_guard",
+                ),
+            ]
+        )
 
     false_claims = [
-        ("Goethe schrieb Mein Kampf.", "Goethe schrieb Mein Kampf nicht; das Buch stammt von Adolf Hitler."),
-        ("Goethe ist der Autor von Mein Kampf.", "Das ist falsch. Mein Kampf stammt von Adolf Hitler, nicht von Goethe."),
-        ("Mein Kampf wurde von Goethe geschrieben.", "Nein. Mein Kampf wurde von Adolf Hitler geschrieben."),
-        ("Wasser ist ein chemisches Element.", "Wasser ist kein chemisches Element, sondern eine chemische Verbindung aus Wasserstoff und Sauerstoff."),
-        ("Berlin liegt direkt bei Frankfurt am Main.", "Berlin liegt nicht direkt bei Frankfurt am Main; beide Staedte sind deutlich voneinander entfernt."),
+        (
+            "Goethe schrieb Mein Kampf.",
+            "Goethe schrieb Mein Kampf nicht; das Buch stammt von Adolf Hitler.",
+        ),
+        (
+            "Goethe ist der Autor von Mein Kampf.",
+            "Das ist falsch. Mein Kampf stammt von Adolf Hitler, nicht von Goethe.",
+        ),
+        (
+            "Mein Kampf wurde von Goethe geschrieben.",
+            "Nein. Mein Kampf wurde von Adolf Hitler geschrieben.",
+        ),
+        (
+            "Wasser ist ein chemisches Element.",
+            "Wasser ist kein chemisches Element, sondern eine chemische Verbindung aus Wasserstoff und Sauerstoff.",
+        ),
+        (
+            "Berlin liegt direkt bei Frankfurt am Main.",
+            "Berlin liegt nicht direkt bei Frankfurt am Main; beide Staedte sind deutlich voneinander entfernt.",
+        ),
         ("Paris liegt in Deutschland.", "Paris liegt nicht in Deutschland, sondern in Frankreich."),
         ("Muenchen liegt in Hamburg.", "Muenchen liegt nicht in Hamburg, sondern in Bayern."),
-        ("Faust wurde von Hitler geschrieben.", "Das ist falsch. Faust wurde von Johann Wolfgang von Goethe geschrieben."),
+        (
+            "Faust wurde von Hitler geschrieben.",
+            "Das ist falsch. Faust wurde von Johann Wolfgang von Goethe geschrieben.",
+        ),
         ("Der Rhein fliesst durch Australien.", "Das ist falsch. Der Rhein fliesst durch Europa."),
         ("Ein Apfel ist ein Tier.", "Das ist falsch. Ein Apfel ist eine Frucht."),
     ]
     for claim, correction in false_claims:
-        pairs.extend([
-            (f"Stimmt diese Aussage? {claim}", f"Nein. {correction}", "hallucination_guard"),
-            (f"Antworte ehrlich und knapp: {claim}", f"Nein. {correction}", "hallucination_guard"),
-            (f"Was ist an dieser Aussage falsch: {claim}", correction, "hallucination_guard"),
-        ])
+        pairs.extend(
+            [
+                (f"Stimmt diese Aussage? {claim}", f"Nein. {correction}", "hallucination_guard"),
+                (
+                    f"Antworte ehrlich und knapp: {claim}",
+                    f"Nein. {correction}",
+                    "hallucination_guard",
+                ),
+                (f"Was ist an dieser Aussage falsch: {claim}", correction, "hallucination_guard"),
+            ]
+        )
 
     unknowns = [
         "der Planet Xylar-9",
@@ -328,31 +443,80 @@ def synthetic_train_rows() -> list[dict]:
         "die Stadt Nordanien",
     ]
     for thing in unknowns:
-        pairs.extend([
-            (f"Welche Farbe hatte {thing}? Antworte ehrlich.", f"Dazu habe ich keine verlaessliche Information. {thing} klingt erfunden oder nicht ausreichend belegt.", "hallucination_guard"),
-            (f"Nenne zwei sichere Fakten ueber {thing}.", f"Ich kenne keine verlaesslichen Fakten ueber {thing}. Ich sollte keine Details erfinden.", "hallucination_guard"),
-            (f"Ist {thing} eine gesicherte Tatsache?", f"Das kann ich nicht sicher bestaetigen. Ohne Quelle sollte ich es als unklar oder erfunden behandeln.", "hallucination_guard"),
-        ])
+        pairs.extend(
+            [
+                (
+                    f"Welche Farbe hatte {thing}? Antworte ehrlich.",
+                    f"Dazu habe ich keine verlaessliche Information. {thing} klingt erfunden oder nicht ausreichend belegt.",
+                    "hallucination_guard",
+                ),
+                (
+                    f"Nenne zwei sichere Fakten ueber {thing}.",
+                    f"Ich kenne keine verlaesslichen Fakten ueber {thing}. Ich sollte keine Details erfinden.",
+                    "hallucination_guard",
+                ),
+                (
+                    f"Ist {thing} eine gesicherte Tatsache?",
+                    "Das kann ich nicht sicher bestaetigen. Ohne Quelle sollte ich es als unklar oder erfunden behandeln.",
+                    "hallucination_guard",
+                ),
+            ]
+        )
 
     style_pairs = [
-        ("Antworte mit genau einem kurzen Satz: Warum friert Wasser bei Kaelte?", "Wasser gefriert, wenn es kalt genug wird und sich Eis bildet.", "instruction_de"),
-        ("Erklaere kurz, was ein Taschenrechner ist.", "Ein Taschenrechner ist ein Geraet, mit dem man Zahlen berechnen kann.", "instruction_de"),
-        ("Sag in einem Satz, was Regen ist.", "Regen ist Wasser, das aus Wolken auf die Erde faellt.", "instruction_de"),
-        ("Was bedeutet es, vorsichtig zu antworten?", "Vorsichtig antworten heisst, Unsicherheit klar zu nennen und nichts zu erfinden.", "instruction_de"),
-        ("Formuliere einfacher: Die Nutzung erfolgt nach Authentifizierung.", "Man kann es erst benutzen, nachdem man sich angemeldet hat.", "instruction_de"),
+        (
+            "Antworte mit genau einem kurzen Satz: Warum friert Wasser bei Kaelte?",
+            "Wasser gefriert, wenn es kalt genug wird und sich Eis bildet.",
+            "instruction_de",
+        ),
+        (
+            "Erklaere kurz, was ein Taschenrechner ist.",
+            "Ein Taschenrechner ist ein Geraet, mit dem man Zahlen berechnen kann.",
+            "instruction_de",
+        ),
+        (
+            "Sag in einem Satz, was Regen ist.",
+            "Regen ist Wasser, das aus Wolken auf die Erde faellt.",
+            "instruction_de",
+        ),
+        (
+            "Was bedeutet es, vorsichtig zu antworten?",
+            "Vorsichtig antworten heisst, Unsicherheit klar zu nennen und nichts zu erfinden.",
+            "instruction_de",
+        ),
+        (
+            "Formuliere einfacher: Die Nutzung erfolgt nach Authentifizierung.",
+            "Man kann es erst benutzen, nachdem man sich angemeldet hat.",
+            "instruction_de",
+        ),
     ]
     pairs.extend(style_pairs)
 
     basic_qa = [
-        ("Erklaere kurz, was Wasser ist.", "Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff und ist bei Raumtemperatur meist fluessig."),
+        (
+            "Erklaere kurz, was Wasser ist.",
+            "Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff und ist bei Raumtemperatur meist fluessig.",
+        ),
         ("Was ist H2O?", "H2O ist die chemische Formel fuer Wasser."),
-        ("Ist Wasser ein chemisches Element?", "Nein. Wasser ist eine chemische Verbindung, kein Element."),
-        ("Was ist Wasser bei Raumtemperatur?", "Wasser ist bei Raumtemperatur normalerweise eine Fluessigkeit."),
+        (
+            "Ist Wasser ein chemisches Element?",
+            "Nein. Wasser ist eine chemische Verbindung, kein Element.",
+        ),
+        (
+            "Was ist Wasser bei Raumtemperatur?",
+            "Wasser ist bei Raumtemperatur normalerweise eine Fluessigkeit.",
+        ),
         ("Was ist ein Apfel?", "Ein Apfel ist eine essbare Frucht."),
-        ("Antworte mit genau einem kurzen Satz: Was ist ein Apfel?", "Ein Apfel ist eine essbare Frucht."),
+        (
+            "Antworte mit genau einem kurzen Satz: Was ist ein Apfel?",
+            "Ein Apfel ist eine essbare Frucht.",
+        ),
         ("Ist ein Apfel ein Tier?", "Nein. Ein Apfel ist eine Frucht."),
         ("Was ist Regen?", "Regen ist Wasser, das aus Wolken auf die Erde faellt."),
-        ("Schreibe einen normalen kurzen Satz ueber Regen.", "Regen faellt aus Wolken und macht den Boden nass."),
+        (
+            "Schreibe einen normalen kurzen Satz ueber Regen.",
+            "Regen faellt aus Wolken und macht den Boden nass.",
+        ),
         ("Warum ist Regen wichtig?", "Regen versorgt Pflanzen, Tiere und Menschen mit Wasser."),
         ("Was ist Berlin?", "Berlin ist die Hauptstadt von Deutschland."),
         ("Was ist Paris?", "Paris ist die Hauptstadt von Frankreich."),
@@ -370,50 +534,92 @@ def synthetic_train_rows() -> list[dict]:
             category = "hallucination_guard" if i in {0, 1, 4, 5, 10, 11} else "qa_de"
         else:
             q, a, category = item
-        rows.append({
-            "text": render_helix([
-                {"role": "user", "content": q},
-                {"role": "assistant", "content": a},
-            ]),
-            "source": "synthetic_response_fix_train_v1",
-            "category": category,
-            "quality_variant": "sft_response_fix_de_v1",
-        })
+        rows.append(
+            {
+                "text": render_helix(
+                    [
+                        {"role": "user", "content": q},
+                        {"role": "assistant", "content": a},
+                    ]
+                ),
+                "source": "synthetic_response_fix_train_v1",
+                "category": category,
+                "quality_variant": "sft_response_fix_de_v1",
+            }
+        )
     return rows
 
 
 def synthetic_eval_rows() -> list[dict]:
     pairs = [
-        ("Antworte kurz: Ist Bonn aktuell die Hauptstadt Deutschlands?", "Nein. Die aktuelle Hauptstadt Deutschlands ist Berlin."),
+        (
+            "Antworte kurz: Ist Bonn aktuell die Hauptstadt Deutschlands?",
+            "Nein. Die aktuelle Hauptstadt Deutschlands ist Berlin.",
+        ),
         ("Was ist H2O im Alltag?", "H2O ist Wasser."),
         ("Wer schrieb das Drama Faust?", "Johann Wolfgang von Goethe schrieb Faust."),
-        ("Wenn du nicht sicher bist, ob eine Behauptung stimmt, was sagst du?", "Ich sage, dass ich unsicher bin, und erfinde keine Antwort."),
-        ("Ist der rote blaue Mond von Lyrion eine bekannte echte Tatsache?", "Nein. Das klingt erfunden; ich kenne keine verlaessliche Tatsache dazu."),
-        ("Erklaere in einem Satz, warum eine ehrliche Antwort besser ist als Raten.", "Eine ehrliche Antwort vermeidet falsche Informationen und zeigt Unsicherheit klar an."),
+        (
+            "Wenn du nicht sicher bist, ob eine Behauptung stimmt, was sagst du?",
+            "Ich sage, dass ich unsicher bin, und erfinde keine Antwort.",
+        ),
+        (
+            "Ist der rote blaue Mond von Lyrion eine bekannte echte Tatsache?",
+            "Nein. Das klingt erfunden; ich kenne keine verlaessliche Tatsache dazu.",
+        ),
+        (
+            "Erklaere in einem Satz, warum eine ehrliche Antwort besser ist als Raten.",
+            "Eine ehrliche Antwort vermeidet falsche Informationen und zeigt Unsicherheit klar an.",
+        ),
         ("Liegt Muenchen in Bayern?", "Ja. Muenchen liegt in Bayern."),
         ("Ist Paris eine deutsche Stadt?", "Nein. Paris liegt in Frankreich."),
-        ("Korrigiere kurz: Wasser ist ein Element.", "Wasser ist kein Element, sondern eine Verbindung aus Wasserstoff und Sauerstoff."),
-        ("Was sollte Auralis tun, wenn eine Frage erfundene Namen enthaelt?", "Auralis sollte Unsicherheit nennen und keine erfundenen Details behaupten."),
-        ("Ist Koeln die Hauptstadt von Nordrhein-Westfalen?", "Nein. Die Hauptstadt von Nordrhein-Westfalen ist Duesseldorf."),
+        (
+            "Korrigiere kurz: Wasser ist ein Element.",
+            "Wasser ist kein Element, sondern eine Verbindung aus Wasserstoff und Sauerstoff.",
+        ),
+        (
+            "Was sollte Auralis tun, wenn eine Frage erfundene Namen enthaelt?",
+            "Auralis sollte Unsicherheit nennen und keine erfundenen Details behaupten.",
+        ),
+        (
+            "Ist Koeln die Hauptstadt von Nordrhein-Westfalen?",
+            "Nein. Die Hauptstadt von Nordrhein-Westfalen ist Duesseldorf.",
+        ),
         ("Was ist ein Apfel in einem kurzen Satz?", "Ein Apfel ist eine essbare Frucht."),
-        ("Antworte knapp: Kannst du eine unbekannte Quelle sicher zitieren?", "Nein. Ohne die Quelle sollte ich sie nicht sicher zitieren."),
+        (
+            "Antworte knapp: Kannst du eine unbekannte Quelle sicher zitieren?",
+            "Nein. Ohne die Quelle sollte ich sie nicht sicher zitieren.",
+        ),
         ("Was ist der Rhein?", "Der Rhein ist ein grosser Fluss in Europa."),
         ("Wer schrieb Mein Kampf?", "Mein Kampf wurde von Adolf Hitler geschrieben."),
         ("War Goethe der Autor von Faust?", "Ja. Faust stammt von Johann Wolfgang von Goethe."),
-        ("Schrieb Goethe Mein Kampf?", "Nein. Mein Kampf stammt von Adolf Hitler, nicht von Goethe."),
-        ("Erklaere kurz, was Wasser ist.", "Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff."),
+        (
+            "Schrieb Goethe Mein Kampf?",
+            "Nein. Mein Kampf stammt von Adolf Hitler, nicht von Goethe.",
+        ),
+        (
+            "Erklaere kurz, was Wasser ist.",
+            "Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.",
+        ),
         ("Was ist ein Apfel?", "Ein Apfel ist eine essbare Frucht."),
-        ("Schreibe einen normalen kurzen Satz ueber Regen.", "Regen ist Wasser, das aus Wolken faellt."),
+        (
+            "Schreibe einen normalen kurzen Satz ueber Regen.",
+            "Regen ist Wasser, das aus Wolken faellt.",
+        ),
     ]
-    return [{
-        "text": render_helix([
-            {"role": "user", "content": q},
-            {"role": "assistant", "content": a},
-        ]),
-        "source": "synthetic_response_fix_eval_v1",
-        "category": "source_disjoint_eval",
-        "quality_variant": "sft_response_fix_de_v1",
-    } for q, a in pairs]
+    return [
+        {
+            "text": render_helix(
+                [
+                    {"role": "user", "content": q},
+                    {"role": "assistant", "content": a},
+                ]
+            ),
+            "source": "synthetic_response_fix_eval_v1",
+            "category": "source_disjoint_eval",
+            "quality_variant": "sft_response_fix_de_v1",
+        }
+        for q, a in pairs
+    ]
 
 
 def write_jsonl(path: Path, rows: Iterable[dict]) -> int:
@@ -428,14 +634,18 @@ def write_jsonl(path: Path, rows: Iterable[dict]) -> int:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--output-dir", type=Path, default=REPO / "data/training/sft_response_fix_de_v1")
+    ap.add_argument(
+        "--output-dir", type=Path, default=REPO / "data/training/sft_response_fix_de_v1"
+    )
     ap.add_argument("--source", action="append", default=None)
     ap.add_argument("--seed", type=int, default=20260527)
     ap.add_argument("--max-records-per-source", type=int, default=12000)
     ap.add_argument("--reject-sample-limit", type=int, default=800)
     args = ap.parse_args()
 
-    sources = [Path(p) if Path(p).is_absolute() else REPO / p for p in (args.source or DEFAULT_SOURCES)]
+    sources = [
+        Path(p) if Path(p).is_absolute() else REPO / p for p in (args.source or DEFAULT_SOURCES)
+    ]
     rows: list[dict] = []
     rejects: list[dict] = []
     seen: set[str] = set()
@@ -461,8 +671,17 @@ def main() -> None:
                 if len(rejects) < args.reject_sample_limit:
                     preview = ""
                     if messages:
-                        preview = "\n".join(m["content"] for m in messages if m["role"] != "system")[:600]
-                    rejects.append({"source": str(source), "line": lineno, "reason": reason, "preview": preview})
+                        preview = "\n".join(
+                            m["content"] for m in messages if m["role"] != "system"
+                        )[:600]
+                    rejects.append(
+                        {
+                            "source": str(source),
+                            "line": lineno,
+                            "reason": reason,
+                            "preview": preview,
+                        }
+                    )
                 continue
             assert messages is not None
             key = dedup_key(messages)
@@ -486,7 +705,7 @@ def main() -> None:
                 break
 
     rows.extend(synthetic_train_rows())
-    for row in rows[-len(synthetic_train_rows()):]:
+    for row in rows[-len(synthetic_train_rows()) :]:
         kept_by_source[row["source"]] += 1
         kept_by_category[row["category"]] += 1
         stats["records_kept"] += 1
@@ -512,7 +731,9 @@ def main() -> None:
         "kept_by_source": dict(kept_by_source.most_common()),
         "kept_by_category": dict(kept_by_category.most_common()),
     }
-    (args.output_dir / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    (args.output_dir / "manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
 
     print(f"wrote train={train_n:,} val={val_n:,} to {args.output_dir}")
     print("kept_by_category:", dict(kept_by_category.most_common()))

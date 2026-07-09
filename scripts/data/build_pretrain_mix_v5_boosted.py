@@ -12,9 +12,9 @@ import argparse
 import json
 import random
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable
 
 try:
     import sentencepiece as spm
@@ -28,11 +28,17 @@ DEFAULT_DNA = Path("/workspace/v2data/data/eval/knowledge_dna_v2_expanded_750/hy
 DEFAULT_LARGE_QA = Path("/disk5v2data/data/large_qa_sources_v1")
 DEFAULT_SUPP = Path("/disk5v2data/data/supplemental_large_sources_v1")
 DEFAULT_REDDIT_BEST = Path("/disk5v2data/data/reddit_best_answers_v1/reddit_best_answers.jsonl")
-DEFAULT_REDDIT_THREADED = Path("/disk5v2data/data/reddit_threaded_qa_v2_strict/reddit_threaded_qa.jsonl")
+DEFAULT_REDDIT_THREADED = Path(
+    "/disk5v2data/data/reddit_threaded_qa_v2_strict/reddit_threaded_qa.jsonl"
+)
 DEFAULT_TOKENIZER = Path("/workspace/v2data/tokenizer/helix_v2_tokenizer.model")
 
-CHAT_MARKER_RE = re.compile(r"<\|(?:im_start|im_end|endoftext|user|assistant|system)\|>|_end_of_the_data", re.I)
-HTML_RE = re.compile(r"<\s*/?\s*(html|body|div|script|style|table|iframe)\b|&(?:amp|gt|lt|quot|#x200b);", re.I)
+CHAT_MARKER_RE = re.compile(
+    r"<\|(?:im_start|im_end|endoftext|user|assistant|system)\|>|_end_of_the_data", re.I
+)
+HTML_RE = re.compile(
+    r"<\s*/?\s*(html|body|div|script|style|table|iframe)\b|&(?:amp|gt|lt|quot|#x200b);", re.I
+)
 URL_RE = re.compile(r"https?://|www\.", re.I)
 BAD_RE = re.compile(
     r"\[(?:deleted|removed)\]|discord\.gg|onlyfans|free karma|subscribe to|promo code|"
@@ -48,7 +54,9 @@ WIKI_TALK_RE = re.compile(
     re.I,
 )
 TABLE_RE = re.compile(r"\|\s*[-:]+\s*\||\{\||\|\}|^\s*\|", re.I)
-INDEX_RE = re.compile(r"\b(?:kategorie:|liste der|personen nach|artikel des tages|portal:)\b|\.{3,}\s*\d{1,5}", re.I)
+INDEX_RE = re.compile(
+    r"\b(?:kategorie:|liste der|personen nach|artikel des tages|portal:)\b|\.{3,}\s*\d{1,5}", re.I
+)
 LIST_RE = re.compile(r"(^|\s)(?:[-*•]|\d{1,3}[.)])\s+|[|]{2,}|\t")
 TERMINAL_RE = re.compile(r"[.!?:\)\]\"”]$")
 THINK_RE = re.compile(r"</?think>", re.I)
@@ -166,15 +174,31 @@ def should_skip(
     if broken_sentence_fragment:
         observe(stats, "broken_sentence_fragment")
     n_tokens = 0
-    if (min_tokens > 0 or drop_short_list_like_under_tokens > 0 or drop_broken_sentence_under_tokens > 0) and sp is None:
+    if (
+        min_tokens > 0
+        or drop_short_list_like_under_tokens > 0
+        or drop_broken_sentence_under_tokens > 0
+    ) and sp is None:
         observe(stats, "missing_tokenizer_for_min_tokens")
         return "missing_tokenizer_for_min_tokens"
-    if sp is not None and (min_tokens > 0 or drop_short_list_like_under_tokens > 0 or drop_broken_sentence_under_tokens > 0):
+    if sp is not None and (
+        min_tokens > 0
+        or drop_short_list_like_under_tokens > 0
+        or drop_broken_sentence_under_tokens > 0
+    ):
         n_tokens = token_count(sp, text)
-    if drop_short_list_like_under_tokens > 0 and n_tokens < drop_short_list_like_under_tokens and list_like:
+    if (
+        drop_short_list_like_under_tokens > 0
+        and n_tokens < drop_short_list_like_under_tokens
+        and list_like
+    ):
         observe(stats, "short_list_like")
         return "short_list_like"
-    if drop_broken_sentence_under_tokens > 0 and n_tokens < drop_broken_sentence_under_tokens and broken_sentence_fragment:
+    if (
+        drop_broken_sentence_under_tokens > 0
+        and n_tokens < drop_broken_sentence_under_tokens
+        and broken_sentence_fragment
+    ):
         observe(stats, "short_broken_sentence")
         return "short_broken_sentence"
     if min_tokens > 0:
@@ -340,7 +364,16 @@ def write_balanced_val_tail(
 
     streams: list[tuple[str, Iterable[str]]] = []
     if base.is_file():
-        streams.append(("base", (line.strip() for line in base.open("r", encoding="utf-8", errors="replace") if line.strip())))
+        streams.append(
+            (
+                "base",
+                (
+                    line.strip()
+                    for line in base.open("r", encoding="utf-8", errors="replace")
+                    if line.strip()
+                ),
+            )
+        )
 
     large_sources = [
         large_qa_dir / "openorca.jsonl",
@@ -364,9 +397,16 @@ def write_balanced_val_tail(
         streams.append(("wildchat_en", iter_wildchat_jsonl(wildchat)))
 
     if reddit_best.is_file():
-        streams.append(("reddit_best_answers", iter_qa_jsonl(reddit_best, "Reddit-QA.", reddit=True)))
+        streams.append(
+            ("reddit_best_answers", iter_qa_jsonl(reddit_best, "Reddit-QA.", reddit=True))
+        )
     if reddit_threaded.is_file():
-        streams.append(("reddit_threaded_qa_strict", iter_qa_jsonl(reddit_threaded, "Reddit-Thread-QA.", reddit=True)))
+        streams.append(
+            (
+                "reddit_threaded_qa_strict",
+                iter_qa_jsonl(reddit_threaded, "Reddit-Thread-QA.", reddit=True),
+            )
+        )
     if include_dna and dna.is_file():
         streams.append(("knowledge_dna_hybrid", iter_dna_records(dna)))
 
@@ -415,7 +455,9 @@ def write_balanced_val_tail(
 
 
 def copy_base_fast(src: Path, dst: Path) -> SourceStats:
-    stats = SourceStats(name="clean_v32_base", kind="text_lines_fast_copy", path=str(src), cap_bytes=None)
+    stats = SourceStats(
+        name="clean_v32_base", kind="text_lines_fast_copy", path=str(src), cap_bytes=None
+    )
     last_byte = b""
     with src.open("rb") as in_fh, dst.open("wb") as out_fh:
         for chunk in iter(lambda: in_fh.read(16 * 1024 * 1024), b""):
@@ -441,8 +483,13 @@ def copy_base_filtered(
     drop_short_list_like_under_tokens: int,
     drop_broken_sentence_under_tokens: int,
 ) -> SourceStats:
-    stats = SourceStats(name="clean_v32_base", kind="text_lines_filtered_copy", path=str(src), cap_bytes=None)
-    with src.open("r", encoding="utf-8", errors="replace") as in_fh, dst.open("w", encoding="utf-8", newline="\n") as out_fh:
+    stats = SourceStats(
+        name="clean_v32_base", kind="text_lines_filtered_copy", path=str(src), cap_bytes=None
+    )
+    with (
+        src.open("r", encoding="utf-8", errors="replace") as in_fh,
+        dst.open("w", encoding="utf-8", newline="\n") as out_fh,
+    ):
         for line in in_fh:
             text = normalize_doc(line)
             if not text:
@@ -572,7 +619,11 @@ def main() -> None:
     mix_path = args.out_dir / "mix_full.txt"
     stats: list[SourceStats] = []
     sp = None
-    if args.base_min_tokens > 0 or args.booster_min_tokens > 0 or args.drop_broken_sentence_under_tokens > 0:
+    if (
+        args.base_min_tokens > 0
+        or args.booster_min_tokens > 0
+        or args.drop_broken_sentence_under_tokens > 0
+    ):
         if spm is None:
             raise SystemExit("sentencepiece is required for --*-min-tokens")
         if not args.tokenizer.is_file():
@@ -779,8 +830,12 @@ def main() -> None:
         "drop_short_list_like_under_tokens": args.drop_short_list_like_under_tokens,
         "drop_broken_sentence_under_tokens": args.drop_broken_sentence_under_tokens,
     }
-    manifest["audit"] = write_audit_samples(mix_path, args.out_dir, n=args.audit_samples, seed=args.seed, max_urls=args.max_urls)
-    (args.out_dir / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    manifest["audit"] = write_audit_samples(
+        mix_path, args.out_dir, n=args.audit_samples, seed=args.seed, max_urls=args.max_urls
+    )
+    (args.out_dir / "manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     print(f"wrote {mix_path} ({manifest['documents']:,} docs, {total_bytes / 1e9:.2f} GB)")
     print(f"wrote {args.out_dir / 'manifest.json'}")
     print(f"wrote {args.out_dir / 'audit_samples.txt'}")

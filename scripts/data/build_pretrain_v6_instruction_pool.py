@@ -8,9 +8,9 @@ import hashlib
 import json
 import re
 from collections import Counter
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable
-
+from typing import Any
 
 BAD_RE = re.compile(
     r"\[(?:deleted|removed)\]|onlyfans|discord\.gg|telegram|whatsapp|free karma|"
@@ -19,10 +19,14 @@ BAD_RE = re.compile(
     re.I,
 )
 URL_RE = re.compile(r"https?://|www\.", re.I)
-HTML_RE = re.compile(r"<\s*/?\s*(html|body|div|script|style|iframe)\b|href=|&(?:amp|gt|lt|quot);", re.I)
+HTML_RE = re.compile(
+    r"<\s*/?\s*(html|body|div|script|style|iframe)\b|href=|&(?:amp|gt|lt|quot);", re.I
+)
 EN_RE = re.compile(r"\b(the|and|you|write|explain|answer|question|therefore|because)\b", re.I)
 DE_RE = re.compile(r"\b(der|die|das|und|ist|nicht|ich|du|sie|wir|frage|antwort|schritt)\b", re.I)
-WEAK_TASK_RE = re.compile(r"\b(text-to-speech|audiodatei|audio controls|mein hund.*abschlussball)\b", re.I)
+WEAK_TASK_RE = re.compile(
+    r"\b(text-to-speech|audiodatei|audio controls|mein hund.*abschlussball)\b", re.I
+)
 GATE_NEAR_RE = re.compile(r"\bhauptstadt von deutschland\b", re.I)
 
 
@@ -95,8 +99,12 @@ def reject(question: str, answer: str) -> str | None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input-dir", type=Path, default=Path("data/training/pretrain_v6_candidates"))
-    parser.add_argument("--out-dir", type=Path, default=Path("data/training/pretrain_v6_instruction_de_strict"))
+    parser.add_argument(
+        "--input-dir", type=Path, default=Path("data/training/pretrain_v6_candidates")
+    )
+    parser.add_argument(
+        "--out-dir", type=Path, default=Path("data/training/pretrain_v6_instruction_de_strict")
+    )
     parser.add_argument("--manifest", type=Path, default=None)
     return parser.parse_args()
 
@@ -124,11 +132,12 @@ def main() -> None:
         "sources": {},
     }
 
-    with train_jsonl.open("w", encoding="utf-8", newline="\n") as train_j, holdout_jsonl.open(
-        "w", encoding="utf-8", newline="\n"
-    ) as hold_j, train_txt.open("w", encoding="utf-8", newline="\n") as train_t, reject_path.open(
-        "w", encoding="utf-8", newline="\n"
-    ) as reject_f:
+    with (
+        train_jsonl.open("w", encoding="utf-8", newline="\n") as train_j,
+        holdout_jsonl.open("w", encoding="utf-8", newline="\n") as hold_j,
+        train_txt.open("w", encoding="utf-8", newline="\n") as train_t,
+        reject_path.open("w", encoding="utf-8", newline="\n") as reject_f,
+    ):
         for source_name, rel_path in SOURCES.items():
             path = args.input_dir / rel_path
             counts: Counter[str] = Counter()
@@ -142,7 +151,13 @@ def main() -> None:
                     if counts[f"reject_{reason}"] <= 5:
                         reject_f.write(
                             json.dumps(
-                                {"source": source_name, "line_no": line_no, "reason": reason, "question": q[:300], "answer": a[:300]},
+                                {
+                                    "source": source_name,
+                                    "line_no": line_no,
+                                    "reason": reason,
+                                    "question": q[:300],
+                                    "answer": a[:300],
+                                },
                                 ensure_ascii=False,
                                 sort_keys=True,
                             )
@@ -160,7 +175,10 @@ def main() -> None:
                     "source_line": line_no,
                     "license": obj.get("license", "Apache-2.0"),
                     "messages": [
-                        {"role": "system", "content": "Du bist Auralis, ein hilfreicher deutscher KI-Assistent."},
+                        {
+                            "role": "system",
+                            "content": "Du bist Auralis, ein hilfreicher deutscher KI-Assistent.",
+                        },
                         {"role": "user", "content": q},
                         {"role": "assistant", "content": a},
                     ],
@@ -172,7 +190,9 @@ def main() -> None:
                     counts["holdout"] += 1
                 else:
                     train_j.write(json.dumps(rec, ensure_ascii=False, sort_keys=True) + "\n")
-                    train_t.write(f"System: Du bist Auralis, ein hilfreicher deutscher KI-Assistent.\nFrage: {q}\nAntwort: {a}\n\n")
+                    train_t.write(
+                        f"System: Du bist Auralis, ein hilfreicher deutscher KI-Assistent.\nFrage: {q}\nAntwort: {a}\n\n"
+                    )
                     counts["train"] += 1
             stats["sources"][source_name] = dict(counts)
 
@@ -180,7 +200,9 @@ def main() -> None:
     stats["estimated_train_tokens_4bpt"] = int(stats["bytes_train_txt"] / 4)
     stats["train_records"] = sum(v.get("train", 0) for v in stats["sources"].values())
     stats["holdout_records"] = sum(v.get("holdout", 0) for v in stats["sources"].values())
-    (args.out_dir / "manifest.json").write_text(json.dumps(stats, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    (args.out_dir / "manifest.json").write_text(
+        json.dumps(stats, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
     print(json.dumps(stats, ensure_ascii=False, indent=2, sort_keys=True))
 
 

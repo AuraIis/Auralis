@@ -17,7 +17,7 @@ import shutil
 import sys
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -110,7 +110,7 @@ def clean_text(text: str) -> str:
 
 
 def now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def check_free_space(path: Path, required_gb: float) -> None:

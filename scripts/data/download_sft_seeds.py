@@ -34,9 +34,10 @@ import argparse
 import json
 import sys
 import time
+from collections.abc import Callable, Iterable
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Iterable
+from typing import Any
 
 from tqdm import tqdm
 
@@ -64,6 +65,7 @@ class DownloadManifest:
 
 def _open_hf(dataset: str, config: str | None, split: str, streaming: bool = True):
     from datasets import load_dataset
+
     kwargs: dict[str, Any] = {"split": split}
     if streaming:
         kwargs["streaming"] = True
@@ -77,6 +79,7 @@ def _open_hf(dataset: str, config: str | None, split: str, streaming: bool = Tru
 # one JSONL line. We try to preserve the *useful* fields from the source and
 # drop noise (hashes, huge ids, redundant wrappers).
 # ---------------------------------------------------------------------------
+
 
 def _apps_records(ex: dict) -> Iterable[dict]:
     # codeparrot/apps: {problem_id, question, solutions, input_output,
@@ -168,7 +171,9 @@ def _stackex_preferences_records(ex: dict) -> Iterable[dict]:
         return
     # Sort by pm_score descending; keep top + bottom for preference pair
     answers_sorted = sorted(
-        answers, key=lambda a: a.get("pm_score", 0) or 0, reverse=True,
+        answers,
+        key=lambda a: a.get("pm_score", 0) or 0,
+        reverse=True,
     )
     yield {
         "source": "stack_exchange_preferences",
@@ -176,7 +181,9 @@ def _stackex_preferences_records(ex: dict) -> Iterable[dict]:
         "answer_accepted": answers_sorted[0].get("text", ""),
         "answer_accepted_score": answers_sorted[0].get("pm_score", 0),
         "answer_rejected": answers_sorted[-1].get("text", "") if len(answers_sorted) > 1 else "",
-        "answer_rejected_score": answers_sorted[-1].get("pm_score", 0) if len(answers_sorted) > 1 else None,
+        "answer_rejected_score": answers_sorted[-1].get("pm_score", 0)
+        if len(answers_sorted) > 1
+        else None,
         "metadata_url": ex.get("metadata", [""])[0] if ex.get("metadata") else "",
     }
 
@@ -188,47 +195,81 @@ def _stackex_preferences_records(ex: dict) -> Iterable[dict]:
 
 DOMAINS: dict[str, list[dict[str, Any]]] = {
     "coding": [
-        {"source": "apps",         "hf_dataset": "codeparrot/apps",
-         "config": "all",          "split": "train",
-         "fn": _apps_records,      "max_records": 10_000,
-         "streaming": True,
-         "notes": "Problem + tests + solutions. Gold for code-verify SFT."},
-        {"source": "mbpp",         "hf_dataset": "mbpp",
-         "config": "full",         "split": "train",
-         "fn": _mbpp_records,      "max_records": None,
-         "streaming": False,
-         "notes": "974 Python problems with pytest tests."},
-        {"source": "humaneval",    "hf_dataset": "openai_humaneval",
-         "config": None,           "split": "test",
-         "fn": _humaneval_records, "max_records": None,
-         "streaming": False,
-         "notes": "164 hand-written tasks, classic benchmark."},
-        {"source": "code_contests","hf_dataset": "deepmind/code_contests",
-         "config": None,           "split": "train",
-         "fn": _codecontests_records, "max_records": 5_000,
-         "streaming": True,
-         "notes": "Competitive-programming problems with I/O tests."},
+        {
+            "source": "apps",
+            "hf_dataset": "codeparrot/apps",
+            "config": "all",
+            "split": "train",
+            "fn": _apps_records,
+            "max_records": 10_000,
+            "streaming": True,
+            "notes": "Problem + tests + solutions. Gold for code-verify SFT.",
+        },
+        {
+            "source": "mbpp",
+            "hf_dataset": "mbpp",
+            "config": "full",
+            "split": "train",
+            "fn": _mbpp_records,
+            "max_records": None,
+            "streaming": False,
+            "notes": "974 Python problems with pytest tests.",
+        },
+        {
+            "source": "humaneval",
+            "hf_dataset": "openai_humaneval",
+            "config": None,
+            "split": "test",
+            "fn": _humaneval_records,
+            "max_records": None,
+            "streaming": False,
+            "notes": "164 hand-written tasks, classic benchmark.",
+        },
+        {
+            "source": "code_contests",
+            "hf_dataset": "deepmind/code_contests",
+            "config": None,
+            "split": "train",
+            "fn": _codecontests_records,
+            "max_records": 5_000,
+            "streaming": True,
+            "notes": "Competitive-programming problems with I/O tests.",
+        },
     ],
     "prompting": [
-        {"source": "awesome_chatgpt_prompts", "hf_dataset": "fka/awesome-chatgpt-prompts",
-         "config": None,           "split": "train",
-         "fn": _awesome_prompts_records, "max_records": None,
-         "streaming": False,
-         "notes": "Curated role prompts, tiny."},
-        {"source": "lima",         "hf_dataset": "GAIR/lima",
-         "config": None,           "split": "train",
-         "fn": _lima_records,      "max_records": None,
-         "streaming": False,
-         "notes": "1k super-high-quality SFT samples."},
+        {
+            "source": "awesome_chatgpt_prompts",
+            "hf_dataset": "fka/awesome-chatgpt-prompts",
+            "config": None,
+            "split": "train",
+            "fn": _awesome_prompts_records,
+            "max_records": None,
+            "streaming": False,
+            "notes": "Curated role prompts, tiny.",
+        },
+        {
+            "source": "lima",
+            "hf_dataset": "GAIR/lima",
+            "config": None,
+            "split": "train",
+            "fn": _lima_records,
+            "max_records": None,
+            "streaming": False,
+            "notes": "1k super-high-quality SFT samples.",
+        },
     ],
     "troubleshoot": [
-        {"source": "stackex_preferences",
-         "hf_dataset": "HuggingFaceH4/stack-exchange-preferences",
-         "config": None,           "split": "train",
-         "fn": _stackex_preferences_records, "max_records": 100_000,
-         "streaming": True,
-         "notes": "Q&A across SE network incl. superuser/serverfault/askubuntu. "
-                  "Perfect for Problem → Diagnose → Solution chains."},
+        {
+            "source": "stackex_preferences",
+            "hf_dataset": "HuggingFaceH4/stack-exchange-preferences",
+            "config": None,
+            "split": "train",
+            "fn": _stackex_preferences_records,
+            "max_records": 100_000,
+            "streaming": True,
+            "notes": "Q&A across SE network incl. superuser/serverfault/askubuntu. "
+            "Perfect for Problem → Diagnose → Solution chains.",
+        },
     ],
 }
 
@@ -236,9 +277,12 @@ DOMAINS: dict[str, list[dict[str, Any]]] = {
 def _download_one(spec: dict, out_dir: Path) -> DownloadManifest:
     out_file = out_dir / f"{spec['source']}.jsonl"
     manifest = DownloadManifest(
-        domain="", source=spec["source"],
-        hf_dataset=spec["hf_dataset"], hf_config=spec["config"],
-        split=spec["split"], output_file=str(out_file),
+        domain="",
+        source=spec["source"],
+        hf_dataset=spec["hf_dataset"],
+        hf_config=spec["config"],
+        split=spec["split"],
+        output_file=str(out_file),
         started_at=now_iso(),
         notes=[spec.get("notes", "")],
     )
@@ -251,9 +295,10 @@ def _download_one(spec: dict, out_dir: Path) -> DownloadManifest:
     print(f"  max: {max_records or 'all'}  streaming: {spec.get('streaming', True)}")
 
     try:
-        ds = _open_hf(spec["hf_dataset"], spec["config"], spec["split"],
-                      streaming=spec.get("streaming", True))
-    except Exception as e:                                     # noqa: BLE001
+        ds = _open_hf(
+            spec["hf_dataset"], spec["config"], spec["split"], streaming=spec.get("streaming", True)
+        )
+    except Exception as e:
         manifest.notes.append(f"LOAD FAILED: {type(e).__name__}: {e}")
         manifest.finished_at = now_iso()
         manifest.elapsed_seconds = round(time.time() - t0, 1)
@@ -287,18 +332,26 @@ def _download_one(spec: dict, out_dir: Path) -> DownloadManifest:
         json.dumps(asdict(manifest), indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
-    print(f"  wrote {manifest.records_written:,} records, "
-          f"{manifest.bytes_written/1e6:.1f} MB, "
-          f"{manifest.elapsed_seconds:.1f}s")
+    print(
+        f"  wrote {manifest.records_written:,} records, "
+        f"{manifest.bytes_written / 1e6:.1f} MB, "
+        f"{manifest.elapsed_seconds:.1f}s"
+    )
     return manifest
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     p.add_argument("--domain", required=True, choices=list(DOMAINS))
     p.add_argument("--data-config", type=Path, default=None)
-    p.add_argument("--sources", nargs="+", default=None,
-                   help="Pick specific sources in the domain. Default: all.")
+    p.add_argument(
+        "--sources",
+        nargs="+",
+        default=None,
+        help="Pick specific sources in the domain. Default: all.",
+    )
     args = p.parse_args()
 
     cfg = load_paths(args.data_config) if args.data_config else load_paths()
@@ -321,9 +374,11 @@ def main() -> None:
 
     print("\n=== Summary ===")
     for s in summaries:
-        print(f"  {s.source:30s} {s.records_written:>10,} rec  "
-              f"{s.bytes_written/1e6:>7.1f} MB  "
-              f"{s.elapsed_seconds:>6.1f}s")
+        print(
+            f"  {s.source:30s} {s.records_written:>10,} rec  "
+            f"{s.bytes_written / 1e6:>7.1f} MB  "
+            f"{s.elapsed_seconds:>6.1f}s"
+        )
 
 
 if __name__ == "__main__":

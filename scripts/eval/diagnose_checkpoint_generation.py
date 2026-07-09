@@ -16,12 +16,11 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import os
 import re
 import sys
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -49,7 +48,6 @@ def _maybe_enable_mamba_kernel() -> bool:
 _KERNEL_ACTIVE = _maybe_enable_mamba_kernel()
 
 from auralis.model import build_model  # noqa: E402
-
 
 GEN_PROMPTS = [
     ("de_plain_berlin", "Berlin ist eine Stadt"),
@@ -112,7 +110,9 @@ def repetition_ratio(text: str, ngram: int = 3) -> float:
 
 
 def load_model(args: argparse.Namespace):
-    device = torch.device("cuda" if args.device == "auto" and torch.cuda.is_available() else args.device)
+    device = torch.device(
+        "cuda" if args.device == "auto" and torch.cuda.is_available() else args.device
+    )
     model = build_model(args.model_config).to(device)
     payload = torch.load(args.checkpoint, map_location=device, weights_only=False)
     state = {k.replace("_orig_mod.", ""): v for k, v in payload["model"].items()}
@@ -142,7 +142,9 @@ def generate(
     eos = sp.EncodeAsIds("<|end|>")[-1]
     with torch.no_grad():
         for _ in range(max_new_tokens):
-            with torch.autocast(device_type="cuda", dtype=torch.bfloat16, enabled=device.type == "cuda"):
+            with torch.autocast(
+                device_type="cuda", dtype=torch.bfloat16, enabled=device.type == "cuda"
+            ):
                 logits = model(input_ids=x)["logits"][0, -1].float()
             if temperature <= 0:
                 next_id = int(torch.argmax(logits).item())
@@ -162,17 +164,29 @@ def generate(
     return sp.DecodeIds(new_ids), new_ids
 
 
-def topk(model, sp: spm.SentencePieceProcessor, device: torch.device, prompt: str, k: int) -> list[dict[str, Any]]:
+def topk(
+    model, sp: spm.SentencePieceProcessor, device: torch.device, prompt: str, k: int
+) -> list[dict[str, Any]]:
     ids = sp.EncodeAsIds(prompt)
     x = torch.tensor([ids], dtype=torch.long, device=device)
-    with torch.no_grad(), torch.autocast(device_type="cuda", dtype=torch.bfloat16, enabled=device.type == "cuda"):
+    with (
+        torch.no_grad(),
+        torch.autocast(device_type="cuda", dtype=torch.bfloat16, enabled=device.type == "cuda"),
+    ):
         logits = model(input_ids=x)["logits"][0, -1].float()
     probs = torch.softmax(logits, dim=-1)
     vals, idx = torch.topk(probs, k)
     out = []
     for p, token_id in zip(vals.tolist(), idx.tolist()):
         piece = sp.IdToPiece(int(token_id))
-        out.append({"id": int(token_id), "piece": piece, "decoded": sp.DecodeIds([int(token_id)]), "prob": float(p)})
+        out.append(
+            {
+                "id": int(token_id),
+                "piece": piece,
+                "decoded": sp.DecodeIds([int(token_id)]),
+                "prob": float(p),
+            }
+        )
     return out
 
 
@@ -194,7 +208,10 @@ def continuation_nll(
         return float("inf")
     x = torch.tensor([full_ids[:-1]], dtype=torch.long, device=device)
     y = torch.tensor(full_ids[1:], dtype=torch.long, device=device)
-    with torch.no_grad(), torch.autocast(device_type="cuda", dtype=torch.bfloat16, enabled=device.type == "cuda"):
+    with (
+        torch.no_grad(),
+        torch.autocast(device_type="cuda", dtype=torch.bfloat16, enabled=device.type == "cuda"),
+    ):
         logits = model(input_ids=x)["logits"][0].float()
     logp = torch.log_softmax(logits, dim=-1)
     # Token t in full_ids is predicted at logits[t-1].
@@ -241,7 +258,10 @@ def main() -> None:
                 )
             )
 
-    topks = [TopKResult(pid, prompt, topk(model, sp, device, prompt, args.top_k)) for pid, prompt in TOPK_PROMPTS]
+    topks = [
+        TopKResult(pid, prompt, topk(model, sp, device, prompt, args.top_k))
+        for pid, prompt in TOPK_PROMPTS
+    ]
     margins: list[MarginResult] = []
     for pid, prompt, correct, wrong in MARGIN_PROBES:
         c = continuation_nll(model, sp, device, prompt, correct)
@@ -249,7 +269,7 @@ def main() -> None:
         margins.append(MarginResult(pid, prompt, correct, wrong, c, w, w - c))
 
     report = {
-        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "timestamp_utc": datetime.now(UTC).isoformat(),
         "checkpoint": str(args.checkpoint),
         "step": step,
         "device": str(device),
@@ -263,7 +283,7 @@ def main() -> None:
 
     md = args.output.with_suffix(".md")
     lines = [
-        f"# Checkpoint Generation Diagnosis",
+        "# Checkpoint Generation Diagnosis",
         "",
         f"- checkpoint: `{args.checkpoint}`",
         f"- step: `{step}`",
@@ -285,7 +305,14 @@ def main() -> None:
         for t in tk.tokens:
             lines.append(f"- `{t['piece']}` -> `{t['decoded']}` p={t['prob']:.4f}")
         lines.append("")
-    lines.extend(["## Contrastive Margins", "", "Positive margin means correct continuation is preferred.", ""])
+    lines.extend(
+        [
+            "## Contrastive Margins",
+            "",
+            "Positive margin means correct continuation is preferred.",
+            "",
+        ]
+    )
     for m in margins:
         lines.append(
             f"- **{m.id}** margin={m.margin_wrong_minus_correct:.4f} "

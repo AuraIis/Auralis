@@ -31,7 +31,6 @@ from auralis.model import build_model  # noqa: E402
 from scripts.experimental.knowledge_dna_v2_ablation import (  # noqa: E402
     GenerationMetric,
     generate,
-    normalize_for_match,
     score_generation,
 )
 
@@ -105,7 +104,9 @@ def rows_to_sequences(
     return sequences
 
 
-def make_batch(rows: list[list[int]], *, batch_size: int, rng: random.Random, device: torch.device) -> dict[str, torch.Tensor]:
+def make_batch(
+    rows: list[list[int]], *, batch_size: int, rng: random.Random, device: torch.device
+) -> dict[str, torch.Tensor]:
     chosen = [rng.choice(rows) for _ in range(batch_size)]
     x = torch.tensor(chosen, dtype=torch.long, device=device)
     return {"input_ids": x, "labels": x.clone()}
@@ -200,9 +201,13 @@ def train_mix(
     rng = random.Random(args.seed + (17 if name == "dna_boost" else 0))
     model = build_model(args.model_config).to(device)
     if model.config.vocab_size != sp.get_piece_size():
-        raise ValueError(f"vocab mismatch: model={model.config.vocab_size} tokenizer={sp.get_piece_size()}")
+        raise ValueError(
+            f"vocab mismatch: model={model.config.vocab_size} tokenizer={sp.get_piece_size()}"
+        )
 
-    dna_rows_per_batch = 0 if name == "baseline" else max(1, round(args.batch_size * args.dna_share))
+    dna_rows_per_batch = (
+        0 if name == "baseline" else max(1, round(args.batch_size * args.dna_share))
+    )
     first_batch = (
         make_batch(normal_rows, batch_size=args.batch_size, rng=rng, device=device)
         if name == "baseline"
@@ -223,7 +228,9 @@ def train_mix(
         probe_batch_size=args.probe_batch_size,
         device=device,
     )
-    opt = torch.optim.AdamW(model.parameters(), lr=args.lr, betas=(0.9, 0.95), weight_decay=args.weight_decay)
+    opt = torch.optim.AdamW(
+        model.parameters(), lr=args.lr, betas=(0.9, 0.95), weight_decay=args.weight_decay
+    )
     start = time.time()
     train_final = train_initial
     for step in range(1, args.steps + 1):
@@ -262,11 +269,15 @@ def train_mix(
     )
     metrics: list[GenerationMetric] = []
     for row in probes[: args.generations]:
-        generated = generate(model, sp, prompt(row), device=device, max_new_tokens=args.max_new_tokens)
+        generated = generate(
+            model, sp, prompt(row), device=device, max_new_tokens=args.max_new_tokens
+        )
         metrics.append(score_generation(row, generated))
     exact = sum(1 for item in metrics if item.matched) / max(len(metrics), 1)
     counterfacts = [item for item in metrics if item.kind == "counterfact"]
-    counterfail = sum(1 for item in counterfacts if item.forbidden_hit or not item.matched) / max(len(counterfacts), 1)
+    counterfail = sum(1 for item in counterfacts if item.forbidden_hit or not item.matched) / max(
+        len(counterfacts), 1
+    )
     tagecho = sum(1 for item in metrics if item.tag_echo) / max(len(metrics), 1)
     return MixResult(
         name=name,
@@ -283,7 +294,9 @@ def train_mix(
     )
 
 
-def write_mix_files(out: Path, normal_lines: list[str], dna_blocks: list[str], args: argparse.Namespace) -> None:
+def write_mix_files(
+    out: Path, normal_lines: list[str], dna_blocks: list[str], args: argparse.Namespace
+) -> None:
     out.mkdir(parents=True, exist_ok=True)
     rng = random.Random(args.seed)
     baseline = list(normal_lines)
@@ -356,7 +369,9 @@ def write_report(path: Path, results: list[MixResult], args: argparse.Namespace)
             lines.append(f"- `{item.kind}` Q: {item.question}")
             lines.append(f"  - expected: {item.expected}")
             lines.append(f"  - generated: `{item.generated}`")
-            lines.append(f"  - matched={item.matched}, forbidden_hit={item.forbidden_hit}, tag_echo={item.tag_echo}")
+            lines.append(
+                f"  - matched={item.matched}, forbidden_hit={item.forbidden_hit}, tag_echo={item.tag_echo}"
+            )
         lines.append("")
     path.write_text("\n".join(lines), encoding="utf-8")
 
@@ -365,9 +380,15 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--normal-file", type=Path, required=True)
     parser.add_argument("--dna-dir", type=Path, required=True)
-    parser.add_argument("--output-dir", type=Path, default=Path("data/eval/knowledge_dna_v2_mixed_100m"))
-    parser.add_argument("--model-config", type=Path, default=Path("configs/model/helix_v2_100m.yaml"))
-    parser.add_argument("--tokenizer", type=Path, default=Path("tokenizer/helix_v2_tokenizer.model"))
+    parser.add_argument(
+        "--output-dir", type=Path, default=Path("data/eval/knowledge_dna_v2_mixed_100m")
+    )
+    parser.add_argument(
+        "--model-config", type=Path, default=Path("configs/model/helix_v2_100m.yaml")
+    )
+    parser.add_argument(
+        "--tokenizer", type=Path, default=Path("tokenizer/helix_v2_tokenizer.model")
+    )
     parser.add_argument("--device", default="auto")
     parser.add_argument("--normal-lines", type=int, default=50_000)
     parser.add_argument("--normal-bytes", type=int, default=80_000_000)
@@ -402,8 +423,12 @@ def main() -> None:
     dna_blocks = block_rows(args.dna_dir / "hybrid_corpus.txt")
     args.output_dir.mkdir(parents=True, exist_ok=True)
     write_mix_files(args.output_dir, normal_lines, dna_blocks, args)
-    normal_rows = rows_to_sequences(sp, normal_lines, seq_len=args.seq_len, max_sequences=args.normal_sequences)
-    dna_rows = rows_to_sequences(sp, dna_blocks, seq_len=args.seq_len, max_sequences=args.dna_sequences)
+    normal_rows = rows_to_sequences(
+        sp, normal_lines, seq_len=args.seq_len, max_sequences=args.normal_sequences
+    )
+    dna_rows = rows_to_sequences(
+        sp, dna_blocks, seq_len=args.seq_len, max_sequences=args.dna_sequences
+    )
     probes = [
         json.loads(line)
         for line in (args.dna_dir / "probes.jsonl").read_text(encoding="utf-8").splitlines()

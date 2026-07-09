@@ -28,8 +28,7 @@ def main() -> None:
     p.add_argument("--output-md", type=Path, default=None)
     args = p.parse_args()
 
-    sidecars = sorted(args.ckpt_dir.glob("step_*.json"),
-                      key=lambda p: int(p.stem.split("_", 1)[1]))
+    sidecars = sorted(args.ckpt_dir.glob("step_*.json"), key=lambda p: int(p.stem.split("_", 1)[1]))
     best_sidecar = args.ckpt_dir / "best.json"
     if not sidecars and not best_sidecar.is_file():
         raise SystemExit(f"no step_*.json or best.json found under {args.ckpt_dir}")
@@ -48,7 +47,9 @@ def main() -> None:
     best = _load(best_sidecar) if best_sidecar.is_file() else None
 
     md = ["# Regression Dashboard\n"]
-    md.append("| file | step | tokens_seen | best_val_loss | consec_val_inc |  alerts | backups ok/fail |")
+    md.append(
+        "| file | step | tokens_seen | best_val_loss | consec_val_inc |  alerts | backups ok/fail |"
+    )
     md.append("|---|--:|--:|--:|--:|--:|---|")
     for r in rows:
         md.append(
@@ -60,8 +61,10 @@ def main() -> None:
             f"{r.get('external_backups_ok', 0)}/{r.get('external_backups_failed', 0)} |"
         )
     if best is not None:
-        md.append(f"\n**Best**: step {best.get('step', '?'):,}, "
-                  f"val_loss {best.get('best_val_loss', float('inf')):.4f}")
+        md.append(
+            f"\n**Best**: step {best.get('step', '?'):,}, "
+            f"val_loss {best.get('best_val_loss', float('inf')):.4f}"
+        )
 
     # Simple regression verdict
     if len(rows) >= 2:
@@ -77,12 +80,16 @@ def main() -> None:
     if man.is_file():
         try:
             mdoc = yaml.safe_load(man.read_text(encoding="utf-8")) or {}
-            md.append(f"\n**Run**: {mdoc.get('metadata', {}).get('git_sha', '?')[:12]}, "
-                      f"host={mdoc.get('metadata', {}).get('hostname', '?')}, "
-                      f"dtype={mdoc.get('metadata', {}).get('dtype', '?')}")
+            md.append(
+                f"\n**Run**: {mdoc.get('metadata', {}).get('git_sha', '?')[:12]}, "
+                f"host={mdoc.get('metadata', {}).get('hostname', '?')}, "
+                f"dtype={mdoc.get('metadata', {}).get('dtype', '?')}"
+            )
             if mdoc.get("health", {}).get("stop_reason"):
-                md.append(f"Exit reason: {mdoc.get('exit_reason')} "
-                          f"(health: {mdoc['health']['stop_reason']})")
+                md.append(
+                    f"Exit reason: {mdoc.get('exit_reason')} "
+                    f"(health: {mdoc['health']['stop_reason']})"
+                )
         except Exception:
             pass
 

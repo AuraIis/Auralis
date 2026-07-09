@@ -25,7 +25,6 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
-
 REPO = Path(__file__).resolve().parents[2]
 DEFAULT_OUTPUT_ROOT = Path("I:/KI/Auralis_datasets")
 DEFAULT_MAX_RSS_GB = 8.0
@@ -292,7 +291,16 @@ def _row_text(row: Any) -> str:
         return _trim_text(row)
     if not isinstance(row, dict):
         return ""
-    preferred = ("text", "content", "document", "article", "body", "prompt", "response", "completion")
+    preferred = (
+        "text",
+        "content",
+        "document",
+        "article",
+        "body",
+        "prompt",
+        "response",
+        "completion",
+    )
     parts: list[str] = []
     for key in preferred:
         value = row.get(key)
@@ -304,12 +312,15 @@ def _row_text(row: Any) -> str:
         if isinstance(value, str) and len(value.strip()) >= 40:
             parts.append(_trim_text(value))
         elif isinstance(value, list):
-            parts.extend(_trim_text(v) for v in value[:20] if isinstance(v, str) and len(v.strip()) >= 40)
+            parts.extend(
+                _trim_text(v) for v in value[:20] if isinstance(v, str) and len(v.strip()) >= 40
+            )
     return _trim_text("\n".join(parts[:4]))
 
 
 def _rss_bytes() -> int | None:
     if os.name == "nt":
+
         class PROCESS_MEMORY_COUNTERS_EX(ctypes.Structure):
             _fields_ = [
                 ("cb", ctypes.c_ulong),
@@ -346,7 +357,9 @@ def _guard_memory(max_rss_gb: float) -> None:
         return
     max_bytes = int(max_rss_gb * 1024**3)
     if rss > max_bytes:
-        raise MemoryError(f"Dataset Market memory guard tripped: rss={rss / 1024**3:.1f} GB limit={max_rss_gb:.1f} GB")
+        raise MemoryError(
+            f"Dataset Market memory guard tripped: rss={rss / 1024**3:.1f} GB limit={max_rss_gb:.1f} GB"
+        )
 
 
 def _sample_quality(samples: list[str], *, goal: str, language: str) -> dict[str, Any]:
@@ -368,9 +381,13 @@ def _sample_quality(samples: list[str], *, goal: str, language: str) -> dict[str
     bad_hits = sum(1 for hint in BAD_SAMPLE_HINTS if hint in lower)
     url_ratio = len(re.findall(r"https?://|www\.", lower)) / max(1, len(clean))
     html_ratio = len(re.findall(r"<[a-z][^>]{0,80}>", lower)) / max(1, len(clean))
-    german_hits = sum(len(re.findall(rf"\b{re.escape(word)}\b", lower)) for word in GERMAN_SIGNAL_WORDS)
+    german_hits = sum(
+        len(re.findall(rf"\b{re.escape(word)}\b", lower)) for word in GERMAN_SIGNAL_WORDS
+    )
     code_chars = sum(lower.count(ch) for ch in "{}();=<>")
-    template_hits = len(re.findall(r"###\s*(frage|antwort|instruction|response|aufgabe)|<\|im_", lower))
+    template_hits = len(
+        re.findall(r"###\s*(frage|antwort|instruction|response|aufgabe)|<\|im_", lower)
+    )
     ocr_pattern_hits = len(
         re.findall(
             r"\b\w{1,3}\^\w{1,4}\b|\^[A-Za-z]|[A-Za-z][A-Z]{2,}[a-z]|[A-Za-z]{2,}\d",
@@ -464,7 +481,16 @@ def _terms(text: str) -> list[str]:
 def _matches_terms(card: DatasetCard, terms: list[str], *, require_all: bool) -> bool:
     if not terms:
         return True
-    hay = " ".join([card.id.lower(), card.license.lower(), card.cleaning_route.lower(), *card.tags, *card.reasons, *card.warnings])
+    hay = " ".join(
+        [
+            card.id.lower(),
+            card.license.lower(),
+            card.cleaning_route.lower(),
+            *card.tags,
+            *card.reasons,
+            *card.warnings,
+        ]
+    )
     checks = [term in hay for term in terms]
     return all(checks) if require_all else any(checks)
 
@@ -476,7 +502,9 @@ def _hf_json(path: str, params: dict[str, str], timeout: int = 18) -> dict[str, 
     with urllib.request.urlopen(request, timeout=timeout) as response:
         raw = response.read(MAX_URL_RESPONSE_BYTES + 1)
         if len(raw) > MAX_URL_RESPONSE_BYTES:
-            raise RuntimeError(f"HF datasets-server response too large for safe preview: >{MAX_URL_RESPONSE_BYTES:,} bytes")
+            raise RuntimeError(
+                f"HF datasets-server response too large for safe preview: >{MAX_URL_RESPONSE_BYTES:,} bytes"
+            )
         return json.loads(raw.decode("utf-8", errors="ignore"))
 
 
@@ -508,7 +536,9 @@ def _hf_first_rows(dataset_id: str, limit: int = 8) -> tuple[list[str], str]:
     return samples, ""
 
 
-def _hf_rows_for_split(dataset_id: str, config: str, split: str, limit: int = 8) -> tuple[list[dict[str, Any]], str]:
+def _hf_rows_for_split(
+    dataset_id: str, config: str, split: str, limit: int = 8
+) -> tuple[list[dict[str, Any]], str]:
     try:
         payload = _hf_json("first-rows", {"dataset": dataset_id, "config": config, "split": split})
     except Exception as exc:
@@ -521,7 +551,9 @@ def _hf_rows_for_split(dataset_id: str, config: str, split: str, limit: int = 8)
     return rows, ""
 
 
-def _choose_split(splits: list[dict[str, Any]], config: str = "", split: str = "") -> dict[str, str]:
+def _choose_split(
+    splits: list[dict[str, Any]], config: str = "", split: str = ""
+) -> dict[str, str]:
     if config and split:
         for row in splits:
             if row.get("config") == config and row.get("split") == split:
@@ -534,7 +566,10 @@ def _choose_split(splits: list[dict[str, Any]], config: str = "", split: str = "
             return {"config": str(row.get("config") or "default"), "split": "train"}
     if splits:
         row = splits[0]
-        return {"config": str(row.get("config") or "default"), "split": str(row.get("split") or "train")}
+        return {
+            "config": str(row.get("config") or "default"),
+            "split": str(row.get("split") or "train"),
+        }
     return {"config": "default", "split": "train"}
 
 
@@ -542,12 +577,19 @@ def _column_profile(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     stats: dict[str, dict[str, Any]] = {}
     for row in rows:
         for key, value in row.items():
-            item = stats.setdefault(key, {"name": key, "types": set(), "non_empty": 0, "example": ""})
+            item = stats.setdefault(
+                key, {"name": key, "types": set(), "non_empty": 0, "example": ""}
+            )
             item["types"].add(type(value).__name__)
             if value not in (None, "", [], {}):
                 item["non_empty"] += 1
                 if not item["example"]:
-                    item["example"] = _shorten(json.dumps(value, ensure_ascii=False) if not isinstance(value, str) else value, 120)
+                    item["example"] = _shorten(
+                        json.dumps(value, ensure_ascii=False)
+                        if not isinstance(value, str)
+                        else value,
+                        120,
+                    )
     output = []
     for item in stats.values():
         output.append(
@@ -561,8 +603,10 @@ def _column_profile(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return sorted(output, key=lambda x: x["name"])
 
 
-def _local_stream_samples(dataset_id: str, limit: int = 8, timeout: int = 18) -> tuple[list[str], str]:
-    code = r'''
+def _local_stream_samples(
+    dataset_id: str, limit: int = 8, timeout: int = 18
+) -> tuple[list[str], str]:
+    code = r"""
 import json
 import sys
 from datasets import load_dataset
@@ -604,7 +648,7 @@ for row in stream.take(limit):
     if text:
         samples.append(text)
 print(json.dumps(samples, ensure_ascii=False))
-'''
+"""
     try:
         completed = subprocess.run(
             [sys.executable, "-c", code, dataset_id, str(limit)],
@@ -726,7 +770,9 @@ class DatasetMarket:
             from huggingface_hub import hf_hub_download
 
             readme_path = hf_hub_download(dataset_id, "README.md", repo_type="dataset")
-            readme_excerpt = _shorten(Path(readme_path).read_text(encoding="utf-8", errors="ignore"), 900)
+            readme_excerpt = _shorten(
+                Path(readme_path).read_text(encoding="utf-8", errors="ignore"), 900
+            )
         except Exception:
             readme_excerpt = ""
 
@@ -734,7 +780,9 @@ class DatasetMarket:
         binary_or_media = [
             name
             for name in files
-            if name.lower().endswith((".jpg", ".jpeg", ".png", ".webp", ".wav", ".mp3", ".flac", ".mp4"))
+            if name.lower().endswith(
+                (".jpg", ".jpeg", ".png", ".webp", ".wav", ".mp3", ".flac", ".mp4")
+            )
         ]
         file_signals: list[str] = []
         file_warnings: list[str] = []
@@ -774,7 +822,9 @@ class DatasetMarket:
             }
         else:
             sample_report = _sample_quality(samples, goal=goal, language=language)
-        score = round(max(0.0, min(100.0, card.score + file_delta + sample_report["score_delta"])), 1)
+        score = round(
+            max(0.0, min(100.0, card.score + file_delta + sample_report["score_delta"])), 1
+        )
         warnings = [*card.warnings, *file_warnings, *sample_report["warnings"]]
         signals = [*card.reasons, *file_signals, *sample_report["signals"]]
         confidence = "sampled"
@@ -825,7 +875,10 @@ class DatasetMarket:
         try:
             splits_payload = _hf_json("splits", {"dataset": dataset_id})
             splits = [
-                {"config": str(row.get("config") or "default"), "split": str(row.get("split") or "train")}
+                {
+                    "config": str(row.get("config") or "default"),
+                    "split": str(row.get("split") or "train"),
+                }
                 for row in splits_payload.get("splits", [])
             ]
         except Exception as exc:
@@ -853,18 +906,24 @@ class DatasetMarket:
         except Exception as exc:
             parquet_error = _shorten(repr(exc), 260)
 
-        rows, row_error = _hf_rows_for_split(dataset_id, chosen["config"], chosen["split"], limit=12)
+        rows, row_error = _hf_rows_for_split(
+            dataset_id, chosen["config"], chosen["split"], limit=12
+        )
         rows = [_trim_json_value(row) for row in rows]
         samples = [_row_text(row) for row in rows]
-        quality = _sample_quality(samples, goal=goal, language=language) if samples else {
-            "score_delta": 0,
-            "sample_count": 0,
-            "avg_chars": 0,
-            "estimated_keep_rate": None,
-            "signals": [],
-            "warnings": ["no readable preview samples"],
-            "examples": [],
-        }
+        quality = (
+            _sample_quality(samples, goal=goal, language=language)
+            if samples
+            else {
+                "score_delta": 0,
+                "sample_count": 0,
+                "avg_chars": 0,
+                "estimated_keep_rate": None,
+                "signals": [],
+                "warnings": ["no readable preview samples"],
+                "examples": [],
+            }
+        )
         size_bytes = sum(int(row.get("size") or 0) for row in parquet_files)
         return {
             "id": dataset_id,
@@ -883,11 +942,17 @@ class DatasetMarket:
             "errors": [err for err in (split_error, parquet_error, row_error) if err],
         }
 
-    def plan_mix(self, selected: list[dict[str, Any]], target_tokens: int, goal: str) -> dict[str, Any]:
+    def plan_mix(
+        self, selected: list[dict[str, Any]], target_tokens: int, goal: str
+    ) -> dict[str, Any]:
         _guard_memory(self.max_rss_gb)
         cards = [DatasetCard(**item) for item in selected]
         if not cards:
-            return {"target_tokens": target_tokens, "items": [], "warnings": ["no datasets selected"]}
+            return {
+                "target_tokens": target_tokens,
+                "items": [],
+                "warnings": ["no datasets selected"],
+            }
         weights = []
         for card in cards:
             base = max(0.05, card.score / 100.0)
@@ -935,7 +1000,9 @@ class DatasetMarket:
             assembled_text = clean_root / f"{slug}.assembled.txt"
             clean_txt = clean_root / f"{slug}.structured.txt"
             clean_jsonl = clean_root / f"{slug}.structured.jsonl"
-            commands.append(f'huggingface-cli download --repo-type dataset "{ds_id}" --local-dir "{raw_path}"')
+            commands.append(
+                f'huggingface-cli download --repo-type dataset "{ds_id}" --local-dir "{raw_path}"'
+            )
             commands.append(
                 "# Export/assemble the downloaded dataset into one UTF-8 text file before cleaning. "
                 f'Replace DATA_FILE with the real .txt/.jsonl/.parquet export: "{assembled_text}"'
@@ -1673,7 +1740,11 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def _json(self, status: int, payload: Any) -> None:
-        self._send(status, json.dumps(payload, ensure_ascii=False).encode("utf-8"), "application/json; charset=utf-8")
+        self._send(
+            status,
+            json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+            "application/json; charset=utf-8",
+        )
 
     def _read_json_body(self) -> tuple[dict[str, Any] | None, str | None]:
         length = int(self.headers.get("content-length", "0") or "0")
@@ -1688,7 +1759,7 @@ class Handler(BaseHTTPRequestHandler):
             return None, "request body must be a JSON object"
         return payload, None
 
-    def do_GET(self) -> None:  # noqa: N802
+    def do_GET(self) -> None:
         try:
             _guard_memory(self.market.max_rss_gb)
         except MemoryError as exc:
@@ -1719,7 +1790,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         self._json(404, {"error": "not found"})
 
-    def do_POST(self) -> None:  # noqa: N802
+    def do_POST(self) -> None:
         parsed = urllib.parse.urlparse(self.path)
         try:
             _guard_memory(self.market.max_rss_gb)
@@ -1741,7 +1812,9 @@ class Handler(BaseHTTPRequestHandler):
             )
             return
         if parsed.path == "/api/pipeline":
-            self._json(200, self.market.pipeline(payload.get("selected", []), payload.get("mix", {})))
+            self._json(
+                200, self.market.pipeline(payload.get("selected", []), payload.get("mix", {}))
+            )
             return
         if parsed.path == "/api/analyze":
             try:
@@ -1778,7 +1851,9 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--output-root", type=Path, default=DEFAULT_OUTPUT_ROOT)

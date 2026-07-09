@@ -303,8 +303,12 @@ def docker_cp_files(
     """
     if cfg.container_mode != "docker_cp" or not files:
         return
-    log.info("container sync: %d file(s) → %s%s", len(files), cfg.container_name,
-             " [dry-run]" if dry_run else "")
+    log.info(
+        "container sync: %d file(s) → %s%s",
+        len(files),
+        cfg.container_name,
+        " [dry-run]" if dry_run else "",
+    )
     paths = " ".join(files)
     remote_script = (
         f"cd {cfg.remote_path} && "
@@ -381,8 +385,7 @@ def run_once(cfg: Config, log: logging.Logger, *, dry_run: bool) -> None:
 
 def run_loop(cfg: Config, log: logging.Logger, *, dry_run: bool) -> None:
     """Continuous polling loop with debounced batched sync."""
-    log.info("starting watcher (poll=%.1fs, debounce=%dms)",
-             cfg.poll_interval, cfg.debounce_ms)
+    log.info("starting watcher (poll=%.1fs, debounce=%dms)", cfg.poll_interval, cfg.debounce_ms)
     prev = snapshot(cfg)
     log.info("initial snapshot: %d files tracked", len(prev))
     pending_changed: set[str] = set()
@@ -412,7 +415,7 @@ def run_loop(cfg: Config, log: logging.Logger, *, dry_run: bool) -> None:
                     docker_cp_files(cfg, sorted(pending_changed), log, dry_run=dry_run)
                     rsync_deletes(cfg, sorted(pending_deleted), log, dry_run=dry_run)
                     docker_rm_files(cfg, sorted(pending_deleted), log, dry_run=dry_run)
-                except Exception as exc:  # noqa: BLE001 — log and continue
+                except Exception as exc:
                     log.exception("sync batch failed: %s", exc)
                 pending_changed.clear()
                 pending_deleted.clear()
@@ -422,13 +425,20 @@ def run_loop(cfg: Config, log: logging.Logger, *, dry_run: bool) -> None:
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
-    ap.add_argument("--once", action="store_true",
-                    help="Do a single full sync of everything in the whitelist, then exit.")
-    ap.add_argument("--dry-run", action="store_true",
-                    help="Print what would be synced/deleted without touching the remote.")
+    ap.add_argument(
+        "--once",
+        action="store_true",
+        help="Do a single full sync of everything in the whitelist, then exit.",
+    )
+    ap.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print what would be synced/deleted without touching the remote.",
+    )
     args = ap.parse_args()
 
     if not args.config.is_file():
@@ -439,8 +449,13 @@ def main() -> None:
     log = setup_logging(cfg)
     cfg.validate(log)
     log.info("config loaded: %s", args.config)
-    log.info("target: %s@%s:%s (container=%s)",
-             cfg.ssh_user, cfg.ssh_host, cfg.remote_path, cfg.container_mode)
+    log.info(
+        "target: %s@%s:%s (container=%s)",
+        cfg.ssh_user,
+        cfg.ssh_host,
+        cfg.remote_path,
+        cfg.container_mode,
+    )
 
     _check_prerequisites(log)
     _install_signal_handlers(log)

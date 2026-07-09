@@ -14,6 +14,7 @@ Usage:
         --max-docs 100 \\
         --pairs-per-doc 3
 """
+
 from __future__ import annotations
 
 import argparse
@@ -22,13 +23,11 @@ import os
 import sys
 from pathlib import Path
 
-
 # Schema-specific prompts. Each schema corresponds to one of our politik
 # JSONL inputs. The prompt instructs DeepSeek to produce high-quality
 # question-answer pairs grounded ONLY in the source material — with the
 # anti-hallucination guard from L-017.
 PROMPTS: dict[str, str] = {
-
     "plenary": """\
 Du bekommst eine Bundestags-Plenarrede. Erzeuge {n_pairs} Frage-Antwort-Paare,
 die diese Rede als FAKTENGRUNDLAGE nutzen.
@@ -53,7 +52,6 @@ Rede-Text:
 
 Antworte als JSON-Array mit {n_pairs} Objekten, jeweils
 {{"question": "...", "answer": "..."}}, sonst nichts.""",
-
     "caselaw": """\
 Du bekommst eine deutsche Gerichtsentscheidung. Erzeuge {n_pairs} Frage-Antwort-Paare
 basierend AUSSCHLIESSLICH auf dem Urteilstext.
@@ -75,7 +73,6 @@ Urteilstext (gekürzt):
 
 Antworte als JSON-Array mit {n_pairs} Q&A-Objekten:
 {{"question": "...", "answer": "..."}}""",
-
     "politician": """\
 Du bekommst die Stammdaten eines/r deutschen Bundestagsabgeordneten.
 Erzeuge {n_pairs} Frage-Antwort-Paare nur basierend auf diesen Daten.
@@ -122,10 +119,21 @@ def load_records(path: Path, schema: str, max_docs: int):
                 }
             elif schema == "politician":
                 # Reduced JSON dump — keep only fields useful for QA.
-                useful = {k: v for k, v in rec.items()
-                          if k in ("nachname", "vorname", "partei_kurz",
-                                    "geburtsdatum", "geburtsort", "beruf",
-                                    "vita_kurz", "mandate")}
+                useful = {
+                    k: v
+                    for k, v in rec.items()
+                    if k
+                    in (
+                        "nachname",
+                        "vorname",
+                        "partei_kurz",
+                        "geburtsdatum",
+                        "geburtsort",
+                        "beruf",
+                        "vita_kurz",
+                        "mandate",
+                    )
+                }
                 yield {
                     "record": json.dumps(useful, ensure_ascii=False, indent=2),
                     "raw_id": rec.get("id", f"pol_{i}"),
@@ -135,34 +143,45 @@ def load_records(path: Path, schema: str, max_docs: int):
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(description=__doc__,
-                                  formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     p.add_argument("--input", type=Path, required=True)
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--schema", choices=sorted(PROMPTS.keys()), required=True)
     p.add_argument("--max-docs", type=int, default=100)
     p.add_argument("--pairs-per-doc", type=int, default=3)
-    p.add_argument("--model", default="qwen/qwen3.6-35b-a3b",
-                   help="OpenRouter model id. Default qwen3.6-35b-a3b matches "
-                        "the local bitbastion model used for scoring/rewrite.")
+    p.add_argument(
+        "--model",
+        default="qwen/qwen3.6-35b-a3b",
+        help="OpenRouter model id. Default qwen3.6-35b-a3b matches "
+        "the local bitbastion model used for scoring/rewrite.",
+    )
     p.add_argument("--batch-size", type=int, default=4)
-    p.add_argument("--chunk-size", type=int, default=200,
-                   help="Process this many source docs per pipeline.run() call. "
-                        "Each Q&A doc generates ~3 pairs of ~500 tokens output, "
-                        "so chunks of 200 ≈ 100s of work + ~1s overhead.")
-    p.add_argument("--resume", action="store_true",
-                   help="If output exists, skip raw_ids already present and "
-                        "append new ones. Default: fresh run (truncate).")
+    p.add_argument(
+        "--chunk-size",
+        type=int,
+        default=200,
+        help="Process this many source docs per pipeline.run() call. "
+        "Each Q&A doc generates ~3 pairs of ~500 tokens output, "
+        "so chunks of 200 ≈ 100s of work + ~1s overhead.",
+    )
+    p.add_argument(
+        "--resume",
+        action="store_true",
+        help="If output exists, skip raw_ids already present and "
+        "append new ones. Default: fresh run (truncate).",
+    )
     args = p.parse_args()
 
     api_key = os.environ.get("OPENROUTER_API_KEY")
     if not api_key:
         sys.exit("FATAL: OPENROUTER_API_KEY env var required")
 
+    from distilabel.models import OpenAILLM
     from distilabel.pipeline import Pipeline
     from distilabel.steps import LoadDataFromDicts
     from distilabel.steps.tasks import TextGeneration
-    from distilabel.models import OpenAILLM
 
     # Resume: load source_ids already present in output.
     args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -177,8 +196,7 @@ def main() -> int:
                         done_ids.add(str(sid))
                 except json.JSONDecodeError:
                     continue
-        print(f"Resume: {len(done_ids)} source_ids already in output, will skip.",
-              flush=True)
+        print(f"Resume: {len(done_ids)} source_ids already in output, will skip.", flush=True)
     elif args.output.exists() and not args.resume:
         args.output.write_text("")
 
@@ -191,16 +209,19 @@ def main() -> int:
             n_resumed += 1
             continue
         rec_for_prompt = {**rec, "n_pairs": args.pairs_per_doc}
-        docs.append({
-            "instruction": template.format(**rec_for_prompt),
-            "raw_id": rec["raw_id"],
-        })
-    print(f"  {len(docs)} source docs prepared, asking for "
-          f"{args.pairs_per_doc} Q&A pairs each = "
-          f"~{len(docs) * args.pairs_per_doc} target examples")
+        docs.append(
+            {
+                "instruction": template.format(**rec_for_prompt),
+                "raw_id": rec["raw_id"],
+            }
+        )
+    print(
+        f"  {len(docs)} source docs prepared, asking for "
+        f"{args.pairs_per_doc} Q&A pairs each = "
+        f"~{len(docs) * args.pairs_per_doc} target examples"
+    )
     if n_resumed:
-        print(f"  resumed: {n_resumed} source_ids already done, skipped",
-              flush=True)
+        print(f"  resumed: {n_resumed} source_ids already done, skipped", flush=True)
     if not docs:
         print("  nothing to generate, exiting.", flush=True)
         return 0
@@ -229,14 +250,16 @@ def main() -> int:
                 for row in ds:
                     yield row
 
-    print(f"Processing {len(docs)} docs in {n_chunks} chunk(s) of "
-          f"{chunk_size} (streaming-append, resumable).", flush=True)
+    print(
+        f"Processing {len(docs)} docs in {n_chunks} chunk(s) of "
+        f"{chunk_size} (streaming-append, resumable).",
+        flush=True,
+    )
 
     with args.output.open("a", encoding="utf-8") as out_f:
         for chunk_idx in range(n_chunks):
-            chunk_docs = docs[chunk_idx * chunk_size:(chunk_idx + 1) * chunk_size]
-            print(f"  chunk {chunk_idx + 1}/{n_chunks}: "
-                  f"{len(chunk_docs)} docs ...", flush=True)
+            chunk_docs = docs[chunk_idx * chunk_size : (chunk_idx + 1) * chunk_size]
+            print(f"  chunk {chunk_idx + 1}/{n_chunks}: {len(chunk_docs)} docs ...", flush=True)
 
             with Pipeline(name=f"synth-qa-{args.schema}") as pipeline:
                 loader = LoadDataFromDicts(data=chunk_docs)
@@ -259,7 +282,7 @@ def main() -> int:
                     if generation.startswith("```"):
                         first_nl = generation.find("\n")
                         last_fence = generation.rfind("```")
-                        generation = generation[first_nl + 1: last_fence].strip()
+                        generation = generation[first_nl + 1 : last_fence].strip()
                     pairs = json.loads(generation)
                     if not isinstance(pairs, list):
                         pairs = None
@@ -275,23 +298,32 @@ def main() -> int:
                     q, a = pair.get("question"), pair.get("answer")
                     if not q or not a:
                         continue
-                    out_f.write(json.dumps({
-                        "source_id": row.get("raw_id"),
-                        "schema": args.schema,
-                        "messages": [
-                            {"role": "user", "content": q},
-                            {"role": "assistant", "content": a},
-                        ],
-                    }, ensure_ascii=False) + "\n")
+                    out_f.write(
+                        json.dumps(
+                            {
+                                "source_id": row.get("raw_id"),
+                                "schema": args.schema,
+                                "messages": [
+                                    {"role": "user", "content": q},
+                                    {"role": "assistant", "content": a},
+                                ],
+                            },
+                            ensure_ascii=False,
+                        )
+                        + "\n"
+                    )
                     n_pairs += 1
                     chunk_pairs += 1
             out_f.flush()
-            print(f"    chunk {chunk_idx + 1} done: {chunk_pairs} pairs "
-                  f"({chunk_fails} parse-fails) — running total: "
-                  f"{n_pairs} pairs / {n_total} docs", flush=True)
+            print(
+                f"    chunk {chunk_idx + 1} done: {chunk_pairs} pairs "
+                f"({chunk_fails} parse-fails) — running total: "
+                f"{n_pairs} pairs / {n_total} docs",
+                flush=True,
+            )
 
     print()
-    print(f"=== Synth Q&A results ===")
+    print("=== Synth Q&A results ===")
     print(f"  source docs: {n_total}")
     print(f"  parse fails: {n_parse_fail}")
     print(f"  Q&A pairs:   {n_pairs}")

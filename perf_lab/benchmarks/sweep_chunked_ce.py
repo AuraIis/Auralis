@@ -63,7 +63,9 @@ def main() -> None:
     parser.add_argument("--hidden-scale", type=float, default=1.0)
     parser.add_argument("--weight-scale", type=float, default=1.0)
     parser.add_argument("--chunk-sizes", default="4096,8192,16384,32768,65536")
-    parser.add_argument("--impl", choices=["auto", "cpp", "python", "triton", "triton_fused"], default="cpp")
+    parser.add_argument(
+        "--impl", choices=["auto", "cpp", "python", "triton", "triton_fused"], default="cpp"
+    )
     parser.add_argument("--block-m", type=int, default=8)
     parser.add_argument("--block-v", type=int, default=256)
     parser.add_argument("--block-d", type=int, default=64)
@@ -116,14 +118,19 @@ def main() -> None:
         "block_d": max(args.block_d, 16) if args.impl == "triton_fused" else args.block_d,
         "triton_backward_mode": args.triton_backward_mode if args.impl == "triton_fused" else None,
         "row_group_blocks": args.row_group_blocks if args.impl == "triton_fused" else None,
-        "full_logits_gb": args.tokens * args.vocab_size * torch.empty((), dtype=dtype).element_size() / 1e9,
+        "full_logits_gb": args.tokens
+        * args.vocab_size
+        * torch.empty((), dtype=dtype).element_size()
+        / 1e9,
         "results": [],
     }
 
     full_result = None
     if args.include_full:
         full_result = bench(
-            lambda h, w, y: F.cross_entropy(F.linear(h, w).view(-1, w.size(0)), y.view(-1), ignore_index=-100),
+            lambda h, w, y: F.cross_entropy(
+                F.linear(h, w).view(-1, w.size(0)), y.view(-1), ignore_index=-100
+            ),
             hidden,
             weight,
             labels,
@@ -172,8 +179,12 @@ def main() -> None:
         )
         result["chunk_size"] = chunk_size
         if full_result:
-            result["speed_ratio_full_over_chunked"] = full_result["seconds_avg"] / result["seconds_avg"]
-            result["memory_saved_gb"] = full_result["peak_alloc_gb_avg"] - result["peak_alloc_gb_avg"]
+            result["speed_ratio_full_over_chunked"] = (
+                full_result["seconds_avg"] / result["seconds_avg"]
+            )
+            result["memory_saved_gb"] = (
+                full_result["peak_alloc_gb_avg"] - result["peak_alloc_gb_avg"]
+            )
         out["results"].append(result)
 
     print(json.dumps(out, indent=2), flush=True)

@@ -163,8 +163,7 @@ class HelixModel(nn.Module):
             if config.mtp.loss_weight <= 0:
                 raise ValueError("mtp.loss_weight must be > 0 when mtp.enabled=true")
             self.mtp_heads = nn.ModuleList(
-                MTPHead(config.d_model, config.norm_eps)
-                for _ in range(int(config.mtp.n_heads))
+                MTPHead(config.d_model, config.norm_eps) for _ in range(int(config.mtp.n_heads))
             )
 
         self._init_weights()
@@ -219,8 +218,8 @@ class HelixModel(nn.Module):
     # ------------------------------------------------------------------
     def forward(
         self,
-        input_ids: torch.Tensor,                               # [B, L]
-        labels: torch.Tensor | None = None,                    # [B, L]
+        input_ids: torch.Tensor,  # [B, L]
+        labels: torch.Tensor | None = None,  # [B, L]
     ) -> dict[str, torch.Tensor | None]:
         x = self.embedding(input_ids)
         rope = None

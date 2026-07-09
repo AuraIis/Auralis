@@ -5,8 +5,8 @@ import unittest
 from auralis.adaptive import (
     CurriculumController,
     CurriculumSpec,
-    MetricSnapshot,
     DecisionKind,
+    MetricSnapshot,
 )
 
 
@@ -21,15 +21,23 @@ def two_stage_spec(**overrides):
                 "name": "s1_text",
                 "min_steps": 2,
                 "max_steps": 100,
-                "mastery": {"metric": "stage_primary", "mode": "stable_above",
-                            "threshold": 0.9, "window": 2},
+                "mastery": {
+                    "metric": "stage_primary",
+                    "mode": "stable_above",
+                    "threshold": 0.9,
+                    "window": 2,
+                },
             },
             {
                 "name": "s2_format",
                 "min_steps": 2,
                 "max_steps": 6,
-                "mastery": {"metric": "stage_primary", "mode": "plateau",
-                            "patience": 2, "min_delta": 0.01},
+                "mastery": {
+                    "metric": "stage_primary",
+                    "mode": "plateau",
+                    "patience": 2,
+                    "min_delta": 0.01,
+                },
             },
         ],
     }
@@ -39,8 +47,11 @@ def two_stage_spec(**overrides):
 
 class TestController(unittest.TestCase):
     def _snap(self, step, stage_step, primary, retention=1.0):
-        return MetricSnapshot(step=step, stage_step=stage_step,
-                              metrics={"stage_primary": primary, "retention": retention})
+        return MetricSnapshot(
+            step=step,
+            stage_step=stage_step,
+            metrics={"stage_primary": primary, "retention": retention},
+        )
 
     def test_respects_min_steps(self):
         ctrl = CurriculumController(two_stage_spec())
@@ -51,8 +62,8 @@ class TestController(unittest.TestCase):
 
     def test_advance_on_stable_mastery(self):
         ctrl = CurriculumController(two_stage_spec())
-        ctrl.update(self._snap(1, 1, 0.95))            # below min_steps
-        d = ctrl.update(self._snap(2, 2, 0.95))        # window of 2 >= 0.9 held
+        ctrl.update(self._snap(1, 1, 0.95))  # below min_steps
+        d = ctrl.update(self._snap(2, 2, 0.95))  # window of 2 >= 0.9 held
         self.assertEqual(d.kind, DecisionKind.ADVANCE)
         self.assertEqual(d.to_stage, "s2_format")
         self.assertEqual(ctrl.stage.name, "s2_format")
@@ -61,13 +72,13 @@ class TestController(unittest.TestCase):
         # s1 values are high; they must NOT count toward s2's plateau check.
         ctrl = CurriculumController(two_stage_spec())
         ctrl.update(self._snap(1, 1, 0.95))
-        ctrl.update(self._snap(2, 2, 0.95))            # advance to s2
+        ctrl.update(self._snap(2, 2, 0.95))  # advance to s2
         self.assertEqual(ctrl.stage.name, "s2_format")
         # s2 climbs then flattens -> plateau advance (=> DONE, last stage)
-        ctrl.update(self._snap(3, 1, 0.20))            # below min_steps
-        ctrl.update(self._snap(4, 2, 0.40))            # climbing
-        ctrl.update(self._snap(5, 3, 0.405))           # flat
-        d = ctrl.update(self._snap(6, 4, 0.406))       # flat -> plateau
+        ctrl.update(self._snap(3, 1, 0.20))  # below min_steps
+        ctrl.update(self._snap(4, 2, 0.40))  # climbing
+        ctrl.update(self._snap(5, 3, 0.405))  # flat
+        d = ctrl.update(self._snap(6, 4, 0.406))  # flat -> plateau
         self.assertin_done_or_advance(d)
 
     def assertin_done_or_advance(self, d):
@@ -112,14 +123,15 @@ class TestController(unittest.TestCase):
         ctrl = CurriculumController(two_stage_spec())
         decisions = []
         decisions.append(ctrl.update(self._snap(1, 1, 0.95)))
-        decisions.append(ctrl.update(self._snap(2, 2, 0.95)))   # advance s1->s2
+        decisions.append(ctrl.update(self._snap(2, 2, 0.95)))  # advance s1->s2
         decisions.append(ctrl.update(self._snap(3, 1, 0.5)))
         decisions.append(ctrl.update(self._snap(4, 2, 0.95)))
-        decisions.append(ctrl.update(self._snap(5, 3, 0.96)))   # s2 stable? mode=plateau
+        decisions.append(ctrl.update(self._snap(5, 3, 0.96)))  # s2 stable? mode=plateau
         kinds = [d.kind for d in decisions]
         self.assertIn(DecisionKind.ADVANCE, kinds)
-        self.assertTrue(ctrl.finished or DecisionKind.DONE in kinds or
-                        kinds[-1] == DecisionKind.CONTINUE)
+        self.assertTrue(
+            ctrl.finished or DecisionKind.DONE in kinds or kinds[-1] == DecisionKind.CONTINUE
+        )
 
 
 if __name__ == "__main__":

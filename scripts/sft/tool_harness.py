@@ -15,24 +15,58 @@ The Docker/nsjail sandbox is only needed for the later GENERAL code runner
 Note: step_2100 is NOT yet tool-trained, so the --demo uses few-shot priming to
 show the harness mechanics end-to-end. Real behaviour comes after tool-SFT.
 """
-import os, sys, re, ast, math, argparse, pathlib
 
-REPO = pathlib.Path("/workspace/v2data"); sys.path.insert(0, str(REPO)); sys.path.insert(0, str(REPO / "src"))
+import argparse
+import ast
+import math
+import os
+import pathlib
+import re
+import sys
+
+REPO = pathlib.Path("/workspace/v2data")
+sys.path.insert(0, str(REPO))
+sys.path.insert(0, str(REPO / "src"))
 os.environ.setdefault("AURALIS_USE_MAMBA_KERNEL", "1")
 
-TOOL_OPEN = "<tool:python>"; TOOL_CLOSE = "</tool>"
-RES_OPEN = "<result>"; RES_CLOSE = "</result>"; END = "<|end|>"
+TOOL_OPEN = "<tool:python>"
+TOOL_CLOSE = "</tool>"
+RES_OPEN = "<result>"
+RES_CLOSE = "</result>"
+END = "<|end|>"
 SYS = "Du bist Auralis, ein hilfreicher, ehrlicher KI-Assistent."
 
 # ----------------------------- safe evaluator -----------------------------
-_BIN = {ast.Add: lambda a, b: a + b, ast.Sub: lambda a, b: a - b, ast.Mult: lambda a, b: a * b,
-        ast.Div: lambda a, b: a / b, ast.FloorDiv: lambda a, b: a // b, ast.Mod: lambda a, b: a % b,
-        ast.Pow: lambda a, b: a ** b}
+_BIN = {
+    ast.Add: lambda a, b: a + b,
+    ast.Sub: lambda a, b: a - b,
+    ast.Mult: lambda a, b: a * b,
+    ast.Div: lambda a, b: a / b,
+    ast.FloorDiv: lambda a, b: a // b,
+    ast.Mod: lambda a, b: a % b,
+    ast.Pow: lambda a, b: a**b,
+}
 _UN = {ast.USub: lambda a: -a, ast.UAdd: lambda a: +a}
-_FUNC = {"sqrt": math.sqrt, "abs": abs, "round": round, "min": min, "max": max, "sum": sum,
-         "pow": pow, "factorial": math.factorial, "gcd": math.gcd, "log": math.log,
-         "log2": math.log2, "log10": math.log10, "exp": math.exp, "sin": math.sin,
-         "cos": math.cos, "tan": math.tan, "floor": math.floor, "ceil": math.ceil}
+_FUNC = {
+    "sqrt": math.sqrt,
+    "abs": abs,
+    "round": round,
+    "min": min,
+    "max": max,
+    "sum": sum,
+    "pow": pow,
+    "factorial": math.factorial,
+    "gcd": math.gcd,
+    "log": math.log,
+    "log2": math.log2,
+    "log10": math.log10,
+    "exp": math.exp,
+    "sin": math.sin,
+    "cos": math.cos,
+    "tan": math.tan,
+    "floor": math.floor,
+    "ceil": math.ceil,
+}
 _CONST = {"pi": math.pi, "e": math.e, "tau": math.tau}
 
 
@@ -49,7 +83,8 @@ def _ev(node):
         op = type(node.op)
         if op not in _BIN:
             raise CalcError("Operator nicht erlaubt")
-        a = _ev(node.left); b = _ev(node.right)
+        a = _ev(node.left)
+        b = _ev(node.right)
         if op is ast.Pow and isinstance(b, (int, float)) and abs(b) > 1000:
             raise CalcError("Exponent zu gross")
         return _BIN[op](a, b)
@@ -98,7 +133,11 @@ def safe_calc(code):
             if not isinstance(stmt, ast.Expr):
                 return False, "nur Arithmetik/print erlaubt (keine Zuweisungen/Imports)"
             node = stmt.value
-            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "print":
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id == "print"
+            ):
                 out.append(" ".join(_fmt(_ev(a)) for a in node.args))
             else:
                 out.append(_fmt(_ev(node)))
@@ -113,9 +152,11 @@ def safe_calc(code):
 
 # ----------------------------- model + loop -----------------------------
 def load(ckpt, cfg, tok, device):
-    import torch
     import sentencepiece as spm
+    import torch
+
     from auralis.model import build_model
+
     sp = spm.SentencePieceProcessor(model_file=tok)
     model = build_model(cfg).to(device).eval()
     payload = torch.load(ckpt, map_location=device, weights_only=False)
@@ -129,9 +170,11 @@ def gen_until(model, sp, text, stops, device, max_new=128, rep_pen=1.3):
     """Greedy generate from `text`; stop when any string in `stops` appears or <|end|>.
     Returns (new_text_including_stop, stop_hit_or_None)."""
     import torch
+
     end_id = sp.EncodeAsIds(END)[-1]
     ids = sp.EncodeAsIds(text)
-    inp = torch.tensor([ids], device=device); gen = []
+    inp = torch.tensor([ids], device=device)
+    gen = []
     for _ in range(max_new):
         with torch.no_grad(), torch.autocast(device_type="cuda", dtype=torch.bfloat16):
             logits = model(input_ids=inp)["logits"][0, -1].float()
@@ -146,7 +189,7 @@ def gen_until(model, sp, text, stops, device, max_new=128, rep_pen=1.3):
         for s in stops:
             k = dec.find(s)
             if k != -1:
-                return dec[:k + len(s)], s
+                return dec[: k + len(s)], s
     return sp.DecodeIds(gen), None
 
 
@@ -155,21 +198,24 @@ def extract_code(text):
     j = text.find(TOOL_CLOSE, i + len(TOOL_OPEN)) if i != -1 else -1
     if i == -1 or j == -1:
         return None
-    return text[i + len(TOOL_OPEN):j]
+    return text[i + len(TOOL_OPEN) : j]
 
 
 def run_with_tools(model, sp, prompt, device, max_tool_calls=3, verbose=True, genfn=None):
     genfn = genfn or gen_until
-    full = prompt; assistant = ""
+    full = prompt
+    assistant = ""
     for _ in range(max_tool_calls + 1):
         chunk, stop = genfn(model, sp, full, [TOOL_CLOSE], device)
-        full += chunk; assistant += chunk
+        full += chunk
+        assistant += chunk
         if stop != TOOL_CLOSE:
             break  # <|end|> or max_new -> done
         code = extract_code(assistant)
         ok, res = safe_calc(code) if code is not None else (False, "kein Tool-Call erkannt")
         block = f"\n{RES_OPEN}\n{res}\n{RES_CLOSE}\n"
-        full += block; assistant += block
+        full += block
+        assistant += block
         if verbose:
             print(f"  [tool] code={code!r} -> ok={ok} result={res!r}")
     return assistant
@@ -189,7 +235,7 @@ def selftest():
         ("import os", False, None),
         ("__import__('os').system('ls')", False, None),
         ("open('/etc/passwd')", False, None),
-        ("9**9**9", False, None),   # bomb guard
+        ("9**9**9", False, None),  # bomb guard
         ("x = 5", False, None),
         ("1/0", False, None),
     ]
@@ -214,12 +260,14 @@ def plumbtest():
     state = {"i": 0}
 
     def fake_gen(model, sp, text, stops, device, **kw):
-        r = script[state["i"]]; state["i"] += 1; return r
+        r = script[state["i"]]
+        state["i"] += 1
+        return r
 
     out = run_with_tools(None, None, "<|assistant|>\n", None, genfn=fake_gen, verbose=True)
-    inj = f"{RES_OPEN}\n27\n{RES_CLOSE}" in out          # harness injected the real result
-    used = "ergibt 27" in out                             # model resumed using the result
-    no_fake = out.count(RES_OPEN) == 1                    # model did NOT write its own <result>
+    inj = f"{RES_OPEN}\n27\n{RES_CLOSE}" in out  # harness injected the real result
+    used = "ergibt 27" in out  # model resumed using the result
+    no_fake = out.count(RES_OPEN) == 1  # model did NOT write its own <result>
     ok = inj and used and no_fake
     print("PLUMBTEST transcript:\n" + out)
     print(f"  injected-result={inj} resumed-using-it={used} single-result-block={no_fake}")
@@ -229,12 +277,23 @@ def plumbtest():
 
 FEWSHOT = [
     {"role": "user", "content": "Was ist 47 mal 83?"},
-    {"role": "assistant", "content": f"{TOOL_OPEN}\nprint(47 * 83)\n{TOOL_CLOSE}\n{RES_OPEN}\n3901\n{RES_CLOSE}\n47 mal 83 ergibt 3901."},
+    {
+        "role": "assistant",
+        "content": f"{TOOL_OPEN}\nprint(47 * 83)\n{TOOL_CLOSE}\n{RES_OPEN}\n3901\n{RES_CLOSE}\n47 mal 83 ergibt 3901.",
+    },
     {"role": "user", "content": "Wie viele Minuten sind 3 Stunden und 25 Minuten?"},
-    {"role": "assistant", "content": f"{TOOL_OPEN}\nprint(3 * 60 + 25)\n{TOOL_CLOSE}\n{RES_OPEN}\n205\n{RES_CLOSE}\n3 Stunden und 25 Minuten sind 205 Minuten."},
+    {
+        "role": "assistant",
+        "content": f"{TOOL_OPEN}\nprint(3 * 60 + 25)\n{TOOL_CLOSE}\n{RES_OPEN}\n205\n{RES_CLOSE}\n3 Stunden und 25 Minuten sind 205 Minuten.",
+    },
 ]
-DEMO_Q = ["Was ist 12 plus 15?", "Was ist 47 mal 83?", "Wie viel sind 144 geteilt durch 12?",
-          "Was ist 15% von 240?", "Wie viele Sekunden hat ein Tag?"]
+DEMO_Q = [
+    "Was ist 12 plus 15?",
+    "Was ist 47 mal 83?",
+    "Wie viel sind 144 geteilt durch 12?",
+    "Was ist 15% von 240?",
+    "Wie viele Sekunden hat ein Tag?",
+]
 
 
 def main():
@@ -251,7 +310,9 @@ def main():
     if a.selftest_only:
         sys.exit(0 if passed else 1)
     import torch
+
     from auralis.tokenizer.chat_template import build_inference_prompt
+
     device = torch.device("cuda")
     print("\n=== loading model (for few-shot harness demo) ===")
     model, sp = load(a.checkpoint, a.model_config, a.tokenizer, device)
@@ -259,7 +320,8 @@ def main():
     for q in DEMO_Q:
         msgs = FEWSHOT + [{"role": "user", "content": q}]
         prompt = build_inference_prompt(msgs, default_system=SYS)
-        print("=" * 66); print("Q:", q)
+        print("=" * 66)
+        print("Q:", q)
         ans = run_with_tools(model, sp, prompt, device)
         print("ANSWER:", ans.strip()[:400])
 

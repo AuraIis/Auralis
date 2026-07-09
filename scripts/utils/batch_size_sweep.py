@@ -29,7 +29,6 @@ from __future__ import annotations
 import argparse
 import gc
 import json
-import os
 import sys
 import time
 import traceback
@@ -56,7 +55,7 @@ class TrialResult:
 
 
 def _gb(b: int) -> float:
-    return b / (1024 ** 3)
+    return b / (1024**3)
 
 
 def _try_one(
@@ -154,7 +153,7 @@ def _try_one(
             res.error = type(e).__name__ + ": " + msg.split("\n")[0][:200]
             print(f"  X {res.error}", flush=True)
             res.notes.append(traceback.format_exc()[:1000])
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         res.error = type(e).__name__ + ": " + str(e).split("\n")[0][:200]
         print(f"  X {res.error}", flush=True)
         res.notes.append(traceback.format_exc()[:1000])

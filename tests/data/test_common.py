@@ -33,10 +33,9 @@ def test_atomic_writer_discards_on_exception(tmp_path: Path) -> None:
     class Boom(RuntimeError):
         pass
 
-    with pytest.raises(Boom):
-        with atomic_text_writer(target) as fh:
-            fh.write("partial")
-            raise Boom()
+    with pytest.raises(Boom), atomic_text_writer(target) as fh:
+        fh.write("partial")
+        raise Boom()
 
     # Original is preserved, no partial/.tmp left behind.
     assert target.read_text(encoding="utf-8") == "ORIGINAL"

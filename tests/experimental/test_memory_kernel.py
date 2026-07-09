@@ -34,9 +34,7 @@ def test_extracts_trainable_preferences_but_not_temporary_status() -> None:
     assert any(m.type == "user_preference" and m.train_into_adapter for m in memories)
     assert any(m.type == "path_fact" and not m.train_into_adapter for m in memories)
     assert any(m.type == "temporary_status" and not m.train_into_adapter for m in memories)
-    assert not any(
-        m.type == "hardware_fact" and "/mnt/disk5" in m.content for m in memories
-    )
+    assert not any(m.type == "hardware_fact" and "/mnt/disk5" in m.content for m in memories)
 
 
 def test_build_adapter_pairs_uses_only_trainable_memories() -> None:

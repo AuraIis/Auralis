@@ -20,19 +20,18 @@ Usage:
         --model qwen3.6-35b-a3b-apex \\
         --max-docs 100000 --min-chars 200 --parallel 8 --resume
 """
+
 from __future__ import annotations
 
 import argparse
 import concurrent.futures
 import json
-import os
 import re
 import sys
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 import requests
-
 
 SCORE_PROMPT = """\
 You are a strict data-quality evaluator for an LLM-pretraining corpus.
@@ -71,9 +70,15 @@ def read_blank_separated_docs(path: Path) -> Iterable[tuple[int, str]]:
                 yield n, text
 
 
-def score_one(session: requests.Session, base_url: str, model: str,
-              doc: dict, max_tokens: int, temperature: float,
-              timeout: int) -> dict:
+def score_one(
+    session: requests.Session,
+    base_url: str,
+    model: str,
+    doc: dict,
+    max_tokens: int,
+    temperature: float,
+    timeout: int,
+) -> dict:
     """Score a single doc. Returns the same JSONL row schema as ask_llm_deepseek."""
     try:
         r = session.post(
@@ -90,9 +95,11 @@ def score_one(session: requests.Session, base_url: str, model: str,
         j = r.json()
         msg = j["choices"][0]["message"]
         # Read content first, then reasoning (LocalAI Apex puts answer there).
-        text = ((msg.get("content") or "").strip()
-                or (msg.get("reasoning") or "").strip()
-                or (msg.get("reasoning_content") or "").strip())
+        text = (
+            (msg.get("content") or "").strip()
+            or (msg.get("reasoning") or "").strip()
+            or (msg.get("reasoning_content") or "").strip()
+        )
         score = None
         m = re.search(r"[1-5]", text)
         if m:
@@ -111,31 +118,46 @@ def score_one(session: requests.Session, base_url: str, model: str,
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(description=__doc__,
-                                  formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     p.add_argument("--input", type=Path, required=True)
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--max-docs", type=int, default=100)
     p.add_argument("--threshold", type=int, default=3)
     p.add_argument("--head-chars", type=int, default=1500)
     p.add_argument("--min-chars", type=int, default=200)
-    p.add_argument("--max-chars", type=int, default=0,
-                   help="0 = no upper cap (default).")
+    p.add_argument("--max-chars", type=int, default=0, help="0 = no upper cap (default).")
     p.add_argument("--model", default="qwen3.6-35b-a3b-apex")
-    p.add_argument("--base-url", default="http://172.17.0.1:8765/v1",
-                   help="LocalAI / vLLM / llama-cpp-server endpoint. "
-                        "Default points at LocalAI on bitbastion's docker bridge.")
-    p.add_argument("--parallel", type=int, default=8,
-                   help="Concurrent HTTP calls (sweet spot ≈ 8 for "
-                        "Blackwell + Qwen3.6-35B; raising past saturates GPU).")
-    p.add_argument("--max-tokens", type=int, default=32,
-                   help="max_tokens per call. Apex needs ≥16 for the score "
-                        "to fit after thinking; 32 gives validity headroom.")
+    p.add_argument(
+        "--base-url",
+        default="http://172.17.0.1:8765/v1",
+        help="LocalAI / vLLM / llama-cpp-server endpoint. "
+        "Default points at LocalAI on bitbastion's docker bridge.",
+    )
+    p.add_argument(
+        "--parallel",
+        type=int,
+        default=8,
+        help="Concurrent HTTP calls (sweet spot ≈ 8 for "
+        "Blackwell + Qwen3.6-35B; raising past saturates GPU).",
+    )
+    p.add_argument(
+        "--max-tokens",
+        type=int,
+        default=32,
+        help="max_tokens per call. Apex needs ≥16 for the score "
+        "to fit after thinking; 32 gives validity headroom.",
+    )
     p.add_argument("--temperature", type=float, default=0.05)
     p.add_argument("--timeout", type=int, default=120)
-    p.add_argument("--chunk-size", type=int, default=500,
-                   help="Docs per write-flush (kept for parity with the "
-                        "OpenRouter scorer; this script flushes per-row anyway).")
+    p.add_argument(
+        "--chunk-size",
+        type=int,
+        default=500,
+        help="Docs per write-flush (kept for parity with the "
+        "OpenRouter scorer; this script flushes per-row anyway).",
+    )
     p.add_argument("--resume", action="store_true")
     args = p.parse_args()
 
@@ -168,23 +190,24 @@ def main() -> int:
             n_resumed += 1
             continue
         L = len(text)
-        if args.min_chars and L < args.min_chars:
+        if args.min_chars and args.min_chars > L:
             n_too_short += 1
             continue
-        if args.max_chars and L > args.max_chars:
+        if args.max_chars and args.max_chars < L:
             n_too_long += 1
             continue
-        docs.append({
-            "doc_id": doc_id,
-            "instruction": SCORE_PROMPT.format(doc_head=text[:args.head_chars]),
-            "head": text[:200],
-            "length_chars": L,
-            "_threshold": args.threshold,
-        })
+        docs.append(
+            {
+                "doc_id": doc_id,
+                "instruction": SCORE_PROMPT.format(doc_head=text[: args.head_chars]),
+                "head": text[:200],
+                "length_chars": L,
+                "_threshold": args.threshold,
+            }
+        )
     print(f"  {len(docs)} docs prepared", flush=True)
     if n_too_short or n_too_long:
-        print(f"  pre-filtered: {n_too_short} too-short, {n_too_long} too-long",
-              flush=True)
+        print(f"  pre-filtered: {n_too_short} too-short, {n_too_long} too-long", flush=True)
     if n_resumed:
         print(f"  resumed: {n_resumed} doc_ids already done", flush=True)
     if not docs:
@@ -207,18 +230,34 @@ def main() -> int:
 
     chunk_size = args.chunk_size if args.chunk_size > 0 else len(docs)
     n_chunks = (len(docs) + chunk_size - 1) // chunk_size
-    print(f"Processing {len(docs)} docs in {n_chunks} chunk(s) of "
-          f"{chunk_size}, parallel={args.parallel}.", flush=True)
+    print(
+        f"Processing {len(docs)} docs in {n_chunks} chunk(s) of "
+        f"{chunk_size}, parallel={args.parallel}.",
+        flush=True,
+    )
 
     import time
+
     t0 = time.time()
-    with args.output.open("a", encoding="utf-8") as out_f, \
-         concurrent.futures.ThreadPoolExecutor(max_workers=args.parallel) as ex:
+    with (
+        args.output.open("a", encoding="utf-8") as out_f,
+        concurrent.futures.ThreadPoolExecutor(max_workers=args.parallel) as ex,
+    ):
         for chunk_idx in range(n_chunks):
-            chunk_docs = docs[chunk_idx * chunk_size:(chunk_idx + 1) * chunk_size]
-            futures = [ex.submit(score_one, sess, args.base_url, args.model, d,
-                                 args.max_tokens, args.temperature, args.timeout)
-                       for d in chunk_docs]
+            chunk_docs = docs[chunk_idx * chunk_size : (chunk_idx + 1) * chunk_size]
+            futures = [
+                ex.submit(
+                    score_one,
+                    sess,
+                    args.base_url,
+                    args.model,
+                    d,
+                    args.max_tokens,
+                    args.temperature,
+                    args.timeout,
+                )
+                for d in chunk_docs
+            ]
             chunk_kept = 0
             for fut in concurrent.futures.as_completed(futures):
                 rec = fut.result()
@@ -234,19 +273,23 @@ def main() -> int:
             elapsed = time.time() - t0
             rate = n_total / elapsed
             eta = (len(docs) - n_total) / rate if rate > 0 else 0
-            print(f"  chunk {chunk_idx + 1}/{n_chunks} done: {chunk_kept} kept "
-                  f"(running {n_kept}/{n_total}, {rate:.2f} d/s, ETA {eta/60:.0f} min)",
-                  flush=True)
+            print(
+                f"  chunk {chunk_idx + 1}/{n_chunks} done: {chunk_kept} kept "
+                f"(running {n_kept}/{n_total}, {rate:.2f} d/s, ETA {eta / 60:.0f} min)",
+                flush=True,
+            )
 
     print()
     print(f"=== Ask-LLM-Local results ({args.model}) ===")
     print(f"  scored:  {n_total} docs (this run)")
     if n_resumed:
         print(f"  resumed: {n_resumed} previously-done docs not re-scored")
-    print(f"  kept:    {n_kept} (threshold ≥ {args.threshold}) — "
-          f"{100*n_kept/max(n_total,1):.1f}%")
+    print(
+        f"  kept:    {n_kept} (threshold ≥ {args.threshold}) — "
+        f"{100 * n_kept / max(n_total, 1):.1f}%"
+    )
     print(f"  output:  {args.output}")
-    print(f"  histogram:")
+    print("  histogram:")
     for k in [1, 2, 3, 4, 5, "?"]:
         bar = "█" * histogram[k]
         print(f"    {k}: {histogram[k]:4d}  {bar}")

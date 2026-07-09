@@ -18,7 +18,7 @@ import argparse
 import json
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -49,7 +49,10 @@ class Result:
 
 def load_questions(path: Path) -> list[Question]:
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
-    return [Question(**{k: v for k, v in q.items() if k in Question.__dataclass_fields__}) for q in data["questions"]]
+    return [
+        Question(**{k: v for k, v in q.items() if k in Question.__dataclass_fields__})
+        for q in data["questions"]
+    ]
 
 
 def score_answer(answer: str, q: Question) -> tuple[float, list[str]]:
@@ -96,7 +99,7 @@ def run_baseline(
 
     report: dict[str, Any] = {
         "tag": tag,
-        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "timestamp_utc": datetime.now(UTC).isoformat(),
         "questions_file": str(questions_path),
         "aggregate_score": sum(r.score for r in results) / len(results),
         "by_category": {k: sum(v) / len(v) for k, v in by_cat.items()},
@@ -120,8 +123,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Run Auralis v2 baseline eval.")
     parser.add_argument("--questions", type=Path, default=Path("eval/baseline_questions.yaml"))
     parser.add_argument("--results-dir", type=Path, default=Path("eval/results"))
-    parser.add_argument("--tag", required=True, help="Unique name for this run, e.g. 'phase1_step_10000'.")
-    parser.add_argument("--dry", action="store_true", help="Use a dummy generator (no model loaded).")
+    parser.add_argument(
+        "--tag", required=True, help="Unique name for this run, e.g. 'phase1_step_10000'."
+    )
+    parser.add_argument(
+        "--dry", action="store_true", help="Use a dummy generator (no model loaded)."
+    )
     args = parser.parse_args()
 
     if args.dry:
@@ -133,7 +140,9 @@ def main() -> None:
         )
 
     report = run_baseline(gen, args.questions, args.results_dir, args.tag)
-    print(f"Aggregate score: {report['aggregate_score'] * 100:.1f}% over {report['num_questions']} questions")
+    print(
+        f"Aggregate score: {report['aggregate_score'] * 100:.1f}% over {report['num_questions']} questions"
+    )
     for cat, score in sorted(report["by_category"].items()):
         print(f"  {cat:12s} {score * 100:5.1f}%")
 

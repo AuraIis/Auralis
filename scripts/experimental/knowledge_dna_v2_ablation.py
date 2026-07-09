@@ -73,13 +73,18 @@ def set_seed(seed: int) -> None:
 
 
 def load_or_build_dna_dir(path: Path, tokenizer: Path, seed: int) -> None:
-    if all((path / filename).exists() for filename in VARIANT_FILES.values()) and (path / "probes.jsonl").exists():
+    if (
+        all((path / filename).exists() for filename in VARIANT_FILES.values())
+        and (path / "probes.jsonl").exists()
+    ):
         return
     build_outputs(sample_entries(), path, tokenizer, seed)
 
 
 def load_probes(path: Path) -> list[dict[str, Any]]:
-    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    return [
+        json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()
+    ]
 
 
 def make_lm_batch(
@@ -158,7 +163,9 @@ def score_generation(row: dict[str, Any], generated: str) -> GenerationMetric:
     aliases = [str(v) for v in row.get("aliases") or []]
     expected_terms = aliases or [str(row["answer"])]
     matched = any(normalize_for_match(term) in normalized for term in expected_terms)
-    forbidden_hit = any(normalize_for_match(term) in normalized for term in row.get("forbidden") or [])
+    forbidden_hit = any(
+        normalize_for_match(term) in normalized for term in row.get("forbidden") or []
+    )
     tag_echo = any(tag in generated for tag in ("<memory>", "</memory>", "<recall>", "</recall>"))
     return GenerationMetric(
         question=str(row["question"]),
@@ -213,7 +220,9 @@ def train_variant(
     set_seed(args.seed)
     model = build_model(args.model_config).to(device)
     if model.config.vocab_size != sp.get_piece_size():
-        raise ValueError(f"vocab mismatch: model={model.config.vocab_size} tokenizer={sp.get_piece_size()}")
+        raise ValueError(
+            f"vocab mismatch: model={model.config.vocab_size} tokenizer={sp.get_piece_size()}"
+        )
 
     train_batch = make_lm_batch(
         sp,
@@ -224,7 +233,9 @@ def train_variant(
         device=device,
     )
     probe_batch = encode_probe_loss_batch(sp, probes, variant=name, device=device)
-    opt = torch.optim.AdamW(model.parameters(), lr=args.lr, betas=(0.9, 0.95), weight_decay=args.weight_decay)
+    opt = torch.optim.AdamW(
+        model.parameters(), lr=args.lr, betas=(0.9, 0.95), weight_decay=args.weight_decay
+    )
 
     train_initial = loss(model, train_batch)
     probe_initial = loss(model, probe_batch)
@@ -259,9 +270,9 @@ def train_variant(
 
     exact = sum(1 for item in metrics if item.matched) / max(len(metrics), 1)
     counterfacts = [item for item in metrics if item.kind == "counterfact"]
-    counterfact_failure = sum(1 for item in counterfacts if item.forbidden_hit or not item.matched) / max(
-        len(counterfacts), 1
-    )
+    counterfact_failure = sum(
+        1 for item in counterfacts if item.forbidden_hit or not item.matched
+    ) / max(len(counterfacts), 1)
     tag_echo = sum(1 for item in metrics if item.tag_echo) / max(len(metrics), 1)
     return VariantResult(
         name=name,
@@ -295,8 +306,7 @@ def write_report(path: Path, results: list[VariantResult], args: argparse.Namesp
         tag_ok = hybrid.tag_echo_rate <= 0.10
         go = probe_ok and exact_ok and counter_ok and tag_ok
         reason = (
-            f"probe_ok={probe_ok}, exact_ok={exact_ok}, "
-            f"counter_ok={counter_ok}, tag_ok={tag_ok}"
+            f"probe_ok={probe_ok}, exact_ok={exact_ok}, counter_ok={counter_ok}, tag_ok={tag_ok}"
         )
 
     lines = [
@@ -353,9 +363,15 @@ def write_report(path: Path, results: list[VariantResult], args: argparse.Namesp
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dna-dir", type=Path, default=Path("data/eval/knowledge_dna_v2_smoke"))
-    parser.add_argument("--output-dir", type=Path, default=Path("data/eval/knowledge_dna_v2_ablation_smoke"))
-    parser.add_argument("--model-config", type=Path, default=Path("configs/model/helix_v2_debug_tiny.yaml"))
-    parser.add_argument("--tokenizer", type=Path, default=Path("tokenizer/helix_v2_tokenizer.model"))
+    parser.add_argument(
+        "--output-dir", type=Path, default=Path("data/eval/knowledge_dna_v2_ablation_smoke")
+    )
+    parser.add_argument(
+        "--model-config", type=Path, default=Path("configs/model/helix_v2_debug_tiny.yaml")
+    )
+    parser.add_argument(
+        "--tokenizer", type=Path, default=Path("tokenizer/helix_v2_tokenizer.model")
+    )
     parser.add_argument("--device", default="auto")
     parser.add_argument("--steps", type=int, default=40)
     parser.add_argument("--lr", type=float, default=3e-3)

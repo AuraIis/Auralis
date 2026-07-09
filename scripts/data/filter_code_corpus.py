@@ -100,7 +100,9 @@ def reject_reasons(text: str, lang: str, seen_hashes: set[str], min_chars: int) 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Filter code corpus into clean wrapped docs.")
     parser.add_argument("--input", type=Path, required=True)
-    parser.add_argument("--mode", choices=["auto", "code-wrapped", "helix-jsonl", "plain-lines"], default="auto")
+    parser.add_argument(
+        "--mode", choices=["auto", "code-wrapped", "helix-jsonl", "plain-lines"], default="auto"
+    )
     parser.add_argument("--max-docs", type=int, default=0)
     parser.add_argument("--min-chars", type=int, default=300)
     parser.add_argument("--output", type=Path, required=True)

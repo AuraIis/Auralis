@@ -95,7 +95,9 @@ def one_step(
     return loss_total
 
 
-def bench_variant(args: argparse.Namespace, force_micro_sync: bool, clip_grad: bool) -> dict[str, float | str]:
+def bench_variant(
+    args: argparse.Namespace, force_micro_sync: bool, clip_grad: bool
+) -> dict[str, float | str]:
     device = torch.device("cuda")
     model = load_model(args, device)
     optimizer = torch.optim.AdamW(

@@ -18,9 +18,10 @@ from collections import Counter, deque
 from dataclasses import dataclass, field
 from pathlib import Path
 
-
 WORD_RE = re.compile(r"[A-Za-z\u00c4\u00d6\u00dc\u00e4\u00f6\u00fc\u00df]+")
-HTML_RE = re.compile(r"<\s*/?\s*(?:html|body|div|script|style|a|span|table|iframe|form|nav|footer)\b", re.I)
+HTML_RE = re.compile(
+    r"<\s*/?\s*(?:html|body|div|script|style|a|span|table|iframe|form|nav|footer)\b", re.I
+)
 URL_RE = re.compile(r"https?://|www\.", re.I)
 BAD_RE = re.compile(
     r"(cookie policy|privacy policy|accept all cookies|javascript is disabled|"
@@ -67,10 +68,17 @@ OLDPRINT_RE = re.compile(
     re.I,
 )
 MOJIBAKE_HINTS = (
-    "\ufffd", "\u00c3\u00a4", "\u00c3\u00b6", "\u00c3\u00bc", "\u00c3\u009f",
-    "\u00c3\u00a2\u00e2\u201a\u00ac", "\u00c2 ",
+    "\ufffd",
+    "\u00c3\u00a4",
+    "\u00c3\u00b6",
+    "\u00c3\u00bc",
+    "\u00c3\u009f",
+    "\u00c3\u00a2\u00e2\u201a\u00ac",
+    "\u00c2 ",
 )
-CHAT_MARKER_RE = re.compile(r"<\|(?:system|user|assistant|end|im_start|im_end)\|>|###\s*(?:Aufgabe|Antwort):", re.I)
+CHAT_MARKER_RE = re.compile(
+    r"<\|(?:system|user|assistant|end|im_start|im_end)\|>|###\s*(?:Aufgabe|Antwort):", re.I
+)
 TOC_RE = re.compile(
     r"\b(contents?|inhaltsverzeichnis|table of contents|page|seite)\b|"
     r"(\.{3,}|…{2,})\s*\d{1,5}(\s|$)|"
@@ -91,20 +99,84 @@ OCR_RE = re.compile(
 LIST_NAME_RE = re.compile(
     r"(?:\*|\(\*\s*\d{3,4}\)|\(\d{3,4}[–-]\d{2,4}\)|\b[A-ZÄÖÜ][a-zäöüß]+,\s+[A-ZÄÖÜ])"
 )
-MATH_RE = re.compile(r"\\\[|\\\(|\b(problem|solution|theorem|lemma|proof|beweis)\b|[=+\-*/^]{3,}", re.I)
-CODE_RE = re.compile(r"\b(def|class|import|return|function|const|let|var|public static|#include)\b|[{};]{3,}")
-SPEAKER_LABEL_RE = re.compile(r"(?<![A-Za-zÄÖÜäöüß])([A-ZÄÖÜ][A-ZÄÖÜ]{2,}(?:\s+[A-ZÄÖÜ][A-ZÄÖÜ]{2,}){0,2})\.")
+MATH_RE = re.compile(
+    r"\\\[|\\\(|\b(problem|solution|theorem|lemma|proof|beweis)\b|[=+\-*/^]{3,}", re.I
+)
+CODE_RE = re.compile(
+    r"\b(def|class|import|return|function|const|let|var|public static|#include)\b|[{};]{3,}"
+)
+SPEAKER_LABEL_RE = re.compile(
+    r"(?<![A-Za-zÄÖÜäöüß])([A-ZÄÖÜ][A-ZÄÖÜ]{2,}(?:\s+[A-ZÄÖÜ][A-ZÄÖÜ]{2,}){0,2})\."
+)
 
 DE_WORDS = {
-    "der", "die", "das", "und", "oder", "nicht", "ist", "sind", "ein", "eine",
-    "einer", "einen", "mit", "fuer", "fur", "auf", "von", "zu", "im", "den",
-    "dem", "des", "dass", "ich", "du", "sie", "wir", "kann", "wird", "werden",
-    "wenn", "weil", "aber", "auch", "als", "wie", "was", "warum", "deutsch",
+    "der",
+    "die",
+    "das",
+    "und",
+    "oder",
+    "nicht",
+    "ist",
+    "sind",
+    "ein",
+    "eine",
+    "einer",
+    "einen",
+    "mit",
+    "fuer",
+    "fur",
+    "auf",
+    "von",
+    "zu",
+    "im",
+    "den",
+    "dem",
+    "des",
+    "dass",
+    "ich",
+    "du",
+    "sie",
+    "wir",
+    "kann",
+    "wird",
+    "werden",
+    "wenn",
+    "weil",
+    "aber",
+    "auch",
+    "als",
+    "wie",
+    "was",
+    "warum",
+    "deutsch",
 }
 EN_WORDS = {
-    "the", "and", "or", "not", "is", "are", "a", "an", "with", "for", "to",
-    "of", "in", "that", "this", "you", "your", "we", "can", "will", "if",
-    "because", "please", "explain", "example", "answer",
+    "the",
+    "and",
+    "or",
+    "not",
+    "is",
+    "are",
+    "a",
+    "an",
+    "with",
+    "for",
+    "to",
+    "of",
+    "in",
+    "that",
+    "this",
+    "you",
+    "your",
+    "we",
+    "can",
+    "will",
+    "if",
+    "because",
+    "please",
+    "explain",
+    "example",
+    "answer",
 }
 
 
@@ -164,7 +236,7 @@ def language_ok(text: str, language: str) -> bool:
     en_hits = sum(1 for w in words if w in EN_WORDS)
     umlauts = sum(text.lower().count(ch) for ch in "\u00e4\u00f6\u00fc\u00df")
     if language == "german":
-        return de_hits >= 6 and de_hits >= en_hits * 1.1 or (umlauts >= 2 and de_hits >= en_hits)
+        return (de_hits >= 6 and de_hits >= en_hits * 1.1) or (umlauts >= 2 and de_hits >= en_hits)
     if language == "english":
         return en_hits >= 6 and en_hits >= de_hits * 1.1
     return True
@@ -222,7 +294,9 @@ def oldprint_score(text: str) -> int:
     sample = text[:20_000]
     hits = len(OLDPRINT_RE.findall(sample))
     hyphen_breaks = len(re.findall(r"\b[A-Za-zÄÖÜäöüß]{2,}-\s+[A-Za-zÄÖÜäöüß]{2,}\b", sample))
-    spaced_words = len(re.findall(r"\b[A-Za-zÄÖÜäöüß]{2,}\s+[A-Za-zÄÖÜäöüß]{1,3}\s+[A-Za-zÄÖÜäöüß]{2,}\b", sample))
+    spaced_words = len(
+        re.findall(r"\b[A-Za-zÄÖÜäöüß]{2,}\s+[A-Za-zÄÖÜäöüß]{1,3}\s+[A-Za-zÄÖÜäöüß]{2,}\b", sample)
+    )
     return hits + min(hyphen_breaks, 6) + min(spaced_words // 8, 6)
 
 
@@ -274,9 +348,15 @@ def structure_reject_reason(text: str, args: argparse.Namespace) -> str | None:
         return "toc_or_index"
     if args.drop_web_boilerplate and web_boilerplate_score(text) >= args.max_web_boilerplate_hits:
         return "web_boilerplate"
-    if args.drop_commercial_boilerplate and commercial_boilerplate_score(text) >= args.max_commercial_boilerplate_hits:
+    if (
+        args.drop_commercial_boilerplate
+        and commercial_boilerplate_score(text) >= args.max_commercial_boilerplate_hits
+    ):
         return "commercial_boilerplate"
-    if args.drop_adult_gambling_spam and adult_gambling_spam_score(text) >= args.max_adult_gambling_hits:
+    if (
+        args.drop_adult_gambling_spam
+        and adult_gambling_spam_score(text) >= args.max_adult_gambling_hits
+    ):
         return "adult_or_gambling_spam"
     if args.drop_old_ocr and oldprint_score(text) >= args.max_old_ocr_hits:
         return "old_ocr_or_fraktur"
@@ -334,7 +414,9 @@ def stable_hash(text: str) -> str:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--input", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--language", choices=["german", "english", "code"], required=True)
@@ -398,9 +480,10 @@ def main() -> None:
     seen_fifo: deque[str] = deque()
     args.output.parent.mkdir(parents=True, exist_ok=True)
 
-    with args.input.open("r", encoding="utf-8", errors="replace") as src, args.output.open(
-        "w", encoding="utf-8", newline="\n"
-    ) as out:
+    with (
+        args.input.open("r", encoding="utf-8", errors="replace") as src,
+        args.output.open("w", encoding="utf-8", newline="\n") as out,
+    ):
         for line in src:
             manifest.lines_in += 1
             if args.sample_rate < 1.0 and rng.random() > args.sample_rate:
@@ -437,7 +520,9 @@ def main() -> None:
         "bytes_written": manifest.bytes_written,
         "dropped": dict(manifest.dropped.most_common()),
     }
-    manifest_path.write_text(json.dumps(manifest_payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    manifest_path.write_text(
+        json.dumps(manifest_payload, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
     print(f"wrote {args.output} ({manifest.lines_written:,} docs)")
     print(f"wrote {manifest_path}")
     print(f"dropped: {dict(manifest.dropped.most_common(12))}")

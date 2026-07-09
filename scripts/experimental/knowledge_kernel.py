@@ -325,7 +325,11 @@ def build_outputs(entries: list[KnowledgeEntry], out: Path, tokenizer: Path | No
         "current_kernel": current,
         "future_kernel": future,
     }
-    audit = token_audit(tokenizer, texts) if tokenizer else {"available": False, "reason": "no tokenizer"}
+    audit = (
+        token_audit(tokenizer, texts)
+        if tokenizer
+        else {"available": False, "reason": "no tokenizer"}
+    )
     (out / "tokenizer_audit.json").write_text(
         json.dumps(audit, ensure_ascii=False, indent=2),
         encoding="utf-8",
@@ -340,14 +344,18 @@ def parse_args() -> argparse.Namespace:
 
     sample = sub.add_parser("sample", help="write a curated sample knowledge kernel")
     sample.add_argument("--output-dir", type=Path, required=True)
-    sample.add_argument("--tokenizer", type=Path, default=Path("tokenizer/helix_v2_tokenizer.model"))
+    sample.add_argument(
+        "--tokenizer", type=Path, default=Path("tokenizer/helix_v2_tokenizer.model")
+    )
     sample.set_defaults(func=lambda a: build_outputs(sample_entries(), a.output_dir, a.tokenizer))
 
     build = sub.add_parser("build", help="build from a YAML/JSON entries file")
     build.add_argument("--input", type=Path, required=True)
     build.add_argument("--output-dir", type=Path, required=True)
     build.add_argument("--tokenizer", type=Path, default=Path("tokenizer/helix_v2_tokenizer.model"))
-    build.set_defaults(func=lambda a: build_outputs(load_entries(a.input), a.output_dir, a.tokenizer))
+    build.set_defaults(
+        func=lambda a: build_outputs(load_entries(a.input), a.output_dir, a.tokenizer)
+    )
     return parser.parse_args()
 
 
@@ -362,4 +370,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

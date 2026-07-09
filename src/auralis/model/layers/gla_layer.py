@@ -23,6 +23,7 @@ import torch.nn.functional as F
 
 try:
     from fla.ops.gla import chunk_gla as _chunk_gla  # type: ignore
+
     _FLA_AVAILABLE = True
 except Exception:
     _chunk_gla = None
@@ -85,21 +86,20 @@ class GLALayer(nn.Module):
         log_alpha = -F.softplus(-self.alpha_proj(x).view(B, L, H, D))
 
         if _use_fla(x.is_cuda):
-            out, new_state = _chunk_gla(q, k, v, log_alpha,
-                                        scale=D ** -0.5,
-                                        initial_state=state,
-                                        output_final_state=False)
+            out, new_state = _chunk_gla(
+                q, k, v, log_alpha, scale=D**-0.5, initial_state=state, output_final_state=False
+            )
         else:
             out, new_state = self._native_scan(q, k, v, log_alpha, state)
 
-        out = out * g_out                                     # per-channel output gate
+        out = out * g_out  # per-channel output gate
         return self.out_proj(out.reshape(B, L, H * D)), new_state
 
     def _native_scan(self, q, k, v, log_alpha, state):
         """Sequential reference — matches chunk_gla semantics."""
         B, L, H, D = q.shape
-        q = q * (D ** -0.5)
-        alpha = torch.exp(log_alpha)                          # [B, L, H, D] in (0, 1]
+        q = q * (D**-0.5)
+        alpha = torch.exp(log_alpha)  # [B, L, H, D] in (0, 1]
 
         if state is None:
             S = torch.zeros(B, H, D, D, device=q.device, dtype=q.dtype)
@@ -109,7 +109,7 @@ class GLALayer(nn.Module):
         outs = []
         for t in range(L):
             # per-channel decay broadcast over the D key dimension of S
-            a_t = alpha[:, t].unsqueeze(-2)                   # [B, H, 1, D]
+            a_t = alpha[:, t].unsqueeze(-2)  # [B, H, 1, D]
             update = torch.einsum("bhd,bhe->bhde", k[:, t], v[:, t])
             S = a_t * S + update
             outs.append(torch.einsum("bhd,bhde->bhe", q[:, t], S))

@@ -16,7 +16,6 @@ import unicodedata
 from pathlib import Path
 from typing import Any
 
-
 EXPECTED: dict[str, dict[str, Any]] = {
     "yes_wien_capital": {
         "polarity": "yes",
@@ -81,7 +80,13 @@ EXPECTED: dict[str, dict[str, Any]] = {
     "unknown_planet_behavior": {
         "polarity": None,
         "must": [],
-        "any_must": [["erfunden"], ["keine"], ["nicht verlaesslich"], ["keine verlaessliche"], ["unbekannt"]],
+        "any_must": [
+            ["erfunden"],
+            ["keine"],
+            ["nicht verlaesslich"],
+            ["keine verlaessliche"],
+            ["unbekannt"],
+        ],
         "forbid": ["qorblax ist eine farbe"],
     },
     "computer_definition": {
@@ -154,7 +159,11 @@ def evaluate_one(result: dict[str, Any]) -> dict[str, Any]:
     actual_polarity = starts_with_polarity(answer)
     if expected_polarity and actual_polarity and actual_polarity != expected_polarity:
         issues.append(f"wrong_polarity:{actual_polarity}_expected_{expected_polarity}")
-    elif expected_polarity and actual_polarity is None and prompt_requires_explicit_polarity(prompt, expected_polarity):
+    elif (
+        expected_polarity
+        and actual_polarity is None
+        and prompt_requires_explicit_polarity(prompt, expected_polarity)
+    ):
         issues.append(f"missing_explicit_polarity:{expected_polarity}")
 
     for word in spec.get("must", []):
@@ -163,10 +172,7 @@ def evaluate_one(result: dict[str, Any]) -> dict[str, Any]:
 
     any_must = spec.get("any_must", [])
     if any_must and not any(contains_all(norm_answer, group) for group in any_must):
-        issues.append(
-            "missing_any_group:"
-            + "|".join("+".join(group) for group in any_must)
-        )
+        issues.append("missing_any_group:" + "|".join("+".join(group) for group in any_must))
 
     for phrase in spec.get("forbid", []):
         if normalize(phrase) in norm_answer:
@@ -199,14 +205,15 @@ def summarize(items: list[dict[str, Any]]) -> dict[str, Any]:
     passed = sum(1 for item in scored if item["semantic_score"] == 1.0)
     by_category: dict[str, list[float]] = {}
     for item in scored:
-        by_category.setdefault(item.get("category") or "uncategorized", []).append(float(item["semantic_score"]))
+        by_category.setdefault(item.get("category") or "uncategorized", []).append(
+            float(item["semantic_score"])
+        )
     return {
         "semantic_score": passed / len(scored) if scored else 0.0,
         "passed": passed,
         "total": len(scored),
         "by_category": {
-            key: sum(values) / len(values)
-            for key, values in sorted(by_category.items())
+            key: sum(values) / len(values) for key, values in sorted(by_category.items())
         },
         "failures": [item for item in scored if item["semantic_score"] != 1.0],
     }
@@ -252,7 +259,9 @@ def main() -> int:
 
     if args.output_json:
         args.output_json.parent.mkdir(parents=True, exist_ok=True)
-        args.output_json.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        args.output_json.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
     else:
         print(json.dumps(payload, ensure_ascii=False, indent=2))
 

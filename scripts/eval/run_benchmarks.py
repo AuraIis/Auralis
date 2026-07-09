@@ -32,18 +32,16 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import re
 import sys
 import time
 from collections.abc import Callable, Iterable
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 import yaml
-
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_BENCHMARKS_YAML = REPO_ROOT / "eval" / "benchmarks_v1.yaml"
@@ -58,8 +56,9 @@ class GenerateAdapter:
     """Wraps the LLM inference call. The runner passes this around so
     benchmarks don't need to know how the model is loaded.
     """
-    generate: Callable[[str, dict[str, Any]], str]              # (prompt, sampling_kwargs) -> text
-    score_choice: Callable[[str, str], float]                   # (prompt, continuation) -> log-prob sum
+
+    generate: Callable[[str, dict[str, Any]], str]  # (prompt, sampling_kwargs) -> text
+    score_choice: Callable[[str, str], float]  # (prompt, continuation) -> log-prob sum
     name: str = "auralis"
 
 
@@ -82,8 +81,9 @@ class BenchmarkResult:
 # ============================================================================
 # Per-metric scorers — each consumes (predictions, gold_set) → score
 # ============================================================================
-def _accuracy_mc_scorer(adapter: GenerateAdapter, examples: Iterable[dict],
-                         choices_key: str, label_key: str, prompt_fn) -> tuple[int, int]:
+def _accuracy_mc_scorer(
+    adapter: GenerateAdapter, examples: Iterable[dict], choices_key: str, label_key: str, prompt_fn
+) -> tuple[int, int]:
     """For each example, score every choice via log-prob, pick argmax.
     Returns (n_correct, n_total)."""
     n_correct = 0
@@ -110,8 +110,9 @@ def _accuracy_mc_scorer(adapter: GenerateAdapter, examples: Iterable[dict],
 _NUMBER_RE = re.compile(r"-?\d+(?:[.,]\d+)?")
 
 
-def _exact_match_number_scorer(adapter: GenerateAdapter, examples, prompt_fn,
-                                gold_fn, sampling) -> tuple[int, int]:
+def _exact_match_number_scorer(
+    adapter: GenerateAdapter, examples, prompt_fn, gold_fn, sampling
+) -> tuple[int, int]:
     """Generate, extract last number, compare with gold."""
     n_correct = 0
     n_total = 0
@@ -132,9 +133,11 @@ def _exact_match_number_scorer(adapter: GenerateAdapter, examples, prompt_fn,
     return n_correct, n_total
 
 
-def _f1_squad_scorer(adapter: GenerateAdapter, examples, prompt_fn,
-                      gold_answers_fn, sampling) -> tuple[float, int]:
+def _f1_squad_scorer(
+    adapter: GenerateAdapter, examples, prompt_fn, gold_answers_fn, sampling
+) -> tuple[float, int]:
     """Token-level F1 vs gold answers. Returns (sum_f1, n_total)."""
+
     def _normalize(s: str) -> list[str]:
         s = re.sub(r"[\W_]+", " ", s.lower()).strip()
         return s.split()
@@ -169,19 +172,24 @@ def _hellaswag_prompt(ex):
     ctx = ex.get("ctx") or ex.get("ctx_a") or ""
     return ctx
 
+
 def _hellaswag_run(adapter, ds, n):
     examples = list(ds.select(range(min(n, len(ds))))) if n > 0 else list(ds)
     return _accuracy_mc_scorer(adapter, examples, "endings", "label", _hellaswag_prompt)
 
+
 def _arc_prompt(ex):
     return f"Question: {ex['question']}\nAnswer:"
+
 
 def _arc_run(adapter, ds, n):
     examples = list(ds.select(range(min(n, len(ds))))) if n > 0 else list(ds)
     return _accuracy_mc_scorer(adapter, examples, "choices", "answerKey", _arc_prompt)
 
+
 def _winogrande_prompt(ex):
     return ex["sentence"]
+
 
 def _winogrande_run(adapter, ds, n):
     examples = list(ds.select(range(min(n, len(ds))))) if n > 0 else list(ds)
@@ -197,25 +205,35 @@ def _winogrande_run(adapter, ds, n):
         n_total += 1
     return n_correct, n_total
 
+
 def _gsm8k_prompt(ex):
     return f"Frage: {ex['question']}\nDenke schrittweise und gib die Endantwort an.\nAntwort:"
+
 
 def _gsm8k_run(adapter, ds, n, sampling):
     examples = list(ds.select(range(min(n, len(ds))))) if n > 0 else list(ds)
     return _exact_match_number_scorer(
-        adapter, examples, _gsm8k_prompt,
+        adapter,
+        examples,
+        _gsm8k_prompt,
         gold_fn=lambda ex: ex["answer"].split("####")[-1],
         sampling=sampling,
     )
 
+
 def _mmlu_prompt(ex):
-    choices = ex.get("choices") or [ex.get("option_a", ""), ex.get("option_b", ""),
-                                       ex.get("option_c", ""), ex.get("option_d", "")]
+    choices = ex.get("choices") or [
+        ex.get("option_a", ""),
+        ex.get("option_b", ""),
+        ex.get("option_c", ""),
+        ex.get("option_d", ""),
+    ]
     text = f"{ex['question']}\n"
     for i, c in enumerate(choices):
         text += f"{chr(65 + i)}) {c}\n"
     text += "Antwort:"
     return text
+
 
 def _mmlu_run(adapter, ds, n):
     examples = list(ds.select(range(min(n, len(ds))))) if n > 0 else list(ds)
@@ -223,10 +241,14 @@ def _mmlu_run(adapter, ds, n):
     n_total = 0
     for ex in examples:
         prompt = _mmlu_prompt(ex)
-        choices = ex.get("choices") or [ex.get("option_a"), ex.get("option_b"),
-                                          ex.get("option_c"), ex.get("option_d")]
+        choices = ex.get("choices") or [
+            ex.get("option_a"),
+            ex.get("option_b"),
+            ex.get("option_c"),
+            ex.get("option_d"),
+        ]
         # Score each letter A/B/C/D continuation
-        scores = [adapter.score_choice(prompt, f" {chr(65+i)}") for i in range(len(choices))]
+        scores = [adapter.score_choice(prompt, f" {chr(65 + i)}") for i in range(len(choices))]
         pred_idx = max(range(len(scores)), key=lambda i: scores[i])
         gold = ex.get("answer") or ex.get("answer_index") or ex.get("label")
         if isinstance(gold, str) and len(gold) == 1 and gold.isalpha():
@@ -238,10 +260,12 @@ def _mmlu_run(adapter, ds, n):
         n_total += 1
     return n_correct, n_total
 
+
 def _germanquad_run(adapter, ds, n, sampling):
     examples = list(ds.select(range(min(n, len(ds))))) if n > 0 else list(ds)
     return _f1_squad_scorer(
-        adapter, examples,
+        adapter,
+        examples,
         prompt_fn=lambda ex: f"Kontext: {ex['context']}\nFrage: {ex['question']}\nAntwort:",
         gold_answers_fn=lambda ex: ex["answers"]["text"] if ex.get("answers") else [],
         sampling=sampling,
@@ -249,21 +273,21 @@ def _germanquad_run(adapter, ds, n, sampling):
 
 
 BENCHMARK_RUNNERS: dict[str, Callable] = {
-    "hellaswag":     _hellaswag_run,
-    "arc_easy":      _arc_run,
+    "hellaswag": _hellaswag_run,
+    "arc_easy": _arc_run,
     "arc_challenge": _arc_run,
-    "winogrande":    _winogrande_run,
-    "gsm8k":         _gsm8k_run,
-    "mmlu_pro":      _mmlu_run,
-    "mmlu_de":       _mmlu_run,
-    "bbh":           _mmlu_run,                 # most BBH tasks are multiple-choice-like
-    "humaneval":     None,                       # needs sandbox; placeholder
-    "gpqa_diamond":  _mmlu_run,                  # 4-way MC
-    "aime_2024":     None,                       # needs careful prompting; placeholder
-    "livecodebench": None,                       # needs sandbox; placeholder
-    "germanquad":    _germanquad_run,
-    "paws_x_de":     _mmlu_run,
-    "xnli_de":       _mmlu_run,
+    "winogrande": _winogrande_run,
+    "gsm8k": _gsm8k_run,
+    "mmlu_pro": _mmlu_run,
+    "mmlu_de": _mmlu_run,
+    "bbh": _mmlu_run,  # most BBH tasks are multiple-choice-like
+    "humaneval": None,  # needs sandbox; placeholder
+    "gpqa_diamond": _mmlu_run,  # 4-way MC
+    "aime_2024": None,  # needs careful prompting; placeholder
+    "livecodebench": None,  # needs sandbox; placeholder
+    "germanquad": _germanquad_run,
+    "paws_x_de": _mmlu_run,
+    "xnli_de": _mmlu_run,
 }
 
 
@@ -281,24 +305,31 @@ def list_for_tier(suite: dict, tier: str) -> list[str]:
     return list(tiers[tier]["benchmarks"])
 
 
-def run_one(name: str, cfg: dict, adapter: GenerateAdapter, n_override: int | None = None) -> BenchmarkResult:
+def run_one(
+    name: str, cfg: dict, adapter: GenerateAdapter, n_override: int | None = None
+) -> BenchmarkResult:
     runner = BENCHMARK_RUNNERS.get(name)
     if runner is None:
         return BenchmarkResult(
-            benchmark=name, metric=cfg.get("metric", "?"),
-            score=0.0, n_samples=0, n_correct=0,
-            sampling={}, notes=[f"runner not implemented for {name!r}"],
+            benchmark=name,
+            metric=cfg.get("metric", "?"),
+            score=0.0,
+            n_samples=0,
+            n_correct=0,
+            sampling={},
+            notes=[f"runner not implemented for {name!r}"],
         )
 
     print(f"  [{name}] loading {cfg['hf_dataset']!r}...", flush=True)
     from datasets import load_dataset
+
     load_kwargs: dict[str, Any] = {}
     if "config" in cfg:
         load_kwargs["name"] = cfg["config"]
     ds = load_dataset(cfg["hf_dataset"], split=cfg.get("split", "test"), **load_kwargs)
     n = n_override if n_override is not None else cfg.get("n_samples", 200)
 
-    started = datetime.now(timezone.utc).isoformat()
+    started = datetime.now(UTC).isoformat()
     t0 = time.time()
     metric = cfg["metric"]
 
@@ -319,31 +350,52 @@ def run_one(name: str, cfg: dict, adapter: GenerateAdapter, n_override: int | No
         n_correct = int(round(sum_f1))
     else:
         return BenchmarkResult(
-            benchmark=name, metric=metric, score=0.0, n_samples=0, n_correct=0,
-            sampling=sampling, notes=[f"metric {metric!r} not handled"],
+            benchmark=name,
+            metric=metric,
+            score=0.0,
+            n_samples=0,
+            n_correct=0,
+            sampling=sampling,
+            notes=[f"metric {metric!r} not handled"],
         )
     elapsed = time.time() - t0
     return BenchmarkResult(
-        benchmark=name, metric=metric, score=score,
-        n_samples=n_total, n_correct=n_correct,
+        benchmark=name,
+        metric=metric,
+        score=score,
+        n_samples=n_total,
+        n_correct=n_correct,
         sampling=sampling,
         expected_floor=cfg.get("expected_floor"),
         expected_target=cfg.get("expected_target"),
         elapsed_seconds=elapsed,
-        started_at=started, finished_at=datetime.now(timezone.utc).isoformat(),
+        started_at=started,
+        finished_at=datetime.now(UTC).isoformat(),
     )
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__,
-                                       formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--tier", help="run all benchmarks in this tier (smoke|pretrain|post_pretrain|post_sft|frontier)")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "--tier",
+        help="run all benchmarks in this tier (smoke|pretrain|post_pretrain|post_sft|frontier)",
+    )
     parser.add_argument("--benchmark", help="run a single benchmark by name")
-    parser.add_argument("--n_samples", type=int, default=None, help="override n_samples for all benchmarks")
-    parser.add_argument("--ckpt", help="path to model checkpoint (loaded by the adapter — not used in --dry mode)")
+    parser.add_argument(
+        "--n_samples", type=int, default=None, help="override n_samples for all benchmarks"
+    )
+    parser.add_argument(
+        "--ckpt", help="path to model checkpoint (loaded by the adapter — not used in --dry mode)"
+    )
     parser.add_argument("--tag", required=True, help="run identifier; used in result filenames")
     parser.add_argument("--results-dir", type=Path, default=DEFAULT_RESULTS_DIR)
-    parser.add_argument("--dry", action="store_true", help="don't load model; use random scorer (sanity-check the runner)")
+    parser.add_argument(
+        "--dry",
+        action="store_true",
+        help="don't load model; use random scorer (sanity-check the runner)",
+    )
     parser.add_argument("--suite", type=Path, default=DEFAULT_BENCHMARKS_YAML)
     args = parser.parse_args()
 
@@ -359,6 +411,7 @@ def main() -> None:
     if args.dry:
         # Random adapter for runner-sanity testing without model load.
         import random
+
         rng = random.Random(0)
         adapter = GenerateAdapter(
             generate=lambda p, k: str(rng.randint(0, 100)),
@@ -368,7 +421,8 @@ def main() -> None:
     else:
         # Real model load — implementation lives in the calling project; the
         # runner imports it lazily so --dry works without torch installed.
-        from auralis.eval.adapter import build_adapter        # type: ignore
+        from auralis.eval.adapter import build_adapter  # type: ignore
+
         adapter = build_adapter(args.ckpt)
 
     args.results_dir.mkdir(parents=True, exist_ok=True)
@@ -380,10 +434,15 @@ def main() -> None:
             continue
         result = run_one(name, cfg, adapter, n_override=args.n_samples)
         out_path = args.results_dir / f"{args.tag}__{name}.json"
-        out_path.write_text(json.dumps(asdict(result), indent=2, ensure_ascii=False), encoding="utf-8")
+        out_path.write_text(
+            json.dumps(asdict(result), indent=2, ensure_ascii=False), encoding="utf-8"
+        )
         summary["results"].append(asdict(result))
         bar = "█" * int(20 * result.score)
-        print(f"  [{name}] {result.score:.3f} ({result.n_correct}/{result.n_samples})  {bar}", flush=True)
+        print(
+            f"  [{name}] {result.score:.3f} ({result.n_correct}/{result.n_samples})  {bar}",
+            flush=True,
+        )
 
     summary_path = args.results_dir / f"{args.tag}__summary.json"
     summary_path.write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")

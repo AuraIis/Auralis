@@ -19,6 +19,7 @@ Each source writes a manifest.json with counts + elapsed time.
 The flat .txt mirror has one record per blank-line-separated block,
 ready to feed into assemble_for_filter.py with `--mode text`.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -27,8 +28,8 @@ import json
 import os
 import re
 import time
-import urllib.request
 import urllib.error
+import urllib.request
 import zipfile
 from pathlib import Path
 from typing import Any
@@ -72,8 +73,15 @@ def _strip_html(s: str) -> str:
         return ""
     s = re.sub(r"<br\s*/?>", "\n", s)
     s = re.sub(r"<[^>]+>", "", s)
-    s = (s.replace("&nbsp;", " ").replace("&amp;", "&").replace("&lt;", "<")
-           .replace("&gt;", ">").replace("&quot;", '"').replace("&#39;", "'").replace("&apos;", "'"))
+    s = (
+        s.replace("&nbsp;", " ")
+        .replace("&amp;", "&")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&quot;", '"')
+        .replace("&#39;", "'")
+        .replace("&apos;", "'")
+    )
     return s.strip()
 
 
@@ -100,13 +108,16 @@ def dl_bundestag_mdb():
         # this stage "successful" and proceed to clean stage on no data.
         sys.exit(f"FATAL: cannot fetch MdB stammdaten: {e}")
     out_zip.write_bytes(raw)
-    print(f"  zip: {len(raw)/1e6:.1f} MB", flush=True)
+    print(f"  zip: {len(raw) / 1e6:.1f} MB", flush=True)
 
     import xml.etree.ElementTree as ET
+
     n_mps = 0
-    with zipfile.ZipFile(out_zip) as zf, \
-         out_jsonl.open("w", encoding="utf-8") as f_jsonl, \
-         out_text.open("w", encoding="utf-8") as f_txt:
+    with (
+        zipfile.ZipFile(out_zip) as zf,
+        out_jsonl.open("w", encoding="utf-8") as f_jsonl,
+        out_text.open("w", encoding="utf-8") as f_txt,
+    ):
         xml_name = max(zf.namelist(), key=lambda n: zf.getinfo(n).file_size)
         with zf.open(xml_name) as fh:
             tree = ET.parse(fh)
@@ -120,9 +131,18 @@ def dl_bundestag_mdb():
                     rec[tag.lower()] = (name.findtext(tag, "") or "").strip()
             bio = mdb.find("BIOGRAFISCHE_ANGABEN")
             if bio is not None:
-                for tag in ("GEBURTSDATUM", "GEBURTSORT", "GEBURTSLAND", "STERBEDATUM",
-                            "GESCHLECHT", "FAMILIENSTAND", "RELIGION", "BERUF",
-                            "PARTEI_KURZ", "VITA_KURZ"):
+                for tag in (
+                    "GEBURTSDATUM",
+                    "GEBURTSORT",
+                    "GEBURTSLAND",
+                    "STERBEDATUM",
+                    "GESCHLECHT",
+                    "FAMILIENSTAND",
+                    "RELIGION",
+                    "BERUF",
+                    "PARTEI_KURZ",
+                    "VITA_KURZ",
+                ):
                     rec[tag.lower()] = (bio.findtext(tag, "") or "").strip()
             mandates = []
             for wp in mdb.findall(".//WAHLPERIODE"):
@@ -141,10 +161,18 @@ def dl_bundestag_mdb():
 
             f_jsonl.write(json.dumps(rec, ensure_ascii=False) + "\n")
 
-            full = " ".join(p for p in [
-                rec.get("anrede_titel"), rec.get("akad_titel"),
-                rec.get("vorname"), rec.get("adel"), rec.get("praefix"), rec.get("nachname"),
-            ] if p)
+            full = " ".join(
+                p
+                for p in [
+                    rec.get("anrede_titel"),
+                    rec.get("akad_titel"),
+                    rec.get("vorname"),
+                    rec.get("adel"),
+                    rec.get("praefix"),
+                    rec.get("nachname"),
+                ]
+                if p
+            )
             parts = [f"Politiker: {full}"]
             if rec.get("partei_kurz"):
                 parts.append(f"Partei: {rec['partei_kurz']}")
@@ -163,9 +191,14 @@ def dl_bundestag_mdb():
             f_txt.write("\n".join(parts) + "\n\n")
             n_mps += 1
 
-    _write_manifest(out_dir, source="bundestag/MdB-Stammdaten", started_at=started,
-                    politicians=n_mps, elapsed_seconds=time.time() - t0)
-    print(f"  done: {n_mps:,} MdBs in {(time.time()-t0)/60:.1f} min", flush=True)
+    _write_manifest(
+        out_dir,
+        source="bundestag/MdB-Stammdaten",
+        started_at=started,
+        politicians=n_mps,
+        elapsed_seconds=time.time() - t0,
+    )
+    print(f"  done: {n_mps:,} MdBs in {(time.time() - t0) / 60:.1f} min", flush=True)
 
 
 # ============================================================================
@@ -187,7 +220,7 @@ def dl_bundestag_protokolle():
     unique: list[str] = []
     offset = 0
     limit = 20
-    print(f"  fetching plenarprotokolle index via filterlist", flush=True)
+    print("  fetching plenarprotokolle index via filterlist", flush=True)
     while True:
         url = f"{base}?limit={limit}&noFilterSet=true&offset={offset}"
         try:
@@ -195,7 +228,9 @@ def dl_bundestag_protokolle():
         except Exception as e:
             print(f"  FATAL: cannot fetch index page offset={offset}: {e}", flush=True)
             break
-        new_hrefs = re.findall(r'href="(https://www\.bundestag\.de/resource/blob/[^"]+\.xml)"', html)
+        new_hrefs = re.findall(
+            r'href="(https://www\.bundestag\.de/resource/blob/[^"]+\.xml)"', html
+        )
         if not new_hrefs:
             break
         added = 0
@@ -215,13 +250,18 @@ def dl_bundestag_protokolle():
         # Codex P3: empty index = the upstream changed format or is offline.
         # We must not silently produce a 0-protocol manifest; the chain
         # script needs a non-zero exit to skip this stage.
-        sys.exit("FATAL: no protokolle XML hrefs found via filterlist — upstream format may have changed")
+        sys.exit(
+            "FATAL: no protokolle XML hrefs found via filterlist — upstream format may have changed"
+        )
 
     import xml.etree.ElementTree as ET
+
     n_proto = 0
     n_speeches = 0
-    with out_jsonl.open("w", encoding="utf-8") as f_jsonl, \
-         out_text.open("w", encoding="utf-8") as f_txt:
+    with (
+        out_jsonl.open("w", encoding="utf-8") as f_jsonl,
+        out_text.open("w", encoding="utf-8") as f_txt,
+    ):
         for i, url in enumerate(unique[:300], 1):
             try:
                 xml_text = _fetch(url, timeout=120)
@@ -255,9 +295,12 @@ def dl_bundestag_protokolle():
                 if not full_text or len(full_text) < 50:
                     continue
                 rec = {
-                    "wp": wp, "sitzung": sitzung_nr,
-                    "redner": speaker, "fraktion": spn_fraktion,
-                    "text": full_text, "source_url": url,
+                    "wp": wp,
+                    "sitzung": sitzung_nr,
+                    "redner": speaker,
+                    "fraktion": spn_fraktion,
+                    "text": full_text,
+                    "source_url": url,
                 }
                 f_jsonl.write(json.dumps(rec, ensure_ascii=False) + "\n")
                 f_txt.write(f"[Plenarprotokoll {wp}/{sitzung_nr}] {speaker} ({spn_fraktion}):\n")
@@ -265,13 +308,22 @@ def dl_bundestag_protokolle():
                 n_speeches += 1
             n_proto += 1
             if i % 10 == 0:
-                print(f"  [{i}/{len(unique)}] protocols={n_proto}, speeches={n_speeches}", flush=True)
+                print(
+                    f"  [{i}/{len(unique)}] protocols={n_proto}, speeches={n_speeches}", flush=True
+                )
 
-    _write_manifest(out_dir, source="bundestag/plenarprotokolle", started_at=started,
-                    protocols=n_proto, speeches=n_speeches,
-                    elapsed_seconds=time.time() - t0)
-    print(f"  done: {n_proto} protocols, {n_speeches:,} speeches in {(time.time()-t0)/60:.1f} min",
-          flush=True)
+    _write_manifest(
+        out_dir,
+        source="bundestag/plenarprotokolle",
+        started_at=started,
+        protocols=n_proto,
+        speeches=n_speeches,
+        elapsed_seconds=time.time() - t0,
+    )
+    print(
+        f"  done: {n_proto} protocols, {n_speeches:,} speeches in {(time.time() - t0) / 60:.1f} min",
+        flush=True,
+    )
 
 
 # ============================================================================
@@ -290,8 +342,10 @@ def dl_lobbyregister_de():
     page = 0
     page_size = 100
     n_entries = 0
-    with out_jsonl.open("w", encoding="utf-8") as f_jsonl, \
-         out_text.open("w", encoding="utf-8") as f_txt:
+    with (
+        out_jsonl.open("w", encoding="utf-8") as f_jsonl,
+        out_text.open("w", encoding="utf-8") as f_txt,
+    ):
         while True:
             url = f"{base}?from={page * page_size}&size={page_size}&sort=registrierdatum-asc"
             try:
@@ -313,19 +367,26 @@ def dl_lobbyregister_de():
                     "interessenbereiche": src.get("interessenbereiche") or [],
                     "auftraggeber": src.get("auftraggeber") or [],
                     "jahresangaben": src.get("jahresangaben") or [],
-                    "url": f"https://www.lobbyregister.bundestag.de/suche/{src.get('registernummer','')}",
+                    "url": f"https://www.lobbyregister.bundestag.de/suche/{src.get('registernummer', '')}",
                     "raw": src,
                 }
                 f_jsonl.write(json.dumps(rec, ensure_ascii=False) + "\n")
-                txt_parts = [f"Lobbyeintrag: {rec.get('name','?')} ({rec.get('register_id','?')})"]
+                txt_parts = [
+                    f"Lobbyeintrag: {rec.get('name', '?')} ({rec.get('register_id', '?')})"
+                ]
                 if rec.get("rechtsform"):
                     txt_parts.append(f"Rechtsform: {rec['rechtsform']}")
                 if rec.get("sitz"):
                     txt_parts.append(f"Sitz: {rec['sitz']}")
                 if rec.get("interessenbereiche"):
-                    txt_parts.append("Interessenbereiche: " + ", ".join(map(str, rec["interessenbereiche"])))
+                    txt_parts.append(
+                        "Interessenbereiche: " + ", ".join(map(str, rec["interessenbereiche"]))
+                    )
                 if rec.get("auftraggeber"):
-                    ag = [str(a.get("name", a)) if isinstance(a, dict) else str(a) for a in rec["auftraggeber"]]
+                    ag = [
+                        str(a.get("name", a)) if isinstance(a, dict) else str(a)
+                        for a in rec["auftraggeber"]
+                    ]
                     if ag:
                         txt_parts.append("Auftraggeber: " + ", ".join(ag))
                 f_txt.write("\n".join(txt_parts) + "\n\n")
@@ -336,9 +397,14 @@ def dl_lobbyregister_de():
             page += 1
             time.sleep(0.5)
 
-    _write_manifest(out_dir, source="bundestag/lobbyregister", started_at=started,
-                    entries=n_entries, elapsed_seconds=time.time() - t0)
-    print(f"  done: {n_entries:,} lobby entries in {(time.time()-t0)/60:.1f} min", flush=True)
+    _write_manifest(
+        out_dir,
+        source="bundestag/lobbyregister",
+        started_at=started,
+        entries=n_entries,
+        elapsed_seconds=time.time() - t0,
+    )
+    print(f"  done: {n_entries:,} lobby entries in {(time.time() - t0) / 60:.1f} min", flush=True)
 
 
 # ============================================================================
@@ -360,8 +426,10 @@ def dl_abgeordnetenwatch():
     base = "https://www.abgeordnetenwatch.de/api/v2"
     n_p = 0
 
-    with out_jsonl.open("w", encoding="utf-8") as f_jsonl, \
-         out_text.open("w", encoding="utf-8") as f_txt:
+    with (
+        out_jsonl.open("w", encoding="utf-8") as f_jsonl,
+        out_text.open("w", encoding="utf-8") as f_txt,
+    ):
         page = 0
         per_page = 200
         max_pages = 200  # 40k politicians cap = full corpus (~35k actual)
@@ -394,7 +462,7 @@ def dl_abgeordnetenwatch():
                 }
                 f_jsonl.write(json.dumps(rec, ensure_ascii=False) + "\n")
                 # Flat text record
-                parts = [f"Politiker: {rec.get('label','?')}"]
+                parts = [f"Politiker: {rec.get('label', '?')}"]
                 if rec.get("party_label"):
                     parts.append(f"Partei: {rec['party_label']}")
                 if rec.get("year_of_birth"):
@@ -413,9 +481,14 @@ def dl_abgeordnetenwatch():
             page += 1
             time.sleep(0.3)
 
-    _write_manifest(out_dir, source="abgeordnetenwatch.de/politicians", started_at=started,
-                    politicians=n_p, elapsed_seconds=time.time() - t0)
-    print(f"  done: {n_p:,} politicians in {(time.time()-t0)/60:.1f} min", flush=True)
+    _write_manifest(
+        out_dir,
+        source="abgeordnetenwatch.de/politicians",
+        started_at=started,
+        politicians=n_p,
+        elapsed_seconds=time.time() - t0,
+    )
+    print(f"  done: {n_p:,} politicians in {(time.time() - t0) / 60:.1f} min", flush=True)
 
 
 # ============================================================================
@@ -437,10 +510,13 @@ def dl_europarl_meps():
         sys.exit(f"FATAL: cannot fetch EuroParl MEPs: {e}")
 
     import xml.etree.ElementTree as ET
+
     root = ET.fromstring(xml_text)
     n = 0
-    with out_jsonl.open("w", encoding="utf-8") as f_jsonl, \
-         out_text.open("w", encoding="utf-8") as f_txt:
+    with (
+        out_jsonl.open("w", encoding="utf-8") as f_jsonl,
+        out_text.open("w", encoding="utf-8") as f_txt,
+    ):
         for mep in root.iter("mep"):
             rec = {
                 "id": mep.findtext("id", ""),
@@ -455,9 +531,14 @@ def dl_europarl_meps():
                 f"{rec['politicalGroup']} ({rec['nationalPoliticalGroup']})\n\n"
             )
             n += 1
-    _write_manifest(out_dir, source="europarl/meps", started_at=started,
-                    meps=n, elapsed_seconds=time.time() - t0)
-    print(f"  done: {n:,} MEPs in {(time.time()-t0):.1f}s", flush=True)
+    _write_manifest(
+        out_dir,
+        source="europarl/meps",
+        started_at=started,
+        meps=n,
+        elapsed_seconds=time.time() - t0,
+    )
+    print(f"  done: {n:,} MEPs in {(time.time() - t0):.1f}s", flush=True)
 
 
 # ============================================================================
@@ -479,10 +560,18 @@ def _ris_strip_html(html: str) -> str:
     # Strip remaining tags
     html = re.sub(r"<[^>]+>", "", html)
     # Entity decode (light)
-    html = (html.replace("&nbsp;", " ").replace("&amp;", "&").replace("&lt;", "<")
-                 .replace("&gt;", ">").replace("&quot;", '"')
-                 .replace("&#39;", "'").replace("&apos;", "'")
-                 .replace("&shy;", "").replace("&ndash;", "–").replace("&mdash;", "—"))
+    html = (
+        html.replace("&nbsp;", " ")
+        .replace("&amp;", "&")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&quot;", '"')
+        .replace("&#39;", "'")
+        .replace("&apos;", "'")
+        .replace("&shy;", "")
+        .replace("&ndash;", "–")
+        .replace("&mdash;", "—")
+    )
     # Collapse runs of blank lines
     html = re.sub(r"\n\s*\n+", "\n\n", html).strip()
     return html
@@ -547,8 +636,10 @@ def dl_rechtsinfo_caselaw():
 
     list_url = f"{RIS_BASE}/v1/case-law"
     # Append mode — we may resume across runs
-    with out_jsonl.open("a", encoding="utf-8") as f_jsonl, \
-         out_text.open("a", encoding="utf-8") as f_txt:
+    with (
+        out_jsonl.open("a", encoding="utf-8") as f_jsonl,
+        out_text.open("a", encoding="utf-8") as f_txt,
+    ):
         for item in _ris_paginate(list_url):
             doc_no = item.get("documentNumber")
             if not doc_no:
@@ -560,7 +651,7 @@ def dl_rechtsinfo_caselaw():
             html_url = f"{RIS_BASE}/v1/case-law/{doc_no}.html"
             try:
                 html = _fetch(html_url, timeout=30)
-            except Exception as e:
+            except Exception:
                 n_errors += 1
                 if n_errors % 20 == 0:
                     print(f"  errors so far: {n_errors}", flush=True)
@@ -582,8 +673,8 @@ def dl_rechtsinfo_caselaw():
             f_jsonl.write(json.dumps(rec, ensure_ascii=False) + "\n")
             # Flat text for the cleaning pipeline
             header = (
-                f"[{rec.get('courtType','?')}] {rec.get('headline','?')} "
-                f"({rec.get('documentType','?')}, {rec.get('decisionDate','?')})"
+                f"[{rec.get('courtType', '?')}] {rec.get('headline', '?')} "
+                f"({rec.get('documentType', '?')}, {rec.get('decisionDate', '?')})"
             )
             f_txt.write(header + "\n")
             if rec.get("ecli"):
@@ -600,11 +691,20 @@ def dl_rechtsinfo_caselaw():
                 print(f"  {n_records:,} records, {rate:.1f}/s, errors {n_errors}", flush=True)
 
     progress_file.write_text(json.dumps(sorted(done_ids)))
-    _write_manifest(out_dir, source="rechtsinformationen.bund.de/case-law", started_at=started,
-                    decisions=n_records, skipped=n_skipped, errors=n_errors,
-                    elapsed_seconds=time.time() - t0)
-    print(f"  done: {n_records:,} new, {n_skipped:,} skipped, {n_errors} errors "
-          f"in {(time.time()-t0)/60:.1f} min", flush=True)
+    _write_manifest(
+        out_dir,
+        source="rechtsinformationen.bund.de/case-law",
+        started_at=started,
+        decisions=n_records,
+        skipped=n_skipped,
+        errors=n_errors,
+        elapsed_seconds=time.time() - t0,
+    )
+    print(
+        f"  done: {n_records:,} new, {n_skipped:,} skipped, {n_errors} errors "
+        f"in {(time.time() - t0) / 60:.1f} min",
+        flush=True,
+    )
 
 
 def dl_rechtsinfo_legislation():
@@ -620,14 +720,19 @@ def dl_rechtsinfo_legislation():
     n_records = 0
     n_errors = 0
     list_url = f"{RIS_BASE}/v1/legislation"
-    with out_jsonl.open("w", encoding="utf-8") as f_jsonl, \
-         out_text.open("w", encoding="utf-8") as f_txt:
+    with (
+        out_jsonl.open("w", encoding="utf-8") as f_jsonl,
+        out_text.open("w", encoding="utf-8") as f_txt,
+    ):
         for item in _ris_paginate(list_url):
             # Legislation items reveal their HTML manifest URL in `encoding`
             encodings = item.get("encoding") or []
             html_url = next(
-                (e.get("contentUrl") for e in encodings
-                 if isinstance(e, dict) and e.get("encodingFormat") == "text/html"),
+                (
+                    e.get("contentUrl")
+                    for e in encodings
+                    if isinstance(e, dict) and e.get("encodingFormat") == "text/html"
+                ),
                 None,
             )
             if not html_url:
@@ -635,7 +740,7 @@ def dl_rechtsinfo_legislation():
             full_url = html_url if html_url.startswith("http") else f"{RIS_BASE}{html_url}"
             try:
                 html = _fetch(full_url, timeout=60)
-            except Exception as e:
+            except Exception:
                 n_errors += 1
                 continue
             body = _ris_strip_html(html)
@@ -651,7 +756,9 @@ def dl_rechtsinfo_legislation():
                 "body": body,
             }
             f_jsonl.write(json.dumps(rec, ensure_ascii=False) + "\n")
-            header_bits = [rec.get("name") or rec.get("shortTitle") or rec.get("officialTitle") or "?"]
+            header_bits = [
+                rec.get("name") or rec.get("shortTitle") or rec.get("officialTitle") or "?"
+            ]
             if rec.get("abbreviation"):
                 header_bits.append(f"({rec['abbreviation']})")
             if rec.get("datePublished"):
@@ -665,10 +772,18 @@ def dl_rechtsinfo_legislation():
                 rate = n_records / max(time.time() - t0, 0.01)
                 print(f"  {n_records}/{2425} laws, {rate:.1f}/s, errors {n_errors}", flush=True)
 
-    _write_manifest(out_dir, source="rechtsinformationen.bund.de/legislation", started_at=started,
-                    laws=n_records, errors=n_errors, elapsed_seconds=time.time() - t0)
-    print(f"  done: {n_records:,} laws, {n_errors} errors in {(time.time()-t0)/60:.1f} min",
-          flush=True)
+    _write_manifest(
+        out_dir,
+        source="rechtsinformationen.bund.de/legislation",
+        started_at=started,
+        laws=n_records,
+        errors=n_errors,
+        elapsed_seconds=time.time() - t0,
+    )
+    print(
+        f"  done: {n_records:,} laws, {n_errors} errors in {(time.time() - t0) / 60:.1f} min",
+        flush=True,
+    )
 
 
 SOURCES = {
@@ -683,7 +798,9 @@ SOURCES = {
 
 
 def main():
-    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     p.add_argument("--source", choices=sorted(SOURCES.keys()), required=True)
     args = p.parse_args()
     print(f"POLITIK_RAW_ROOT = {ROOT}", flush=True)

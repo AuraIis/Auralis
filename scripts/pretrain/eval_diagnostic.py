@@ -157,11 +157,21 @@ def _measure_tpb(bin_path: Path, tokenizer_path: Path, sample_tokens: int = 300_
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--config", type=Path, required=True, help="Training YAML (for model/data/eval cfg).")
-    ap.add_argument("--checkpoint", type=Path, required=True, help="Checkpoint .pt to evaluate (read-only).")
-    ap.add_argument("--tokenizer", type=Path, default=REPO / "tokenizer" / "helix_v2_tokenizer.model")
-    ap.add_argument("--n-seqs", type=int, default=256, help="Val sequences per language per region.")
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    ap.add_argument(
+        "--config", type=Path, required=True, help="Training YAML (for model/data/eval cfg)."
+    )
+    ap.add_argument(
+        "--checkpoint", type=Path, required=True, help="Checkpoint .pt to evaluate (read-only)."
+    )
+    ap.add_argument(
+        "--tokenizer", type=Path, default=REPO / "tokenizer" / "helix_v2_tokenizer.model"
+    )
+    ap.add_argument(
+        "--n-seqs", type=int, default=256, help="Val sequences per language per region."
+    )
     ap.add_argument("--micro-bs", type=int, default=8)
     ap.add_argument("--seed", type=int, default=20260601)
     ap.add_argument("--modes", nargs="+", default=list(MODES), choices=list(MODES))
@@ -181,7 +191,10 @@ def main() -> None:
     mix = config["data"]["mix_ratios"]
     langs = [l for l, w in mix.items() if w > 0]
     val_tail_tokens = int(config["data"].get("val_split_bytes", 8_000_000)) // 4
-    cfg_tpb = {str(k): float(v) for k, v in (config.get("evaluation", {}).get("tokens_per_byte") or {}).items()}
+    cfg_tpb = {
+        str(k): float(v)
+        for k, v in (config.get("evaluation", {}).get("tokens_per_byte") or {}).items()
+    }
 
     print(f"checkpoint : {args.checkpoint}")
     print(f"config     : {args.config.name}")
@@ -190,7 +203,9 @@ def main() -> None:
     # --- checkpoint metadata (the claimed baseline) ---
     payload = torch.load(args.checkpoint, map_location="cpu", weights_only=False)
     src_state = payload.get("state") or {}
-    print(f"  source step={src_state.get('step', '?')}  source best_val_loss={src_state.get('best_val_loss', '?')}")
+    print(
+        f"  source step={src_state.get('step', '?')}  source best_val_loss={src_state.get('best_val_loss', '?')}"
+    )
 
     # --- measure the honest tokens/byte + materialise fixed blocks ---
     tpb_measured: dict[str, float] = {}
@@ -204,9 +219,12 @@ def main() -> None:
         )
         for region in args.regions:
             blocks[(lang, region)] = _sample_blocks(
-                bin_path, seq_length, args.n_seqs,
+                bin_path,
+                seq_length,
+                args.n_seqs,
                 seed=args.seed + li * 7919 + (0 if region == "full" else 13),
-                region=region, val_tail_tokens=val_tail_tokens,
+                region=region,
+                val_tail_tokens=val_tail_tokens,
             )
 
     # --- import build_model + state aligner once ---
@@ -227,7 +245,9 @@ def main() -> None:
 
     for mode in args.modes:
         spec = MODES[mode]
-        print(f"\n=== mode: {mode}  (mamba={spec['mamba']} gla={spec['gla']} flash={spec['flash']} dtype={spec['dtype']}) ===")
+        print(
+            f"\n=== mode: {mode}  (mamba={spec['mamba']} gla={spec['gla']} flash={spec['flash']} dtype={spec['dtype']}) ==="
+        )
         _set_kernel_env(spec["mamba"], spec["gla"], spec["flash"])
         try:
             model = build_model(model_cfg_path).to(device)
@@ -266,7 +286,11 @@ def main() -> None:
                 }
                 print(
                     f"  {key:18s} loss={loss:.4f}  bpb(meas)={bpb_m:.4f}  bpb(cfg)={bpb_c:.4f}"
-                    + (f"  loss_main={ev['loss_main']:.4f}" if ev.get("loss_main") is not None else "")
+                    + (
+                        f"  loss_main={ev['loss_main']:.4f}"
+                        if ev.get("loss_main") is not None
+                        else ""
+                    )
                 )
         results["modes"][mode] = mode_res
         del model
@@ -281,7 +305,7 @@ def main() -> None:
             if k in off and off[k]["loss"] > 0:
                 rel = abs(on[k]["loss"] - off[k]["loss"]) / off[k]["loss"]
                 worst = max(worst, rel)
-        print(f"  kernels on vs off: max relative loss diff = {worst*100:.2f}%")
+        print(f"  kernels on vs off: max relative loss diff = {worst * 100:.2f}%")
         print("   → <1%: no kernel artifact.  >3%: kernel numerics suspect.")
     if "kernels_off_bf16" in results["modes"] and "kernels_off_fp32" in results["modes"]:
         bf, fp = results["modes"]["kernels_off_bf16"], results["modes"]["kernels_off_fp32"]
@@ -290,7 +314,7 @@ def main() -> None:
             if k in fp and fp[k]["loss"] > 0:
                 rel = abs(bf[k]["loss"] - fp[k]["loss"]) / fp[k]["loss"]
                 worst = max(worst, rel)
-        print(f"  bf16 vs fp32 (kernels off): max relative loss diff = {worst*100:.2f}%")
+        print(f"  bf16 vs fp32 (kernels off): max relative loss diff = {worst * 100:.2f}%")
         print("   → <1%: bf16 precision is fine.  >3%: precision suspect.")
     print("  full-vs-tail gap shows how unrepresentative the wiki-tail val is.")
     print("  compare the step-0 bpb(full,german) here against the run's step-250 bpb_german.")

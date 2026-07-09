@@ -24,7 +24,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-
 try:
     from nemo_curator.stages.text.filters.heuristic.repetition.repetition import (
         RepeatedLinesByCharFilter,
@@ -202,7 +201,9 @@ def sample_line_numbers(total_docs: int, samples: int, seed: int) -> list[int]:
     return sorted(rng.sample(range(1, total_docs + 1), samples))
 
 
-def read_samples(mix_path: Path, line_numbers: list[int], spans: list[SourceSpan]) -> list[tuple[int, SourceSpan, str]]:
+def read_samples(
+    mix_path: Path, line_numbers: list[int], spans: list[SourceSpan]
+) -> list[tuple[int, SourceSpan, str]]:
     wanted = set(line_numbers)
     ends = [span.end for span in spans]
     rows: list[tuple[int, SourceSpan, str]] = []
@@ -227,14 +228,18 @@ def curator_filters() -> dict[str, Any]:
         "punctuation": PunctuationFilter(max_num_sentences_without_endmark_ratio=1.0),
         "symbols_to_words_de": SymbolsToWordsFilter(max_symbol_to_word_ratio=1.0, lang="de"),
         "long_word_de": LongWordFilter(max_word_length=10_000, lang="de"),
-        "mean_word_len_de": MeanWordLengthFilter(min_mean_word_length=0, max_mean_word_length=10_000, lang="de"),
+        "mean_word_len_de": MeanWordLengthFilter(
+            min_mean_word_length=0, max_mean_word_length=10_000, lang="de"
+        ),
         "words_with_alpha_de": WordsWithoutAlphabetsFilter(min_words_with_alphabets=0.0, lang="de"),
         "parentheses": ParenthesesFilter(max_parentheses_ratio=1.0),
         "ellipsis": EllipsisFilter(max_num_lines_ending_with_ellipsis_ratio=1.0),
         "repeated_lines": RepeatedLinesFilter(max_repeated_line_fraction=1.0),
         "repeated_lines_char": RepeatedLinesByCharFilter(max_repeated_lines_char_ratio=1.0),
         "repeated_paragraphs": RepeatedParagraphsFilter(max_repeated_paragraphs_ratio=1.0),
-        "repeated_paragraphs_char": RepeatedParagraphsByCharFilter(max_repeated_paragraphs_char_ratio=1.0),
+        "repeated_paragraphs_char": RepeatedParagraphsByCharFilter(
+            max_repeated_paragraphs_char_ratio=1.0
+        ),
         "duplicate_3gram_de": RepeatingDuplicateNGramsFilter(
             n=3, max_repeating_duplicate_ngram_ratio=1.0, lang="de"
         ),
@@ -256,7 +261,9 @@ def score_text(text: str, filters: dict[str, Any]) -> dict[str, Any]:
     return scores
 
 
-def decide(profile: str, text: str, scores: dict[str, Any], words: int) -> tuple[list[str], list[str]]:
+def decide(
+    profile: str, text: str, scores: dict[str, Any], words: int
+) -> tuple[list[str], list[str]]:
     """Return warnings and hard drops for a profile.
 
     The thresholds are intentionally conservative for hard drops. Curator
@@ -392,7 +399,9 @@ def decide(profile: str, text: str, scores: dict[str, Any], words: int) -> tuple
     return warnings, hard
 
 
-def audit_rows(rows: list[tuple[int, SourceSpan, str]], examples_per_reason: int) -> tuple[list[AuditDoc], dict[str, Any]]:
+def audit_rows(
+    rows: list[tuple[int, SourceSpan, str]], examples_per_reason: int
+) -> tuple[list[AuditDoc], dict[str, Any]]:
     filters = curator_filters()
     audited: list[AuditDoc] = []
     examples: dict[str, list[dict[str, Any]]] = defaultdict(list)
@@ -539,7 +548,9 @@ def write_report(path: Path, summary: dict[str, Any], args: argparse.Namespace) 
     lines: list[str] = []
     lines.append("# NeMo Curator Profile Audit")
     lines.append("")
-    lines.append("This is a source-aware audit. Curator filters provide scores; profile logic decides whether a signal is a hard drop or a warning.")
+    lines.append(
+        "This is a source-aware audit. Curator filters provide scores; profile logic decides whether a signal is a hard drop or a warning."
+    )
     lines.append("")
     lines.append("## Run")
     lines.append("")
@@ -547,8 +558,12 @@ def write_report(path: Path, summary: dict[str, Any], args: argparse.Namespace) 
     lines.append(f"- manifest: `{args.manifest}`")
     lines.append(f"- sample docs: {summary['docs']:,}")
     lines.append(f"- seed: {args.seed}")
-    lines.append(f"- hard-drop candidates: {summary['hard_drop_docs']:,} ({summary['hard_drop_pct']}%)")
-    lines.append(f"- warning-only candidates: {summary['warning_docs']:,} ({summary['warning_pct']}%)")
+    lines.append(
+        f"- hard-drop candidates: {summary['hard_drop_docs']:,} ({summary['hard_drop_pct']}%)"
+    )
+    lines.append(
+        f"- warning-only candidates: {summary['warning_docs']:,} ({summary['warning_pct']}%)"
+    )
     lines.append(
         f"- chars median/p95/max: {summary['chars']['median']:,} / {summary['chars']['p95']:,} / {summary['chars']['max']:,}"
     )
@@ -558,10 +573,16 @@ def write_report(path: Path, summary: dict[str, Any], args: argparse.Namespace) 
     lines.append("")
     lines.append("## Recommended Interpretation")
     lines.append("")
-    lines.append("- Treat `hard_drop` reasons as safe candidates for the next builder/profile gate.")
-    lines.append("- Treat warnings as audit signals; do not drop them globally without a per-profile review.")
+    lines.append(
+        "- Treat `hard_drop` reasons as safe candidates for the next builder/profile gate."
+    )
+    lines.append(
+        "- Treat warnings as audit signals; do not drop them globally without a per-profile review."
+    )
     lines.append("- Math and QA intentionally tolerate symbol and number density.")
-    lines.append("- Punctuation/list signals are warnings for German prose because lexicon/list articles can be useful but may hurt long-form style.")
+    lines.append(
+        "- Punctuation/list signals are warnings for German prose because lexicon/list articles can be useful but may hurt long-form style."
+    )
     lines.append("")
     lines.append("## v6 Builder Gate Draft")
     lines.append("")
@@ -669,7 +690,11 @@ def hard_signal_reasons(profile: str, text: str) -> list[str]:
         reasons.append("very_long_token")
     if URL_RE.search(text) and url_char_ratio(text) > 0.25:
         reasons.append("url_dense")
-    if profile in {"german_prose", "validation"} and len(words) >= 30 and alpha_word_ratio(words) < 0.55:
+    if (
+        profile in {"german_prose", "validation"}
+        and len(words) >= 30
+        and alpha_word_ratio(words) < 0.55
+    ):
         reasons.append("too_few_alpha_words")
     return sorted(set(reasons))
 
@@ -763,7 +788,9 @@ def write_hard_scan_report(path: Path, summary: dict[str, Any], args: argparse.N
     lines: list[str] = []
     lines.append("# NeMo Curator Hard Signal Fullscan")
     lines.append("")
-    lines.append("This mode skips expensive Curator scores and scans the full mix for the conservative hard signals tuned by the sample audit.")
+    lines.append(
+        "This mode skips expensive Curator scores and scans the full mix for the conservative hard signals tuned by the sample audit."
+    )
     lines.append("")
     lines.append("## Run")
     lines.append("")
@@ -772,7 +799,9 @@ def write_hard_scan_report(path: Path, summary: dict[str, Any], args: argparse.N
     lines.append(f"- docs: {summary['docs']:,}")
     if summary.get("max_docs"):
         lines.append(f"- max docs: {summary['max_docs']:,}")
-    lines.append(f"- hard-signal docs: {summary['hard_signal_docs']:,} ({summary['hard_signal_pct']}%)")
+    lines.append(
+        f"- hard-signal docs: {summary['hard_signal_docs']:,} ({summary['hard_signal_pct']}%)"
+    )
     lines.append(f"- elapsed sec: {summary['elapsed_sec']}")
     lines.append("")
     lines.append("## v6 Builder Gate Draft")
@@ -905,7 +934,11 @@ def main() -> None:
         )
 
     if args.mode in {"hard-scan", "both"}:
-        scan_dir = args.output_dir if args.mode == "hard-scan" else args.output_dir / "hard_signal_fullscan"
+        scan_dir = (
+            args.output_dir
+            if args.mode == "hard-scan"
+            else args.output_dir / "hard_signal_fullscan"
+        )
         scan_dir.mkdir(parents=True, exist_ok=True)
         summary, candidates = hard_signal_fullscan(
             args.mix,

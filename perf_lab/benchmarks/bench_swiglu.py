@@ -7,6 +7,7 @@ dense FFN layers. Liger fuses this silu-mul (and its backward) into one Triton
 kernel. The GEMMs (gate/up/down projections) are NOT part of this op — this
 measures only the fusable elementwise gate.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -30,6 +31,7 @@ def torch_silu_mul(gate: torch.Tensor, up: torch.Tensor) -> torch.Tensor:
 def liger_silu_mul(gate: torch.Tensor, up: torch.Tensor) -> torch.Tensor:
     import torch.distributed.tensor  # noqa: F401  Liger references DTensor
     from liger_kernel.ops.swiglu import LigerSiLUMulFunction
+
     return LigerSiLUMulFunction.apply(gate, up)
 
 
@@ -66,8 +68,10 @@ def main() -> None:
     up_base = torch.randn(args.rows, args.dim, device="cuda", dtype=dtype)
 
     def make():
-        return (gate_base.detach().clone().requires_grad_(True),
-                up_base.detach().clone().requires_grad_(True))
+        return (
+            gate_base.detach().clone().requires_grad_(True),
+            up_base.detach().clone().requires_grad_(True),
+        )
 
     candidate = liger_silu_mul
 
@@ -94,24 +98,30 @@ def main() -> None:
     t_avg, t_min, t_peak = timed(run_torch, warmup=args.warmup, iters=args.iters)
     c_avg, c_min, c_peak = timed(run_cand, warmup=args.warmup, iters=args.iters)
 
-    print(json.dumps({
-        "gpu": torch.cuda.get_device_name(0),
-        "op": "swiglu_silumul",
-        "impl": args.impl,
-        "rows": args.rows,
-        "dim": args.dim,
-        "dtype": args.dtype,
-        "max_abs_y": y_err,
-        "max_abs_grad_gate": gg_err,
-        "max_abs_grad_up": gu_err,
-        "torch_seconds_avg": t_avg,
-        "candidate_seconds_avg": c_avg,
-        "speedup": t_avg / c_avg if c_avg else None,
-        "torch_seconds_min": t_min,
-        "candidate_seconds_min": c_min,
-        "torch_peak_gb": t_peak,
-        "candidate_peak_gb": c_peak,
-    }, indent=2), flush=True)
+    print(
+        json.dumps(
+            {
+                "gpu": torch.cuda.get_device_name(0),
+                "op": "swiglu_silumul",
+                "impl": args.impl,
+                "rows": args.rows,
+                "dim": args.dim,
+                "dtype": args.dtype,
+                "max_abs_y": y_err,
+                "max_abs_grad_gate": gg_err,
+                "max_abs_grad_up": gu_err,
+                "torch_seconds_avg": t_avg,
+                "candidate_seconds_avg": c_avg,
+                "speedup": t_avg / c_avg if c_avg else None,
+                "torch_seconds_min": t_min,
+                "candidate_seconds_min": c_min,
+                "torch_peak_gb": t_peak,
+                "candidate_peak_gb": c_peak,
+            },
+            indent=2,
+        ),
+        flush=True,
+    )
 
 
 if __name__ == "__main__":

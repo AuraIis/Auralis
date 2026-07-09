@@ -15,7 +15,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 REPO = Path(__file__).resolve().parents[2]
 
 SOURCES = [
@@ -148,7 +147,9 @@ def write_summary(output_dir: Path, mix_manifest: Path) -> None:
         "mix_manifest": str(mix_manifest),
         "mix": read_manifest(mix_manifest) if mix_manifest.exists() else None,
     }
-    (output_dir / "manifest.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
+    (output_dir / "manifest.json").write_text(
+        json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
 
     md = ["# Pretrain Clean-v3.1 Summary\n"]
     md.append("| Source | Docs In | Docs Out | Keep | GB In | GB Out | Top Drops |")
@@ -157,18 +158,24 @@ def write_summary(output_dir: Path, mix_manifest: Path) -> None:
         top = ", ".join(f"{k}: {v:,}" for k, v in list(row["dropped"].items())[:5])
         md.append(
             f"| `{row['name']}` | {row['lines_in']:,} | {row['lines_written']:,} | "
-            f"{row['keep_rate']*100:.1f}% | {row['bytes_in']/1e9:.2f} | "
-            f"{row['bytes_written']/1e9:.2f} | {top or '-'} |"
+            f"{row['keep_rate'] * 100:.1f}% | {row['bytes_in'] / 1e9:.2f} | "
+            f"{row['bytes_written'] / 1e9:.2f} | {top or '-'} |"
         )
     if summary["mix"]:
         mix = summary["mix"]
         md.append("\n## Mix\n")
         md.append(f"- Documents: {mix['documents']:,}")
-        md.append(f"- Bytes: {mix['bytes_written']/1e9:.2f} GB")
-        md.append(f"- Validation tail: {mix['val_tail_bytes']/1e6:.1f} MB / {mix['val_tail_documents']:,} docs")
+        md.append(f"- Bytes: {mix['bytes_written'] / 1e9:.2f} GB")
+        md.append(
+            f"- Validation tail: {mix['val_tail_bytes'] / 1e6:.1f} MB / {mix['val_tail_documents']:,} docs"
+        )
     md.append("\n## Notes\n")
-    md.append("- v3.1 starts from clean-v3 and removes remaining web boilerplate plus hard OCR/old-print fragments.")
-    md.append("- OpenMath and Booster are revalidated with their domain profiles, not prose filters.")
+    md.append(
+        "- v3.1 starts from clean-v3 and removes remaining web boilerplate plus hard OCR/old-print fragments."
+    )
+    md.append(
+        "- OpenMath and Booster are revalidated with their domain profiles, not prose filters."
+    )
     md.append("- This is intended as the final text source before tokenizer conversion.")
     (output_dir / "summary.md").write_text("\n".join(md) + "\n", encoding="utf-8")
 
@@ -176,7 +183,9 @@ def write_summary(output_dir: Path, mix_manifest: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input-dir", type=Path, default=REPO / "data/training/pretrain_clean_v3")
-    parser.add_argument("--output-dir", type=Path, default=REPO / "data/training/pretrain_clean_v31")
+    parser.add_argument(
+        "--output-dir", type=Path, default=REPO / "data/training/pretrain_clean_v31"
+    )
     parser.add_argument("--mix-output", type=Path, default=None)
     parser.add_argument("--val-tail-bytes", type=int, default=80_000_000)
     parser.add_argument("--chunk-lines", type=int, default=2048)

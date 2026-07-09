@@ -25,9 +25,9 @@ import json
 import os
 import sys
 import time
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Iterable
 
 import numpy as np
 import sentencepiece as spm
@@ -51,7 +51,7 @@ class TokenizeStats:
     empty_lines: int = 0
     bytes_in: int = 0
     tokenizer_sha256: str = ""
-    tokens_per_byte: float = 0.0   # measured from the written bin (for bpb)
+    tokens_per_byte: float = 0.0  # measured from the written bin (for bpb)
     started_at: str = ""
     finished_at: str = ""
     elapsed_seconds: float = 0.0
@@ -190,20 +190,31 @@ def _tokenize_language(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--data-config", type=Path, default=None)
     parser.add_argument("--tokenizer", type=Path, default=DEFAULT_TOKENIZER)
-    parser.add_argument("--languages", nargs="+", default=["english", "german", "code"],
-                        choices=["english", "german", "code"])
-    parser.add_argument("--batch-size", type=int, default=2048,
-                        help="Lines fed to SP.encode() per call.")
+    parser.add_argument(
+        "--languages",
+        nargs="+",
+        default=["english", "german", "code"],
+        choices=["english", "german", "code"],
+    )
+    parser.add_argument(
+        "--batch-size", type=int, default=2048, help="Lines fed to SP.encode() per call."
+    )
     parser.add_argument("--required-free-gb", type=float, default=100.0)
-    parser.add_argument("--force", action="store_true",
-                        help="Re-tokenize even if output already exists.")
-    parser.add_argument("--output-subdir", default="phase1",
-                        help="Subdirectory under <data_root>/tokenized/ to write the "
-                             ".bin/.idx/.manifest files into. Default 'phase1'. Use e.g. "
-                             "'curated_40b' to keep a phase-1 rollback anchor intact.")
+    parser.add_argument(
+        "--force", action="store_true", help="Re-tokenize even if output already exists."
+    )
+    parser.add_argument(
+        "--output-subdir",
+        default="phase1",
+        help="Subdirectory under <data_root>/tokenized/ to write the "
+        ".bin/.idx/.manifest files into. Default 'phase1'. Use e.g. "
+        "'curated_40b' to keep a phase-1 rollback anchor intact.",
+    )
     args = parser.parse_args()
 
     cfg = load_paths(args.data_config) if args.data_config else load_paths()
@@ -248,13 +259,13 @@ def main() -> None:
         )
         all_stats.append(stats)
         print(
-            f"  {stats.documents:,} docs | {stats.tokens/1e9:.2f} B tokens | "
-            f"{stats.elapsed_seconds/60:.1f} min"
+            f"  {stats.documents:,} docs | {stats.tokens / 1e9:.2f} B tokens | "
+            f"{stats.elapsed_seconds / 60:.1f} min"
         )
 
     print("\n=== Summary ===")
     for s in all_stats:
-        print(f"  {s.language:8s} {s.documents:>12,} docs  {s.tokens/1e9:>6.2f} B tokens")
+        print(f"  {s.language:8s} {s.documents:>12,} docs  {s.tokens / 1e9:>6.2f} B tokens")
 
 
 if __name__ == "__main__":

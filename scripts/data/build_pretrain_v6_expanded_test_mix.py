@@ -11,7 +11,6 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-
 SPACE_RE = re.compile(r"\s+")
 
 
@@ -54,7 +53,9 @@ def source_text(source: str, obj: dict[str, Any]) -> str:
         content = clean(obj.get("content"))
         path = clean(obj.get("path"))
         repo = clean(obj.get("repo_name"))
-        return one_line(f"<|code|>[python]\n<filename>{path}\n<reponame>{repo}\n{content}\n<|endcode|>")
+        return one_line(
+            f"<|code|>[python]\n<filename>{path}\n<reponame>{repo}\n{content}\n<|endcode|>"
+        )
     if source == "natural_questions_german":
         return one_line(f"Frage: {clean(obj.get('question'))}\nAntwort: {clean(obj.get('answer'))}")
     if source.startswith("avemio_german_rag_sft"):
@@ -68,10 +69,20 @@ def source_text(source: str, obj: dict[str, Any]) -> str:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--base-mix", type=Path, default=Path("data/training/pretrain_v6_strict_mix/mix_full.txt"))
-    parser.add_argument("--extra-dir", type=Path, default=Path("data/training/pretrain_v6_extra_candidates"))
-    parser.add_argument("--extra-manifest", type=Path, default=Path("data/training/pretrain_v6_extra_candidates/source_disjoint_manifest.jsonl"))
-    parser.add_argument("--out-dir", type=Path, default=Path("data/training/pretrain_v6_expanded_test_mix"))
+    parser.add_argument(
+        "--base-mix", type=Path, default=Path("data/training/pretrain_v6_strict_mix/mix_full.txt")
+    )
+    parser.add_argument(
+        "--extra-dir", type=Path, default=Path("data/training/pretrain_v6_extra_candidates")
+    )
+    parser.add_argument(
+        "--extra-manifest",
+        type=Path,
+        default=Path("data/training/pretrain_v6_extra_candidates/source_disjoint_manifest.jsonl"),
+    )
+    parser.add_argument(
+        "--out-dir", type=Path, default=Path("data/training/pretrain_v6_expanded_test_mix")
+    )
     parser.add_argument("--include-sharealike", action="store_true")
     return parser.parse_args()
 
@@ -91,16 +102,28 @@ def main() -> None:
         "sources": {},
     }
     source_paths = {
-        "german_commons_web_wikipedia": args.extra_dir / "german_commons_web_wikipedia" / "german_commons_web_wikipedia.jsonl",
-        "german_commons_web_wikidiscussions": args.extra_dir / "german_commons_web_wikidiscussions" / "german_commons_web_wikidiscussions.jsonl",
-        "german_commons_scientific_wikibooks": args.extra_dir / "german_commons_scientific_wikibooks" / "german_commons_scientific_wikibooks.jsonl",
-        "german_commons_scientific_wikiversity": args.extra_dir / "german_commons_scientific_wikiversity" / "german_commons_scientific_wikiversity.jsonl",
-        "codeparrot_clean_python_permissive_plus": args.extra_dir / "codeparrot_clean_python_permissive_plus" / "codeparrot_clean_python_permissive_plus.jsonl",
+        "german_commons_web_wikipedia": args.extra_dir
+        / "german_commons_web_wikipedia"
+        / "german_commons_web_wikipedia.jsonl",
+        "german_commons_web_wikidiscussions": args.extra_dir
+        / "german_commons_web_wikidiscussions"
+        / "german_commons_web_wikidiscussions.jsonl",
+        "german_commons_scientific_wikibooks": args.extra_dir
+        / "german_commons_scientific_wikibooks"
+        / "german_commons_scientific_wikibooks.jsonl",
+        "german_commons_scientific_wikiversity": args.extra_dir
+        / "german_commons_scientific_wikiversity"
+        / "german_commons_scientific_wikiversity.jsonl",
+        "codeparrot_clean_python_permissive_plus": args.extra_dir
+        / "codeparrot_clean_python_permissive_plus"
+        / "codeparrot_clean_python_permissive_plus.jsonl",
     }
     if args.include_sharealike:
         source_paths.update(
             {
-                "natural_questions_german": args.extra_dir / "natural_questions_german" / "natural_questions_german.jsonl",
+                "natural_questions_german": args.extra_dir
+                / "natural_questions_german"
+                / "natural_questions_german.jsonl",
                 "avemio_german_rag_sft_qa": args.extra_dir
                 / "avemio_german_rag_sft_qa_without_timedifference"
                 / "avemio_german_rag_sft_qa_without_timedifference.jsonl",

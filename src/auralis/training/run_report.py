@@ -18,7 +18,7 @@ def write_start_manifest(
     *,
     path: Path,
     config: dict[str, Any],
-    metadata: Any,                               # RunMetadata dataclass
+    metadata: Any,  # RunMetadata dataclass
     backend_summary: dict[str, Any] | None = None,
     extra: dict[str, Any] | None = None,
 ) -> None:
@@ -53,7 +53,7 @@ def _yaml_sanitise(obj):
 def write_end_manifest(
     *,
     path: Path,
-    state: Any,                                  # TrainerState
+    state: Any,  # TrainerState
     exit_reason: str,
     health_summary: dict[str, Any] | None = None,
 ) -> None:
@@ -65,16 +65,18 @@ def write_end_manifest(
             existing = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
         except Exception:
             existing = {}
-    existing.update({
-        "status": "finished",
-        "exit_reason": str(exit_reason),
-        "final_state": asdict(state),
-        "health": health_summary or {},
-    })
+    existing.update(
+        {
+            "status": "finished",
+            "exit_reason": str(exit_reason),
+            "final_state": asdict(state),
+            "health": health_summary or {},
+        }
+    )
     path.write_text(
         yaml.safe_dump(_yaml_sanitise(existing), sort_keys=False, allow_unicode=True),
         encoding="utf-8",
     )
 
 
-__all__ = ["write_start_manifest", "write_end_manifest"]
+__all__ = ["write_end_manifest", "write_start_manifest"]

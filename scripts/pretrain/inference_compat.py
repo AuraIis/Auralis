@@ -27,6 +27,7 @@ REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(REPO / "src"))
 
+
 # Auto-enable mamba_ssm CUDA kernels when CUDA is available and mamba_ssm is
 # installed.  Checkpoints saved with the kernel back-end (parameter layout
 # uses _impl.inner.*) cannot be loaded with the native back-end — so this
@@ -38,14 +39,16 @@ def _maybe_enable_mamba_kernel() -> bool:
         return False
     try:
         import mamba_ssm  # noqa: F401
+
         os.environ["AURALIS_USE_MAMBA_KERNEL"] = "1"
         return True
     except ImportError:
         return False
 
+
 _kernel_active = _maybe_enable_mamba_kernel()
 
-from auralis.model import build_model                         # noqa: E402
+from auralis.model import build_model  # noqa: E402
 from auralis.tokenizer.chat_template import build_inference_prompt  # noqa: E402
 
 
@@ -70,24 +73,35 @@ def _greedy_generate(
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     p.add_argument("--model-config", type=Path, required=True)
-    p.add_argument("--checkpoint", type=Path, default=None,
-                   help="Optional .pt to load. If omitted, tests a fresh-init model.")
-    p.add_argument("--tokenizer", type=Path, default=REPO / "tokenizer" / "helix_v2_tokenizer.model")
+    p.add_argument(
+        "--checkpoint",
+        type=Path,
+        default=None,
+        help="Optional .pt to load. If omitted, tests a fresh-init model.",
+    )
+    p.add_argument(
+        "--tokenizer", type=Path, default=REPO / "tokenizer" / "helix_v2_tokenizer.model"
+    )
     p.add_argument("--device", default="auto")
     p.add_argument("--max-new-tokens", type=int, default=16)
     p.add_argument("--prompt", default="Hallo, wer bist du?")
     args = p.parse_args()
 
-    device = (torch.device("cuda" if torch.cuda.is_available() else "cpu")
-              if args.device == "auto" else torch.device(args.device))
+    device = (
+        torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if args.device == "auto"
+        else torch.device(args.device)
+    )
     print(f"device: {device}")
 
     # 1. Build + load
     model = build_model(args.model_config).to(device)
     n_params = sum(p.numel() for p in model.parameters())
-    print(f"model: {n_params/1e6:.1f} M params")
+    print(f"model: {n_params / 1e6:.1f} M params")
     loaded_step = None
     if args.checkpoint:
         payload = torch.load(args.checkpoint, map_location=device, weights_only=False)
@@ -113,8 +127,9 @@ def main() -> None:
 
     # 2. Tokenizer sanity
     sp = spm.SentencePieceProcessor(model_file=str(args.tokenizer))
-    assert sp.GetPieceSize() == model.config.vocab_size, \
+    assert sp.GetPieceSize() == model.config.vocab_size, (
         f"vocab mismatch: tokenizer={sp.GetPieceSize()} model.cfg={model.config.vocab_size}"
+    )
 
     # 3. Chat-template roundtrip (v1-L-001 regression guard)
     inf_prompt = build_inference_prompt(

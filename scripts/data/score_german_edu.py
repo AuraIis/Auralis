@@ -74,7 +74,7 @@ def sample_docs(path: Path, n: int, scan_lines: int, max_chars: int, seed: int) 
             if i >= scan_lines:
                 break
             line = line.strip()
-            if len(line) >= 200:                     # skip trivially short lines
+            if len(line) >= 200:  # skip trivially short lines
                 pool.append(line[:max_chars])
     if not pool:
         raise SystemExit(f"no usable docs in {path}")
@@ -82,30 +82,45 @@ def sample_docs(path: Path, n: int, scan_lines: int, max_chars: int, seed: int) 
     return pool[:n]
 
 
-async def annotate(docs: list[str], source: str, *, base_url: str, api_key: str,
-                   model: str, concurrency: int, max_tokens: int = 1024,
-                   reasoning_effort: str = "") -> list[dict]:
-    client = QwenClient(base_url=base_url, api_key=api_key, model=model,
-                        max_concurrency=concurrency)
+async def annotate(
+    docs: list[str],
+    source: str,
+    *,
+    base_url: str,
+    api_key: str,
+    model: str,
+    concurrency: int,
+    max_tokens: int = 1024,
+    reasoning_effort: str = "",
+) -> list[dict]:
+    client = QwenClient(
+        base_url=base_url, api_key=api_key, model=model, max_concurrency=concurrency
+    )
     extra_body = {"reasoning_effort": reasoning_effort} if reasoning_effort else {}
     reqs = [
-        GenRequest(request_id=f"{source}-{i}", messages=build_messages(doc),
-                   max_tokens=max_tokens, temperature=0.0,
-                   extra={"source": source, "snippet": doc[:160], "text": doc},
-                   extra_body=extra_body)
+        GenRequest(
+            request_id=f"{source}-{i}",
+            messages=build_messages(doc),
+            max_tokens=max_tokens,
+            temperature=0.0,
+            extra={"source": source, "snippet": doc[:160], "text": doc},
+            extra_body=extra_body,
+        )
         for i, doc in enumerate(docs)
     ]
     rows: list[dict] = []
     async for res in client.run_batch(reqs):
-        rows.append({
-            "id": res.request_id,
-            "source": (res.extra or {}).get("source"),
-            "score": None if res.error else parse_score(res.completion),
-            "snippet": (res.extra or {}).get("snippet"),
-            "text": (res.extra or {}).get("text"),
-            "raw": res.completion[:300],
-            "error": res.error,
-        })
+        rows.append(
+            {
+                "id": res.request_id,
+                "source": (res.extra or {}).get("source"),
+                "score": None if res.error else parse_score(res.completion),
+                "snippet": (res.extra or {}).get("snippet"),
+                "text": (res.extra or {}).get("text"),
+                "raw": res.completion[:300],
+                "error": res.error,
+            }
+        )
     print("client stats:", json.dumps(client.stats_summary()), file=sys.stderr)
     return rows
 
@@ -117,17 +132,17 @@ def summarize(rows: list[dict], source: str) -> None:
     hist = {s: sum(1 for x in scored if x == s) for s in range(6)}
     mean = sum(scored) / len(scored) if scored else float("nan")
     keep = sum(1 for x in scored if x >= 3) / len(scored) if scored else 0.0
-    print(f"\n=== {source}: {len(scored)} scored "
-          f"(errors {n_err}, unparsed {n_unparsed}) ===")
+    print(f"\n=== {source}: {len(scored)} scored (errors {n_err}, unparsed {n_unparsed}) ===")
     for s in range(6):
         bar = "#" * round(40 * hist[s] / max(1, len(scored)))
         print(f"  score {s}: {hist[s]:4d} {bar}")
-    print(f"  mean: {mean:.2f} | fraction >= 3 (keep-bar): {keep*100:.1f}%")
+    print(f"  mean: {mean:.2f} | fraction >= 3 (keep-bar): {keep * 100:.1f}%")
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument("--input", type=Path, required=True)
     ap.add_argument("--source", required=True, help="label for this source, e.g. fineweb2_de")
     ap.add_argument("--output-jsonl", type=Path, required=True)
@@ -135,28 +150,48 @@ def main() -> int:
     ap.add_argument("--scan-lines", type=int, default=200_000)
     ap.add_argument("--max-chars", type=int, default=2000)
     ap.add_argument("--concurrency", type=int, default=8)
-    ap.add_argument("--max-tokens", type=int, default=1024,
-                    help="Output token budget. Thinking models (Gemini 3.x) count "
-                         "reasoning against this, so keep it generous (>=512) or the "
-                         "visible 'Bewertung:' line gets truncated.")
-    ap.add_argument("--reasoning-effort", default="",
-                    help="Pass-through to thinking models (e.g. 'low'/'medium'/'high' "
-                         "for Gemini 3.x). Empty = provider default. 'low' cuts latency "
-                         "and cost on Gemini 3.5 Flash with negligible quality loss for "
-                         "a 0-5 rating task.")
+    ap.add_argument(
+        "--max-tokens",
+        type=int,
+        default=1024,
+        help="Output token budget. Thinking models (Gemini 3.x) count "
+        "reasoning against this, so keep it generous (>=512) or the "
+        "visible 'Bewertung:' line gets truncated.",
+    )
+    ap.add_argument(
+        "--reasoning-effort",
+        default="",
+        help="Pass-through to thinking models (e.g. 'low'/'medium'/'high' "
+        "for Gemini 3.x). Empty = provider default. 'low' cuts latency "
+        "and cost on Gemini 3.5 Flash with negligible quality loss for "
+        "a 0-5 rating task.",
+    )
     ap.add_argument("--seed", type=int, default=20260530)
-    ap.add_argument("--base-url", default=os.environ.get("OPENAI_API_BASE", "http://localhost:8000/v1"))
+    ap.add_argument(
+        "--base-url", default=os.environ.get("OPENAI_API_BASE", "http://localhost:8000/v1")
+    )
     ap.add_argument("--api-key", default=os.environ.get("OPENAI_API_KEY", "EMPTY"))
     ap.add_argument("--model", default=os.environ.get("OPENAI_MODEL", "Qwen2.5-32B-Instruct"))
     args = ap.parse_args()
 
     docs = sample_docs(args.input, args.sample, args.scan_lines, args.max_chars, args.seed)
-    print(f"scoring {len(docs)} docs from {args.input} (source={args.source}) "
-          f"via {args.model} @ {args.base_url}", file=sys.stderr)
-    rows = asyncio.run(annotate(docs, args.source, base_url=args.base_url,
-                                api_key=args.api_key, model=args.model,
-                                concurrency=args.concurrency, max_tokens=args.max_tokens,
-                                reasoning_effort=args.reasoning_effort))
+    print(
+        f"scoring {len(docs)} docs from {args.input} (source={args.source}) "
+        f"via {args.model} @ {args.base_url}",
+        file=sys.stderr,
+    )
+    rows = asyncio.run(
+        annotate(
+            docs,
+            args.source,
+            base_url=args.base_url,
+            api_key=args.api_key,
+            model=args.model,
+            concurrency=args.concurrency,
+            max_tokens=args.max_tokens,
+            reasoning_effort=args.reasoning_effort,
+        )
+    )
     args.output_jsonl.parent.mkdir(parents=True, exist_ok=True)
     with args.output_jsonl.open("w", encoding="utf-8") as fh:
         for r in rows:

@@ -24,6 +24,7 @@ import torch.nn.functional as F
 # Optional CUDA back-end
 try:
     from mamba_ssm import Mamba2 as _Mamba2SSM
+
     _MAMBA_SSM_AVAILABLE = True
 except Exception:
     _Mamba2SSM = None
@@ -67,9 +68,12 @@ class _Mamba2Native(nn.Module):
 
         self.in_proj = nn.Linear(d_model, 2 * self.d_inner, bias=False)
         self.conv1d = nn.Conv1d(
-            in_channels=self.d_inner, out_channels=self.d_inner,
-            kernel_size=d_conv, padding=d_conv - 1,
-            groups=self.d_inner, bias=True,
+            in_channels=self.d_inner,
+            out_channels=self.d_inner,
+            kernel_size=d_conv,
+            padding=d_conv - 1,
+            groups=self.d_inner,
+            bias=True,
         )
         self.x_proj = nn.Linear(self.d_inner, self.d_inner + 2 * d_state, bias=False)
         self.dt_proj = nn.Linear(self.d_inner, self.d_inner, bias=True)
@@ -91,7 +95,10 @@ class _Mamba2Native(nn.Module):
         with torch.no_grad():
             log_min = torch.log(torch.tensor(self.dt_min, dtype=torch.float32))
             log_max = torch.log(torch.tensor(self.dt_max, dtype=torch.float32))
-            dt = torch.exp(torch.rand(self.d_inner, device=self.dt_proj.bias.device) * (log_max - log_min) + log_min)
+            dt = torch.exp(
+                torch.rand(self.d_inner, device=self.dt_proj.bias.device) * (log_max - log_min)
+                + log_min
+            )
             # inverse softplus: softplus(bias) == dt
             self.dt_proj.bias.copy_(dt + torch.log(-torch.expm1(-dt)))
 
@@ -117,8 +124,11 @@ class _Mamba2Native(nn.Module):
         dtype = x.dtype
         dA = torch.exp(dt.unsqueeze(-1) * A)
         dB = dt.unsqueeze(-1) * Bp.unsqueeze(-2)
-        h = (torch.zeros(B, d_inner, d_state, device=x.device, dtype=dtype)
-             if state is None else state.to(dtype))
+        h = (
+            torch.zeros(B, d_inner, d_state, device=x.device, dtype=dtype)
+            if state is None
+            else state.to(dtype)
+        )
         outputs = []
         for t in range(L):
             h = dA[:, t] * h + dB[:, t] * x[:, t].unsqueeze(-1)
@@ -181,8 +191,12 @@ class Mamba2Layer(nn.Module):
         self.backend = "mamba_ssm" if use_cuda else "native"
         impl = _Mamba2CUDA if use_cuda else _Mamba2Native
         self._impl = impl(
-            d_model=d_model, d_state=d_state, d_conv=d_conv,
-            expand_factor=expand_factor, dt_min=dt_min, dt_max=dt_max,
+            d_model=d_model,
+            d_state=d_state,
+            d_conv=d_conv,
+            expand_factor=expand_factor,
+            dt_min=dt_min,
+            dt_max=dt_max,
         )
 
     @property

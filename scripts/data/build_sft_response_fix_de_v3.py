@@ -18,9 +18,8 @@ import json
 import random
 import re
 from collections import Counter
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
-
 
 REPO = Path(__file__).resolve().parents[2]
 SYSTEM_DE = (
@@ -79,39 +78,141 @@ def paired_capitals() -> list[dict]:
     ]
     out: list[dict] = []
     for place, correct, wrong in countries:
-        out.extend([
-            row(f"Ist {correct} die Hauptstadt von {place}?", f"Ja. {correct} ist die Hauptstadt von {place}.", "facts_de", "paired_capitals"),
-            row(f"Ist {wrong} die Hauptstadt von {place}?", f"Nein. Die Hauptstadt von {place} ist {correct}.", "hallucination_guard", "paired_capitals"),
-            row(f"Stimmt es, dass {correct} die Hauptstadt von {place} ist?", f"Ja. Das stimmt: {correct} ist die Hauptstadt von {place}.", "facts_de", "paired_capitals"),
-            row(f"Stimmt es, dass {wrong} die Hauptstadt von {place} ist?", f"Nein. Das ist falsch; die Hauptstadt von {place} ist {correct}.", "hallucination_guard", "paired_capitals"),
-            row(f"Welche Stadt ist die Hauptstadt von {place}?", f"Die Hauptstadt von {place} ist {correct}.", "facts_de", "paired_capitals"),
-        ])
+        out.extend(
+            [
+                row(
+                    f"Ist {correct} die Hauptstadt von {place}?",
+                    f"Ja. {correct} ist die Hauptstadt von {place}.",
+                    "facts_de",
+                    "paired_capitals",
+                ),
+                row(
+                    f"Ist {wrong} die Hauptstadt von {place}?",
+                    f"Nein. Die Hauptstadt von {place} ist {correct}.",
+                    "hallucination_guard",
+                    "paired_capitals",
+                ),
+                row(
+                    f"Stimmt es, dass {correct} die Hauptstadt von {place} ist?",
+                    f"Ja. Das stimmt: {correct} ist die Hauptstadt von {place}.",
+                    "facts_de",
+                    "paired_capitals",
+                ),
+                row(
+                    f"Stimmt es, dass {wrong} die Hauptstadt von {place} ist?",
+                    f"Nein. Das ist falsch; die Hauptstadt von {place} ist {correct}.",
+                    "hallucination_guard",
+                    "paired_capitals",
+                ),
+                row(
+                    f"Welche Stadt ist die Hauptstadt von {place}?",
+                    f"Die Hauptstadt von {place} ist {correct}.",
+                    "facts_de",
+                    "paired_capitals",
+                ),
+            ]
+        )
     for state, correct, wrong in states:
-        out.extend([
-            row(f"Ist {correct} die Hauptstadt von {state}?", f"Ja. {correct} ist die Hauptstadt von {state}.", "facts_de", "paired_capitals"),
-            row(f"Ist {wrong} die Hauptstadt von {state}?", f"Nein. Die Hauptstadt von {state} ist {correct}.", "hallucination_guard", "paired_capitals"),
-            row(f"Stimmt es, dass {correct} die Hauptstadt von {state} ist?", f"Ja. Das stimmt: {correct} ist die Hauptstadt von {state}.", "facts_de", "paired_capitals"),
-            row(f"Stimmt es, dass {wrong} die Hauptstadt von {state} ist?", f"Nein. Das ist falsch; die Hauptstadt von {state} ist {correct}.", "hallucination_guard", "paired_capitals"),
-            row(f"Welche Stadt ist die Hauptstadt von {state}?", f"Die Hauptstadt von {state} ist {correct}.", "facts_de", "paired_capitals"),
-        ])
+        out.extend(
+            [
+                row(
+                    f"Ist {correct} die Hauptstadt von {state}?",
+                    f"Ja. {correct} ist die Hauptstadt von {state}.",
+                    "facts_de",
+                    "paired_capitals",
+                ),
+                row(
+                    f"Ist {wrong} die Hauptstadt von {state}?",
+                    f"Nein. Die Hauptstadt von {state} ist {correct}.",
+                    "hallucination_guard",
+                    "paired_capitals",
+                ),
+                row(
+                    f"Stimmt es, dass {correct} die Hauptstadt von {state} ist?",
+                    f"Ja. Das stimmt: {correct} ist die Hauptstadt von {state}.",
+                    "facts_de",
+                    "paired_capitals",
+                ),
+                row(
+                    f"Stimmt es, dass {wrong} die Hauptstadt von {state} ist?",
+                    f"Nein. Das ist falsch; die Hauptstadt von {state} ist {correct}.",
+                    "hallucination_guard",
+                    "paired_capitals",
+                ),
+                row(
+                    f"Welche Stadt ist die Hauptstadt von {state}?",
+                    f"Die Hauptstadt von {state} ist {correct}.",
+                    "facts_de",
+                    "paired_capitals",
+                ),
+            ]
+        )
     return out
 
 
 def science_and_facts() -> list[dict]:
     pairs = [
-        ("Ist Wasser ein chemisches Element?", "Nein. Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.", "hallucination_guard"),
-        ("Ist Wasser eine chemische Verbindung?", "Ja. Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.", "facts_de"),
-        ("Was ist Wasser bei Raumtemperatur?", "Wasser ist bei Raumtemperatur normalerweise fluessig.", "qa_de"),
+        (
+            "Ist Wasser ein chemisches Element?",
+            "Nein. Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.",
+            "hallucination_guard",
+        ),
+        (
+            "Ist Wasser eine chemische Verbindung?",
+            "Ja. Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.",
+            "facts_de",
+        ),
+        (
+            "Was ist Wasser bei Raumtemperatur?",
+            "Wasser ist bei Raumtemperatur normalerweise fluessig.",
+            "qa_de",
+        ),
         ("Was ist H2O?", "H2O ist die chemische Formel fuer Wasser.", "qa_de"),
-        ("Was ist Sauerstoff?", "Sauerstoff ist ein chemisches Element und ein wichtiger Bestandteil der Luft.", "qa_de"),
-        ("Ist Sauerstoff ein chemisches Element?", "Ja. Sauerstoff ist ein chemisches Element.", "facts_de"),
-        ("Ist Sauerstoff bei Raumtemperatur normalerweise ein Gas?", "Ja. Sauerstoff ist bei Raumtemperatur normalerweise ein Gas.", "facts_de"),
-        ("Ist Sauerstoff bei Raumtemperatur normalerweise fluessig?", "Nein. Sauerstoff ist bei Raumtemperatur normalerweise ein Gas.", "hallucination_guard"),
-        ("Was ist Luft?", "Luft ist ein Gemisch aus Gasen, vor allem Stickstoff und Sauerstoff.", "qa_de"),
-        ("Was ist Photosynthese in einem Satz?", "Photosynthese ist der Prozess, bei dem Pflanzen mit Licht aus Wasser und Kohlenstoffdioxid Zucker und Sauerstoff bilden.", "qa_de"),
-        ("Ist Photosynthese die Umwandlung von Licht in Metall?", "Nein. Photosynthese bildet vor allem Zucker und Sauerstoff, kein Metall.", "hallucination_guard"),
-        ("Was ist ein Computer?", "Ein Computer ist eine Maschine, die Daten verarbeitet, speichert und Programme ausfuehrt.", "qa_de"),
-        ("Ist ein Computer nur ein Taschenrechner?", "Nein. Ein Taschenrechner ist spezieller; ein Computer kann viele Arten von Programmen ausfuehren.", "hallucination_guard"),
+        (
+            "Was ist Sauerstoff?",
+            "Sauerstoff ist ein chemisches Element und ein wichtiger Bestandteil der Luft.",
+            "qa_de",
+        ),
+        (
+            "Ist Sauerstoff ein chemisches Element?",
+            "Ja. Sauerstoff ist ein chemisches Element.",
+            "facts_de",
+        ),
+        (
+            "Ist Sauerstoff bei Raumtemperatur normalerweise ein Gas?",
+            "Ja. Sauerstoff ist bei Raumtemperatur normalerweise ein Gas.",
+            "facts_de",
+        ),
+        (
+            "Ist Sauerstoff bei Raumtemperatur normalerweise fluessig?",
+            "Nein. Sauerstoff ist bei Raumtemperatur normalerweise ein Gas.",
+            "hallucination_guard",
+        ),
+        (
+            "Was ist Luft?",
+            "Luft ist ein Gemisch aus Gasen, vor allem Stickstoff und Sauerstoff.",
+            "qa_de",
+        ),
+        (
+            "Was ist Photosynthese in einem Satz?",
+            "Photosynthese ist der Prozess, bei dem Pflanzen mit Licht aus Wasser und Kohlenstoffdioxid Zucker und Sauerstoff bilden.",
+            "qa_de",
+        ),
+        (
+            "Ist Photosynthese die Umwandlung von Licht in Metall?",
+            "Nein. Photosynthese bildet vor allem Zucker und Sauerstoff, kein Metall.",
+            "hallucination_guard",
+        ),
+        (
+            "Was ist ein Computer?",
+            "Ein Computer ist eine Maschine, die Daten verarbeitet, speichert und Programme ausfuehrt.",
+            "qa_de",
+        ),
+        (
+            "Ist ein Computer nur ein Taschenrechner?",
+            "Nein. Ein Taschenrechner ist spezieller; ein Computer kann viele Arten von Programmen ausfuehren.",
+            "hallucination_guard",
+        ),
         ("Was ist ein Apfel?", "Ein Apfel ist eine essbare Frucht.", "qa_de"),
         ("Ist ein Apfel ein Tier?", "Nein. Ein Apfel ist eine Frucht.", "hallucination_guard"),
         ("Was ist Regen?", "Regen ist Wasser, das aus Wolken auf die Erde faellt.", "qa_de"),
@@ -121,16 +222,44 @@ def science_and_facts() -> list[dict]:
 
 def goethe_block() -> list[dict]:
     pairs = [
-        ("Wer schrieb Faust?", "Faust wurde von Johann Wolfgang von Goethe geschrieben.", "facts_de"),
-        ("Wer ist der Autor von Faust?", "Der Autor von Faust ist Johann Wolfgang von Goethe.", "facts_de"),
+        (
+            "Wer schrieb Faust?",
+            "Faust wurde von Johann Wolfgang von Goethe geschrieben.",
+            "facts_de",
+        ),
+        (
+            "Wer ist der Autor von Faust?",
+            "Der Autor von Faust ist Johann Wolfgang von Goethe.",
+            "facts_de",
+        ),
         ("Hat Goethe Faust geschrieben?", "Ja. Goethe schrieb Faust.", "facts_de"),
         ("Ist Faust von Goethe?", "Ja. Faust stammt von Johann Wolfgang von Goethe.", "facts_de"),
-        ("Schrieb Goethe Mein Kampf?", "Nein. Mein Kampf stammt von Adolf Hitler, nicht von Goethe.", "hallucination_guard"),
-        ("Hat Goethe Mein Kampf geschrieben?", "Nein. Mein Kampf stammt von Adolf Hitler, nicht von Goethe.", "hallucination_guard"),
-        ("Ist Mein Kampf von Goethe?", "Nein. Mein Kampf ist nicht von Goethe, sondern von Adolf Hitler.", "hallucination_guard"),
+        (
+            "Schrieb Goethe Mein Kampf?",
+            "Nein. Mein Kampf stammt von Adolf Hitler, nicht von Goethe.",
+            "hallucination_guard",
+        ),
+        (
+            "Hat Goethe Mein Kampf geschrieben?",
+            "Nein. Mein Kampf stammt von Adolf Hitler, nicht von Goethe.",
+            "hallucination_guard",
+        ),
+        (
+            "Ist Mein Kampf von Goethe?",
+            "Nein. Mein Kampf ist nicht von Goethe, sondern von Adolf Hitler.",
+            "hallucination_guard",
+        ),
         ("Wer schrieb Mein Kampf?", "Mein Kampf wurde von Adolf Hitler geschrieben.", "facts_de"),
-        ("Korrigiere: Faust wurde von Hitler geschrieben.", "Das ist falsch. Faust wurde von Johann Wolfgang von Goethe geschrieben.", "hallucination_guard"),
-        ("Korrigiere: Mein Kampf wurde von Goethe geschrieben.", "Das ist falsch. Mein Kampf wurde von Adolf Hitler geschrieben.", "hallucination_guard"),
+        (
+            "Korrigiere: Faust wurde von Hitler geschrieben.",
+            "Das ist falsch. Faust wurde von Johann Wolfgang von Goethe geschrieben.",
+            "hallucination_guard",
+        ),
+        (
+            "Korrigiere: Mein Kampf wurde von Goethe geschrieben.",
+            "Das ist falsch. Mein Kampf wurde von Adolf Hitler geschrieben.",
+            "hallucination_guard",
+        ),
     ]
     return [row(q, a, cat, "goethe_faust_mein_kampf") for q, a, cat in pairs]
 
@@ -138,32 +267,107 @@ def goethe_block() -> list[dict]:
 def honesty_block() -> list[dict]:
     unknowns = ["Planet Qorblax", "Mond Lyrion-7", "Stadt Nordanien", "Archiv Q-77"]
     out = [
-        row("Was machst du, wenn du eine Antwort nicht sicher weisst?", "Ich sage, dass ich unsicher bin, und erfinde keine Details.", "honesty", "honesty"),
-        row("Wie antwortest du, wenn du keine sichere Quelle hast?", "Ich sage, dass ich keine sichere Quelle habe, und behaupte nichts als Tatsache.", "honesty", "honesty"),
-        row("Was solltest du vermeiden, wenn du keine Quelle kennst?", "Ich sollte keine Quelle erfinden und keine unsicheren Details als Fakten darstellen.", "honesty", "honesty"),
+        row(
+            "Was machst du, wenn du eine Antwort nicht sicher weisst?",
+            "Ich sage, dass ich unsicher bin, und erfinde keine Details.",
+            "honesty",
+            "honesty",
+        ),
+        row(
+            "Wie antwortest du, wenn du keine sichere Quelle hast?",
+            "Ich sage, dass ich keine sichere Quelle habe, und behaupte nichts als Tatsache.",
+            "honesty",
+            "honesty",
+        ),
+        row(
+            "Was solltest du vermeiden, wenn du keine Quelle kennst?",
+            "Ich sollte keine Quelle erfinden und keine unsicheren Details als Fakten darstellen.",
+            "honesty",
+            "honesty",
+        ),
     ]
     for item in unknowns:
-        out.extend([
-            row(f"Welche Farbe hatte der erfundene {item}?", f"Dazu habe ich keine verlaessliche Information. {item} klingt erfunden oder unklar.", "honesty", "honesty"),
-            row(f"Nenne zwei sichere Fakten ueber {item}.", f"Ich kenne keine verlaesslichen Fakten ueber {item}. Ich sollte keine Details erfinden.", "honesty", "honesty"),
-        ])
+        out.extend(
+            [
+                row(
+                    f"Welche Farbe hatte der erfundene {item}?",
+                    f"Dazu habe ich keine verlaessliche Information. {item} klingt erfunden oder unklar.",
+                    "honesty",
+                    "honesty",
+                ),
+                row(
+                    f"Nenne zwei sichere Fakten ueber {item}.",
+                    f"Ich kenne keine verlaesslichen Fakten ueber {item}. Ich sollte keine Details erfinden.",
+                    "honesty",
+                    "honesty",
+                ),
+            ]
+        )
     return out
 
 
 def eval_pairs() -> list[dict]:
     pairs = [
-        ("Ist Wien aktuell die Hauptstadt von Oesterreich?", "Ja. Wien ist die Hauptstadt von Oesterreich.", "facts_de"),
-        ("Ist Salzburg aktuell die Hauptstadt von Oesterreich?", "Nein. Die Hauptstadt von Oesterreich ist Wien.", "hallucination_guard"),
-        ("Ist Bern die Hauptstadt der Schweiz?", "Ja. Bern ist die Hauptstadt der Schweiz.", "facts_de"),
-        ("Ist Zuerich die Hauptstadt der Schweiz?", "Nein. Die Hauptstadt der Schweiz ist Bern.", "hallucination_guard"),
-        ("Schrieb Goethe Mein Kampf?", "Nein. Mein Kampf stammt von Adolf Hitler, nicht von Goethe.", "hallucination_guard"),
-        ("Wer schrieb Faust?", "Faust wurde von Johann Wolfgang von Goethe geschrieben.", "facts_de"),
-        ("Ist Wasser ein chemisches Element?", "Nein. Wasser ist eine chemische Verbindung, kein Element.", "hallucination_guard"),
-        ("Was ist Sauerstoff?", "Sauerstoff ist ein chemisches Element und ein wichtiger Bestandteil der Luft.", "qa_de"),
-        ("Was ist Photosynthese in einem Satz?", "Photosynthese ist der Prozess, bei dem Pflanzen mit Licht Zucker und Sauerstoff bilden.", "qa_de"),
-        ("Was machst du, wenn du eine Antwort nicht sicher weisst?", "Ich sage, dass ich unsicher bin, und erfinde keine Details.", "honesty"),
-        ("Welche Farbe hatte der erfundene Planet Xalidor?", "Dazu habe ich keine verlaessliche Information. Xalidor klingt erfunden oder unklar.", "honesty"),
-        ("Erklaere kurz, was ein Computer ist.", "Ein Computer ist eine Maschine, die Daten verarbeitet und Programme ausfuehrt.", "qa_de"),
+        (
+            "Ist Wien aktuell die Hauptstadt von Oesterreich?",
+            "Ja. Wien ist die Hauptstadt von Oesterreich.",
+            "facts_de",
+        ),
+        (
+            "Ist Salzburg aktuell die Hauptstadt von Oesterreich?",
+            "Nein. Die Hauptstadt von Oesterreich ist Wien.",
+            "hallucination_guard",
+        ),
+        (
+            "Ist Bern die Hauptstadt der Schweiz?",
+            "Ja. Bern ist die Hauptstadt der Schweiz.",
+            "facts_de",
+        ),
+        (
+            "Ist Zuerich die Hauptstadt der Schweiz?",
+            "Nein. Die Hauptstadt der Schweiz ist Bern.",
+            "hallucination_guard",
+        ),
+        (
+            "Schrieb Goethe Mein Kampf?",
+            "Nein. Mein Kampf stammt von Adolf Hitler, nicht von Goethe.",
+            "hallucination_guard",
+        ),
+        (
+            "Wer schrieb Faust?",
+            "Faust wurde von Johann Wolfgang von Goethe geschrieben.",
+            "facts_de",
+        ),
+        (
+            "Ist Wasser ein chemisches Element?",
+            "Nein. Wasser ist eine chemische Verbindung, kein Element.",
+            "hallucination_guard",
+        ),
+        (
+            "Was ist Sauerstoff?",
+            "Sauerstoff ist ein chemisches Element und ein wichtiger Bestandteil der Luft.",
+            "qa_de",
+        ),
+        (
+            "Was ist Photosynthese in einem Satz?",
+            "Photosynthese ist der Prozess, bei dem Pflanzen mit Licht Zucker und Sauerstoff bilden.",
+            "qa_de",
+        ),
+        (
+            "Was machst du, wenn du eine Antwort nicht sicher weisst?",
+            "Ich sage, dass ich unsicher bin, und erfinde keine Details.",
+            "honesty",
+        ),
+        (
+            "Welche Farbe hatte der erfundene Planet Xalidor?",
+            "Dazu habe ich keine verlaessliche Information. Xalidor klingt erfunden oder unklar.",
+            "honesty",
+        ),
+        (
+            "Erklaere kurz, was ein Computer ist.",
+            "Ein Computer ist eine Maschine, die Daten verarbeitet und Programme ausfuehrt.",
+            "qa_de",
+        ),
     ]
     return [row(q, a, cat, "eval_disjoint_v3") for q, a, cat in pairs]
 
@@ -192,7 +396,9 @@ def write_jsonl(path: Path, rows: Iterable[dict]) -> int:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--output-dir", type=Path, default=REPO / "data/training/sft_response_fix_de_v3")
+    ap.add_argument(
+        "--output-dir", type=Path, default=REPO / "data/training/sft_response_fix_de_v3"
+    )
     ap.add_argument("--seed", type=int, default=20260528)
     args = ap.parse_args()
 
@@ -212,7 +418,9 @@ def main() -> None:
         "train_categories": dict(Counter(x["category"] for x in train).most_common()),
         "train_blocks": dict(Counter(x["block"] for x in train).most_common()),
     }
-    (args.output_dir / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    (args.output_dir / "manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     print(json.dumps(manifest, ensure_ascii=False, indent=2))
 
 

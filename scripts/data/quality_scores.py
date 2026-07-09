@@ -25,7 +25,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import os
 import random
 import statistics as stats
 import sys
@@ -35,15 +34,16 @@ import sentencepiece as spm
 
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO))
-from scripts.data._common import load_paths                    # noqa: E402
+from scripts.data._common import load_paths  # noqa: E402
 
 
 def _shingle_hash(s: str, k: int = 8) -> int:
     if len(s) < k:
         return hash(s)
     # rolling blake2b on k-char shingles, return count of unique shingles sample
-    return int(hashlib.blake2b(s[:k].encode("utf-8", errors="replace"),
-                                digest_size=8).hexdigest(), 16)
+    return int(
+        hashlib.blake2b(s[:k].encode("utf-8", errors="replace"), digest_size=8).hexdigest(), 16
+    )
 
 
 def _encoding_suspect(line: str) -> bool:
@@ -76,8 +76,12 @@ def analyse(path: Path, sample_dedup: int, sp: spm.SentencePieceProcessor | None
 
             # near-dup shingle sample (blake2b of first 64 chars)
             if sample_rng.random() < (sample_dedup / max(n, 1)):
-                h = int(hashlib.blake2b(line[:64].encode("utf-8", errors="replace"),
-                                         digest_size=8).hexdigest(), 16)
+                h = int(
+                    hashlib.blake2b(
+                        line[:64].encode("utf-8", errors="replace"), digest_size=8
+                    ).hexdigest(),
+                    16,
+                )
                 if h in seen:
                     dup += 1
                 else:
@@ -108,13 +112,20 @@ def analyse(path: Path, sample_dedup: int, sp: spm.SentencePieceProcessor | None
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     p.add_argument("--data-config", type=Path, default=None)
-    p.add_argument("--tokenizer", type=Path, default=REPO / "tokenizer" / "helix_v2_tokenizer.model")
-    p.add_argument("--sample-dedup", type=int, default=50_000,
-                   help="Target number of lines to sample for dedup detection.")
-    p.add_argument("--output-md", type=Path,
-                   default=REPO / "data" / "eval" / "quality_report.md")
+    p.add_argument(
+        "--tokenizer", type=Path, default=REPO / "tokenizer" / "helix_v2_tokenizer.model"
+    )
+    p.add_argument(
+        "--sample-dedup",
+        type=int,
+        default=50_000,
+        help="Target number of lines to sample for dedup detection.",
+    )
+    p.add_argument("--output-md", type=Path, default=REPO / "data" / "eval" / "quality_report.md")
     args = p.parse_args()
 
     cfg = load_paths(args.data_config) if args.data_config else load_paths()
@@ -131,7 +142,11 @@ def main() -> None:
         if isinstance(entries, str):
             entries = [entries]
         for entry in entries:
-            candidates = list(data_root.glob(entry)) if any(c in entry for c in "*?[") else [data_root / entry]
+            candidates = (
+                list(data_root.glob(entry))
+                if any(c in entry for c in "*?[")
+                else [data_root / entry]
+            )
             for p_ in candidates:
                 if not p_.is_file():
                     continue
@@ -152,8 +167,8 @@ def main() -> None:
     for r in rows:
         md.append(
             f"| `{Path(r['path']).name}` | {r['language']} | {r['gb']:.2f} | {r['lines']:,} | "
-            f"{r['dedup_rate_estimate']*100:.2f}% | {r['suspect_rate']*100:.3f}% | "
-            f"{r.get('tokenizer_tokens_per_100_words','—')} |"
+            f"{r['dedup_rate_estimate'] * 100:.2f}% | {r['suspect_rate'] * 100:.3f}% | "
+            f"{r.get('tokenizer_tokens_per_100_words', '—')} |"
         )
     args.output_md.write_text("\n".join(md) + "\n", encoding="utf-8")
     print(f"wrote {args.output_md}")

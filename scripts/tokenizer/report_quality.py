@@ -33,8 +33,8 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
-from scripts.data._common import load_paths
 from auralis.tokenizer.chat_template import build_inference_prompt
+from scripts.data._common import load_paths
 
 
 def _sample_lines(path: Path, n: int, seed: int = 42) -> list[str]:
@@ -79,7 +79,7 @@ def _check_chat_roundtrip(sp: spm.SentencePieceProcessor) -> dict[str, bool | st
     prompt = build_inference_prompt(
         [
             {"role": "system", "content": "Du bist Helix."},
-            {"role": "user",   "content": "Hallo, wie geht's dir heute? 1+1=?"},
+            {"role": "user", "content": "Hallo, wie geht's dir heute? 1+1=?"},
         ],
     )
     ids = sp.EncodeAsIds(prompt)
@@ -89,12 +89,18 @@ def _check_chat_roundtrip(sp: spm.SentencePieceProcessor) -> dict[str, bool | st
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--model", type=Path, required=True, help="helix_v2_tokenizer.model")
-    parser.add_argument("--config", type=Path, default=REPO_ROOT / "configs" / "tokenizer" / "helix_v2.yaml")
+    parser.add_argument(
+        "--config", type=Path, default=REPO_ROOT / "configs" / "tokenizer" / "helix_v2.yaml"
+    )
     parser.add_argument("--data-config", type=Path, default=None)
     parser.add_argument("--samples-per-language", type=int, default=2000)
-    parser.add_argument("--output", type=Path, default=REPO_ROOT / "tokenizer" / "quality_report.md")
+    parser.add_argument(
+        "--output", type=Path, default=REPO_ROOT / "tokenizer" / "quality_report.md"
+    )
     args = parser.parse_args()
 
     cfg = yaml.safe_load(args.config.read_text(encoding="utf-8"))
@@ -124,8 +130,8 @@ def main() -> None:
 
     sources = {
         "english": _first_existing(data_cfg["cleaned"]["english"]),
-        "german":  _first_existing(data_cfg["cleaned"]["german"]),
-        "code":    _first_existing(data_cfg["cleaned"]["code"]),
+        "german": _first_existing(data_cfg["cleaned"]["german"]),
+        "code": _first_existing(data_cfg["cleaned"]["code"]),
     }
     # Per-language gate + which metric it applies to.
     # EN/DE use tokens/100-words (natural-language compression metric).
@@ -133,8 +139,8 @@ def main() -> None:
     # poorly defined for code (3 "words" but many symbol tokens per line).
     gate_map = {
         "english": ("tokens_per_100_words", float(targets["english_tokens_per_100_words_max"])),
-        "german":  ("tokens_per_100_words", float(targets["german_tokens_per_100_words_max"])),
-        "code":    ("tokens_per_kb",        float(targets["code_tokens_per_kb_max"])),
+        "german": ("tokens_per_100_words", float(targets["german_tokens_per_100_words_max"])),
+        "code": ("tokens_per_kb", float(targets["code_tokens_per_kb_max"])),
     }
     unk_target = float(targets["unknown_token_rate_max"])
 
@@ -155,8 +161,12 @@ def main() -> None:
         pass_unk = m["unknown_rate"] <= unk_target
         all_pass = all_pass and pass_gate and pass_unk
         gate_label = "Tokens / 100 words" if metric_key == "tokens_per_100_words" else "Tokens / KB"
-        other_label = "Tokens / KB" if metric_key == "tokens_per_100_words" else "Tokens / 100 words"
-        other_key = "tokens_per_kb" if metric_key == "tokens_per_100_words" else "tokens_per_100_words"
+        other_label = (
+            "Tokens / KB" if metric_key == "tokens_per_100_words" else "Tokens / 100 words"
+        )
+        other_key = (
+            "tokens_per_kb" if metric_key == "tokens_per_100_words" else "tokens_per_100_words"
+        )
         report_lines += [
             f"\n## {lang}",
             f"- Samples: {m['n_samples']:,} lines ({m['total_words']:,} words)",

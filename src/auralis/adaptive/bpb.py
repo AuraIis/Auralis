@@ -20,8 +20,8 @@ This module computes it during training without touching Codex's trainer:
 from __future__ import annotations
 
 import math
+from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Callable, Sequence
 
 LN2 = math.log(2)
 
@@ -60,7 +60,7 @@ def combine_extra_metrics(*fns: Callable[[int], dict] | None) -> Callable[[int],
         for f in active:
             try:
                 out.update(f(step) or {})
-            except Exception as exc:   # isolate a broken component
+            except Exception as exc:  # isolate a broken component
                 name = getattr(f, "__name__", type(f).__name__)
                 out[f"extra_metrics_error_{name}"] = 1.0
                 print(f"[bpb/combine] {name} failed at step {step}: {exc}")
@@ -87,7 +87,7 @@ def measure_tokens_per_byte(
         raise ValueError(f"empty bin: {bin_path}")
     take = min(sample_tokens, n)
     lo = min(max(0, offset_tokens), n - take)
-    ids = [int(x) for x in mm[lo:lo + take]]
+    ids = [int(x) for x in mm[lo : lo + take]]
     nbytes = len(decode(ids).encode("utf-8"))
     return take / max(1, nbytes)
 
@@ -128,9 +128,15 @@ class LanguageBpbEvaluator:
         self.batches = batches
         eq = {lang: 1.0 / len(self.langs) for lang in self.langs}
         self.loader = MixedDataLoader(
-            data_dir, eq, batch_size, seq_length, seed=seed,
-            split="val", val_split_bytes=val_split_bytes,
-            rank=rank, world_size=world_size,
+            data_dir,
+            eq,
+            batch_size,
+            seq_length,
+            seed=seed,
+            split="val",
+            val_split_bytes=val_split_bytes,
+            rank=rank,
+            world_size=world_size,
         )
         if tokens_per_byte is None:
             tokens_per_byte = {
@@ -147,10 +153,7 @@ class LanguageBpbEvaluator:
         out: dict = {}
         bpbs: dict[str, float] = {}
         for lang in self.langs:
-            losses = [
-                canary_loss(self.ma.model, *self._batch(lang))
-                for _ in range(self.batches)
-            ]
+            losses = [canary_loss(self.ma.model, *self._batch(lang)) for _ in range(self.batches)]
             vl = mean(losses)
             out[f"val_loss_{lang}"] = vl
             if lang in self.tpb:
@@ -166,9 +169,9 @@ class LanguageBpbEvaluator:
 
 
 __all__ = [
+    "LanguageBpbEvaluator",
     "bits_per_byte",
     "bpb_gap",
     "combine_extra_metrics",
     "measure_tokens_per_byte",
-    "LanguageBpbEvaluator",
 ]

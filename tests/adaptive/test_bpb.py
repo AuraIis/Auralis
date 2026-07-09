@@ -13,13 +13,13 @@ class TestBpb(unittest.TestCase):
 
     def test_bpb_gap(self):
         self.assertAlmostEqual(bpb_gap({"en": 1.498, "de": 2.794}), 2.794 / 1.498, places=4)
-        self.assertEqual(bpb_gap({"en": 1.498}), 1.0)        # need >=2 langs
+        self.assertEqual(bpb_gap({"en": 1.498}), 1.0)  # need >=2 langs
         self.assertEqual(bpb_gap({}), 1.0)
 
     def test_combine_none_and_single(self):
         self.assertIsNone(combine_extra_metrics(None, None))
         f = lambda s: {"a": 1.0}
-        self.assertIs(combine_extra_metrics(f, None), f)     # single passes through
+        self.assertIs(combine_extra_metrics(f, None), f)  # single passes through
 
     def test_combine_merges(self):
         a = lambda s: {"a": float(s)}
@@ -29,11 +29,13 @@ class TestBpb(unittest.TestCase):
 
     def test_combine_isolates_failure(self):
         good = lambda s: {"ok": 1.0}
+
         def boom(s):
             raise RuntimeError("nope")
+
         merged = combine_extra_metrics(good, boom)
         out = merged(0)
-        self.assertEqual(out["ok"], 1.0)                     # good one survived
+        self.assertEqual(out["ok"], 1.0)  # good one survived
         self.assertTrue(any(k.startswith("extra_metrics_error") for k in out))
 
 

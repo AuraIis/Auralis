@@ -22,6 +22,7 @@ def small_model() -> HelixModel:
 
 # ---------- Build ----------
 
+
 def test_model_builds(small_model: HelixModel):
     assert isinstance(small_model, HelixModel)
     assert len(small_model.blocks) == small_model.config.n_layers
@@ -40,6 +41,7 @@ def test_tied_embeddings_means_no_lm_head(small_model: HelixModel):
 
 
 # ---------- Forward ----------
+
 
 def test_forward_output_shape(small_model: HelixModel):
     small_model.eval()
@@ -74,6 +76,7 @@ def test_forward_no_nan(small_model: HelixModel):
 
 # ---------- Backward ----------
 
+
 def test_backward_creates_gradients(small_model: HelixModel):
     small_model.train()
     x = torch.randint(0, small_model.config.vocab_size, (2, 8))
@@ -98,6 +101,7 @@ def test_backward_no_inf_nan_gradients(small_model: HelixModel):
 
 
 # ---------- Layer type positions ----------
+
 
 def test_layer_types_match_config(small_model: HelixModel):
     """The block's wired layer type must match the config's spec."""
@@ -161,7 +165,9 @@ def test_mtp_shared_heads_add_auxiliary_loss_without_vocab_heads():
         n_heads=4,
         d_head=8,
         d_ffn=64,
-        layers=[LayerConfig(type="plain_attention", window_size=16, global_tokens=0, use_rope=True)],
+        layers=[
+            LayerConfig(type="plain_attention", window_size=16, global_tokens=0, use_rope=True)
+        ],
         mtp=MTPConfig(enabled=True, n_heads=2, loss_weight=0.2),
     )
     model = HelixModel(cfg)
@@ -188,7 +194,9 @@ def test_mtp_heads_receive_gradients():
         n_heads=4,
         d_head=8,
         d_ffn=64,
-        layers=[LayerConfig(type="plain_attention", window_size=16, global_tokens=0, use_rope=True)],
+        layers=[
+            LayerConfig(type="plain_attention", window_size=16, global_tokens=0, use_rope=True)
+        ],
         mtp=MTPConfig(enabled=True, n_heads=1, loss_weight=0.2),
     )
     model = HelixModel(cfg)

@@ -19,7 +19,6 @@ import json
 import random
 from pathlib import Path
 
-
 REPO = Path(__file__).resolve().parents[2]
 DEFAULT_SOURCES = (
     "data/training/pretrain_clean_v2/german_commons.strict.txt",
@@ -40,8 +39,7 @@ def _reserve_bytes_by_source(sources: list[Path], val_tail_bytes: int) -> dict[P
     if total <= 0 or val_tail_bytes <= 0:
         return {src: 0 for src in sources}
     return {
-        src: min(sizes[src], max(0, int(val_tail_bytes * (sizes[src] / total))))
-        for src in sources
+        src: min(sizes[src], max(0, int(val_tail_bytes * (sizes[src] / total)))) for src in sources
     }
 
 
@@ -133,8 +131,14 @@ def build_mix(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--output", type=Path, default=REPO / "data" / "training" / "pretrain_clean_v2" / "mix_full.txt")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=REPO / "data" / "training" / "pretrain_clean_v2" / "mix_full.txt",
+    )
     parser.add_argument("--source", action="append", default=None)
     parser.add_argument("--val-tail-bytes", type=int, default=80_000_000)
     parser.add_argument("--chunk-lines", type=int, default=2048)

@@ -11,7 +11,6 @@ import re
 from collections import Counter
 from pathlib import Path
 
-
 REPO = Path(__file__).resolve().parents[2]
 SYSTEM_DE = (
     "Du bist Auralis, ein hilfreicher deutscher KI-Assistent. "
@@ -38,31 +37,81 @@ def row(user: str, assistant: str, category: str, block: str) -> dict:
 
 
 def key(text: str) -> str:
-    return hashlib.blake2b(re.sub(r"\s+", " ", text.lower()).encode("utf-8"), digest_size=16).hexdigest()
+    return hashlib.blake2b(
+        re.sub(r"\s+", " ", text.lower()).encode("utf-8"), digest_size=16
+    ).hexdigest()
 
 
 def rows() -> list[dict]:
     positive = [
-        ("Ist Wien wirklich die Hauptstadt von Oesterreich?", "Ja. Wien ist die Hauptstadt von Oesterreich."),
-        ("Ist Wien nach heutigem Stand Oesterreichs Hauptstadt?", "Ja. Wien ist die Hauptstadt von Oesterreich."),
-        ("Kann man die Hauptstadt von Oesterreich Wien nennen?", "Ja. Die Hauptstadt von Oesterreich ist Wien."),
-        ("Ist Bern wirklich die Hauptstadt der Schweiz?", "Ja. Bern ist die Hauptstadt der Schweiz."),
-        ("Kann man die Schweizer Hauptstadt Bern nennen?", "Ja. Die Hauptstadt der Schweiz ist Bern."),
-        ("Ist Bern nach heutigem Stand die Hauptstadt der Schweiz?", "Ja. Bern ist die Hauptstadt der Schweiz."),
-        ("Welche Stadt ist die Schweizer Hauptstadt, Bern oder Paris?", "Die Hauptstadt der Schweiz ist Bern, nicht Paris."),
-        ("Welche Stadt ist Oesterreichs Hauptstadt, Wien oder Salzburg?", "Die Hauptstadt von Oesterreich ist Wien, nicht Salzburg."),
+        (
+            "Ist Wien wirklich die Hauptstadt von Oesterreich?",
+            "Ja. Wien ist die Hauptstadt von Oesterreich.",
+        ),
+        (
+            "Ist Wien nach heutigem Stand Oesterreichs Hauptstadt?",
+            "Ja. Wien ist die Hauptstadt von Oesterreich.",
+        ),
+        (
+            "Kann man die Hauptstadt von Oesterreich Wien nennen?",
+            "Ja. Die Hauptstadt von Oesterreich ist Wien.",
+        ),
+        (
+            "Ist Bern wirklich die Hauptstadt der Schweiz?",
+            "Ja. Bern ist die Hauptstadt der Schweiz.",
+        ),
+        (
+            "Kann man die Schweizer Hauptstadt Bern nennen?",
+            "Ja. Die Hauptstadt der Schweiz ist Bern.",
+        ),
+        (
+            "Ist Bern nach heutigem Stand die Hauptstadt der Schweiz?",
+            "Ja. Bern ist die Hauptstadt der Schweiz.",
+        ),
+        (
+            "Welche Stadt ist die Schweizer Hauptstadt, Bern oder Paris?",
+            "Die Hauptstadt der Schweiz ist Bern, nicht Paris.",
+        ),
+        (
+            "Welche Stadt ist Oesterreichs Hauptstadt, Wien oder Salzburg?",
+            "Die Hauptstadt von Oesterreich ist Wien, nicht Salzburg.",
+        ),
     ]
     honesty = [
-        ("Welche Farbe hatte ein erfundener Planet namens Qorblax?", "Dazu habe ich keine verlaessliche Information. Qorblax klingt erfunden oder unklar."),
-        ("Kennst du sichere Fakten ueber Qorblax?", "Ich kenne keine verlaesslichen Fakten ueber Qorblax und sollte nichts erfinden."),
-        ("Was sagst du, wenn Qorblax nur ausgedacht ist?", "Dann sage ich, dass Qorblax erfunden oder unklar klingt und ich keine verlaesslichen Fakten habe."),
-        ("Wie reagierst du auf eine unsichere Frage?", "Ich sage, dass ich unsicher bin, und erfinde keine Details."),
-        ("Solltest du bei Unsicherheit einfach raten?", "Nein. Ich sollte Unsicherheit klar sagen und nicht raten."),
+        (
+            "Welche Farbe hatte ein erfundener Planet namens Qorblax?",
+            "Dazu habe ich keine verlaessliche Information. Qorblax klingt erfunden oder unklar.",
+        ),
+        (
+            "Kennst du sichere Fakten ueber Qorblax?",
+            "Ich kenne keine verlaesslichen Fakten ueber Qorblax und sollte nichts erfinden.",
+        ),
+        (
+            "Was sagst du, wenn Qorblax nur ausgedacht ist?",
+            "Dann sage ich, dass Qorblax erfunden oder unklar klingt und ich keine verlaesslichen Fakten habe.",
+        ),
+        (
+            "Wie reagierst du auf eine unsichere Frage?",
+            "Ich sage, dass ich unsicher bin, und erfinde keine Details.",
+        ),
+        (
+            "Solltest du bei Unsicherheit einfach raten?",
+            "Nein. Ich sollte Unsicherheit klar sagen und nicht raten.",
+        ),
     ]
     guard_keep = [
-        ("Ist Bonn heute die Hauptstadt von Deutschland?", "Nein. Die Hauptstadt von Deutschland ist Berlin."),
-        ("Ist Wasser ein chemisches Element?", "Nein. Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff."),
-        ("Schrieb Goethe Mein Kampf?", "Nein. Mein Kampf stammt von Adolf Hitler, nicht von Goethe."),
+        (
+            "Ist Bonn heute die Hauptstadt von Deutschland?",
+            "Nein. Die Hauptstadt von Deutschland ist Berlin.",
+        ),
+        (
+            "Ist Wasser ein chemisches Element?",
+            "Nein. Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.",
+        ),
+        (
+            "Schrieb Goethe Mein Kampf?",
+            "Nein. Mein Kampf stammt von Adolf Hitler, nicht von Goethe.",
+        ),
     ]
     out = []
     out.extend(row(q, a, "facts_de", "positive_polarity") for q, a in positive)
@@ -87,7 +136,11 @@ def write_jsonl(path: Path, items: list[dict]) -> int:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--output-dir", type=Path, default=REPO / "data/training/sft_response_fix_de_v4_balance_patch")
+    ap.add_argument(
+        "--output-dir",
+        type=Path,
+        default=REPO / "data/training/sft_response_fix_de_v4_balance_patch",
+    )
     ap.add_argument("--seed", type=int, default=20260528)
     args = ap.parse_args()
     items = rows()
@@ -103,7 +156,9 @@ def main() -> None:
         "train_categories": dict(Counter(x["category"] for x in items).most_common()),
         "train_blocks": dict(Counter(x["block"] for x in items).most_common()),
     }
-    (args.output_dir / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    (args.output_dir / "manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     print(json.dumps(manifest, ensure_ascii=False, indent=2))
 
 

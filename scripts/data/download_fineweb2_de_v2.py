@@ -6,6 +6,7 @@ German pool without overlap, this skips past the already-consumed docs and write
 the NEXT chunk, applying the same light download-time clean as download_german.py.
 The heavy structure-clean + edu-scoring happen as separate downstream steps.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -15,7 +16,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from scripts.data._common import (  # noqa: E402
+from scripts.data._common import (
     atomic_text_writer,
     check_free_space,
     clean_text,
@@ -27,8 +28,12 @@ from scripts.data._common import (  # noqa: E402
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--skip-docs", type=int, default=5_000_000,
-                    help="raw stream docs to skip (must exceed what slice 1 consumed) to avoid overlap")
+    ap.add_argument(
+        "--skip-docs",
+        type=int,
+        default=5_000_000,
+        help="raw stream docs to skip (must exceed what slice 1 consumed) to avoid overlap",
+    )
     ap.add_argument("--target-gb", type=float, default=30.0, help="bytes of cleaned text to write")
     ap.add_argument("--output", type=Path, default=None)
     ap.add_argument("--progress-every", type=int, default=50_000)
@@ -44,8 +49,11 @@ def main() -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     check_free_space(out.parent, args.target_gb + 5.0)
 
-    print(f"streaming HuggingFaceFW/fineweb-2 deu_Latn, skip={args.skip_docs:,}, "
-          f"target={args.target_gb}GB -> {out}", flush=True)
+    print(
+        f"streaming HuggingFaceFW/fineweb-2 deu_Latn, skip={args.skip_docs:,}, "
+        f"target={args.target_gb}GB -> {out}",
+        flush=True,
+    )
     ds = load_dataset("HuggingFaceFW/fineweb-2", name="deu_Latn", split="train", streaming=True)
     if args.skip_docs > 0:
         ds = ds.skip(args.skip_docs)
@@ -70,8 +78,11 @@ def main() -> None:
             written_bytes += len(line.encode("utf-8")) + 1
             docs += 1
             if args.progress_every and docs % args.progress_every == 0:
-                print(f"  written {docs:,} docs / {written_bytes/1e9:.2f} GB "
-                      f"(stream seen {seen:,})", flush=True)
+                print(
+                    f"  written {docs:,} docs / {written_bytes / 1e9:.2f} GB "
+                    f"(stream seen {seen:,})",
+                    flush=True,
+                )
             if written_bytes >= target_bytes:
                 break
 
@@ -90,7 +101,10 @@ def main() -> None:
     }
     mpath = out.with_suffix(out.suffix + ".manifest.json")
     mpath.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
-    print(f"DONE docs={docs:,} bytes={written_bytes/1e9:.2f}GB skipped={args.skip_docs:,}", flush=True)
+    print(
+        f"DONE docs={docs:,} bytes={written_bytes / 1e9:.2f}GB skipped={args.skip_docs:,}",
+        flush=True,
+    )
     print(f"manifest: {mpath}", flush=True)
     # Hard exit: skip interpreter finalization so HF streaming's background
     # prefetch threads don't crash on teardown after the early break.

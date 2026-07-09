@@ -36,6 +36,7 @@ Resume support:
   in the output file (read once at startup), so a long run that crashed
   half-way picks up where it left off.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -44,13 +45,11 @@ import json
 import os
 import sys
 import time
-from dataclasses import asdict
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO))
 from scripts.data.synth.qwen_client import GenRequest, QwenClient
-
 
 SYSTEM_PROMPT = """You convert messy Stack Overflow Q/A into a structured \
 troubleshooting answer. Stay grounded in the source material — do NOT invent \
@@ -120,17 +119,17 @@ def _already_done(path: Path) -> set:
 
 def _build_request(rec: dict, max_tokens: int) -> GenRequest:
     user = USER_TEMPLATE.format(
-        problem=rec["problem"][:8000],            # cap input length
+        problem=rec["problem"][:8000],  # cap input length
         accepted_answer=rec["accepted_answer"][:8000],
     )
     return GenRequest(
         request_id=f"sft-{rec['id']}",
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user",   "content": user},
+            {"role": "user", "content": user},
         ],
         max_tokens=max_tokens,
-        temperature=0.3,                          # lower temp = more grounded
+        temperature=0.3,  # lower temp = more grounded
         top_p=0.9,
         extra={
             "source_id": rec["id"],
@@ -157,7 +156,16 @@ def _format_output(res, teacher_model: str) -> dict:
         "source_id": extra.get("source_id"),
         "url": extra.get("url"),
         "messages": [
-            {"role": "user",      "content": user_msg + "\n\n" + res.completion.split("# Problem", 1)[-1].split("# Clarification", 1)[0].strip()[:2000] if "# Problem" in res.completion else user_msg},
+            {
+                "role": "user",
+                "content": user_msg
+                + "\n\n"
+                + res.completion.split("# Problem", 1)[-1]
+                .split("# Clarification", 1)[0]
+                .strip()[:2000]
+                if "# Problem" in res.completion
+                else user_msg,
+            },
             {"role": "assistant", "content": res.completion},
         ],
         "meta": {
@@ -229,23 +237,26 @@ async def main_async(args) -> None:
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--input",  type=Path,
-                    default=Path("seeds/sft/coding_troubleshoot/clean.jsonl"))
-    ap.add_argument("--output", type=Path,
-                    default=Path("seeds/sft/coding_troubleshoot/sft.jsonl"))
-    ap.add_argument("--base-url",
-                    default=os.environ.get("OPENAI_API_BASE", "http://localhost:8000/v1"))
-    ap.add_argument("--api-key",
-                    default=os.environ.get("OPENAI_API_KEY", "EMPTY"))
-    ap.add_argument("--model",
-                    default=os.environ.get("OPENAI_MODEL", "Qwen2.5-32B-Instruct"))
-    ap.add_argument("--concurrency", type=int, default=4,
-                    help="Parallel in-flight requests against the endpoint.")
-    ap.add_argument("--max-tokens",  type=int, default=2048)
-    ap.add_argument("--limit",       type=int, default=None,
-                    help="Stop after this many NEW requests (for testing).")
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    ap.add_argument("--input", type=Path, default=Path("seeds/sft/coding_troubleshoot/clean.jsonl"))
+    ap.add_argument("--output", type=Path, default=Path("seeds/sft/coding_troubleshoot/sft.jsonl"))
+    ap.add_argument(
+        "--base-url", default=os.environ.get("OPENAI_API_BASE", "http://localhost:8000/v1")
+    )
+    ap.add_argument("--api-key", default=os.environ.get("OPENAI_API_KEY", "EMPTY"))
+    ap.add_argument("--model", default=os.environ.get("OPENAI_MODEL", "Qwen2.5-32B-Instruct"))
+    ap.add_argument(
+        "--concurrency",
+        type=int,
+        default=4,
+        help="Parallel in-flight requests against the endpoint.",
+    )
+    ap.add_argument("--max-tokens", type=int, default=2048)
+    ap.add_argument(
+        "--limit", type=int, default=None, help="Stop after this many NEW requests (for testing)."
+    )
     args = ap.parse_args()
     asyncio.run(main_async(args))
 

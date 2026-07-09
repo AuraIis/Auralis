@@ -16,7 +16,6 @@ import time
 from pathlib import Path
 from typing import Any
 
-
 DATASET_ID = "coral-nlp/german-commons"
 
 
@@ -159,15 +158,25 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "finished_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         "splits": manifests,
     }
-    (output_root / "manifest.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"[summary] docs={summary['docs']:,} gzip_gb={summary['gzip_bytes'] / 1e9:.3f}", flush=True)
+    (output_root / "manifest.json").write_text(
+        json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    print(
+        f"[summary] docs={summary['docs']:,} gzip_gb={summary['gzip_bytes'] / 1e9:.3f}", flush=True
+    )
     return summary
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--plan", type=Path, default=Path("configs/data/german_commons_clean_plan_v1.json"))
-    parser.add_argument("--output-root", type=Path, default=Path("I:/KI/Auralis_datasets/german_commons_selected_raw"))
+    parser.add_argument(
+        "--plan", type=Path, default=Path("configs/data/german_commons_clean_plan_v1.json")
+    )
+    parser.add_argument(
+        "--output-root",
+        type=Path,
+        default=Path("I:/KI/Auralis_datasets/german_commons_selected_raw"),
+    )
     parser.add_argument("--include-special", action="store_true")
     parser.add_argument("--max-docs-per-split", type=int, default=0)
     parser.add_argument("--log-every", type=int, default=10_000)

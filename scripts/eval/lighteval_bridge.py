@@ -17,6 +17,7 @@ Usage:
         --model-name HuggingFaceTB/SmolLM2-135M \\
         --tag smoke_smollm
 """
+
 from __future__ import annotations
 
 import argparse
@@ -29,7 +30,6 @@ from typing import Any
 
 import yaml
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_SUITE = REPO_ROOT / "eval" / "benchmarks_v1.yaml"
 DEFAULT_RESULTS_DIR = REPO_ROOT / "eval" / "results" / "lighteval"
@@ -39,24 +39,24 @@ DEFAULT_RESULTS_DIR = REPO_ROOT / "eval" / "results" / "lighteval"
 # Format: "suite|task|fewshot|truncate" — fewshot=0 for zero-shot, truncate=0
 # means no input-truncation (LightEval handles model max-length internally).
 LIGHTEVAL_TASK_MAP: dict[str, str] = {
-    "hellaswag":     "lighteval|hellaswag|0|0",
-    "arc_easy":      "lighteval|arc:easy|0|0",
+    "hellaswag": "lighteval|hellaswag|0|0",
+    "arc_easy": "lighteval|arc:easy|0|0",
     "arc_challenge": "lighteval|arc:challenge|0|0",
-    "winogrande":    "lighteval|winogrande|0|0",
-    "gsm8k":         "lighteval|gsm8k|5|0",       # 5-shot is the canonical GSM8K setup
-    "mmlu_pro":      "lighteval|mmlu_pro|5|0",
-    "bbh":           "lighteval|bbh|3|0",
-    "gpqa_diamond":  "lighteval|gpqa:diamond|0|0",
+    "winogrande": "lighteval|winogrande|0|0",
+    "gsm8k": "lighteval|gsm8k|5|0",  # 5-shot is the canonical GSM8K setup
+    "mmlu_pro": "lighteval|mmlu_pro|5|0",
+    "bbh": "lighteval|bbh|3|0",
+    "gpqa_diamond": "lighteval|gpqa:diamond|0|0",
     # The DE-specific and code benchmarks may need lighteval-multilingual or
     # custom task definitions; we include them but mark unsupported until
     # verified.
-    "humaneval":     None,                          # may need lighteval-extended
-    "aime_2024":     None,
+    "humaneval": None,  # may need lighteval-extended
+    "aime_2024": None,
     "livecodebench": None,
-    "mmlu_de":       None,                          # multilingual subset, see lighteval/multilingual
-    "germanquad":    None,
-    "paws_x_de":     None,
-    "xnli_de":       None,
+    "mmlu_de": None,  # multilingual subset, see lighteval/multilingual
+    "germanquad": None,
+    "paws_x_de": None,
+    "xnli_de": None,
 }
 
 
@@ -84,8 +84,9 @@ def resolve_to_lighteval(benchmarks: list[str]) -> tuple[list[str], list[str]]:
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(description=__doc__,
-                                  formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     p.add_argument("--tier", help="benchmarks_v1.yaml tier name")
     p.add_argument("--benchmark", help="single benchmark ID (mutually exclusive with --tier)")
     p.add_argument("--model-name", required=True, help="HuggingFace model identifier or local path")
@@ -93,7 +94,9 @@ def main() -> int:
     p.add_argument("--max-samples", type=int, default=None, help="cap per task (for smoke tests)")
     p.add_argument("--results-dir", type=Path, default=DEFAULT_RESULTS_DIR)
     p.add_argument("--suite", type=Path, default=DEFAULT_SUITE)
-    p.add_argument("--dry-run", action="store_true", help="print the lighteval command but don't run it")
+    p.add_argument(
+        "--dry-run", action="store_true", help="print the lighteval command but don't run it"
+    )
     args = p.parse_args()
 
     suite = load_suite(args.suite)
@@ -106,9 +109,11 @@ def main() -> int:
 
     supported, skipped = resolve_to_lighteval(benchmarks)
     if not supported:
-        sys.exit(f"None of the requested benchmarks have LightEval mappings.\n"
-                 f"  requested: {benchmarks}\n"
-                 f"  skipped:   {skipped}")
+        sys.exit(
+            f"None of the requested benchmarks have LightEval mappings.\n"
+            f"  requested: {benchmarks}\n"
+            f"  skipped:   {skipped}"
+        )
     if skipped:
         print(f"⚠️  Skipping (no LightEval mapping yet): {skipped}", flush=True)
 
@@ -116,10 +121,12 @@ def main() -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     cmd = [
-        "lighteval", "accelerate",
+        "lighteval",
+        "accelerate",
         f"model_name={args.model_name}",
         ",".join(supported),
-        "--output-dir", str(out_dir),
+        "--output-dir",
+        str(out_dir),
     ]
     if args.max_samples is not None:
         cmd += ["--max-samples", str(args.max_samples)]

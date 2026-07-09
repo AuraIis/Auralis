@@ -16,7 +16,7 @@ feeding them in (see ``higher_is_better`` in the controller).
 
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 
 
 def ema(values: Sequence[float], alpha: float = 0.3) -> list[float]:
@@ -57,7 +57,7 @@ def relative_improvement(values: Sequence[float], window: int) -> float:
     if len(values) < 2:
         return 0.0
     latest = values[-1]
-    prev = values[-(window + 1):-1] if window > 0 else values[:-1]
+    prev = values[-(window + 1) : -1] if window > 0 else values[:-1]
     if not prev:
         return 0.0
     return latest - max(prev)
@@ -76,7 +76,7 @@ def is_plateaued(values: Sequence[float], patience: int, min_delta: float) -> bo
     if len(values) < patience + 1:
         return False
     baseline = max(values[: len(values) - patience])
-    recent = values[len(values) - patience:]
+    recent = values[len(values) - patience :]
     return max(recent) <= baseline + min_delta
 
 
@@ -115,10 +115,10 @@ def detect_regression(
 
 
 __all__ = [
+    "detect_regression",
     "ema",
-    "trend_slope",
-    "relative_improvement",
     "is_plateaued",
     "is_stable_above",
-    "detect_regression",
+    "relative_improvement",
+    "trend_slope",
 ]

@@ -265,7 +265,9 @@ def sample_entries() -> list[KnowledgeDNAEntry]:
             ],
             examples=["def add(a, b):\n    return a + b"],
             related=["def", "return", "Parameter", "Einrueckung"],
-            counterfacts=["Eine Python-Funktion wird nicht mit function wie in JavaScript definiert."],
+            counterfacts=[
+                "Eine Python-Funktion wird nicht mit function wie in JavaScript definiert."
+            ],
             source="curated_code_seed",
             probes=[
                 Probe(
@@ -419,7 +421,9 @@ def tokenizer_audit(tokenizer_path: Path | None, texts: dict[str, str]) -> dict[
     return audit
 
 
-def write_report(out: Path, entries: list[KnowledgeDNAEntry], texts: dict[str, str], audit: dict[str, Any]) -> None:
+def write_report(
+    out: Path, entries: list[KnowledgeDNAEntry], texts: dict[str, str], audit: dict[str, Any]
+) -> None:
     rows = probe_rows(entries)
     by_kind: dict[str, int] = {}
     for row in rows:
@@ -430,8 +434,7 @@ def write_report(out: Path, entries: list[KnowledgeDNAEntry], texts: dict[str, s
         "",
         f"- Entries: {len(entries)}",
         f"- Probes: {len(rows)}",
-        "- Probe kinds: "
-        + ", ".join(f"{kind}={count}" for kind, count in sorted(by_kind.items())),
+        "- Probe kinds: " + ", ".join(f"{kind}={count}" for kind, count in sorted(by_kind.items())),
         "",
         "## Variant Sizes",
         "",
@@ -467,7 +470,9 @@ def write_report(out: Path, entries: list[KnowledgeDNAEntry], texts: dict[str, s
     (out / "report.md").write_text("\n".join(lines), encoding="utf-8")
 
 
-def build_outputs(entries: list[KnowledgeDNAEntry], out: Path, tokenizer: Path | None, seed: int) -> None:
+def build_outputs(
+    entries: list[KnowledgeDNAEntry], out: Path, tokenizer: Path | None, seed: int
+) -> None:
     rng = random.Random(seed)
     entries = list(entries)
     rng.shuffle(entries)
@@ -494,7 +499,9 @@ def build_outputs(entries: list[KnowledgeDNAEntry], out: Path, tokenizer: Path |
         },
         "special_tokens": CURRENT_SPECIALS,
     }
-    (out / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    (out / "manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     audit = tokenizer_audit(tokenizer, texts)
     (out / "tokenizer_audit.json").write_text(
         json.dumps(audit, ensure_ascii=False, indent=2),
@@ -510,16 +517,22 @@ def parse_args() -> argparse.Namespace:
 
     sample = sub.add_parser("sample", help="write curated sample DNA corpus")
     sample.add_argument("--output-dir", type=Path, required=True)
-    sample.add_argument("--tokenizer", type=Path, default=Path("tokenizer/helix_v2_tokenizer.model"))
+    sample.add_argument(
+        "--tokenizer", type=Path, default=Path("tokenizer/helix_v2_tokenizer.model")
+    )
     sample.add_argument("--seed", type=int, default=20260513)
-    sample.set_defaults(func=lambda a: build_outputs(sample_entries(), a.output_dir, a.tokenizer, a.seed))
+    sample.set_defaults(
+        func=lambda a: build_outputs(sample_entries(), a.output_dir, a.tokenizer, a.seed)
+    )
 
     build = sub.add_parser("build", help="build DNA corpus from YAML/JSON")
     build.add_argument("--input", type=Path, required=True)
     build.add_argument("--output-dir", type=Path, required=True)
     build.add_argument("--tokenizer", type=Path, default=Path("tokenizer/helix_v2_tokenizer.model"))
     build.add_argument("--seed", type=int, default=20260513)
-    build.set_defaults(func=lambda a: build_outputs(load_entries(a.input), a.output_dir, a.tokenizer, a.seed))
+    build.set_defaults(
+        func=lambda a: build_outputs(load_entries(a.input), a.output_dir, a.tokenizer, a.seed)
+    )
     return parser.parse_args()
 
 

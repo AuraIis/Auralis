@@ -1,0 +1,54 @@
+name: CI
+
+# Lint / typecheck / test on every push to main and every PR. Split into
+# independent jobs so each surfaces its own status. Pre-adoption ruff/mypy debt
+# is grandfathered in pyproject (see the ignore / disable_error_code lists);
+# formatting is enforced, and the ratchet catches NEW violations.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -e ".[dev]"
+      - name: ruff format (check)
+        run: ruff format --check .
+      - name: ruff lint
+        run: ruff check .
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -e ".[dev]"
+      - name: mypy
+        run: mypy src
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -e ".[dev]"
+      - name: pytest
+        run: pytest -q

@@ -21,7 +21,6 @@ from typing import Any
 
 from datasets import load_dataset
 
-
 URL_RE = re.compile(r"https?://|www\.", re.I)
 WORD_RE = re.compile(r"[A-Za-z][A-Za-z']+")
 QUESTION_START_RE = re.compile(
@@ -174,7 +173,9 @@ def main() -> None:
     parser.add_argument("--max-answer-chars", type=int, default=2_500)
     parser.add_argument("--min-answer-words", type=int, default=45)
     parser.add_argument("--require-question", action=argparse.BooleanOptionalAction, default=True)
-    parser.add_argument("--reject-casual-questions", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument(
+        "--reject-casual-questions", action=argparse.BooleanOptionalAction, default=True
+    )
     parser.add_argument("--log-every", type=int, default=50_000)
     parser.add_argument("--retries", type=int, default=5)
     args = parser.parse_args()
@@ -191,16 +192,19 @@ def main() -> None:
     for attempt in range(1, args.retries + 1):
         try:
             ds = load_dataset(args.dataset, split="train", streaming=True)
-            with jsonl_path.open("w", encoding="utf-8", newline="\n") as jsonl, txt_path.open(
-                "w", encoding="utf-8", newline="\n"
-            ) as txt:
+            with (
+                jsonl_path.open("w", encoding="utf-8", newline="\n") as jsonl,
+                txt_path.open("w", encoding="utf-8", newline="\n") as txt,
+            ):
                 for row in ds:
                     seen += 1
                     pair, reason = make_pair(row, args)
                     stats[reason] += 1
                     if pair:
                         jsonl.write(json.dumps(pair, ensure_ascii=False, sort_keys=True) + "\n")
-                        txt.write(f"Frage: {pair['question']}\nAntwort: {pair['answer'].replace(chr(10), ' ')}\n\n")
+                        txt.write(
+                            f"Frage: {pair['question']}\nAntwort: {pair['answer'].replace(chr(10), ' ')}\n\n"
+                        )
                         written += 1
                     if seen >= args.max_scan or written >= args.max_pairs:
                         break

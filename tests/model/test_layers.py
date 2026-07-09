@@ -11,8 +11,8 @@ from auralis.model.layers.norm import RMSNorm
 from auralis.model.layers.sparse_attn_layer import SparseAttentionLayer
 from auralis.model.utils.rotary import RotaryEmbedding, apply_rotary_pos_emb
 
-
 # ---------- RMSNorm ----------
+
 
 def test_rmsnorm_shape_preserved():
     x = torch.randn(2, 7, 64)
@@ -29,6 +29,7 @@ def test_rmsnorm_unit_variance_at_init():
 
 # ---------- SwiGLU ----------
 
+
 def test_swiglu_shape_preserved():
     x = torch.randn(2, 5, 64)
     y = DenseFFN(64, 128)(x)
@@ -42,6 +43,7 @@ def test_swiglu_no_nan_with_extremes():
 
 
 # ---------- RoPE ----------
+
 
 def test_rope_output_shapes():
     rope = RotaryEmbedding(dim=64, max_seq_len=128)
@@ -62,6 +64,7 @@ def test_rope_roundtrip_preserves_vector_norm():
 
 # ---------- Mamba-2 ----------
 
+
 def test_mamba2_forward_shape():
     layer = Mamba2Layer(d_model=64, d_state=16, d_conv=4, expand_factor=2)
     x = torch.randn(2, 10, 64)
@@ -79,6 +82,7 @@ def test_mamba2_backward_runs():
 
 
 # ---------- GLA ----------
+
 
 def test_gla_forward_shape():
     layer = GLALayer(d_model=64, n_heads=4, d_head=16)
@@ -98,9 +102,11 @@ def test_gla_backward_runs():
 
 # ---------- Sparse attention ----------
 
+
 def test_sparse_attn_forward_shape():
-    layer = SparseAttentionLayer(d_model=64, n_heads=4, d_head=16,
-                                 window_size=4, global_tokens=2, use_rope=True)
+    layer = SparseAttentionLayer(
+        d_model=64, n_heads=4, d_head=16, window_size=4, global_tokens=2, use_rope=True
+    )
     rope = RotaryEmbedding(dim=16, max_seq_len=32)
     rope_out = rope(12, device=torch.device("cpu"))
     x = torch.randn(2, 12, 64)
@@ -109,9 +115,15 @@ def test_sparse_attn_forward_shape():
 
 
 def test_sparse_attn_qk_norm_forward_shape_and_params():
-    layer = SparseAttentionLayer(d_model=64, n_heads=4, d_head=16,
-                                 window_size=4, global_tokens=0,
-                                 use_rope=True, qk_norm=True)
+    layer = SparseAttentionLayer(
+        d_model=64,
+        n_heads=4,
+        d_head=16,
+        window_size=4,
+        global_tokens=0,
+        use_rope=True,
+        qk_norm=True,
+    )
     rope = RotaryEmbedding(dim=16, max_seq_len=32)
     rope_out = rope(12, device=torch.device("cpu"))
     x = torch.randn(2, 12, 64)
@@ -124,11 +136,12 @@ def test_sparse_attn_qk_norm_forward_shape_and_params():
 def test_sparse_attn_causal_mask_blocks_future():
     """Future tokens must be blocked: swapping a late key should not change
     output at an earlier query position."""
-    layer = SparseAttentionLayer(d_model=32, n_heads=4, d_head=8,
-                                 window_size=16, global_tokens=0, use_rope=False)
+    layer = SparseAttentionLayer(
+        d_model=32, n_heads=4, d_head=8, window_size=16, global_tokens=0, use_rope=False
+    )
     x1 = torch.randn(1, 8, 32)
     x2 = x1.clone()
-    x2[:, 7] = torch.randn_like(x2[:, 7])          # only perturb last position
+    x2[:, 7] = torch.randn_like(x2[:, 7])  # only perturb last position
     out1, _ = layer(x1)
     out2, _ = layer(x2)
     # Positions 0..6 must be identical regardless of token 7 (causal).
@@ -137,11 +150,12 @@ def test_sparse_attn_causal_mask_blocks_future():
 
 def test_sparse_attn_window_mask_blocks_out_of_range():
     """With window_size=2 and global_tokens=0, token 4 should not see token 0."""
-    layer = SparseAttentionLayer(d_model=32, n_heads=4, d_head=8,
-                                 window_size=2, global_tokens=0, use_rope=False)
+    layer = SparseAttentionLayer(
+        d_model=32, n_heads=4, d_head=8, window_size=2, global_tokens=0, use_rope=False
+    )
     x1 = torch.randn(1, 5, 32)
     x2 = x1.clone()
-    x2[:, 0] = torch.randn_like(x2[:, 0])          # perturb token 0 only
+    x2[:, 0] = torch.randn_like(x2[:, 0])  # perturb token 0 only
     out1, _ = layer(x1)
     out2, _ = layer(x2)
     # Position 4 is 4 steps away from 0 (> window=2), so output at t=4 unchanged.
@@ -150,11 +164,12 @@ def test_sparse_attn_window_mask_blocks_out_of_range():
 
 def test_sparse_attn_global_token_is_visible_from_anywhere():
     """global_tokens=1 means token 0 must be attendable everywhere."""
-    layer = SparseAttentionLayer(d_model=32, n_heads=4, d_head=8,
-                                 window_size=2, global_tokens=1, use_rope=False)
+    layer = SparseAttentionLayer(
+        d_model=32, n_heads=4, d_head=8, window_size=2, global_tokens=1, use_rope=False
+    )
     x1 = torch.randn(1, 6, 32)
     x2 = x1.clone()
-    x2[:, 0] = torch.randn_like(x2[:, 0])          # perturb global token
+    x2[:, 0] = torch.randn_like(x2[:, 0])  # perturb global token
     out1, _ = layer(x1)
     out2, _ = layer(x2)
     # Now position 5 DOES see token 0 (as a global), so output should differ.

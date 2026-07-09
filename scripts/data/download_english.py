@@ -20,8 +20,9 @@ from __future__ import annotations
 
 import argparse
 import sys
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 from tqdm import tqdm
 
@@ -216,12 +217,12 @@ def _stream_dclm_edu(filters: dict[str, Any]) -> Iterator[tuple[str, dict[str, i
 
 
 SOURCES: dict[str, Any] = {
-    "fineweb_edu":    {"stream": _stream_fineweb_edu,   "filename": "fineweb_edu.txt"},
-    "wikipedia_en":   {"stream": _stream_wikipedia_en,  "filename": "wikipedia_en.txt"},
-    "dolma":          {"stream": _stream_dolma,         "filename": "dolma.txt"},
-    "openmath":       {"stream": _stream_openmath,      "filename": "openmath.txt"},
-    "fineweb2_en":    {"stream": _stream_fineweb2_en,   "filename": "fineweb2_en.txt"},
-    "dclm_edu":       {"stream": _stream_dclm_edu,      "filename": "dclm_edu.txt"},
+    "fineweb_edu": {"stream": _stream_fineweb_edu, "filename": "fineweb_edu.txt"},
+    "wikipedia_en": {"stream": _stream_wikipedia_en, "filename": "wikipedia_en.txt"},
+    "dolma": {"stream": _stream_dolma, "filename": "dolma.txt"},
+    "openmath": {"stream": _stream_openmath, "filename": "openmath.txt"},
+    "fineweb2_en": {"stream": _stream_fineweb2_en, "filename": "fineweb2_en.txt"},
+    "dclm_edu": {"stream": _stream_dclm_edu, "filename": "dclm_edu.txt"},
 }
 
 
@@ -235,8 +236,12 @@ def main() -> None:
         default=None,
         help="Per-source token override(s), e.g. fineweb2_en=8000000000 openmath=1500000000",
     )
-    parser.add_argument("--required-free-gb", type=float, default=50.0,
-                        help="Abort if data_root has less free space than this.")
+    parser.add_argument(
+        "--required-free-gb",
+        type=float,
+        default=50.0,
+        help="Abort if data_root has less free space than this.",
+    )
     args = parser.parse_args()
 
     cfg = load_paths(args.config) if args.config else load_paths()
@@ -253,7 +258,7 @@ def main() -> None:
         spec = SOURCES[name]
         target_tokens = int(targets[name])
         output_path = out_dir / spec["filename"]
-        print(f"\n=== {name} → {output_path} (target {target_tokens/1e9:.2f}B tokens) ===")
+        print(f"\n=== {name} → {output_path} (target {target_tokens / 1e9:.2f}B tokens) ===")
         stats = _write_source(
             source_name=name,
             output_path=output_path,
@@ -264,13 +269,13 @@ def main() -> None:
         total_stats.append(stats)
         print(
             f"  docs={stats.final_docs:,} "
-            f"bytes={stats.final_bytes/1e9:.2f}GB "
+            f"bytes={stats.final_bytes / 1e9:.2f}GB "
             f"filtered={stats.filtered_total:,}"
         )
 
     print("\n=== Summary ===")
     for s in total_stats:
-        print(f"  {s.source:15s} {s.final_docs:>10,} docs  {s.final_bytes/1e9:>6.2f} GB")
+        print(f"  {s.source:15s} {s.final_docs:>10,} docs  {s.final_bytes / 1e9:>6.2f} GB")
 
 
 if __name__ == "__main__":

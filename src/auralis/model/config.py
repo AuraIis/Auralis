@@ -17,15 +17,16 @@ from typing import Any
 
 import yaml
 
-
 # ---------------------------------------------------------------------------
 # Per-layer config (heterogeneous stack: mamba / gla / sparse_attention)
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class LayerConfig:
     """Config for a single layer in the heterogeneous stack."""
-    type: str                                 # "mamba" | "gla" | "sparse_attention"
+
+    type: str  # "mamba" | "gla" | "sparse_attention"
     # Mamba-specific
     d_state: int | None = None
     d_conv: int | None = None
@@ -43,10 +44,11 @@ class LayerConfig:
 # Component sub-configs
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class FFNConfig:
-    type: str = "dense"                       # "dense" | "moe"
-    activation: str = "silu_gated"            # "silu_gated" = SwiGLU
+    type: str = "dense"  # "dense" | "moe"
+    activation: str = "silu_gated"  # "silu_gated" = SwiGLU
 
 
 @dataclass
@@ -67,7 +69,7 @@ class MTPConfig:
 
 @dataclass
 class PositionEncodingConfig:
-    type: str = "rope"                        # "rope" | "none"
+    type: str = "rope"  # "rope" | "none"
     theta: float = 10000.0
     max_seq_length: int = 8192
 
@@ -91,13 +93,14 @@ class DropoutConfig:
 @dataclass
 class AdvancedConfig:
     tie_embeddings: bool = False
-    use_flash_attention: bool = True          # only when available
+    use_flash_attention: bool = True  # only when available
     gradient_checkpointing: bool = False
 
 
 # ---------------------------------------------------------------------------
 # Top-level config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class AuralisConfig:
@@ -137,7 +140,7 @@ class AuralisConfig:
 
     # ---------------- YAML loader ----------------
     @classmethod
-    def from_yaml(cls, path: str | Path) -> "AuralisConfig":
+    def from_yaml(cls, path: str | Path) -> AuralisConfig:
         data = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
         tok = data.get("tokenizer", {}) or {}
         model = data.get("model", {}) or {}
@@ -145,8 +148,7 @@ class AuralisConfig:
 
         if len(layers) != int(model["n_layers"]):
             raise ValueError(
-                f"Config error: resolved {len(layers)} layers but n_layers="
-                f"{model['n_layers']}"
+                f"Config error: resolved {len(layers)} layers but n_layers={model['n_layers']}"
             )
         # Sanity: d_head * n_heads == d_model (keeps projections shape-clean)
         if int(model["d_head"]) * int(model["n_heads"]) != int(model["d_model"]):
@@ -218,19 +220,19 @@ class AuralisConfig:
                 d_inner = (lc.expand_factor or 2) * self.d_model
                 d_state = lc.d_state or 128
                 layers_total += (
-                    2 * self.d_model * d_inner       # in_proj (x + z)
+                    2 * self.d_model * d_inner  # in_proj (x + z)
                     + d_inner * (d_conv := (lc.d_conv or 4))  # conv bias tiny, weight grouped
-                    + d_inner * (2 * d_state + d_inner)       # x_proj
-                    + d_inner * d_inner              # dt_proj
-                    + d_inner * self.d_model         # out_proj
+                    + d_inner * (2 * d_state + d_inner)  # x_proj
+                    + d_inner * d_inner  # dt_proj
+                    + d_inner * self.d_model  # out_proj
                 )
             elif lc.type == "gla":
                 layers_total += 5 * self.d_model * self.d_model  # q,k,v,g,o
-                layers_total += self.d_model * self.n_heads       # alpha
+                layers_total += self.d_model * self.n_heads  # alpha
             elif lc.type == "sparse_attention":
                 layers_total += 4 * self.d_model * self.d_model  # q,k,v,o
                 if lc.qk_norm:
-                    layers_total += 2 * self.d_head              # q_norm + k_norm
+                    layers_total += 2 * self.d_head  # q_norm + k_norm
             elif lc.type == "plain_attention":
                 layers_total += 4 * self.d_model * self.d_model  # q,k,v,o (ablation)
             else:
@@ -262,7 +264,7 @@ __all__ = [
     "FFNConfig",
     "InitConfig",
     "LayerConfig",
-    "MoEConfig",
     "MTPConfig",
+    "MoEConfig",
     "PositionEncodingConfig",
 ]

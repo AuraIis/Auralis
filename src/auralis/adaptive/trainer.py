@@ -17,9 +17,10 @@ on is already unit-tested (see tests/adaptive).
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 import torch
 
@@ -43,7 +44,7 @@ class TrainerConfig:
 
 @dataclass
 class RunSummary:
-    status: str                                   # "done" | "stopped" | "max_steps"
+    status: str  # "done" | "stopped" | "max_steps"
     steps: int
     final_stage: str
     decisions: list[dict] = field(default_factory=list)
@@ -188,4 +189,4 @@ def _decision_dict(step: int, d: Decision) -> dict:
     }
 
 
-__all__ = ["AdaptiveCurriculumTrainer", "TrainerConfig", "RunSummary"]
+__all__ = ["AdaptiveCurriculumTrainer", "RunSummary", "TrainerConfig"]

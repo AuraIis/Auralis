@@ -23,7 +23,7 @@ import os
 import re
 import sys
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -138,7 +138,10 @@ def score_answer(answer: str, probe: Probe) -> ProbeResult:
 def load_probes(path: Path) -> tuple[list[Probe], dict[str, Any]]:
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     defaults = data.get("defaults", {}) or {}
-    probes = [Probe(**{k: v for k, v in p.items() if k in Probe.__dataclass_fields__}) for p in data["probes"]]
+    probes = [
+        Probe(**{k: v for k, v in p.items() if k in Probe.__dataclass_fields__})
+        for p in data["probes"]
+    ]
     return probes, defaults
 
 
@@ -159,7 +162,9 @@ def build_generator(args: argparse.Namespace):
     import sentencepiece as spm
     import torch
 
-    device = torch.device("cuda" if args.device == "auto" and torch.cuda.is_available() else args.device)
+    device = torch.device(
+        "cuda" if args.device == "auto" and torch.cuda.is_available() else args.device
+    )
     if str(device) == "auto":
         device = torch.device("cpu")
     _maybe_enable_mamba_kernel(device.type)
@@ -198,7 +203,9 @@ def build_generator(args: argparse.Namespace):
                 if next_id == eos:
                     break
                 new_ids.append(next_id)
-                x = torch.cat([x, torch.tensor([[next_id]], dtype=torch.long, device=device)], dim=1)
+                x = torch.cat(
+                    [x, torch.tensor([[next_id]], dtype=torch.long, device=device)], dim=1
+                )
         return sp.DecodeIds(new_ids).strip()
 
     return generate
@@ -210,6 +217,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     prompt_style = str(defaults.get("prompt_style", "plain_qa"))
 
     if args.dry:
+
         def generator(prompt: str, max_new_tokens: int) -> str:
             if "Hauptstadt von Deutschland" in prompt:
                 return "Berlin."
@@ -243,7 +251,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     aggregate = sum(r.score for r in results) / max(1, len(results))
     report: dict[str, Any] = {
         "tag": args.tag,
-        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "timestamp_utc": datetime.now(UTC).isoformat(),
         "checkpoint": str(args.checkpoint) if args.checkpoint else None,
         "model_config": str(args.model_config) if args.model_config else None,
         "probe_file": str(args.probes),
@@ -286,13 +294,17 @@ def write_report(report: dict[str, Any], results_dir: Path) -> Path:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--probes", type=Path, default=DEFAULT_PROBES)
     parser.add_argument("--results-dir", type=Path, default=DEFAULT_RESULTS_DIR)
     parser.add_argument("--tag", required=True)
     parser.add_argument("--model-config", type=Path, default=None)
     parser.add_argument("--checkpoint", type=Path, default=None)
-    parser.add_argument("--tokenizer", type=Path, default=REPO / "tokenizer" / "helix_v2_tokenizer.model")
+    parser.add_argument(
+        "--tokenizer", type=Path, default=REPO / "tokenizer" / "helix_v2_tokenizer.model"
+    )
     parser.add_argument("--device", default="auto")
     parser.add_argument("--max-new-tokens", type=int, default=None)
     parser.add_argument("--dry", action="store_true")

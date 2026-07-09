@@ -3,12 +3,12 @@
 import unittest
 
 from auralis.adaptive.signals import (
+    detect_regression,
     ema,
-    trend_slope,
-    relative_improvement,
     is_plateaued,
     is_stable_above,
-    detect_regression,
+    relative_improvement,
+    trend_slope,
 )
 
 

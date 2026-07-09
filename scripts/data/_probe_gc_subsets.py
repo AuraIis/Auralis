@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Probe coral-nlp/german-commons: real fields, source/subset mix, and whether
 clean MODERN German (low perplexity) is identifiable/abundant vs OCR-historical."""
+
 import itertools
 from collections import Counter
 
@@ -26,7 +27,9 @@ for i, ex in enumerate(itertools.islice(ds, N)):
     b = "<200" if ppl < 200 else "200-500" if ppl < 500 else "500-1000" if ppl < 1000 else ">=1000"
     ppl_buckets[b] += 1
     if ppl < 200 and len(clean) < 12:
-        clean.append((round(float(ppl), 1), ocr, s, su, (ex.get("text", "") or "").replace("\n", " ")[:160]))
+        clean.append(
+            (round(float(ppl), 1), ocr, s, su, (ex.get("text", "") or "").replace("\n", " ")[:160])
+        )
 
 print(f"\nsource counts (first {N}):", dict(src))
 print("subset counts:", dict(sub))

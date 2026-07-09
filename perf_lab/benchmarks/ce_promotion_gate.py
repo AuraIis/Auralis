@@ -29,6 +29,7 @@ Examples:
         --candidates liger,triton_fused:atomic_mixed \
         --steps 100 --tokens 256 --d-model 1280 --input-dim 512 --vocab-size 200000
 """
+
 from __future__ import annotations
 
 import argparse
@@ -53,16 +54,25 @@ def parse_candidate(spec: str) -> tuple[str, str | None]:
 def run_drift(impl: str, backward_mode: str | None, shape: dict[str, object]) -> dict:
     """Run loss_drift_ce.py as a subprocess and return its parsed JSON report."""
     cmd = [
-        sys.executable, str(DRIFT_SCRIPT),
-        "--impl", impl,
+        sys.executable,
+        str(DRIFT_SCRIPT),
+        "--impl",
+        impl,
         "--reference-fp32",
-        "--history-every", "0",
-        "--steps", str(shape["steps"]),
-        "--tokens", str(shape["tokens"]),
-        "--input-dim", str(shape["input_dim"]),
-        "--d-model", str(shape["d_model"]),
-        "--vocab-size", str(shape["vocab_size"]),
-        "--dtype", str(shape["dtype"]),
+        "--history-every",
+        "0",
+        "--steps",
+        str(shape["steps"]),
+        "--tokens",
+        str(shape["tokens"]),
+        "--input-dim",
+        str(shape["input_dim"]),
+        "--d-model",
+        str(shape["d_model"]),
+        "--vocab-size",
+        str(shape["vocab_size"]),
+        "--dtype",
+        str(shape["dtype"]),
     ]
     if shape.get("ignore_frac"):
         cmd += ["--ignore-frac", str(shape["ignore_frac"])]
@@ -82,7 +92,9 @@ def run_drift(impl: str, backward_mode: str | None, shape: dict[str, object]) ->
     try:
         return json.loads(proc.stdout)
     except json.JSONDecodeError as exc:
-        raise RuntimeError(f"bad JSON from {impl}: {exc}\nstdout tail:\n{proc.stdout[-2000:]}") from exc
+        raise RuntimeError(
+            f"bad JSON from {impl}: {exc}\nstdout tail:\n{proc.stdout[-2000:]}"
+        ) from exc
 
 
 def summarize(report: dict) -> dict:
@@ -107,10 +119,15 @@ def summarize(report: dict) -> dict:
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--candidates", default="liger",
-                   help="comma list of impls. Use impl:mode for triton_fused, e.g. "
-                        "'liger,triton_fused:atomic_mixed'. The pytorch floor is always run.")
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    p.add_argument(
+        "--candidates",
+        default="liger",
+        help="comma list of impls. Use impl:mode for triton_fused, e.g. "
+        "'liger,triton_fused:atomic_mixed'. The pytorch floor is always run.",
+    )
     p.add_argument("--steps", type=int, default=50)
     p.add_argument("--tokens", type=int, default=128)
     p.add_argument("--input-dim", type=int, default=256)
@@ -118,27 +135,50 @@ def main() -> None:
     p.add_argument("--vocab-size", type=int, default=8192)
     p.add_argument("--dtype", choices=["bf16", "fp16", "fp32"], default="bf16")
     p.add_argument("--ignore-frac", type=float, default=0.0)
-    p.add_argument("--accum-dtype", choices=["none", "fp32"], default="fp32",
-                   help="Liger gradient accumulation dtype.")
-    p.add_argument("--tolerance", type=float, default=1.5,
-                   help="A candidate PASSES if its max upstream-grad L2-rel drift is "
-                        "<= floor * tolerance (default 1.5). The floor is the measured "
-                        "PyTorch-bf16-vs-fp32 noise.")
-    p.add_argument("--slope-max", type=float, default=1e-4,
-                   help="A candidate must also have |grad-drift slope/step| <= this "
-                        "(drift must be flat noise, not accumulating bias).")
+    p.add_argument(
+        "--accum-dtype",
+        choices=["none", "fp32"],
+        default="fp32",
+        help="Liger gradient accumulation dtype.",
+    )
+    p.add_argument(
+        "--tolerance",
+        type=float,
+        default=1.5,
+        help="A candidate PASSES if its max upstream-grad L2-rel drift is "
+        "<= floor * tolerance (default 1.5). The floor is the measured "
+        "PyTorch-bf16-vs-fp32 noise.",
+    )
+    p.add_argument(
+        "--slope-max",
+        type=float,
+        default=1e-4,
+        help="A candidate must also have |grad-drift slope/step| <= this "
+        "(drift must be flat noise, not accumulating bias).",
+    )
     args = p.parse_args()
 
     shape = {
-        "steps": args.steps, "tokens": args.tokens, "input_dim": args.input_dim,
-        "d_model": args.d_model, "vocab_size": args.vocab_size, "dtype": args.dtype,
-        "ignore_frac": args.ignore_frac, "accum_dtype": args.accum_dtype,
+        "steps": args.steps,
+        "tokens": args.tokens,
+        "input_dim": args.input_dim,
+        "d_model": args.d_model,
+        "vocab_size": args.vocab_size,
+        "dtype": args.dtype,
+        "ignore_frac": args.ignore_frac,
+        "accum_dtype": args.accum_dtype,
     }
 
-    print(f"# CE promotion gate  shape: tokens={args.tokens} d_model={args.d_model} "
-          f"vocab={args.vocab_size} dtype={args.dtype} steps={args.steps}", flush=True)
-    print(f"# pass bar: grad_l2_rel <= floor * {args.tolerance}  AND  "
-          f"|slope| <= {args.slope_max:g}  AND  finite\n", flush=True)
+    print(
+        f"# CE promotion gate  shape: tokens={args.tokens} d_model={args.d_model} "
+        f"vocab={args.vocab_size} dtype={args.dtype} steps={args.steps}",
+        flush=True,
+    )
+    print(
+        f"# pass bar: grad_l2_rel <= floor * {args.tolerance}  AND  "
+        f"|slope| <= {args.slope_max:g}  AND  finite\n",
+        flush=True,
+    )
 
     # 1) Floor.
     print("running floor (pytorch bf16 vs fp32) ...", flush=True)
@@ -170,8 +210,10 @@ def main() -> None:
         rows.append((label, s, not reasons, reasons))
 
     # 3) Verdict table.
-    print(f"\n{'candidate':<26} {'grad_l2_rel':>12} {'x_floor':>8} {'loss_abs':>11} "
-          f"{'max_slope':>11} {'verdict':>8}")
+    print(
+        f"\n{'candidate':<26} {'grad_l2_rel':>12} {'x_floor':>8} {'loss_abs':>11} "
+        f"{'max_slope':>11} {'verdict':>8}"
+    )
     print("-" * 80)
     floor_grad = floor["grad_l2_rel"]
     for label, s, passed, reasons in rows:
@@ -182,8 +224,10 @@ def main() -> None:
         ratio = s["grad_l2_rel"] / floor_grad if floor_grad > 0 else float("inf")
         slope = max(abs(s["proj_grad_slope"] or 0.0), abs(s["head_grad_slope"] or 0.0))
         verdict = "PASS" if passed else "FAIL"
-        print(f"{label:<26} {s['grad_l2_rel']:>12.4g} {ratio:>8.2f} {s['loss_abs']:>11.4g} "
-              f"{slope:>11.3g} {verdict:>8}")
+        print(
+            f"{label:<26} {s['grad_l2_rel']:>12.4g} {ratio:>8.2f} {s['loss_abs']:>11.4g} "
+            f"{slope:>11.3g} {verdict:>8}"
+        )
         if reasons:
             print(f"    -> {'; '.join(reasons)}")
 

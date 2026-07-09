@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import sys
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -25,7 +24,6 @@ from pathlib import Path
 # editable install: make the repo root importable.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from scripts.data._common import atomic_text_writer, clean_text, now_iso
-
 
 BOILERPLATE_PATTERNS = (
     # English web chrome
@@ -151,17 +149,23 @@ def _passes(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--input", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--language", choices=["english", "german", "code"], required=True)
     parser.add_argument("--min-length", type=int, default=None)
     parser.add_argument("--max-length", type=int, default=None)
     parser.add_argument("--allow-mojibake", action="store_true")
-    parser.add_argument("--max-repetition", type=float, default=0.60,
-                        help="Reject lines where this fraction of tokens are duplicates. "
-                             "Default 0.60 (strict). Math/code with formal-repetitive content "
-                             "benefits from 0.80-0.85.")
+    parser.add_argument(
+        "--max-repetition",
+        type=float,
+        default=0.60,
+        help="Reject lines where this fraction of tokens are duplicates. "
+        "Default 0.60 (strict). Math/code with formal-repetitive content "
+        "benefits from 0.80-0.85.",
+    )
     args = parser.parse_args()
 
     # Per-language length defaults: (min, max, preserve_newlines).
@@ -187,9 +191,10 @@ def main() -> None:
         started_at=now_iso(),
     )
 
-    with atomic_text_writer(args.output) as out_fh, args.input.open(
-        "r", encoding="utf-8", errors="replace"
-    ) as in_fh:
+    with (
+        atomic_text_writer(args.output) as out_fh,
+        args.input.open("r", encoding="utf-8", errors="replace") as in_fh,
+    ):
         for line in in_fh:
             manifest.lines_in += 1
             reason = _passes(
@@ -210,7 +215,9 @@ def main() -> None:
 
     manifest.finished_at = now_iso()
     manifest_path = args.output.with_suffix(args.output.suffix + ".manifest.json")
-    manifest_path.write_text(json.dumps(asdict(manifest), indent=2, ensure_ascii=False), encoding="utf-8")
+    manifest_path.write_text(
+        json.dumps(asdict(manifest), indent=2, ensure_ascii=False), encoding="utf-8"
+    )
     print(f"wrote {args.output}")
     print(f"wrote {manifest_path}")
 

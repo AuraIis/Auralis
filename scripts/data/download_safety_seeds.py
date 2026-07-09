@@ -24,15 +24,16 @@ Usage (from inside the container):
     # See what's in the registry without downloading:
     python scripts/data/download_safety_seeds.py --list
 """
+
 from __future__ import annotations
 
 import argparse
 import json
 import sys
 import time
+from collections.abc import Callable, Iterable
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Callable, Iterable
 
 from tqdm import tqdm
 
@@ -96,10 +97,10 @@ def _hh_rlhf_records(ex: dict) -> Iterable[dict]:
         a_idx = tail.find("Assistant:")
         if a_idx > 0:
             user_text = tail[:a_idx].replace("Human:", "").strip()
-            chosen_response = tail[a_idx + len("Assistant:"):].strip()
+            chosen_response = tail[a_idx + len("Assistant:") :].strip()
             rej_a = rejected.rfind("Assistant:")
             if rej_a >= 0:
-                rejected_response = rejected[rej_a + len("Assistant:"):].strip()
+                rejected_response = rejected[rej_a + len("Assistant:") :].strip()
     yield {
         "source": "hh_rlhf",
         "kind": "preference",
@@ -138,15 +139,13 @@ def _wildchat_records(ex: dict) -> Iterable[dict]:
                 "source": "wildchat",
                 "kind": "chat",
                 "user": turn.get("content", ""),
-                "preferred": (conv[i + 1].get("content", "")
-                              if i + 1 < len(conv) and conv[i + 1].get("role") == "assistant"
-                              else ""),
-                "rejected": "",
-                "category": (
-                    "jailbreak" if toxic else
-                    "redacted" if redacted else
-                    "normal"
+                "preferred": (
+                    conv[i + 1].get("content", "")
+                    if i + 1 < len(conv) and conv[i + 1].get("role") == "assistant"
+                    else ""
                 ),
+                "rejected": "",
+                "category": ("jailbreak" if toxic else "redacted" if redacted else "normal"),
                 "raw": {
                     "conversation_id": ex.get("conversation_id"),
                     "turn_index": i,
@@ -164,7 +163,7 @@ def _advbench_records(ex: dict) -> Iterable[dict]:
         "source": "advbench",
         "kind": "harmful_request",
         "user": ex.get("goal", "") or ex.get("prompt", "") or "",
-        "preferred": "",   # leave empty — we generate refusals via Qwen later
+        "preferred": "",  # leave empty — we generate refusals via Qwen later
         "rejected": ex.get("target", "") or "",
         "category": "explicit_harmful",
         "raw": ex,
@@ -214,7 +213,7 @@ SOURCES = {
         "license_documented": "MIT",
         "license_class": "commercial",
         "notes": "Anthropic HH-RLHF preference pairs. Gold standard for "
-                 "helpful + harmless training.",
+        "helpful + harmless training.",
     },
     "oasst1": {
         "source": "oasst1",
@@ -227,7 +226,7 @@ SOURCES = {
         "license_documented": "Apache-2.0",
         "license_class": "commercial",
         "notes": "OpenAssistant Conversations Dataset 1. High-quality multi-"
-                 "turn chat with crowd-sourced quality ratings.",
+        "turn chat with crowd-sourced quality ratings.",
     },
     "oasst2": {
         "source": "oasst2",
@@ -252,8 +251,8 @@ SOURCES = {
         "license_documented": "ODC-BY-1.0",
         "license_class": "commercial",
         "notes": "Real user/ChatGPT conversations from a public chat playground."
-                 " Includes labeled toxicity + jailbreak attempts. Capped to "
-                 "200k turns.",
+        " Includes labeled toxicity + jailbreak attempts. Capped to "
+        "200k turns.",
     },
     "advbench": {
         "source": "advbench",
@@ -265,8 +264,7 @@ SOURCES = {
         "streaming": False,
         "license_documented": "MIT",
         "license_class": "commercial",
-        "notes": "520 explicit harmful prompts from the GCG paper. Use as "
-                 "refusal training signal.",
+        "notes": "520 explicit harmful prompts from the GCG paper. Use as refusal training signal.",
     },
     "harmbench": {
         "source": "harmbench",
@@ -297,6 +295,7 @@ SOURCES = {
 
 def _open_hf(dataset: str, config, split: str, streaming: bool):
     from datasets import load_dataset
+
     return load_dataset(dataset, config, split=split, streaming=streaming)
 
 
@@ -307,11 +306,16 @@ def _download_one(spec: dict, out_dir: Path, license_class: str) -> DownloadMani
     # Hard gate: don't proceed if user-requested class doesn't include this source.
     rank = {"commercial": 3, "permissive": 2, "research": 1}
     if rank[spec["license_class"]] < rank[license_class]:
-        print(f"  SKIP [{spec['source']}]: documented as {spec['license_class']!r}, "
-              f"caller requires {license_class!r}", flush=True)
+        print(
+            f"  SKIP [{spec['source']}]: documented as {spec['license_class']!r}, "
+            f"caller requires {license_class!r}",
+            flush=True,
+        )
         return DownloadManifest(
-            source=spec["source"], hf_dataset=spec["hf_dataset"],
-            hf_config=spec.get("config"), split=spec["split"],
+            source=spec["source"],
+            hf_dataset=spec["hf_dataset"],
+            hf_config=spec.get("config"),
+            split=spec["split"],
             license_documented=spec["license_documented"],
             license_class=spec["license_class"],
             output_file="(skipped)",
@@ -321,8 +325,10 @@ def _download_one(spec: dict, out_dir: Path, license_class: str) -> DownloadMani
 
     out_file = out_dir / f"{spec['source']}.jsonl"
     manifest = DownloadManifest(
-        source=spec["source"], hf_dataset=spec["hf_dataset"],
-        hf_config=spec.get("config"), split=spec["split"],
+        source=spec["source"],
+        hf_dataset=spec["hf_dataset"],
+        hf_config=spec.get("config"),
+        split=spec["split"],
         license_documented=spec["license_documented"],
         license_class=spec["license_class"],
         output_file=str(out_file),
@@ -333,14 +339,23 @@ def _download_one(spec: dict, out_dir: Path, license_class: str) -> DownloadMani
     max_records = spec.get("max_records")
 
     print(f"\n=== [{spec['source']}] -> {out_file} ===", flush=True)
-    print(f"  hf:      {spec['hf_dataset']}  config={spec.get('config')}  split={spec['split']}", flush=True)
+    print(
+        f"  hf:      {spec['hf_dataset']}  config={spec.get('config')}  split={spec['split']}",
+        flush=True,
+    )
     print(f"  license: {spec['license_documented']}  (class={spec['license_class']})", flush=True)
-    print(f"  max:     {max_records or 'all'}   streaming: {spec.get('streaming', True)}", flush=True)
+    print(
+        f"  max:     {max_records or 'all'}   streaming: {spec.get('streaming', True)}", flush=True
+    )
 
     try:
-        ds = _open_hf(spec["hf_dataset"], spec.get("config"), spec["split"],
-                      streaming=spec.get("streaming", True))
-    except Exception as e:                     # noqa: BLE001
+        ds = _open_hf(
+            spec["hf_dataset"],
+            spec.get("config"),
+            spec["split"],
+            streaming=spec.get("streaming", True),
+        )
+    except Exception as e:
         manifest.notes.append(f"LOAD FAILED: {type(e).__name__}: {e}")
         manifest.finished_at = now_iso()
         manifest.elapsed_seconds = round(time.time() - t0, 1)
@@ -363,7 +378,7 @@ def _download_one(spec: dict, out_dir: Path, license_class: str) -> DownloadMani
                         break
                 if max_records and manifest.records_written >= max_records:
                     break
-        except Exception as e:                 # noqa: BLE001
+        except Exception as e:
             manifest.notes.append(f"ITER FAILED: {type(e).__name__}: {e}")
             print(f"  ! iter failed mid-way: {e}", file=sys.stderr)
 
@@ -374,9 +389,12 @@ def _download_one(spec: dict, out_dir: Path, license_class: str) -> DownloadMani
         json.dumps(asdict(manifest), indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
-    print(f"  done: {manifest.records_written} rec, "
-          f"{manifest.bytes_written / 1e6:.1f} MB, "
-          f"{manifest.elapsed_seconds:.0f}s", flush=True)
+    print(
+        f"  done: {manifest.records_written} rec, "
+        f"{manifest.bytes_written / 1e6:.1f} MB, "
+        f"{manifest.elapsed_seconds:.0f}s",
+        flush=True,
+    )
     return manifest
 
 
@@ -386,8 +404,10 @@ def cmd_list(args) -> None:
     for key, spec in SOURCES.items():
         ok = rank[spec["license_class"]] >= rank[args.license_class]
         mark = "OK" if ok else "skip"
-        print(f"  [{mark:4}] {key:20s} {spec['hf_dataset']:35s} "
-              f"{spec['license_documented']:15s} (class={spec['license_class']})")
+        print(
+            f"  [{mark:4}] {key:20s} {spec['hf_dataset']:35s} "
+            f"{spec['license_documented']:15s} (class={spec['license_class']})"
+        )
         print(f"           {spec.get('notes', '')[:90]}")
 
 
@@ -397,8 +417,7 @@ def cmd_download(args) -> None:
         keys = list(SOURCES)
     else:
         if args.source not in SOURCES:
-            sys.exit(f"unknown source {args.source!r}; "
-                     f"known: {list(SOURCES)}")
+            sys.exit(f"unknown source {args.source!r}; known: {list(SOURCES)}")
         keys = [args.source]
 
     summary = []
@@ -412,24 +431,28 @@ def cmd_download(args) -> None:
 
     print("\n=== SUMMARY ===")
     for mf in summary:
-        print(f"  {mf.source:20s} -> {mf.records_written} rec "
-              f"({mf.bytes_written / 1e6:.1f} MB)  license={mf.license_documented}")
+        print(
+            f"  {mf.source:20s} -> {mf.records_written} rec "
+            f"({mf.bytes_written / 1e6:.1f} MB)  license={mf.license_documented}"
+        )
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description=__doc__,
-                                formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--license-class",
-                   choices=("commercial", "permissive", "research"),
-                   default="commercial",
-                   help="commercial = MIT/Apache/CC0/CC-BY/ODC-BY only (default).")
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    p.add_argument(
+        "--license-class",
+        choices=("commercial", "permissive", "research"),
+        default="commercial",
+        help="commercial = MIT/Apache/CC0/CC-BY/ODC-BY only (default).",
+    )
     p.add_argument("--output-dir", type=Path, default=DEFAULT_OUT_DIR)
 
     sub = p.add_subparsers(dest="cmd")
     sub.add_parser("list", help="Show the registry without downloading.")
     p_dl = sub.add_parser("download", help="Download one or all sources.")
-    p_dl.add_argument("--source", required=True,
-                      help=f"One of: all, {', '.join(SOURCES)}")
+    p_dl.add_argument("--source", required=True, help=f"One of: all, {', '.join(SOURCES)}")
 
     # Back-compat: also accept --source / --list at top level for ergonomics.
     p.add_argument("--source", default=None, help="Same as 'download --source ...'.")

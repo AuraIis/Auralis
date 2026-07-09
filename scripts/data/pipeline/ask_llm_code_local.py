@@ -22,6 +22,7 @@ Usage (inside auralis-downloader container):
         --model qwen3.6-35b-a3b \\
         --parallel 8 --resume
 """
+
 from __future__ import annotations
 
 import argparse
@@ -31,11 +32,10 @@ import os
 import re
 import sys
 import time
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Iterator
 
 import requests
-
 
 # Code-specific 1-5 rubric (same as ask_llm_code.py for consistent calibration).
 SCORE_PROMPT = """\
@@ -65,8 +65,8 @@ Score: <digit from 1 to 5>"""
 
 # posix_fadvise constants (defined in Python 3.3+ on Linux)
 _FADV_SEQUENTIAL = getattr(os, "POSIX_FADV_SEQUENTIAL", 2)
-_FADV_DONTNEED   = getattr(os, "POSIX_FADV_DONTNEED",   4)
-_FADV_NOREUSE    = getattr(os, "POSIX_FADV_NOREUSE",    5)
+_FADV_DONTNEED = getattr(os, "POSIX_FADV_DONTNEED", 4)
+_FADV_NOREUSE = getattr(os, "POSIX_FADV_NOREUSE", 5)
 
 # Disabled: posix_fadvise(DONTNEED) on btrfs/NVMe causes "Invalid Field in Command"
 # errors (291 logged) that can freeze the kernel I/O stack under sustained load.
@@ -83,9 +83,7 @@ def _fadvise(fd: int, offset: int, length: int, advice: int) -> None:
             pass
 
 
-def read_repo_marker_docs(
-    path: Path, marker: str = "<reponame>"
-) -> Iterator[tuple[int, str, str]]:
+def read_repo_marker_docs(path: Path, marker: str = "<reponame>") -> Iterator[tuple[int, str, str]]:
     """Stream the_stack-style files separated by `<reponame>OWNER/REPO\\n`.
     Yields (doc_id, reponame, code_text).
 
@@ -94,8 +92,8 @@ def read_repo_marker_docs(
     already-processed pages.  On a 57 GB file with 62 GB RAM this keeps
     page-cache growth bounded instead of filling all available memory.
     """
-    DONTNEED_EVERY = 32 * 1024 * 1024   # drop cache every 32 MB (not advisory 512 MB)
-    marker_bytes   = marker.encode()
+    DONTNEED_EVERY = 32 * 1024 * 1024  # drop cache every 32 MB (not advisory 512 MB)
+    marker_bytes = marker.encode()
 
     buf: list[str] = []
     current_repo: str | None = None
@@ -105,7 +103,7 @@ def read_repo_marker_docs(
 
     with path.open("rb") as f:
         fd = f.fileno()
-        _fadvise(fd, 0, 0, _FADV_SEQUENTIAL)   # enable kernel read-ahead
+        _fadvise(fd, 0, 0, _FADV_SEQUENTIAL)  # enable kernel read-ahead
 
         for raw_line in f:
             byte_pos += len(raw_line)
@@ -122,7 +120,7 @@ def read_repo_marker_docs(
                     yield n, current_repo, "".join(buf)
                     n += 1
                     buf.clear()
-                current_repo = line[len(marker):].rstrip("\n\r")
+                current_repo = line[len(marker) :].rstrip("\n\r")
             else:
                 if current_repo is not None:
                     buf.append(line)
@@ -185,25 +183,24 @@ def main() -> int:
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    p.add_argument("--input",  type=Path, required=True)
+    p.add_argument("--input", type=Path, required=True)
     p.add_argument("--output", type=Path, required=True)
-    p.add_argument("--max-docs",    type=int,   default=0,
-                   help="Max docs to score (default 0 = all).")
-    p.add_argument("--threshold",   type=int,   default=3)
-    p.add_argument("--head-chars",  type=int,   default=2000)
-    p.add_argument("--min-chars",   type=int,   default=100)
-    p.add_argument("--max-chars",   type=int,   default=50_000)
-    p.add_argument("--marker",      default="<reponame>")
-    p.add_argument("--model",       default="qwen3.6-35b-a3b")
-    p.add_argument("--base-url",    default="http://172.17.0.1:8765/v1")
-    p.add_argument("--parallel",    type=int,   default=8)
-    p.add_argument("--max-tokens",  type=int,   default=32)
+    p.add_argument("--max-docs", type=int, default=0, help="Max docs to score (default 0 = all).")
+    p.add_argument("--threshold", type=int, default=3)
+    p.add_argument("--head-chars", type=int, default=2000)
+    p.add_argument("--min-chars", type=int, default=100)
+    p.add_argument("--max-chars", type=int, default=50_000)
+    p.add_argument("--marker", default="<reponame>")
+    p.add_argument("--model", default="qwen3.6-35b-a3b")
+    p.add_argument("--base-url", default="http://172.17.0.1:8765/v1")
+    p.add_argument("--parallel", type=int, default=8)
+    p.add_argument("--max-tokens", type=int, default=32)
     p.add_argument("--temperature", type=float, default=0.05)
-    p.add_argument("--timeout",     type=int,   default=120)
-    p.add_argument("--chunk-size",  type=int,   default=1000,
-                   help="Progress report every N scored docs.")
-    p.add_argument("--resume", action="store_true",
-                   help="Skip doc_ids already in output file.")
+    p.add_argument("--timeout", type=int, default=120)
+    p.add_argument(
+        "--chunk-size", type=int, default=1000, help="Progress report every N scored docs."
+    )
+    p.add_argument("--resume", action="store_true", help="Skip doc_ids already in output file.")
     args = p.parse_args()
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -233,18 +230,20 @@ def main() -> int:
         sys.exit(f"FATAL: cannot reach {args.base_url}: {e}")
     print(f"  endpoint OK, model={args.model!r}", flush=True)
 
-    fadvise_status = "posix_fadvise active (32 MB DONTNEED)" if _HAVE_FADVISE else "posix_fadvise unavailable"
+    fadvise_status = (
+        "posix_fadvise active (32 MB DONTNEED)" if _HAVE_FADVISE else "posix_fadvise unavailable"
+    )
     print(f"  {fadvise_status}", flush=True)
 
     max_limit: float = args.max_docs if args.max_docs > 0 else float("inf")
-    max_queued = args.parallel * 4   # bounded queue: never > this many doc dicts in RAM
+    max_queued = args.parallel * 4  # bounded queue: never > this many doc dicts in RAM
 
     n_kept = n_total = 0
     n_too_short = n_too_long = n_resumed = 0
     histogram: dict[int | str, int] = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0, "?": 0}
-    chunk_size    = max(args.chunk_size, 1)
+    chunk_size = max(args.chunk_size, 1)
     chunk_counter = 0
-    chunk_kept    = 0
+    chunk_kept = 0
     t0 = time.time()
 
     def doc_source() -> Iterator[dict]:
@@ -256,10 +255,10 @@ def main() -> int:
                 n_resumed += 1
                 continue
             L = len(code)
-            if L < args.min_chars:
+            if args.min_chars > L:
                 n_too_short += 1
                 continue
-            if args.max_chars and L > args.max_chars:
+            if args.max_chars and args.max_chars < L:
                 n_too_long += 1
                 continue
             yield {
@@ -268,7 +267,7 @@ def main() -> int:
                 "instruction": SCORE_PROMPT.format(
                     reponame=reponame,
                     head_chars=args.head_chars,
-                    code_head=code[:args.head_chars],
+                    code_head=code[: args.head_chars],
                 ),
                 "head": code[:200],
                 "length_chars": L,
@@ -277,9 +276,10 @@ def main() -> int:
 
     print(f"Streaming {args.input} ...", flush=True)
 
-    with args.output.open("a", encoding="utf-8") as out_f, \
-         concurrent.futures.ThreadPoolExecutor(max_workers=args.parallel) as ex:
-
+    with (
+        args.output.open("a", encoding="utf-8") as out_f,
+        concurrent.futures.ThreadPoolExecutor(max_workers=args.parallel) as ex,
+    ):
         source = doc_source()
         pending: dict[concurrent.futures.Future, None] = {}
         source_exhausted = False
@@ -290,8 +290,14 @@ def main() -> int:
                 try:
                     doc = next(source)
                     fut = ex.submit(
-                        score_one, sess, args.base_url, args.model, doc,
-                        args.max_tokens, args.temperature, args.timeout,
+                        score_one,
+                        sess,
+                        args.base_url,
+                        args.model,
+                        doc,
+                        args.max_tokens,
+                        args.temperature,
+                        args.timeout,
                     )
                     pending[fut] = None
                 except StopIteration:
@@ -317,14 +323,14 @@ def main() -> int:
                 if chunk_counter >= chunk_size:
                     out_f.flush()
                     elapsed = time.time() - t0
-                    rate    = n_total / elapsed if elapsed > 0 else 0
+                    rate = n_total / elapsed if elapsed > 0 else 0
                     print(
                         f"  {n_total} scored  {chunk_kept}/{chunk_size} kept  "
-                        f"{rate:.2f} doc/s  {elapsed/3600:.2f}h elapsed",
+                        f"{rate:.2f} doc/s  {elapsed / 3600:.2f}h elapsed",
                         flush=True,
                     )
                     chunk_counter = 0
-                    chunk_kept    = 0
+                    chunk_kept = 0
             fill_queue()
 
     elapsed = time.time() - t0
@@ -332,12 +338,15 @@ def main() -> int:
     print(f"=== ask-llm-code-local ({args.model}) ===")
     print(f"  input :  {args.input}")
     print(f"  output:  {args.output}")
-    print(f"  scored:  {n_total} files in {elapsed/60:.1f} min")
-    if n_resumed:    print(f"  resumed: {n_resumed} previously-done files skipped")
+    print(f"  scored:  {n_total} files in {elapsed / 60:.1f} min")
+    if n_resumed:
+        print(f"  resumed: {n_resumed} previously-done files skipped")
     if n_too_short or n_too_long:
         print(f"  filtered: {n_too_short} too-short, {n_too_long} too-long")
-    print(f"  kept  :  {n_kept} / {n_total} (≥{args.threshold}) — "
-          f"{100*n_kept/max(n_total,1):.1f}%")
+    print(
+        f"  kept  :  {n_kept} / {n_total} (≥{args.threshold}) — "
+        f"{100 * n_kept / max(n_total, 1):.1f}%"
+    )
     print("  histogram:")
     for k in [1, 2, 3, 4, 5, "?"]:
         bar = "█" * min(histogram[k], 60)

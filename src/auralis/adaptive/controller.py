@@ -13,20 +13,20 @@ put in the snapshot (e.g. ``"neg_loss": -loss``). Declare any exceptions in
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Iterable
 
 from .signals import detect_regression, is_plateaued, is_stable_above, trend_slope
 from .stages import CurriculumSpec, Stage
 
 
 class DecisionKind(str, Enum):
-    CONTINUE = "continue"      # keep training the current stage
-    ADVANCE = "advance"        # move to the next stage
-    HOLD = "hold"              # pause/freeze; guard tripped but not fatal
-    STOP = "stop"              # terminate the run (guard fatal or done badly)
-    DONE = "done"             # finished the last stage successfully
+    CONTINUE = "continue"  # keep training the current stage
+    ADVANCE = "advance"  # move to the next stage
+    HOLD = "hold"  # pause/freeze; guard tripped but not fatal
+    STOP = "stop"  # terminate the run (guard fatal or done badly)
+    DONE = "done"  # finished the last stage successfully
 
 
 @dataclass
@@ -50,8 +50,8 @@ class Decision:
 class MetricSnapshot:
     """Everything the controller needs for one decision point."""
 
-    step: int                                  # global training step
-    stage_step: int                            # steps trained in the current stage
+    step: int  # global training step
+    stage_step: int  # steps trained in the current stage
     metrics: dict[str, float] = field(default_factory=dict)
 
 
@@ -130,7 +130,7 @@ class CurriculumController:
         series = self._history.get(metric, [])
         if self.higher_is_better.get(metric, True):
             return series
-        return [-v for v in series]   # normalise to higher-is-better
+        return [-v for v in series]  # normalise to higher-is-better
 
     def _stage_series(self, metric: str) -> list[float]:
         """Current-stage-only history, normalised to higher-is-better.
@@ -139,7 +139,7 @@ class CurriculumController:
         which is how the monitor is expected to emit mastery/guard metrics.
         """
         full = self._history.get(metric, [])
-        local = full[self._stage_start_index:]
+        local = full[self._stage_start_index :]
         if self.higher_is_better.get(metric, True):
             return local
         return [-v for v in local]
@@ -181,8 +181,9 @@ class CurriculumController:
             return Decision(DecisionKind.HOLD, reason, stage.name, metrics=dict(snap.metrics))
         # rollback => signal STOP-with-rollback intent to the trainer
         self.finished = True
-        return Decision(DecisionKind.STOP, "rollback: " + reason, stage.name,
-                        metrics=dict(snap.metrics))
+        return Decision(
+            DecisionKind.STOP, "rollback: " + reason, stage.name, metrics=dict(snap.metrics)
+        )
 
     def _continue(self, stage: Stage, snap: MetricSnapshot, why: str) -> Decision:
         return Decision(DecisionKind.CONTINUE, why, stage.name, metrics=dict(snap.metrics))
@@ -195,8 +196,9 @@ class CurriculumController:
         # triggered this advance.
         self._stage_start_index = len(self._snapshots)
         nxt = self.spec.stages[self.stage_index]
-        return Decision(DecisionKind.ADVANCE, why, stage.name, to_stage=nxt.name,
-                        metrics=dict(snap.metrics))
+        return Decision(
+            DecisionKind.ADVANCE, why, stage.name, to_stage=nxt.name, metrics=dict(snap.metrics)
+        )
 
     def _finish(self, stage: Stage, snap: MetricSnapshot, why: str) -> Decision:
         self.finished = True
@@ -213,4 +215,4 @@ class CurriculumController:
         return [self.update(s) for s in snaps]
 
 
-__all__ = ["CurriculumController", "MetricSnapshot", "Decision", "DecisionKind"]
+__all__ = ["CurriculumController", "Decision", "DecisionKind", "MetricSnapshot"]

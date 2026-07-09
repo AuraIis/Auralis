@@ -24,7 +24,6 @@ if str(ROOT) not in sys.path:
 from scripts.data.dataset_market_app import _hf_json, _row_text, _sample_quality  # noqa: E402
 from scripts.data.structure_clean_pretrain import clean_document  # noqa: E402
 
-
 DATASET_ID = "coral-nlp/german-commons"
 
 
@@ -115,9 +114,15 @@ def audit_split(config: str, split: str, limit: int) -> dict[str, Any]:
         if reason:
             reject_reasons[reason] = reject_reasons.get(reason, 0) + 1
 
-    token_counts = [row.get("num_tokens") for row in rows if isinstance(row.get("num_tokens"), (int, float))]
-    perplexities = [row.get("perplexity") for row in rows if isinstance(row.get("perplexity"), (int, float))]
-    ocr_scores = [row.get("ocr_score") for row in rows if isinstance(row.get("ocr_score"), (int, float))]
+    token_counts = [
+        row.get("num_tokens") for row in rows if isinstance(row.get("num_tokens"), (int, float))
+    ]
+    perplexities = [
+        row.get("perplexity") for row in rows if isinstance(row.get("perplexity"), (int, float))
+    ]
+    ocr_scores = [
+        row.get("ocr_score") for row in rows if isinstance(row.get("ocr_score"), (int, float))
+    ]
     licenses = sorted({str(item) for row in rows for item in (row.get("license") or [])})
 
     report = {
@@ -186,8 +191,12 @@ def markdown(report: dict[str, Any]) -> str:
         )
     lines.extend(["", "## Notes", ""])
     lines.append("- `take` still means run the full local cleaner and dedup before tokenizing.")
-    lines.append("- `hard_filter` is not always trash; it means use source-specific thresholds like `ocr_score`, `perplexity`, and stricter character-noise checks.")
-    lines.append("- This audit uses first-row samples, so it is a fast triage pass, not a full corpus measurement.")
+    lines.append(
+        "- `hard_filter` is not always trash; it means use source-specific thresholds like `ocr_score`, `perplexity`, and stricter character-noise checks."
+    )
+    lines.append(
+        "- This audit uses first-row samples, so it is a fast triage pass, not a full corpus measurement."
+    )
     return "\n".join(lines) + "\n"
 
 
@@ -225,8 +234,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--samples-per-split", type=int, default=12)
     parser.add_argument("--max-splits", type=int, default=0)
-    parser.add_argument("--config", action="append", help="Only audit this config; can be repeated.")
-    parser.add_argument("--output-json", type=Path, default=Path("data/eval/german_commons_audit.json"))
+    parser.add_argument(
+        "--config", action="append", help="Only audit this config; can be repeated."
+    )
+    parser.add_argument(
+        "--output-json", type=Path, default=Path("data/eval/german_commons_audit.json")
+    )
     parser.add_argument("--output-md", type=Path, default=Path("data/eval/german_commons_audit.md"))
     args = parser.parse_args()
     run(args)

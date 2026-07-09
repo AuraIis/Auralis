@@ -20,28 +20,55 @@ from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 
-
 REPO = Path(__file__).resolve().parents[2]
 
 FACTS = [
-    ("Berlin", "die Hauptstadt Deutschlands", "Berlin ist ein Stadtstaat und zugleich ein Bundesland."),
+    (
+        "Berlin",
+        "die Hauptstadt Deutschlands",
+        "Berlin ist ein Stadtstaat und zugleich ein Bundesland.",
+    ),
     ("Paris", "die Hauptstadt Frankreichs", "Paris liegt an der Seine."),
     ("Wien", "die Hauptstadt Österreichs", "Wien liegt an der Donau."),
-    ("Bern", "die Bundesstadt der Schweiz", "Die Schweiz hat keine Hauptstadt im engen verfassungsrechtlichen Sinn."),
+    (
+        "Bern",
+        "die Bundesstadt der Schweiz",
+        "Die Schweiz hat keine Hauptstadt im engen verfassungsrechtlichen Sinn.",
+    ),
     ("Goethe", "der Autor von Faust", "Johann Wolfgang von Goethe war ein deutscher Dichter."),
     ("Schiller", "der Autor von Die Räuber", "Friedrich Schiller veröffentlichte das Drama 1781."),
-    ("Wasser", "eine chemische Verbindung aus Wasserstoff und Sauerstoff", "Die Formel von Wasser ist H2O."),
-    ("Kohlendioxid", "eine chemische Verbindung aus Kohlenstoff und Sauerstoff", "Die Formel von Kohlendioxid ist CO2."),
-    ("das Grundgesetz", "die Verfassung der Bundesrepublik Deutschland", "Es trat am 23. Mai 1949 in Kraft."),
+    (
+        "Wasser",
+        "eine chemische Verbindung aus Wasserstoff und Sauerstoff",
+        "Die Formel von Wasser ist H2O.",
+    ),
+    (
+        "Kohlendioxid",
+        "eine chemische Verbindung aus Kohlenstoff und Sauerstoff",
+        "Die Formel von Kohlendioxid ist CO2.",
+    ),
+    (
+        "das Grundgesetz",
+        "die Verfassung der Bundesrepublik Deutschland",
+        "Es trat am 23. Mai 1949 in Kraft.",
+    ),
     ("die Berliner Mauer", "ein Symbol der deutschen Teilung", "Sie fiel am 9. November 1989."),
 ]
 
 PY_CONCEPTS = [
     ("Liste", "eine geordnete veränderbare Sammlung", "werte = [1, 2, 3]"),
     ("Dictionary", "eine Zuordnung von Schlüsseln zu Werten", "alter = {'Ada': 36}"),
-    ("Funktion", "ein wiederverwendbarer Block von Anweisungen", "def addiere(a, b):\n    return a + b"),
+    (
+        "Funktion",
+        "ein wiederverwendbarer Block von Anweisungen",
+        "def addiere(a, b):\n    return a + b",
+    ),
     ("Schleife", "eine Wiederholung von Anweisungen", "for zahl in range(3):\n    print(zahl)"),
-    ("Bedingung", "eine Verzweigung nach Wahrheit eines Ausdrucks", "if temperatur > 30:\n    print('warm')"),
+    (
+        "Bedingung",
+        "eine Verzweigung nach Wahrheit eines Ausdrucks",
+        "if temperatur > 30:\n    print('warm')",
+    ),
 ]
 
 
@@ -154,8 +181,12 @@ def reasoning_docs(rng: random.Random, n: int) -> list[tuple[str, str]]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--output", type=Path, default=REPO / "data" / "training" / "pretrain_booster_de_v1.txt")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "--output", type=Path, default=REPO / "data" / "training" / "pretrain_booster_de_v1.txt"
+    )
     parser.add_argument("--documents", type=int, default=100_000)
     parser.add_argument("--seed", type=int, default=20260509)
     args = parser.parse_args()
@@ -191,7 +222,9 @@ def main() -> None:
         "documents": manifest.documents,
         "categories": dict(manifest.categories.most_common()),
     }
-    manifest_path.write_text(json.dumps(manifest_payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    manifest_path.write_text(
+        json.dumps(manifest_payload, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
     print(f"wrote {args.output} ({manifest.documents:,} docs)")
     print(f"wrote {manifest_path}")
 

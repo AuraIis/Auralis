@@ -21,7 +21,6 @@ import re
 from pathlib import Path
 from typing import Any
 
-
 SPACE_RE = re.compile(r"\s+")
 
 
@@ -97,7 +96,9 @@ def iter_records(
                 continue
             content_hash = sha256_text(norm)
             fallback_key = f"{source_name}:{content_hash}"
-            group_key = json_group_key(obj, group_fields, fallback_key) if obj is not None else fallback_key
+            group_key = (
+                json_group_key(obj, group_fields, fallback_key) if obj is not None else fallback_key
+            )
             yield {
                 "source": source_name,
                 "path": str(path),
@@ -119,7 +120,9 @@ def parse_args() -> argparse.Namespace:
         help="Source name and input file. May be repeated.",
     )
     parser.add_argument("--out", required=True, help="Output manifest JSONL path.")
-    parser.add_argument("--holdout-mod", type=int, default=1000, help="Hash modulo for split buckets.")
+    parser.add_argument(
+        "--holdout-mod", type=int, default=1000, help="Hash modulo for split buckets."
+    )
     parser.add_argument(
         "--holdout-buckets",
         default="0,1,2,3,4",
@@ -150,7 +153,14 @@ def main() -> int:
 
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    text_fields = args.text_field or ["text", "content", "question", "answer", "prompt", "completion"]
+    text_fields = args.text_field or [
+        "text",
+        "content",
+        "question",
+        "answer",
+        "prompt",
+        "completion",
+    ]
     group_fields = args.group_field or ["repo_name", "message_tree_id", "id", "title"]
 
     counts: dict[str, dict[str, int]] = {}
@@ -160,7 +170,9 @@ def main() -> int:
             if not path.is_file():
                 raise SystemExit(f"missing source file: {path}")
             counts.setdefault(source_name, {"train": 0, "holdout": 0})
-            for rec in iter_records(source_name, path, text_fields=text_fields, group_fields=group_fields):
+            for rec in iter_records(
+                source_name, path, text_fields=text_fields, group_fields=group_fields
+            ):
                 key = f"{source_name}:{rec['group_key']}"
                 bucket = stable_bucket(key, args.holdout_mod)
                 split = "holdout" if bucket in holdout_buckets else "train"
@@ -175,4 +187,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

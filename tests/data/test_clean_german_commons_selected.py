@@ -10,7 +10,6 @@ from scripts.data.clean_german_commons_selected import (
     source_paths,
 )
 
-
 GOOD_TEXT = (
     "Die Photosynthese ist ein grundlegender Prozess, bei dem Pflanzen Lichtenergie in chemische Energie "
     "umwandeln. Dabei wird Wasser gespalten und Kohlendioxid in organische Verbindungen eingebaut. "
@@ -22,11 +21,15 @@ GOOD_TEXT = (
 def test_metadata_reject_reason_applies_source_filters():
     assert metadata_reject_reason({"ocr_score": 80}, {"min_ocr_score": 90}) == "low_ocr_score"
     assert metadata_reject_reason({"perplexity": 900}, {"max_perplexity": 700}) == "high_perplexity"
-    assert metadata_reject_reason({"ocr_score": 95, "perplexity": 300}, {"min_ocr_score": 90}) is None
+    assert (
+        metadata_reject_reason({"ocr_score": 95, "perplexity": 300}, {"min_ocr_score": 90}) is None
+    )
 
 
 def test_source_paths_match_downloader_layout(tmp_path):
-    input_path, output_jsonl, output_text = source_paths(tmp_path / "raw", tmp_path / "clean", "web", "wikipedia")
+    input_path, output_jsonl, output_text = source_paths(
+        tmp_path / "raw", tmp_path / "clean", "web", "wikipedia"
+    )
 
     assert input_path.as_posix().endswith("raw/web/web__wikipedia.jsonl.gz")
     assert output_jsonl.as_posix().endswith("clean/web/web__wikipedia.clean.jsonl")
@@ -93,7 +96,10 @@ def test_run_can_skip_missing_sources(tmp_path):
     plan = {
         "dataset": "coral-nlp/german-commons",
         "global_filters": {"min_words": 30, "min_quality_score": 0.4, "min_language_signal": 0.03},
-        "take_first": [{"config": "web", "split": "wikipedia"}, {"config": "legal", "split": "eurlex"}],
+        "take_first": [
+            {"config": "web", "split": "wikipedia"},
+            {"config": "legal", "split": "eurlex"},
+        ],
     }
     plan_path = tmp_path / "plan.json"
     plan_path.write_text(json.dumps(plan), encoding="utf-8")

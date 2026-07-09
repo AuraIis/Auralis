@@ -9,6 +9,7 @@ the full 270TB — only the shards we consume up to --target-gb.
 Listing : https://huggingface.co/datasets/togethercomputer/RedPajama-Data-V2/resolve/main/listings/de-<snap>-head_middle.txt
 Shards  : https://data.together.xyz/redpajama-data-v2/v1.0.0/documents/<line>.json.gz
 """
+
 from __future__ import annotations
 
 import argparse
@@ -22,7 +23,7 @@ import urllib.request
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from scripts.data._common import (  # noqa: E402
+from scripts.data._common import (
     atomic_text_writer,
     check_free_space,
     clean_text,
@@ -31,8 +32,10 @@ from scripts.data._common import (  # noqa: E402
     resolve,
 )
 
-LISTING_URL = ("https://huggingface.co/datasets/togethercomputer/RedPajama-Data-V2/"
-               "resolve/main/listings/de-{snap}-head_middle.txt")
+LISTING_URL = (
+    "https://huggingface.co/datasets/togethercomputer/RedPajama-Data-V2/"
+    "resolve/main/listings/de-{snap}-head_middle.txt"
+)
 SHARD_URL = "https://data.together.xyz/redpajama-data-v2/v1.0.0/documents/{path}.json.gz"
 
 
@@ -44,8 +47,12 @@ def fetch(url: str, timeout: int = 120) -> bytes:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--snapshots", nargs="+", default=["2023-14"],
-                    help="CC snapshots to pull German head_middle from")
+    ap.add_argument(
+        "--snapshots",
+        nargs="+",
+        default=["2023-14"],
+        help="CC snapshots to pull German head_middle from",
+    )
     ap.add_argument("--target-gb", type=float, default=50.0, help="cleaned-text byte budget")
     ap.add_argument("--output", type=Path, default=None)
     ap.add_argument("--progress-every", type=int, default=50)
@@ -67,7 +74,10 @@ def main() -> None:
     dropped = {"too_short": 0, "too_long": 0, "empty": 0}
     t0 = time.monotonic()
 
-    print(f"RPv2-de head_middle, snapshots={args.snapshots}, target={args.target_gb}GB -> {out}", flush=True)
+    print(
+        f"RPv2-de head_middle, snapshots={args.snapshots}, target={args.target_gb}GB -> {out}",
+        flush=True,
+    )
     with atomic_text_writer(out) as fh:
         stop = False
         for snap in args.snapshots:
@@ -81,13 +91,15 @@ def main() -> None:
                     continue
                 try:
                     blob = fetch(SHARD_URL.format(path=shard_path))
-                except Exception as e:  # noqa: BLE001
+                except Exception as e:
                     shards_failed += 1
                     if shards_failed <= 10:
                         print(f"  WARN shard fail {shard_path}: {type(e).__name__}", flush=True)
                     continue
                 try:
-                    with gzip.open(io.BytesIO(blob), "rt", encoding="utf-8", errors="replace") as gz:
+                    with gzip.open(
+                        io.BytesIO(blob), "rt", encoding="utf-8", errors="replace"
+                    ) as gz:
                         for raw in gz:
                             try:
                                 obj = json.loads(raw)
@@ -107,14 +119,17 @@ def main() -> None:
                             fh.write(line + "\n")
                             written_bytes += len(line.encode("utf-8")) + 1
                             docs += 1
-                except Exception as e:  # noqa: BLE001
+                except Exception:
                     shards_failed += 1
                     continue
                 shards_done += 1
                 if args.progress_every and shards_done % args.progress_every == 0:
                     rate = written_bytes / max(1e-9, time.monotonic() - t0) / 1e6
-                    print(f"  shards {shards_done:,} | docs {docs:,} | "
-                          f"{written_bytes/1e9:.2f} GB | {rate:.1f} MB/s", flush=True)
+                    print(
+                        f"  shards {shards_done:,} | docs {docs:,} | "
+                        f"{written_bytes / 1e9:.2f} GB | {rate:.1f} MB/s",
+                        flush=True,
+                    )
                 if written_bytes >= target_bytes:
                     stop = True
                     break
@@ -134,8 +149,12 @@ def main() -> None:
         "finished_at": now_iso(),
     }
     out.with_suffix(out.suffix + ".manifest.json").write_text(
-        json.dumps(manifest, indent=2), encoding="utf-8")
-    print(f"DONE docs={docs:,} bytes={written_bytes/1e9:.2f}GB shards={shards_done:,} failed={shards_failed}", flush=True)
+        json.dumps(manifest, indent=2), encoding="utf-8"
+    )
+    print(
+        f"DONE docs={docs:,} bytes={written_bytes / 1e9:.2f}GB shards={shards_done:,} failed={shards_failed}",
+        flush=True,
+    )
     sys.stdout.flush()
     os._exit(0)
 

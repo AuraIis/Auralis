@@ -15,8 +15,9 @@ pure. Three adapters:
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 import torch
 
@@ -38,8 +39,8 @@ class TokenizerAdapter:
         self.sp = spm.SentencePieceProcessor()
         self.sp.Load(str(model_path))
         self.eos_id = self.sp.eos_id()
-        self.pad_id = self.sp.pad_id() if self.sp.pad_id() >= 0 else (
-            self.eos_id if self.eos_id >= 0 else 0
+        self.pad_id = (
+            self.sp.pad_id() if self.sp.pad_id() >= 0 else (self.eos_id if self.eos_id >= 0 else 0)
         )
 
     def encode(self, text: str) -> list[int]:
@@ -50,11 +51,7 @@ class TokenizerAdapter:
 
     def chat_prompt(self, user: str, system: str = SYSTEM_DE) -> str:
         """User turn up to (and including) the assistant marker — no answer."""
-        return (
-            f"<|system|>\n{system}\n<|end|>\n"
-            f"<|user|>\n{user.strip()}\n<|end|>\n"
-            f"<|assistant|>\n"
-        )
+        return f"<|system|>\n{system}\n<|end|>\n<|user|>\n{user.strip()}\n<|end|>\n<|assistant|>\n"
 
     def split_continuation(self, prompt: str, continuation: str) -> tuple[list[int], list[int]]:
         """Tokenize prompt and continuation robustly against boundary merges.
@@ -72,8 +69,8 @@ class TokenizerAdapter:
                 break
             n += 1
         cont = full_ids[n:]
-        if not cont:                       # degenerate: continuation merged away
-            cont = full_ids[len(prompt_ids):] or full_ids[-1:]
+        if not cont:  # degenerate: continuation merged away
+            cont = full_ids[len(prompt_ids) :] or full_ids[-1:]
             return full_ids[: len(full_ids) - len(cont)], cont
         return full_ids[:n], cont
 
@@ -207,4 +204,4 @@ def _sft_jsonl_iterator(
             yield {"input_ids": inp, "labels": lab}
 
 
-__all__ = ["TokenizerAdapter", "ModelAdapter", "build_stage_loader", "SYSTEM_DE"]
+__all__ = ["SYSTEM_DE", "ModelAdapter", "TokenizerAdapter", "build_stage_loader"]

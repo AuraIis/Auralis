@@ -15,9 +15,10 @@ import json
 import sys
 import time
 from collections import Counter
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
@@ -42,7 +43,9 @@ def load_plan(plan_path: Path) -> dict[str, Any]:
     return json.loads(plan_path.read_text(encoding="utf-8"))
 
 
-def iter_targets(plan: dict[str, Any], include_special: bool, include_hard_filter: bool) -> Iterable[dict[str, Any]]:
+def iter_targets(
+    plan: dict[str, Any], include_special: bool, include_hard_filter: bool
+) -> Iterable[dict[str, Any]]:
     yield from plan.get("take_first", [])
     if include_special:
         yield from plan.get("small_specialty", [])
@@ -58,13 +61,19 @@ def metadata_reject_reason(row: dict[str, Any], filters: dict[str, Any]) -> str 
 
     perplexity = row.get("perplexity")
     max_perplexity = filters.get("max_perplexity")
-    if max_perplexity is not None and isinstance(perplexity, (int, float)) and perplexity > float(max_perplexity):
+    if (
+        max_perplexity is not None
+        and isinstance(perplexity, (int, float))
+        and perplexity > float(max_perplexity)
+    ):
         return "high_perplexity"
 
     return None
 
 
-def source_paths(input_root: Path, output_root: Path, config: str, split: str) -> tuple[Path, Path, Path]:
+def source_paths(
+    input_root: Path, output_root: Path, config: str, split: str
+) -> tuple[Path, Path, Path]:
     slug = safe_slug(config, split)
     input_path = input_root / config / f"{slug}.jsonl.gz"
     out_dir = output_root / config
@@ -104,9 +113,11 @@ def clean_split(
     min_score = float(global_filters.get("min_quality_score", 0.62))
     min_language_signal = float(global_filters.get("min_language_signal", 0.06))
 
-    with gzip.open(input_path, "rt", encoding="utf-8", errors="replace") as src, output_jsonl.open(
-        "w", encoding="utf-8", newline="\n"
-    ) as jsonl, output_text.open("w", encoding="utf-8", newline="\n") as text_out:
+    with (
+        gzip.open(input_path, "rt", encoding="utf-8", errors="replace") as src,
+        output_jsonl.open("w", encoding="utf-8", newline="\n") as jsonl,
+        output_text.open("w", encoding="utf-8", newline="\n") as text_out,
+    ):
         for line in src:
             manifest.docs_in += 1
             try:
@@ -191,7 +202,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     for target in iter_targets(plan, args.include_special, args.include_hard_filter):
         config = target["config"]
         split = target["split"]
-        input_path, output_jsonl, output_text = source_paths(args.input_root, args.output_root, config, split)
+        input_path, output_jsonl, output_text = source_paths(
+            args.input_root, args.output_root, config, split
+        )
         if args.skip_missing and not input_path.is_file():
             print(f"[skip] {config}/{split} missing: {input_path}", flush=True)
             continue
@@ -243,13 +256,25 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--plan", type=Path, default=Path("configs/data/german_commons_clean_plan_v1.json"))
-    parser.add_argument("--input-root", type=Path, default=Path("I:/KI/Auralis_datasets/german_commons_selected_raw"))
-    parser.add_argument("--output-root", type=Path, default=Path("I:/KI/Auralis_datasets/german_commons_selected_clean"))
+    parser.add_argument(
+        "--plan", type=Path, default=Path("configs/data/german_commons_clean_plan_v1.json")
+    )
+    parser.add_argument(
+        "--input-root",
+        type=Path,
+        default=Path("I:/KI/Auralis_datasets/german_commons_selected_raw"),
+    )
+    parser.add_argument(
+        "--output-root",
+        type=Path,
+        default=Path("I:/KI/Auralis_datasets/german_commons_selected_clean"),
+    )
     parser.add_argument(
         "--combined-text",
         type=Path,
-        default=Path("I:/KI/Auralis_datasets/german_commons_selected_clean/german_commons_selected.clean.txt"),
+        default=Path(
+            "I:/KI/Auralis_datasets/german_commons_selected_clean/german_commons_selected.clean.txt"
+        ),
     )
     parser.add_argument(
         "--manifest",

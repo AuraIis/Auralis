@@ -76,7 +76,9 @@ def test_tokenizer_audit_uses_only_current_specials() -> None:
 
 
 def test_probe_loss_batch_masks_prompt_and_keeps_answer() -> None:
-    sp = spm.SentencePieceProcessor(model_file=str(REPO_ROOT / "tokenizer/helix_v2_tokenizer.model"))
+    sp = spm.SentencePieceProcessor(
+        model_file=str(REPO_ROOT / "tokenizer/helix_v2_tokenizer.model")
+    )
     rows = probe_rows(sample_entries())[:3]
 
     batch = encode_probe_loss_batch(sp, rows, variant="hybrid", device=torch.device("cpu"))
@@ -87,7 +89,9 @@ def test_probe_loss_batch_masks_prompt_and_keeps_answer() -> None:
 
 
 def test_lm_batches_can_be_capped_for_fair_comparison() -> None:
-    sp = spm.SentencePieceProcessor(model_file=str(REPO_ROOT / "tokenizer/helix_v2_tokenizer.model"))
+    sp = spm.SentencePieceProcessor(
+        model_file=str(REPO_ROOT / "tokenizer/helix_v2_tokenizer.model")
+    )
     texts = variant_texts(sample_entries())
 
     batches = [

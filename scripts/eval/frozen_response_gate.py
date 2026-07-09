@@ -22,7 +22,6 @@ from typing import Any
 
 import yaml
 
-
 HELIX_USER_RE = re.compile(r"<\|user\|>\n(.*?)\n<\|end\|>", re.DOTALL)
 
 
@@ -116,15 +115,21 @@ def evaluate_answer(probe: FrozenProbe, answer: str) -> dict[str, Any]:
     actual_polarity = starts_with_polarity(answer)
     if probe.semantic_polarity and actual_polarity and actual_polarity != probe.semantic_polarity:
         issues.append(f"wrong_polarity:{actual_polarity}_expected_{probe.semantic_polarity}")
-    elif probe.semantic_polarity and actual_polarity is None and re.match(
-        r"^(ist|war|hat|gilt|soll|sollte)\b", normalize(probe.prompt)
+    elif (
+        probe.semantic_polarity
+        and actual_polarity is None
+        and re.match(r"^(ist|war|hat|gilt|soll|sollte)\b", normalize(probe.prompt))
     ):
         issues.append(f"missing_explicit_polarity:{probe.semantic_polarity}")
     for word in probe.semantic_must:
         if normalize(word) not in norm_answer:
             issues.append(f"missing:{word}")
-    if probe.semantic_any_groups and not any(contains_all(norm_answer, group) for group in probe.semantic_any_groups):
-        issues.append("missing_any_group:" + "|".join("+".join(group) for group in probe.semantic_any_groups))
+    if probe.semantic_any_groups and not any(
+        contains_all(norm_answer, group) for group in probe.semantic_any_groups
+    ):
+        issues.append(
+            "missing_any_group:" + "|".join("+".join(group) for group in probe.semantic_any_groups)
+        )
     for phrase in probe.semantic_forbid:
         if normalize(phrase) in norm_answer:
             issues.append(f"forbidden:{phrase}")
@@ -236,7 +241,9 @@ def write_markdown(path: Path, payload: dict[str, Any]) -> None:
     ]
     for split in ["target", "retention"]:
         summary = payload["summary"][split]
-        lines.append(f"- {split}: {summary['passed']} / {summary['total']} ({summary['score']:.3f})")
+        lines.append(
+            f"- {split}: {summary['passed']} / {summary['total']} ({summary['score']:.3f})"
+        )
     lines.extend(["", "## Failures", ""])
     for split in ["target", "retention"]:
         failures = payload["summary"][split]["failures"]
@@ -268,7 +275,9 @@ def main() -> int:
         leak = check_leaks(args.probes, args.check_train)
         if args.leak_json:
             args.leak_json.parent.mkdir(parents=True, exist_ok=True)
-            args.leak_json.write_text(json.dumps(leak, ensure_ascii=False, indent=2), encoding="utf-8")
+            args.leak_json.write_text(
+                json.dumps(leak, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
         print(json.dumps(leak, ensure_ascii=False, indent=2))
         if not leak["passed"]:
             return 2
@@ -277,7 +286,9 @@ def main() -> int:
         payload = evaluate(args.probes, args.input)
         if args.output_json:
             args.output_json.parent.mkdir(parents=True, exist_ok=True)
-            args.output_json.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+            args.output_json.write_text(
+                json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
         else:
             print(json.dumps(payload, ensure_ascii=False, indent=2))
         if args.output_md:

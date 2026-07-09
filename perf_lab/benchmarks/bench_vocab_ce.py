@@ -118,7 +118,11 @@ def main() -> None:
     parser.add_argument("--hidden-scale", type=float, default=1.0)
     parser.add_argument("--weight-scale", type=float, default=1.0)
     parser.add_argument("--chunk-size", type=int, default=8192)
-    parser.add_argument("--chunked-impl", choices=["auto", "cpp", "python", "triton", "triton_fused", "liger"], default="auto")
+    parser.add_argument(
+        "--chunked-impl",
+        choices=["auto", "cpp", "python", "triton", "triton_fused", "liger"],
+        default="auto",
+    )
     parser.add_argument("--block-m", type=int, default=8)
     parser.add_argument("--block-v", type=int, default=256)
     parser.add_argument("--block-d", type=int, default=64)
@@ -153,7 +157,8 @@ def main() -> None:
         torch.randn(args.tokens, args.d_model, device="cuda", dtype=dtype) * args.hidden_scale
     ).requires_grad_(True)
     weight = (
-        torch.randn(args.vocab_size, args.d_model, device="cuda", dtype=weight_dtype) * args.weight_scale
+        torch.randn(args.vocab_size, args.d_model, device="cuda", dtype=weight_dtype)
+        * args.weight_scale
     ).requires_grad_(True)
     labels = torch.randint(0, args.vocab_size, (args.tokens,), device="cuda", dtype=torch.long)
 
@@ -171,9 +176,14 @@ def main() -> None:
         "block_m": max(args.block_m, 16) if args.chunked_impl == "triton_fused" else args.block_m,
         "block_v": max(args.block_v, 16) if args.chunked_impl == "triton_fused" else args.block_v,
         "block_d": max(args.block_d, 16) if args.chunked_impl == "triton_fused" else args.block_d,
-        "triton_backward_mode": args.triton_backward_mode if args.chunked_impl == "triton_fused" else None,
+        "triton_backward_mode": args.triton_backward_mode
+        if args.chunked_impl == "triton_fused"
+        else None,
         "row_group_blocks": args.row_group_blocks if args.chunked_impl == "triton_fused" else None,
-        "full_logits_gb": args.tokens * args.vocab_size * torch.empty((), dtype=dtype).element_size() / 1e9,
+        "full_logits_gb": args.tokens
+        * args.vocab_size
+        * torch.empty((), dtype=dtype).element_size()
+        / 1e9,
     }
 
     if not args.skip_parity and args.variant in {"chunked", "both"}:
@@ -231,8 +241,10 @@ def main() -> None:
         )
     if "full" in results and "chunked" in results:
         results["chunked_vs_full"] = {
-            "speed_ratio_full_over_chunked": results["full"]["seconds_avg"] / results["chunked"]["seconds_avg"],
-            "peak_memory_delta_gb": results["full"]["peak_alloc_gb_avg"] - results["chunked"]["peak_alloc_gb_avg"],
+            "speed_ratio_full_over_chunked": results["full"]["seconds_avg"]
+            / results["chunked"]["seconds_avg"],
+            "peak_memory_delta_gb": results["full"]["peak_alloc_gb_avg"]
+            - results["chunked"]["peak_alloc_gb_avg"],
         }
 
     print(json.dumps(results, indent=2), flush=True)

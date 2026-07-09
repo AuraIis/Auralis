@@ -32,6 +32,7 @@ Usage:
     python assemble_for_filter.py --input raw/fineweb_10bt/fineweb_10bt.txt \\
         --output cleaned/_pre_filter/fineweb_10bt.assembled.txt --mode text
 """
+
 from __future__ import annotations
 
 import argparse
@@ -61,8 +62,10 @@ def assemble_text(input_path: Path, output_path: Path) -> dict:
         out_fh.write(text + "\n")
         return len(text) + 1
 
-    with output_path.open("w", encoding="utf-8", buffering=1024 * 1024) as out_fh, \
-         input_path.open("r", encoding="utf-8", errors="replace") as in_fh:
+    with (
+        output_path.open("w", encoding="utf-8", buffering=1024 * 1024) as out_fh,
+        input_path.open("r", encoding="utf-8", errors="replace") as in_fh,
+    ):
         for line in in_fh:
             stripped = line.rstrip("\n").rstrip("\r")
             if stripped == "":
@@ -101,8 +104,10 @@ def assemble_code(input_path: Path, output_path: Path) -> dict:
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     in_doc = False
-    with output_path.open("w", encoding="utf-8", buffering=1024 * 1024) as out_fh, \
-         input_path.open("r", encoding="utf-8", errors="replace") as in_fh:
+    with (
+        output_path.open("w", encoding="utf-8", buffering=1024 * 1024) as out_fh,
+        input_path.open("r", encoding="utf-8", errors="replace") as in_fh,
+    ):
         for line in in_fh:
             stripped_nl = line.rstrip("\n").rstrip("\r")
             if stripped_nl == "":
@@ -132,7 +137,9 @@ def assemble_code(input_path: Path, output_path: Path) -> dict:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--input", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--mode", choices=["text", "code"], required=True)
@@ -149,11 +156,11 @@ def main() -> None:
     manifest_path = args.output.with_suffix(args.output.suffix + ".manifest.json")
     manifest_path.write_text(json.dumps(info, indent=2), encoding="utf-8")
 
-    print(f"=== assemble done ===")
+    print("=== assemble done ===")
     print(f"  mode: {info['mode']}")
-    print(f"  in:   {info['bytes_in']/1e9:.2f} GB ({args.input})")
-    print(f"  out:  {info['bytes_out']/1e9:.2f} GB, {info['documents']:,} docs ({args.output})")
-    print(f"  time: {info['elapsed_seconds']/60:.1f} min")
+    print(f"  in:   {info['bytes_in'] / 1e9:.2f} GB ({args.input})")
+    print(f"  out:  {info['bytes_out'] / 1e9:.2f} GB, {info['documents']:,} docs ({args.output})")
+    print(f"  time: {info['elapsed_seconds'] / 60:.1f} min")
 
 
 if __name__ == "__main__":

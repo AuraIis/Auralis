@@ -13,17 +13,16 @@ import argparse
 import ast
 import hashlib
 import json
-import os
 import re
 import time
 from collections import Counter
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from datasets import load_dataset
-
 
 DEFAULT_OUT = Path("/workspace/v2data/data/book_sources_v1")
 
@@ -59,7 +58,9 @@ HARD_NOISE_RE = re.compile(
     r"https?://|www\.|isbn\s*:|all rights reserved|onlyfans|casino|porn|xxx",
     re.I,
 )
-TOC_RE = re.compile(r"\b(?:contents|inhalt|inhaltsverzeichnis|chapter\s+[ivxlcdm]+|kapitel\s+[ivxlcdm\d]+)\b", re.I)
+TOC_RE = re.compile(
+    r"\b(?:contents|inhalt|inhaltsverzeichnis|chapter\s+[ivxlcdm]+|kapitel\s+[ivxlcdm\d]+)\b", re.I
+)
 LIST_RE = re.compile(r"(^|\n)\s*(?:[-*]|\d{1,3}[.)])\s+", re.M)
 OCR_RE = re.compile(r"[�]|Ã.|Â.|â€|ﬁ|ﬂ|[A-Za-zÄÖÜäöüß]-\s+[A-Za-zÄÖÜäöüß]")
 OLD_PRINT_RE = re.compile(r"[ſ]|thut|daſs|ſein|ſich|muſs", re.I)
@@ -82,7 +83,7 @@ class SourceStats:
 
 
 def now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def inc(stats: SourceStats, reason: str) -> None:
@@ -169,7 +170,9 @@ def stable_hash(text: str) -> str:
     return hashlib.blake2b(normalized.encode("utf-8"), digest_size=12).hexdigest()
 
 
-def write_record(out_txt, out_jsonl, *, source: str, lang: str, title: str, author: str, license_: str, text: str) -> int:
+def write_record(
+    out_txt, out_jsonl, *, source: str, lang: str, title: str, author: str, license_: str, text: str
+) -> int:
     one_line = re.sub(r"\s+", " ", text).strip()
     out_txt.write(one_line + "\n")
     rec = {
@@ -217,7 +220,9 @@ def row_from_pleias(row: dict[str, Any]) -> tuple[str | None, str, str, str, str
     creator = str(row.get("creator") or "")
     hay = f"{collection} {title} {creator}".lower()
     # Common Corpus is broad. Keep only obvious book/library-like records here.
-    if not re.search(r"gutenberg|book|books|library|biblioth|gallica|hathi|internet archive|open library", hay):
+    if not re.search(
+        r"gutenberg|book|books|library|biblioth|gallica|hathi|internet archive|open library", hay
+    ):
         return None, title, creator, str(row.get("license") or ""), ""
     return (
         norm_lang(row.get("language")),
@@ -238,7 +243,11 @@ def stream_source(
     max_bytes: int,
     args: argparse.Namespace,
 ) -> SourceStats:
-    ds = load_dataset(stats.dataset, stats.config, split=stats.split, streaming=True) if stats.config else load_dataset(stats.dataset, split=stats.split, streaming=True)
+    ds = (
+        load_dataset(stats.dataset, stats.config, split=stats.split, streaming=True)
+        if stats.config
+        else load_dataset(stats.dataset, split=stats.split, streaming=True)
+    )
     for row in ds:
         stats.rows_seen += 1
         lang, title, author, license_, text = row_reader(row)
@@ -253,7 +262,9 @@ def stream_source(
         if title and len(stats.titles_sample) < 20:
             stats.titles_sample.append(title[:180])
         wrote_row = False
-        for chunk in chunk_text(text, min_chars=args.min_chars, target_chars=args.target_chars, max_chars=args.max_chars):
+        for chunk in chunk_text(
+            text, min_chars=args.min_chars, target_chars=args.target_chars, max_chars=args.max_chars
+        ):
             reason = too_noisy(
                 chunk,
                 min_chars=args.min_chars,
@@ -287,7 +298,7 @@ def stream_source(
         if stats.rows_seen % args.progress_every == 0:
             print(
                 f"[progress] {stats.name} rows={stats.rows_seen:,} chunks={stats.chunks_written:,} "
-                f"gb={stats.bytes_text/1e9:.2f}",
+                f"gb={stats.bytes_text / 1e9:.2f}",
                 flush=True,
             )
     return stats
@@ -323,16 +334,33 @@ def main() -> None:
     }
     seen_hashes: set[str] = set()
     sources = [
-        (SourceStats("common_pile_project_gutenberg", "common-pile/project_gutenberg", None, "train"), row_from_common_pile, int(args.gutenberg_gb * 1e9)),
-        (SourceStats("zkeown_gutenberg_books", "zkeown/gutenberg-corpus", "books", "train"), row_from_zkeown, int(args.zkeown_gb * 1e9)),
-        (SourceStats("pleias_common_corpus_books", "PleIAs/common_corpus", None, "train"), row_from_pleias, int(args.pleias_gb * 1e9)),
+        (
+            SourceStats(
+                "common_pile_project_gutenberg", "common-pile/project_gutenberg", None, "train"
+            ),
+            row_from_common_pile,
+            int(args.gutenberg_gb * 1e9),
+        ),
+        (
+            SourceStats("zkeown_gutenberg_books", "zkeown/gutenberg-corpus", "books", "train"),
+            row_from_zkeown,
+            int(args.zkeown_gb * 1e9),
+        ),
+        (
+            SourceStats("pleias_common_corpus_books", "PleIAs/common_corpus", None, "train"),
+            row_from_pleias,
+            int(args.pleias_gb * 1e9),
+        ),
     ]
 
-    with txt_path.open("w", encoding="utf-8", newline="\n") as out_txt, jsonl_path.open("w", encoding="utf-8", newline="\n") as out_jsonl:
+    with (
+        txt_path.open("w", encoding="utf-8", newline="\n") as out_txt,
+        jsonl_path.open("w", encoding="utf-8", newline="\n") as out_jsonl,
+    ):
         for stats, reader, cap in sources:
             if cap <= 0:
                 continue
-            print(f"[source] {stats.name} cap_gb={cap/1e9:.2f}", flush=True)
+            print(f"[source] {stats.name} cap_gb={cap / 1e9:.2f}", flush=True)
             try:
                 stream_source(
                     stats=stats,
@@ -344,22 +372,36 @@ def main() -> None:
                     args=args,
                 )
             except Exception as exc:  # keep partial output + manifest
-                stats.skipped["ERROR_" + type(exc).__name__] = stats.skipped.get("ERROR_" + type(exc).__name__, 0) + 1
+                stats.skipped["ERROR_" + type(exc).__name__] = (
+                    stats.skipped.get("ERROR_" + type(exc).__name__, 0) + 1
+                )
                 stats.skipped["ERROR_message"] = str(exc)[:500]  # type: ignore[assignment]
                 print(f"[error] {stats.name}: {type(exc).__name__}: {exc}", flush=True)
             manifest["sources"].append(asdict(stats))
             manifest["documents"] = sum(s["chunks_written"] for s in manifest["sources"])
             manifest["bytes_text"] = sum(s["bytes_text"] for s in manifest["sources"])
             manifest["elapsed_seconds"] = round(time.time() - started, 1)
-            manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+            manifest_path.write_text(
+                json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
 
     manifest["finished_at"] = now_iso()
     manifest["elapsed_seconds"] = round(time.time() - started, 1)
     manifest["documents"] = sum(s["chunks_written"] for s in manifest["sources"])
     manifest["bytes_text"] = sum(s["bytes_text"] for s in manifest["sources"])
-    manifest["top_skips"] = dict(Counter(k for s in manifest["sources"] for k, v in s["skipped"].items() for _ in range(v if isinstance(v, int) else 0)).most_common(20))
+    manifest["top_skips"] = dict(
+        Counter(
+            k
+            for s in manifest["sources"]
+            for k, v in s["skipped"].items()
+            for _ in range(v if isinstance(v, int) else 0)
+        ).most_common(20)
+    )
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"wrote {txt_path} ({manifest['documents']:,} docs, {manifest['bytes_text']/1e9:.2f} GB)", flush=True)
+    print(
+        f"wrote {txt_path} ({manifest['documents']:,} docs, {manifest['bytes_text'] / 1e9:.2f} GB)",
+        flush=True,
+    )
     print(f"wrote {jsonl_path}", flush=True)
     print(f"wrote {manifest_path}", flush=True)
 

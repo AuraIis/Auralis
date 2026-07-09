@@ -23,7 +23,6 @@ from typing import Any
 
 import yaml
 
-
 HELIX_USER_RE = re.compile(r"<\|user\|>\n(.*?)\n<\|end\|>", re.DOTALL)
 FAST_TEXT_SCAN_BYTES = 1_000_000_000
 
@@ -48,7 +47,9 @@ def normalize(text: str) -> str:
 
 
 def blake(text: str) -> str:
-    return hashlib.blake2b(normalize(text).encode("utf-8", errors="replace"), digest_size=16).hexdigest()
+    return hashlib.blake2b(
+        normalize(text).encode("utf-8", errors="replace"), digest_size=16
+    ).hexdigest()
 
 
 def blake_norm(norm_text: str) -> str:
@@ -86,11 +87,42 @@ def load_eval_prompts(paths: list[Path]) -> list[dict[str, str]]:
 
 
 SUBSTRING_ANCHOR_STOPWORDS = {
-    "welche", "welcher", "welchem", "welchen", "welches", "warum", "wieso",
-    "heute", "aktuell", "weiterhin", "stadt", "deutschland", "deutsche",
-    "deutschen", "deutscher", "hauptstadt", "frage", "antwort", "kurz",
-    "oder", "und", "eine", "einer", "einen", "einem", "ist", "war", "hat",
-    "gilt", "soll", "sollte", "macht", "machen", "nennen", "nenne", "was",
+    "welche",
+    "welcher",
+    "welchem",
+    "welchen",
+    "welches",
+    "warum",
+    "wieso",
+    "heute",
+    "aktuell",
+    "weiterhin",
+    "stadt",
+    "deutschland",
+    "deutsche",
+    "deutschen",
+    "deutscher",
+    "hauptstadt",
+    "frage",
+    "antwort",
+    "kurz",
+    "oder",
+    "und",
+    "eine",
+    "einer",
+    "einen",
+    "einem",
+    "ist",
+    "war",
+    "hat",
+    "gilt",
+    "soll",
+    "sollte",
+    "macht",
+    "machen",
+    "nennen",
+    "nenne",
+    "was",
 }
 
 
@@ -104,7 +136,8 @@ def choose_substring_anchor(norm_prompt: str) -> str:
     """
 
     tokens = [
-        tok for tok in norm_prompt.split()
+        tok
+        for tok in norm_prompt.split()
         if len(tok) >= 5 and tok not in SUBSTRING_ANCHOR_STOPWORDS
     ]
     if not tokens:
@@ -114,7 +147,9 @@ def choose_substring_anchor(norm_prompt: str) -> str:
     return max(tokens, key=lambda tok: (len(tok), tok))
 
 
-def build_substring_anchor_index(eval_prompts: list[dict[str, str]]) -> dict[str, list[dict[str, str]]]:
+def build_substring_anchor_index(
+    eval_prompts: list[dict[str, str]],
+) -> dict[str, list[dict[str, str]]]:
     index: dict[str, list[dict[str, str]]] = {}
     for item in eval_prompts:
         if len(item["norm"]) < 30:
@@ -302,8 +337,7 @@ def inspect_data_path_config(path: Path) -> dict[str, Any]:
     cleaned = data.get("cleaned", {}) or {}
     issues: list[str] = []
     cleaned_counts = {
-        key: len(value or []) if isinstance(value, list) else 0
-        for key, value in cleaned.items()
+        key: len(value or []) if isinstance(value, list) else 0 for key, value in cleaned.items()
     }
     if not cleaned_counts or sum(cleaned_counts.values()) == 0:
         issues.append("cleaned_paths_empty")
@@ -473,7 +507,9 @@ def main() -> int:
     if (cfg.get("policy", {}) or {}).get("require_source_disjoint_manifest", False):
         for item in source_manifest_status:
             if item.get("issues"):
-                blocking.append(f"source_disjoint_manifest_not_ready:{item['path']}:{item['issues']}")
+                blocking.append(
+                    f"source_disjoint_manifest_not_ready:{item['path']}:{item['issues']}"
+                )
 
     report = {
         "config": str(args.config),
@@ -492,7 +528,13 @@ def main() -> int:
     args.output_json.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     args.output_md.parent.mkdir(parents=True, exist_ok=True)
     args.output_md.write_text(render_md(report), encoding="utf-8")
-    print(json.dumps({"ready_to_launch": report["ready_to_launch"], "blocking_issues": blocking}, ensure_ascii=False, indent=2))
+    print(
+        json.dumps(
+            {"ready_to_launch": report["ready_to_launch"], "blocking_issues": blocking},
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
     return 0 if report["ready_to_launch"] else 1
 
 

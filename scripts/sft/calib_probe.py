@@ -8,7 +8,14 @@ hallucination on INVENTED entities (gold=None -> the model SHOULD abstain).
 Output: the measured knowledge boundary per category + a labelled jsonl to later
 build Helix-R-Tuning calibration data (known->confident, unknown/invented->abstain).
 Key-free."""
-import os, sys, re, json, argparse, pathlib, unicodedata
+
+import argparse
+import json
+import os
+import pathlib
+import re
+import sys
+import unicodedata
 
 REPO = pathlib.Path("/workspace/v2data")
 for p in (REPO / "scripts/sft", REPO, REPO / "src"):
@@ -49,7 +56,11 @@ QBANK = [
     ("Welches Organ produziert Insulin?", ["bauchspeicheldruese", "pankreas"], "known_hard"),
     ("Wer komponierte die Zauberfloete?", ["mozart"], "known_hard"),
     ("Welcher Wissenschaftler stellte die Evolutionstheorie auf?", ["darwin"], "known_hard"),
-    ("Welches Gas nehmen Pflanzen fuer die Photosynthese auf?", ["kohlendioxid", "co2"], "known_hard"),
+    (
+        "Welches Gas nehmen Pflanzen fuer die Photosynthese auf?",
+        ["kohlendioxid", "co2"],
+        "known_hard",
+    ),
     ("Wie viele Beine hat ein Insekt?", ["sechs", "6"], "known_hard"),
     ("Wer schrieb 'Romeo und Julia'?", ["shakespeare"], "known_hard"),
     ("Welcher Ozean ist der groesste?", ["pazifik"], "known_hard"),
@@ -79,10 +90,25 @@ QBANK = [
     ("Wer war Praesident der Republik Mordavien 1962?", None, "invented"),
 ]
 
-ABSTAIN = ["weiss ich nicht", "weiß ich nicht", "kann ich nicht", "keine zuverl", "nicht zuverl",
-           "ohne quelle", "nicht sicher", "unbekannt", "kenne ich nicht", "nicht bekannt",
-           "keine information", "keine verl", "kann ich nichts", "gibt es nicht", "existiert nicht",
-           "nicht vertraut", "leider nicht"]
+ABSTAIN = [
+    "weiss ich nicht",
+    "weiß ich nicht",
+    "kann ich nicht",
+    "keine zuverl",
+    "nicht zuverl",
+    "ohne quelle",
+    "nicht sicher",
+    "unbekannt",
+    "kenne ich nicht",
+    "nicht bekannt",
+    "keine information",
+    "keine verl",
+    "kann ich nichts",
+    "gibt es nicht",
+    "existiert nicht",
+    "nicht vertraut",
+    "leider nicht",
+]
 
 
 def norm(s):
@@ -102,8 +128,11 @@ def hits_gold(ans, gold):
 
 def gen(model, sp, prompt, device, temperature, max_new=44, rep_pen=1.3):
     import torch
+
     end_id = sp.EncodeAsIds("<|end|>")[-1]
-    ids = sp.EncodeAsIds(prompt); inp = torch.tensor([ids], device=device); out = []
+    ids = sp.EncodeAsIds(prompt)
+    inp = torch.tensor([ids], device=device)
+    out = []
     for _ in range(max_new):
         with torch.no_grad(), torch.autocast(device_type="cuda", dtype=torch.bfloat16):
             logits = model(input_ids=inp)["logits"][0, -1].float()
@@ -116,21 +145,28 @@ def gen(model, sp, prompt, device, temperature, max_new=44, rep_pen=1.3):
             nxt = int(torch.argmax(logits).item())
         if nxt == end_id:
             break
-        out.append(nxt); inp = torch.cat([inp, torch.tensor([[nxt]], device=device)], 1)
+        out.append(nxt)
+        inp = torch.cat([inp, torch.tensor([[nxt]], device=device)], 1)
     return sp.DecodeIds(out).strip()
 
 
 def main():
-    import torch
     import sentencepiece as spm
+    import torch
+
     from auralis.model import build_model
     from auralis.tokenizer.chat_template import build_inference_prompt
+
     ap = argparse.ArgumentParser()
     ap.add_argument("--checkpoint", required=True)
     ap.add_argument("--model-config", default=str(REPO / "configs/model/helix_v2_1b.yaml"))
     ap.add_argument("--tokenizer", default=str(REPO / "tokenizer/helix_v2_tokenizer.model"))
-    ap.add_argument("--samples", type=int, default=4, help="1 greedy + (samples-1) temperature draws")
-    ap.add_argument("--bank", default=None, help="JSONL gold bank {q,gold,cat}; default = built-in QBANK")
+    ap.add_argument(
+        "--samples", type=int, default=4, help="1 greedy + (samples-1) temperature draws"
+    )
+    ap.add_argument(
+        "--bank", default=None, help="JSONL gold bank {q,gold,cat}; default = built-in QBANK"
+    )
     ap.add_argument("--out", default=str(REPO / "data/training/calib/probe_labels.jsonl"))
     a = ap.parse_args()
     device = torch.device("cuda")
@@ -141,14 +177,17 @@ def main():
     print(f"loaded {a.checkpoint}", flush=True)
 
     if a.bank:
-        bank = [(r["q"], r["gold"], r["cat"]) for r in
-                (json.loads(l) for l in open(a.bank, encoding="utf-8") if l.strip())]
+        bank = [
+            (r["q"], r["gold"], r["cat"])
+            for r in (json.loads(l) for l in open(a.bank, encoding="utf-8") if l.strip())
+        ]
         print(f"bank: {len(bank)} questions from {a.bank}", flush=True)
     else:
         bank = QBANK
 
     from collections import defaultdict
-    agg = defaultdict(lambda: defaultdict(int))   # cat -> {label: count}
+
+    agg = defaultdict(lambda: defaultdict(int))  # cat -> {label: count}
     rows = []
     for q, gold, cat in bank:
         prompt = build_inference_prompt([{"role": "user", "content": q}], default_system=SYS)
@@ -162,8 +201,7 @@ def main():
             cr = corr / len(answers)
             label = "KNOWN" if cr >= 0.6 else ("SHAKY" if cr >= 0.25 else "UNKNOWN")
         agg[cat][label] += 1
-        rows.append({"q": q, "gold": gold, "cat": cat, "label": label,
-                     "greedy": answers[0][:160]})
+        rows.append({"q": q, "gold": gold, "cat": cat, "label": label, "greedy": answers[0][:160]})
 
     print("\n=== KNOWLEDGE BOUNDARY (per category) ===")
     for cat in sorted(agg):
@@ -177,7 +215,8 @@ def main():
     for r in rows:
         flag = "" if r["label"] in ("KNOWN", "ABSTAINS") else "  <=="
         print(f"  [{r['label']:11}] {r['q'][:46]:46} -> {r['greedy'][:80]}{flag}")
-    p = pathlib.Path(a.out); p.parent.mkdir(parents=True, exist_ok=True)
+    p = pathlib.Path(a.out)
+    p.parent.mkdir(parents=True, exist_ok=True)
     with open(p, "w", encoding="utf-8") as f:
         for r in rows:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")

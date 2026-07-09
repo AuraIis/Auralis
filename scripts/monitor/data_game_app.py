@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import html
 import json
 import random
 import re
@@ -25,7 +24,6 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
-
 
 WHITESPACE_RE = re.compile(r"\s+")
 
@@ -75,8 +73,10 @@ class DataTask:
     text: str
     char_count: int
     word_count: int
-    model_score: float | None = None   # edu classifier's predicted 0-5 (when reviewing a scored pool)
-    truncated: bool = False            # preview is a word-boundary excerpt of a longer doc
+    model_score: float | None = (
+        None  # edu classifier's predicted 0-5 (when reviewing a scored pool)
+    )
+    truncated: bool = False  # preview is a word-boundary excerpt of a longer doc
 
 
 class TaskStore:
@@ -150,7 +150,7 @@ class TaskStore:
                     text = normalize_text(str(r.get("text", "")))
                     if not (self.min_chars <= len(text) <= self.max_chars):
                         continue
-                    h = doc_hash(text)            # hash on RAW pool text → dedup stays stable
+                    h = doc_hash(text)  # hash on RAW pool text → dedup stays stable
                     if h in self.reviewed_hashes:
                         continue
                     # Generator marks truncation explicitly; legacy pools are inferred
@@ -158,22 +158,33 @@ class TaskStore:
                     truncated = bool(r.get("truncated"))
                     if r.get("truncated") is None and len(text) >= POOL_PREVIEW_CHARS:
                         truncated = True
-                    display_text = clean_excerpt(text) if (truncated and not text.endswith("[…]")) else text
+                    display_text = (
+                        clean_excerpt(text) if (truncated and not text.endswith("[…]")) else text
+                    )
                     ms = r.get("model_score")
                     src = str(r.get("source") or r.get("source_path") or self.pool.name)
                     ln = int(r.get("source_line", i))
-                    tid = hashlib.blake2b(f"{src}:{ln}:{h}".encode("utf-8"), digest_size=10).hexdigest()
+                    tid = hashlib.blake2b(f"{src}:{ln}:{h}".encode(), digest_size=10).hexdigest()
                     rows.append(
                         DataTask(
-                            task_id=tid, source_path=src, source_line=ln, doc_hash=h,
-                            text=display_text, char_count=len(text), word_count=len(text.split()),
+                            task_id=tid,
+                            source_path=src,
+                            source_line=ln,
+                            doc_hash=h,
+                            text=display_text,
+                            char_count=len(text),
+                            word_count=len(text.split()),
                             model_score=(float(ms) if ms is not None else None),
                             truncated=truncated,
                         )
                     )
         except OSError:
             rows = []
-        rows.sort(key=lambda t: abs((t.model_score if t.model_score is not None else self.boundary) - self.boundary))
+        rows.sort(
+            key=lambda t: abs(
+                (t.model_score if t.model_score is not None else self.boundary) - self.boundary
+            )
+        )
         with self.lock:
             self.tasks = rows[: self.queue_size]
             self.cursor = 0
@@ -202,7 +213,7 @@ class TaskStore:
                         if h in self.reviewed_hashes:
                             continue
                         task_id = hashlib.blake2b(
-                            f"{rel_source}:{line_no}:{h}".encode("utf-8"),
+                            f"{rel_source}:{line_no}:{h}".encode(),
                             digest_size=10,
                         ).hexdigest()
                         candidates.append(
@@ -1024,14 +1035,18 @@ class DataGameHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def _json(self, status: int, payload: dict[str, Any]) -> None:
-        self._send(status, json.dumps(payload, ensure_ascii=False).encode("utf-8"), "application/json; charset=utf-8")
+        self._send(
+            status,
+            json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+            "application/json; charset=utf-8",
+        )
 
     def _read_json(self) -> dict[str, Any]:
         length = int(self.headers.get("Content-Length", "0"))
         raw = self.rfile.read(length) if length > 0 else b"{}"
         return json.loads(raw.decode("utf-8") or "{}")
 
-    def do_GET(self) -> None:  # noqa: N802
+    def do_GET(self) -> None:
         parsed = urlparse(self.path)
         if parsed.path == "/":
             self._send(HTTPStatus.OK, INDEX_HTML.encode("utf-8"), "text/html; charset=utf-8")
@@ -1045,7 +1060,7 @@ class DataGameHandler(BaseHTTPRequestHandler):
             return
         self._json(HTTPStatus.NOT_FOUND, {"error": "not found"})
 
-    def do_POST(self) -> None:  # noqa: N802
+    def do_POST(self) -> None:
         parsed = urlparse(self.path)
         try:
             if parsed.path == "/api/submit":
@@ -1074,19 +1089,31 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--port", type=int, default=8777)
     p.add_argument("--root", type=Path, default=root)
     p.add_argument("--source", type=Path, action="append", default=None)
-    p.add_argument("--output", type=Path, default=root / "data" / "human_feedback" / "auralis_data_game_v1.jsonl")
+    p.add_argument(
+        "--output",
+        type=Path,
+        default=root / "data" / "human_feedback" / "auralis_data_game_v1.jsonl",
+    )
     p.add_argument("--queue-size", type=int, default=300)
     p.add_argument("--scan-lines", type=int, default=20000)
     p.add_argument("--min-chars", type=int, default=320)
     p.add_argument("--max-chars", type=int, default=3600)
     p.add_argument("--seed", type=int, default=1337)
-    p.add_argument("--pool", type=Path, default=None,
-                   help="Pre-scored JSONL (rows: text, model_score, source) from "
-                        "score_corpus_edu.py --review-pool. When set, the queue is built from this "
-                        "and sorted most-uncertain-first (active learning), and the classifier's "
-                        "score is shown next to each doc.")
-    p.add_argument("--boundary", type=float, default=2.0,
-                   help="Classifier decision boundary used to rank pool uncertainty (default 2.0).")
+    p.add_argument(
+        "--pool",
+        type=Path,
+        default=None,
+        help="Pre-scored JSONL (rows: text, model_score, source) from "
+        "score_corpus_edu.py --review-pool. When set, the queue is built from this "
+        "and sorted most-uncertain-first (active learning), and the classifier's "
+        "score is shown next to each doc.",
+    )
+    p.add_argument(
+        "--boundary",
+        type=float,
+        default=2.0,
+        help="Classifier decision boundary used to rank pool uncertainty (default 2.0).",
+    )
     return p.parse_args()
 
 
@@ -1095,7 +1122,9 @@ def main() -> None:
     root = args.root.resolve()
     sources = args.source or [root / "data" / "training" / "curated_40b" / "german.txt"]
     sources = [(root / s).resolve() if not s.is_absolute() else s.resolve() for s in sources]
-    output = (root / args.output).resolve() if not args.output.is_absolute() else args.output.resolve()
+    output = (
+        (root / args.output).resolve() if not args.output.is_absolute() else args.output.resolve()
+    )
     pool = None
     if args.pool is not None:
         pool = (root / args.pool).resolve() if not args.pool.is_absolute() else args.pool.resolve()

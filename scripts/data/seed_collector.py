@@ -33,7 +33,7 @@ import random
 import re
 import sys
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import yaml
@@ -43,17 +43,26 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 from scripts.data._common import atomic_text_writer, load_paths  # noqa: E402
 
-
 # ---------------------------------------------------------------------------
 # Heuristic type detection. Deliberately coarse — the teacher LLM makes the
 # final call. We just pre-sort so later sampling can target specific mixes.
 # ---------------------------------------------------------------------------
 _RE_CODE = re.compile(r"<\|code\|>|def \w+\(|function \w+\(|class \w+[:\(]|import \w+|```")
-_RE_DATES = re.compile(r"\b(19|20)\d{2}\b|\b\d{1,2}\.\s?(Jan|Feb|März|April|Mai|Juni|Juli|Aug|Sep|Okt|Nov|Dez|January|February|March|April|May|June|July|August|September|October|November|December)\b")
+_RE_DATES = re.compile(
+    r"\b(19|20)\d{2}\b|\b\d{1,2}\.\s?(Jan|Feb|März|April|Mai|Juni|Juli|Aug|Sep|Okt|Nov|Dez|January|February|March|April|May|June|July|August|September|October|November|December)\b"
+)
 _RE_CITATION = re.compile(r"\[\d+\]|\(\w+,?\s*\d{4}\)|et al\.|doi:|ISBN")
-_RE_IMPERATIVE_DE = re.compile(r"\b(Schritt|Zuerst|Dann|Anschließend|Nun|Als erstes|Folge|Gib|Schreib|Führe aus)\b", re.IGNORECASE)
-_RE_IMPERATIVE_EN = re.compile(r"\b(Step \d|First,|Then,|Next,|Finally,|Run|Execute|Type|Enter|Click)\b", re.IGNORECASE)
-_RE_OPINION = re.compile(r"\b(I think|I believe|in my opinion|meiner Meinung nach|ich glaube|ich denke|arguably|I'd say)\b", re.IGNORECASE)
+_RE_IMPERATIVE_DE = re.compile(
+    r"\b(Schritt|Zuerst|Dann|Anschließend|Nun|Als erstes|Folge|Gib|Schreib|Führe aus)\b",
+    re.IGNORECASE,
+)
+_RE_IMPERATIVE_EN = re.compile(
+    r"\b(Step \d|First,|Then,|Next,|Finally,|Run|Execute|Type|Enter|Click)\b", re.IGNORECASE
+)
+_RE_OPINION = re.compile(
+    r"\b(I think|I believe|in my opinion|meiner Meinung nach|ich glaube|ich denke|arguably|I'd say)\b",
+    re.IGNORECASE,
+)
 _RE_NUMERIC = re.compile(r"\b\d+(\.\d+)?\s?(%|km|kg|€|\$|°C|W/m)")
 
 
@@ -140,7 +149,7 @@ def _sample_from_file(
         for line in fh:
             text = line.rstrip("\n")
             L = len(text)
-            if L < min_chars or L > max_chars:
+            if min_chars > L or max_chars < L:
                 continue
             n_seen += 1
             sig = _signals(text)
@@ -173,14 +182,21 @@ def _load_plan(path: Path) -> dict:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__,
-                                     formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--data-config", type=Path, default=None,
-                        help="Path resolution config (defaults to configs/data_paths.yaml).")
-    parser.add_argument("--plan", type=Path,
-                        default=REPO_ROOT / "configs" / "data" / "seed_collection.yaml")
-    parser.add_argument("--output-dir", type=Path, default=None,
-                        help="Default: <data_root>/seeds/<YYYY-MM-DD>")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "--data-config",
+        type=Path,
+        default=None,
+        help="Path resolution config (defaults to configs/data_paths.yaml).",
+    )
+    parser.add_argument(
+        "--plan", type=Path, default=REPO_ROOT / "configs" / "data" / "seed_collection.yaml"
+    )
+    parser.add_argument(
+        "--output-dir", type=Path, default=None, help="Default: <data_root>/seeds/<YYYY-MM-DD>"
+    )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
@@ -189,7 +205,7 @@ def main() -> None:
     data_root = Path(cfg["_data_root"])
     plan = _load_plan(args.plan)
 
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
     out_root = args.output_dir or (data_root / "seeds" / today)
     out_root.mkdir(parents=True, exist_ok=True)
 
@@ -254,7 +270,7 @@ def main() -> None:
 
     # Manifest
     manifest = {
-        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+        "generated_at_utc": datetime.now(UTC).isoformat(),
         "plan": str(args.plan),
         "seed": args.seed,
         "output_dir": str(out_root),

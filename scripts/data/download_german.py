@@ -16,8 +16,9 @@ from __future__ import annotations
 import argparse
 import random
 import sys
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 from tqdm import tqdm
 
@@ -52,6 +53,7 @@ def _parse_target_overrides(values: list[str] | None) -> dict[str, int]:
 
 def _open_streaming(path: str, **kwargs: Any):
     from datasets import load_dataset
+
     return load_dataset(path, split="train", streaming=True, **kwargs)
 
 
@@ -172,9 +174,9 @@ def _stream_fineweb2_de(filters: dict[str, Any]) -> Iterator[tuple[str, dict[str
 
 SOURCES: dict[str, Any] = {
     "german_commons": {"stream": _stream_german_commons, "filename": "german_commons.txt"},
-    "wikipedia_de":   {"stream": _stream_wikipedia_de,   "filename": "wikipedia_de.txt"},
-    "oscar_de":       {"stream": _stream_oscar_de,       "filename": "oscar_de.txt"},
-    "fineweb2_de":    {"stream": _stream_fineweb2_de,    "filename": "fineweb2_de.txt"},
+    "wikipedia_de": {"stream": _stream_wikipedia_de, "filename": "wikipedia_de.txt"},
+    "oscar_de": {"stream": _stream_oscar_de, "filename": "oscar_de.txt"},
+    "fineweb2_de": {"stream": _stream_fineweb2_de, "filename": "fineweb2_de.txt"},
 }
 
 
@@ -205,7 +207,7 @@ def main() -> None:
         spec = SOURCES[name]
         target_tokens = int(targets[name])
         output_path = out_dir / spec["filename"]
-        print(f"\n=== {name} → {output_path} (target {target_tokens/1e9:.2f}B tokens) ===")
+        print(f"\n=== {name} → {output_path} (target {target_tokens / 1e9:.2f}B tokens) ===")
         stats = _write_source(
             source_name=name,
             output_path=output_path,
@@ -216,14 +218,14 @@ def main() -> None:
         summaries.append(stats)
         print(
             f"  docs={stats.final_docs:,} "
-            f"bytes={stats.final_bytes/1e9:.2f}GB "
+            f"bytes={stats.final_bytes / 1e9:.2f}GB "
             f"filtered={stats.filtered_total:,} "
             f"(cultural_dropped={stats.filtered_reasons.get('cultural_subsampled', 0):,})"
         )
 
     print("\n=== Summary ===")
     for s in summaries:
-        print(f"  {s.source:15s} {s.final_docs:>10,} docs  {s.final_bytes/1e9:>6.2f} GB")
+        print(f"  {s.source:15s} {s.final_docs:>10,} docs  {s.final_bytes / 1e9:>6.2f} GB")
 
 
 if __name__ == "__main__":

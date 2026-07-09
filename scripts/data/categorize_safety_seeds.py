@@ -30,12 +30,12 @@ Usage (from inside the container):
     python scripts/data/categorize_safety_seeds.py --in-dir custom/raw/safety
     python scripts/data/categorize_safety_seeds.py --rebuild  # purge old output first
 """
+
 from __future__ import annotations
 
 import argparse
 import json
 import re
-import shutil
 import sys
 import time
 from dataclasses import asdict, dataclass, field
@@ -94,8 +94,7 @@ HN_PATTERNS = {
 }
 
 # Compile once.
-_COMPILED = {hn: [re.compile(p, re.IGNORECASE) for p in pats]
-             for hn, pats in HN_PATTERNS.items()}
+_COMPILED = {hn: [re.compile(p, re.IGNORECASE) for p in pats] for hn, pats in HN_PATTERNS.items()}
 
 
 def detect_hard_no(text: str) -> str | None:
@@ -149,8 +148,7 @@ def _bump(d: dict, key: str) -> None:
     d[key] = d.get(key, 0) + 1
 
 
-def _process_one(in_path: Path, hard_fh, softable_fh, normal_fh,
-                 stats: CategoryStats) -> None:
+def _process_one(in_path: Path, hard_fh, softable_fh, normal_fh, stats: CategoryStats) -> None:
     print(f"\n--- {in_path.name} ---", flush=True)
     src_name = in_path.stem
     n_in = 0
@@ -167,8 +165,7 @@ def _process_one(in_path: Path, hard_fh, softable_fh, normal_fh,
 
             user = rec.get("user", "") or ""
             # Some sources put text in 'preferred' or 'rejected' instead.
-            extra = " ".join([rec.get("preferred", "") or "",
-                              rec.get("rejected", "") or ""])
+            extra = " ".join([rec.get("preferred", "") or "", rec.get("rejected", "") or ""])
 
             hn = detect_hard_no(user) or detect_hard_no(extra)
             if hn:
@@ -196,12 +193,14 @@ def _process_one(in_path: Path, hard_fh, softable_fh, normal_fh,
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description=__doc__,
-                                formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     p.add_argument("--in-dir", type=Path, default=DEFAULT_IN_DIR)
     p.add_argument("--out-dir", type=Path, default=DEFAULT_OUT_DIR)
-    p.add_argument("--rebuild", action="store_true",
-                   help="Delete existing output bins before running.")
+    p.add_argument(
+        "--rebuild", action="store_true", help="Delete existing output bins before running."
+    )
     args = p.parse_args()
 
     if args.rebuild and args.out_dir.exists():
@@ -226,9 +225,11 @@ def main() -> None:
     norm_path = args.out_dir / "safety_normal.jsonl"
 
     t0 = time.time()
-    with atomic_text_writer(hard_path) as hh, \
-         atomic_text_writer(soft_path) as sh, \
-         atomic_text_writer(norm_path) as nh:
+    with (
+        atomic_text_writer(hard_path) as hh,
+        atomic_text_writer(soft_path) as sh,
+        atomic_text_writer(norm_path) as nh,
+    ):
         for in_path in inputs:
             _process_one(in_path, hh, sh, nh, stats)
 
@@ -240,7 +241,7 @@ def main() -> None:
         encoding="utf-8",
     )
 
-    print(f"\n=== SUMMARY ===")
+    print("\n=== SUMMARY ===")
     print(f"elapsed:  {elapsed:.1f}s")
     print(f"in:       {stats.in_records}")
     print(f"hard-no:  {stats.hard_no}  (per-rule: {stats.per_hard_no})")

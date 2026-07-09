@@ -20,14 +20,13 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import random
 import re
 import statistics
 from collections import Counter
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
 
 try:
     import numpy as np
@@ -40,18 +39,38 @@ except Exception:  # pragma: no cover - optional runtime dependency guard
     spm = None
 
 
-HTML_RE = re.compile(r"<\s*/?\s*(html|body|div|script|style|table|iframe|a)\b|&(?:amp|gt|lt|quot|#x?[0-9a-f]+);", re.I)
-CHAT_RE = re.compile(r"<\|(?:im_start|im_end|endoftext|user|assistant|system)\|>|_end_of_the_data|</?think>", re.I)
+HTML_RE = re.compile(
+    r"<\s*/?\s*(html|body|div|script|style|table|iframe|a)\b|&(?:amp|gt|lt|quot|#x?[0-9a-f]+);",
+    re.I,
+)
+CHAT_RE = re.compile(
+    r"<\|(?:im_start|im_end|endoftext|user|assistant|system)\|>|_end_of_the_data|</?think>", re.I
+)
 URL_RE = re.compile(r"https?://|www\.", re.I)
-ADULT_CASINO_RE = re.compile(r"\b(?:onlyfans|porn|xxx|casino|jackpot|free spins|sportwetten|sexkontakte)\b", re.I)
-SHOP_RE = re.compile(r"\b(?:warenkorb|checkout|rabattcode|gutschein|trusted shops|lieferzeit|versandkosten)\b", re.I)
-MATH_RE = re.compile(r"\b(?:mathematik|problem:|loesung:|lösung:|beweis|theorem|lemma|integral|gleichung)\b|[=+\-*/^]{4,}", re.I)
+ADULT_CASINO_RE = re.compile(
+    r"\b(?:onlyfans|porn|xxx|casino|jackpot|free spins|sportwetten|sexkontakte)\b", re.I
+)
+SHOP_RE = re.compile(
+    r"\b(?:warenkorb|checkout|rabattcode|gutschein|trusted shops|lieferzeit|versandkosten)\b", re.I
+)
+MATH_RE = re.compile(
+    r"\b(?:mathematik|problem:|loesung:|lösung:|beweis|theorem|lemma|integral|gleichung)\b|[=+\-*/^]{4,}",
+    re.I,
+)
 QA_RE = re.compile(r"\b(?:frage:|antwort:|question:|answer:|instruction:|response:)\b", re.I)
-CODE_RE = re.compile(r"\b(?:def|class|import|return|function|const|let|var|public static|#include)\b|[{};]{4,}", re.I)
+CODE_RE = re.compile(
+    r"\b(?:def|class|import|return|function|const|let|var|public static|#include)\b|[{};]{4,}", re.I
+)
 DNA_RE = re.compile(r"</?(?:memory|recall)>|<\|end\|>", re.I)
-GERMAN_RE = re.compile(r"\b(?:der|die|das|und|ist|nicht|eine|einer|mit|für|ueber|über|werden|wurde)\b|[äöüÄÖÜß]", re.I)
-ENGLISH_RE = re.compile(r"\b(?:the|and|that|with|this|from|were|would|should|because|there)\b", re.I)
-TOC_RE = re.compile(r"\b(?:inhaltsverzeichnis|table of contents|seite|page)\b|\.{3,}\s*\d{1,5}", re.I)
+GERMAN_RE = re.compile(
+    r"\b(?:der|die|das|und|ist|nicht|eine|einer|mit|für|ueber|über|werden|wurde)\b|[äöüÄÖÜß]", re.I
+)
+ENGLISH_RE = re.compile(
+    r"\b(?:the|and|that|with|this|from|were|would|should|because|there)\b", re.I
+)
+TOC_RE = re.compile(
+    r"\b(?:inhaltsverzeichnis|table of contents|seite|page)\b|\.{3,}\s*\d{1,5}", re.I
+)
 OCR_RE = re.compile(r"Ã.|�|Å¿|\b[a-zA-ZÄÖÜäöüß](?:\s+[a-zA-ZÄÖÜäöüß]){4,}\b")
 WORD_RE = re.compile(r"[A-Za-zÄÖÜäöüß]+")
 
@@ -271,8 +290,15 @@ def render_jsonl_doc(obj: dict, kind: str) -> str:
             suffix = f" Erwartete Antwort: {expected}" if expected else ""
             return f"Mathematik. Problem: {problem} Loesung: {solution}{suffix}"
         return ""
-    question = normalize_doc(obj.get("question", "") or obj.get("instruction", "") or obj.get("prompt", ""))
-    answer = normalize_doc(obj.get("answer", "") or obj.get("output", "") or obj.get("response", "") or obj.get("completion", ""))
+    question = normalize_doc(
+        obj.get("question", "") or obj.get("instruction", "") or obj.get("prompt", "")
+    )
+    answer = normalize_doc(
+        obj.get("answer", "")
+        or obj.get("output", "")
+        or obj.get("response", "")
+        or obj.get("completion", "")
+    )
     system = normalize_doc(obj.get("system", ""))
     if question and answer:
         prefix = f"System: {system} " if system else ""
@@ -366,14 +392,20 @@ def build_source_report(
         sp.load(str(tokenizer))
 
     lengths = idx_lengths(idx_path) if idx_path else None
-    source_doc_total = sum(int(src.get("documents") or 0) for src in mix_manifest.get("sources", []))
+    source_doc_total = sum(
+        int(src.get("documents") or 0) for src in mix_manifest.get("sources", [])
+    )
     exact_source_lengths = lengths is not None and int(lengths.shape[0]) == int(source_doc_total)
     cursor = 0
     reports = []
     for idx, src in enumerate(mix_manifest.get("sources", [])):
         bytes_written = int(src.get("bytes_written") or 0)
         docs = int(src.get("documents") or 0)
-        approx_tokens = int(total_tokens * (bytes_written / total_mix_bytes)) if total_mix_bytes and total_tokens else None
+        approx_tokens = (
+            int(total_tokens * (bytes_written / total_mix_bytes))
+            if total_mix_bytes and total_tokens
+            else None
+        )
         row = {
             "name": src.get("name"),
             "kind": src.get("kind"),
@@ -383,7 +415,9 @@ def build_source_report(
             "avg_bytes_per_doc": round(bytes_written / docs, 3) if docs else None,
             "byte_share_pct": pct(bytes_written, total_mix_bytes),
             "approx_tokens_by_byte_share": approx_tokens,
-            "approx_avg_tokens_per_doc": round(approx_tokens / docs, 3) if approx_tokens and docs else None,
+            "approx_avg_tokens_per_doc": round(approx_tokens / docs, 3)
+            if approx_tokens and docs
+            else None,
             "skipped": src.get("skipped", {}),
         }
         if exact_source_lengths:
@@ -394,7 +428,9 @@ def build_source_report(
                 f"manifest source docs ({source_doc_total}) do not match idx docs ({int(lengths.shape[0])})"
             )
         path = Path(str(src.get("path", "")))
-        sample_docs = sample_source_docs(path, str(src.get("kind", "")), samples_per_source, seed + idx)
+        sample_docs = sample_source_docs(
+            path, str(src.get("kind", "")), samples_per_source, seed + idx
+        )
         row.update(sampled_token_lengths(sp, sample_docs))
         domain_counts = Counter()
         flag_counts = Counter()
@@ -487,17 +523,23 @@ def markdown_report(results: dict) -> str:
             ]
         )
     lines.extend(["", "## Sources", ""])
-    lines.append("| Source | Docs | GB | Share | Exact tok/doc | <64 tok | <100 tok | Sample flags |")
+    lines.append(
+        "| Source | Docs | GB | Share | Exact tok/doc | <64 tok | <100 tok | Sample flags |"
+    )
     lines.append("|---|---:|---:|---:|---:|---:|---:|---|")
     for src in results.get("sources", []):
-        flags = ", ".join(f"{k}:{v}" for k, v in (src.get("sample_flag_counts") or {}).items()) or "-"
+        flags = (
+            ", ".join(f"{k}:{v}" for k, v in (src.get("sample_flag_counts") or {}).items()) or "-"
+        )
         lines.append(
             "| {name} | {docs:,} | {gb:.2f} | {share:.2f}% | {tokdoc} | {lt64}% | {lt100}% | {flags} |".format(
                 name=src.get("name"),
                 docs=src.get("documents") or 0,
                 gb=(src.get("bytes_written") or 0) / (1024**3),
                 share=src.get("byte_share_pct") or 0,
-                tokdoc=src.get("exact_avg_tokens_per_doc") or src.get("approx_avg_tokens_per_doc") or "-",
+                tokdoc=src.get("exact_avg_tokens_per_doc")
+                or src.get("approx_avg_tokens_per_doc")
+                or "-",
                 lt64=src.get("exact_docs_lt_64_pct", "-"),
                 lt100=src.get("exact_docs_lt_100_pct", "-"),
                 flags=flags,
@@ -513,12 +555,20 @@ def markdown_report(results: dict) -> str:
     lines.append(f"- status: `{marker.get('status')}`")
     for text, row in (marker.get("markers") or {}).items():
         pieces = " ".join(row.get("pieces", []))
-        lines.append(f"- `{text.replace(chr(10), '<NL>')}` -> {row.get('piece_count')} pieces, unk={row.get('has_unk')}: `{pieces}`")
+        lines.append(
+            f"- `{text.replace(chr(10), '<NL>')}` -> {row.get('piece_count')} pieces, unk={row.get('has_unk')}: `{pieces}`"
+        )
     lines.extend(["", "## Gate Notes", ""])
     notes = results.get("gate_notes", [])
     for note in notes:
         lines.append(f"- {note}")
-    lines.extend(["", "See `audit_samples.md` for readable examples and `results.json` for full details.", ""])
+    lines.extend(
+        [
+            "",
+            "See `audit_samples.md` for readable examples and `results.json` for full details.",
+            "",
+        ]
+    )
     return "\n".join(lines)
 
 
@@ -526,14 +576,18 @@ def gate_notes(results: dict) -> list[str]:
     notes: list[str] = []
     stats = results.get("token_stats", {})
     if stats.get("docs_lt_100_pct", 0) > 10:
-        notes.append("WARN: More than 10% of docs are under 100 tokens; check doc boundaries and short fragments.")
+        notes.append(
+            "WARN: More than 10% of docs are under 100 tokens; check doc boundaries and short fragments."
+        )
     elif stats:
         notes.append("OK: Short-document share is not obviously broken.")
     avg = stats.get("avg_tokens_per_doc")
     if avg and avg < 150:
         notes.append("WARN: Average tokens/doc is very low; likely too many fragments.")
     elif avg and avg > 2500:
-        notes.append("WARN: Average tokens/doc is very high; check packed mega-docs or missing line breaks.")
+        notes.append(
+            "WARN: Average tokens/doc is very high; check packed mega-docs or missing line breaks."
+        )
     elif avg:
         notes.append("OK: Average tokens/doc is in a plausible range for one-line documents.")
     tail = results.get("tail_analysis", {})
@@ -546,7 +600,10 @@ def gate_notes(results: dict) -> list[str]:
         else:
             notes.append("OK: Tail/val estimate is not dominated by a single simple domain.")
     flags = tail.get("flag_counts") or {}
-    bad_tail = sum(flags.get(k, 0) for k in ("html", "chat_marker", "adult_or_casino", "shop_spam", "url_dense"))
+    bad_tail = sum(
+        flags.get(k, 0)
+        for k in ("html", "chat_marker", "adult_or_casino", "shop_spam", "url_dense")
+    )
     if bad_tail:
         notes.append(f"WARN: Tail sample still contains {bad_tail} hard-noise flags.")
     else:
@@ -555,15 +612,21 @@ def gate_notes(results: dict) -> list[str]:
     for special in ("<memory>", "</memory>", "<recall>", "</recall>", "<|end|>"):
         row = marker.get(special)
         if row and row.get("piece_count") != 1:
-            notes.append(f"WARN: Intended special marker {special} is not single-token ({row.get('piece_count')} pieces).")
+            notes.append(
+                f"WARN: Intended special marker {special} is not single-token ({row.get('piece_count')} pieces)."
+            )
     task = marker.get("### Aufgabe:\n")
     if task:
         if task.get("has_unk"):
             notes.append("WARN: Alpaca marker contains <unk>; this is dangerous.")
         elif task.get("piece_count", 99) <= 6:
-            notes.append("OK: Alpaca text marker is compact enough; single-token is not required for this marker.")
+            notes.append(
+                "OK: Alpaca text marker is compact enough; single-token is not required for this marker."
+            )
         else:
-            notes.append("WARN: Alpaca marker splits into many pieces; consider a registered special token in tokenizer-v2.")
+            notes.append(
+                "WARN: Alpaca marker splits into many pieces; consider a registered special token in tokenizer-v2."
+            )
     sources = results.get("sources") or []
     short_sources = [
         (src.get("name"), src.get("exact_docs_lt_100_pct", 0), src.get("exact_docs_lt_100", 0))
@@ -571,7 +634,7 @@ def gate_notes(results: dict) -> list[str]:
         if src.get("exact_docs_lt_100_pct", 0) > 10
     ]
     if short_sources:
-        short_sources.sort(key=lambda item: (item[2] or 0), reverse=True)
+        short_sources.sort(key=lambda item: item[2] or 0, reverse=True)
         pretty = ", ".join(f"{name}={share}%" for name, share, _ in short_sources[:5])
         notes.append(f"WARN: Short-doc pressure is dominated by: {pretty}.")
     return notes
@@ -579,8 +642,15 @@ def gate_notes(results: dict) -> list[str]:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--mix-dir", required=True, type=Path, help="Directory with mix_full.txt and manifest.json.")
-    parser.add_argument("--tokenized-dir", required=True, type=Path, help="Directory with german.idx and german.bin.manifest.json.")
+    parser.add_argument(
+        "--mix-dir", required=True, type=Path, help="Directory with mix_full.txt and manifest.json."
+    )
+    parser.add_argument(
+        "--tokenized-dir",
+        required=True,
+        type=Path,
+        help="Directory with german.idx and german.bin.manifest.json.",
+    )
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--tokenizer", type=Path, default=None)
     parser.add_argument("--sample-docs", type=int, default=30)
@@ -626,7 +696,7 @@ def main() -> None:
     ]
 
     results = {
-        "generated_at": _dt.datetime.now(_dt.timezone.utc).isoformat(),
+        "generated_at": _dt.datetime.now(_dt.UTC).isoformat(),
         "mix_dir": str(args.mix_dir),
         "tokenized_dir": str(args.tokenized_dir),
         "mix_manifest": {
@@ -650,7 +720,9 @@ def main() -> None:
     }
     results["gate_notes"] = gate_notes(results)
 
-    (args.output_dir / "results.json").write_text(json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8")
+    (args.output_dir / "results.json").write_text(
+        json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
     (args.output_dir / "report.md").write_text(markdown_report(results), encoding="utf-8")
     print(f"wrote {args.output_dir / 'report.md'}")
 

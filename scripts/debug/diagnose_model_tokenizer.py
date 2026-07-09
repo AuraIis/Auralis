@@ -93,11 +93,7 @@ def check_tokenizer(sp: spm.SentencePieceProcessor) -> bool:
         # a raw encode("<|system|>") look like [dummy_prefix, special_id].
         # The important invariant is that the special marker itself is one
         # registered piece, not split into "<", "|", "system", ... fragments.
-        ok = (
-            piece_id >= 0
-            and ids.count(piece_id) == 1
-            and sp.decode(ids) == token
-        )
+        ok = piece_id >= 0 and ids.count(piece_id) == 1 and sp.decode(ids) == token
         mode = "single-id" if ids == [piece_id] else "with-dummy-prefix"
         ok_all = ok_all and ok
         _print_check(
@@ -176,7 +172,7 @@ def check_model(args: argparse.Namespace, sp: spm.SentencePieceProcessor) -> boo
 
     model = build_model(args.model_config).to(device)
     print(
-        f"params={model.count_parameters()/1e6:.2f}M cfg_vocab={model.config.vocab_size:,} "
+        f"params={model.count_parameters() / 1e6:.2f}M cfg_vocab={model.config.vocab_size:,} "
         f"tok_vocab={sp.get_piece_size():,} tied={model.config.advanced.tie_embeddings}",
         flush=True,
     )
@@ -251,7 +247,9 @@ def check_model(args: argparse.Namespace, sp: spm.SentencePieceProcessor) -> boo
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model-config", type=Path, required=True)
-    parser.add_argument("--tokenizer", type=Path, default=REPO / "tokenizer" / "helix_v2_tokenizer.model")
+    parser.add_argument(
+        "--tokenizer", type=Path, default=REPO / "tokenizer" / "helix_v2_tokenizer.model"
+    )
     parser.add_argument("--checkpoint", type=Path)
     parser.add_argument("--device", default="auto")
     parser.add_argument("--seq-len", type=int, default=32)

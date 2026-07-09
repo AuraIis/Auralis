@@ -48,7 +48,6 @@ from auralis.tokenizer.chat_template import (  # noqa: E402
     build_training_prompt,
 )
 
-
 HELIX_TURN_RE = re.compile(r"<\|(system|user|assistant)\|>\n(.*?)\n<\|end\|>\n", re.DOTALL)
 
 
@@ -145,7 +144,9 @@ def eval_loss(model, batch: dict[str, torch.Tensor]) -> float:
 
 
 @torch.no_grad()
-def generate(model, sp: spm.SentencePieceProcessor, prompt: str, device: torch.device, max_new_tokens: int) -> str:
+def generate(
+    model, sp: spm.SentencePieceProcessor, prompt: str, device: torch.device, max_new_tokens: int
+) -> str:
     model.eval()
     text = build_inference_prompt(
         [
@@ -179,8 +180,12 @@ def load_checkpoint(model, checkpoint: Path, device: torch.device) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--model-config", type=Path, default=REPO / "configs/model/helix_v2_debug_tiny.yaml")
-    parser.add_argument("--tokenizer", type=Path, default=REPO / "tokenizer/helix_v2_tokenizer.model")
+    parser.add_argument(
+        "--model-config", type=Path, default=REPO / "configs/model/helix_v2_debug_tiny.yaml"
+    )
+    parser.add_argument(
+        "--tokenizer", type=Path, default=REPO / "tokenizer/helix_v2_tokenizer.model"
+    )
     parser.add_argument("--checkpoint", type=Path)
     parser.add_argument("--device", default="auto")
     parser.add_argument("--steps", type=int, default=120)
@@ -191,7 +196,9 @@ def main() -> None:
     args = parser.parse_args()
 
     set_seed(args.seed)
-    device = torch.device("cuda" if args.device == "auto" and torch.cuda.is_available() else args.device)
+    device = torch.device(
+        "cuda" if args.device == "auto" and torch.cuda.is_available() else args.device
+    )
     if args.device == "auto":
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"device={device} mamba_kernel={_KERNEL_ACTIVE}", flush=True)
@@ -206,15 +213,23 @@ def main() -> None:
     )
 
     model = build_model(args.model_config).to(device)
-    print(f"params={model.count_parameters()/1e6:.2f}M vocab={model.config.vocab_size:,}", flush=True)
+    print(
+        f"params={model.count_parameters() / 1e6:.2f}M vocab={model.config.vocab_size:,}",
+        flush=True,
+    )
     if args.checkpoint:
         load_checkpoint(model, args.checkpoint, device)
     if model.config.vocab_size != sp.get_piece_size():
-        raise SystemExit(f"vocab mismatch: model={model.config.vocab_size} tokenizer={sp.get_piece_size()}")
+        raise SystemExit(
+            f"vocab mismatch: model={model.config.vocab_size} tokenizer={sp.get_piece_size()}"
+        )
 
     print("\n--- before ---", flush=True)
     for ex in examples[:4]:
-        print(f"Q: {ex.prompt}\nA: {generate(model, sp, ex.prompt, device, args.max_new_tokens)!r}", flush=True)
+        print(
+            f"Q: {ex.prompt}\nA: {generate(model, sp, ex.prompt, device, args.max_new_tokens)!r}",
+            flush=True,
+        )
 
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr, betas=(0.9, 0.95), weight_decay=0.0)
     initial = eval_loss(model, batch)
@@ -235,7 +250,10 @@ def main() -> None:
         if step == 1 or step % max(1, args.steps // 6) == 0 or step == args.steps:
             current = eval_loss(model, batch)
             elapsed = time.time() - start
-            print(f"step={step:4d} train_loss={float(loss):.4f} eval_loss={current:.4f} elapsed={elapsed:.1f}s", flush=True)
+            print(
+                f"step={step:4d} train_loss={float(loss):.4f} eval_loss={current:.4f} elapsed={elapsed:.1f}s",
+                flush=True,
+            )
 
     final = eval_loss(model, batch)
     print("\n--- after ---", flush=True)
@@ -244,7 +262,10 @@ def main() -> None:
         pred = generate(model, sp, ex.prompt, device, args.max_new_tokens)
         hit = pred.startswith(ex.answer)
         exact += int(hit)
-        print(f"{'OK' if hit else 'NO'} Q: {ex.prompt}\n   target={ex.answer!r}\n   pred  ={pred!r}", flush=True)
+        print(
+            f"{'OK' if hit else 'NO'} Q: {ex.prompt}\n   target={ex.answer!r}\n   pred  ={pred!r}",
+            flush=True,
+        )
 
     ratio = initial / max(final, 1e-9)
     print("\n=== SUMMARY ===", flush=True)

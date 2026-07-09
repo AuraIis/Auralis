@@ -12,6 +12,7 @@ is to backport MoRA's two key methods (apply_mora + get_delta_weight)
 into the modern PEFT version, so we keep DoRA + LoRA+ + PiSSA + MoRA
 in the same library.
 """
+
 from __future__ import annotations
 
 import os
@@ -19,7 +20,6 @@ import sys
 import time
 
 import torch
-import torch.nn.functional as F
 
 
 def banner(msg: str) -> None:
@@ -29,18 +29,20 @@ def banner(msg: str) -> None:
 def main() -> int:
     banner("Environment")
     import peft
-    from peft import LoraConfig, get_peft_model, PeftModel
+    from peft import LoraConfig, PeftModel, get_peft_model
+
     print(f"  peft version: {peft.__version__}")
     print(f"  torch: {torch.__version__}, CUDA: {torch.cuda.is_available()}")
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     banner("Load tiny base (GPT-2)")
-    from transformers import GPT2Config, GPT2LMHeadModel, GPT2Tokenizer
+    from transformers import GPT2Config, GPT2LMHeadModel
+
     cfg = GPT2Config(n_layer=4, n_head=4, n_embd=128, vocab_size=50257)
     model = GPT2LMHeadModel(cfg)
     model.config.pad_token_id = model.config.eos_token_id
     n_base = sum(p.numel() for p in model.parameters())
-    print(f"  base params: {n_base/1e6:.2f}M")
+    print(f"  base params: {n_base / 1e6:.2f}M")
 
     banner("Wrap with MoRA-LoRA")
     # mora_type=6 (RoPE-based) per paper recommendation for small ranks
@@ -48,7 +50,7 @@ def main() -> int:
         use_mora=True,
         mora_type=6,
         r=8,
-        target_modules=["c_attn"],         # GPT-2's combined Q/K/V projection
+        target_modules=["c_attn"],  # GPT-2's combined Q/K/V projection
         lora_dropout=0.0,
         task_type="CAUSAL_LM",
     )
@@ -56,8 +58,10 @@ def main() -> int:
     peft_model = peft_model.to(device)
     n_train = sum(p.numel() for p in peft_model.parameters() if p.requires_grad)
     n_total = sum(p.numel() for p in peft_model.parameters())
-    print(f"  trainable: {n_train/1e6:.3f}M / total {n_total/1e6:.2f}M "
-          f"({100*n_train/n_total:.2f}%)")
+    print(
+        f"  trainable: {n_train / 1e6:.3f}M / total {n_total / 1e6:.2f}M "
+        f"({100 * n_train / n_total:.2f}%)"
+    )
     print()
     peft_model.print_trainable_parameters()
 
@@ -83,7 +87,7 @@ def main() -> int:
         optimizer.zero_grad()
         losses.append(out.loss.item())
     print(f"  loss trajectory: {[round(l, 3) for l in losses]}")
-    print(f"  elapsed: {time.time()-t0:.1f}s")
+    print(f"  elapsed: {time.time() - t0:.1f}s")
     if losses[-1] >= losses[0]:
         print("  ⚠️  loss did not decrease — check optimizer / hooks")
     else:
@@ -125,7 +129,7 @@ def main() -> int:
     merged = reloaded.merge_and_unload()
     n_merged = sum(p.numel() for p in merged.parameters())
     n_train_merged = sum(p.numel() for p in merged.parameters() if p.requires_grad)
-    print(f"  after merge: {n_merged/1e6:.2f}M total, {n_train_merged/1e6:.2f}M trainable")
+    print(f"  after merge: {n_merged / 1e6:.2f}M total, {n_train_merged / 1e6:.2f}M trainable")
     merged.eval()
     with torch.no_grad():
         merged_out = merged(eval_x).logits

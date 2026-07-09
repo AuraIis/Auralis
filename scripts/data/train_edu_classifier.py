@@ -15,6 +15,7 @@ head is a tiny (dim+1,) vector.
         --labels eval/results/de_edu/train/*.jsonl \
         --output eval/results/de_edu/edu_clf.pt
 """
+
 from __future__ import annotations
 
 import argparse
@@ -33,7 +34,7 @@ from scripts.data.edu_embed import DEFAULT_MODEL, DEFAULT_PREFIX, EduEmbedder  #
 def load_labeled(paths: list[Path]) -> list[tuple[str, int, str]]:
     rows: list[tuple[str, int, str]] = []
     for p in paths:
-        with open(p, "r", encoding="utf-8") as fh:
+        with open(p, encoding="utf-8") as fh:
             for line in fh:
                 line = line.strip()
                 if not line:
@@ -55,10 +56,10 @@ def ridge_fit(X: torch.Tensor, y: torch.Tensor, lam: float) -> torch.Tensor:
     y = y.double()
     n, d = X.shape
     Xb = torch.cat([X, torch.ones(n, 1, dtype=X.dtype)], dim=1)  # (N, D+1)
-    A = Xb.t() @ Xb                                              # (D+1, D+1)
+    A = Xb.t() @ Xb  # (D+1, D+1)
     reg = lam * torch.eye(d + 1, dtype=X.dtype)
-    reg[d, d] = 0.0                                             # don't regularise bias
-    w = torch.linalg.solve(A + reg, Xb.t() @ y.unsqueeze(1))   # (D+1, 1)
+    reg[d, d] = 0.0  # don't regularise bias
+    w = torch.linalg.solve(A + reg, Xb.t() @ y.unsqueeze(1))  # (D+1, 1)
     return w.squeeze(1).float()
 
 
@@ -68,34 +69,47 @@ def predict(X: torch.Tensor, w: torch.Tensor) -> torch.Tensor:
     return (Xb @ w).clamp(0, 5)
 
 
-def metrics(pred: torch.Tensor, true: torch.Tensor, pred_threshold: float,
-            label_threshold: float = 3.0) -> dict:
+def metrics(
+    pred: torch.Tensor, true: torch.Tensor, pred_threshold: float, label_threshold: float = 3.0
+) -> dict:
     """Keep/drop is judged against the FIXED rubric bar (true >= label_threshold).
     pred_threshold is the (calibratable) cutoff on the regressor output."""
     err = pred - true
-    rmse = float(torch.sqrt((err ** 2).mean()))
+    rmse = float(torch.sqrt((err**2).mean()))
     mae = float(err.abs().mean())
     pm, tm = pred - pred.mean(), true - true.mean()
     pear = float((pm @ tm) / (pm.norm() * tm.norm() + 1e-9))
     pk, tk = pred >= pred_threshold, true >= label_threshold
-    tp = int((pk & tk).sum()); fp = int((pk & ~tk).sum())
-    fn = int((~pk & tk).sum()); tn = int((~pk & ~tk).sum())
+    tp = int((pk & tk).sum())
+    fp = int((pk & ~tk).sum())
+    fn = int((~pk & tk).sum())
+    tn = int((~pk & ~tk).sum())
     prec = tp / (tp + fp) if (tp + fp) else 0.0
     rec = tp / (tp + fn) if (tp + fn) else 0.0
     f1 = 2 * prec * rec / (prec + rec) if (prec + rec) else 0.0
     acc = (tp + tn) / max(1, len(pred))
     return {
         "pred_threshold": round(float(pred_threshold), 3),
-        "rmse": round(rmse, 4), "mae": round(mae, 4), "pearson": round(pear, 4),
-        "keep_precision": round(prec, 4), "keep_recall": round(rec, 4),
-        "keep_f1": round(f1, 4), "accuracy": round(acc, 4),
+        "rmse": round(rmse, 4),
+        "mae": round(mae, 4),
+        "pearson": round(pear, 4),
+        "keep_precision": round(prec, 4),
+        "keep_recall": round(rec, 4),
+        "keep_f1": round(f1, 4),
+        "accuracy": round(acc, 4),
         "kept_frac_pred": round(float(pk.float().mean()), 4),
         "kept_frac_true": round(float(tk.float().mean()), 4),
     }
 
 
-def best_threshold(pred: torch.Tensor, true: torch.Tensor, label_threshold: float = 3.0,
-                   lo: float = 1.0, hi: float = 4.0, step: float = 0.05) -> float:
+def best_threshold(
+    pred: torch.Tensor,
+    true: torch.Tensor,
+    label_threshold: float = 3.0,
+    lo: float = 1.0,
+    hi: float = 4.0,
+    step: float = 0.05,
+) -> float:
     """Pick the regressor-output cutoff that maximises keep-F1 against the rubric
     bar (true >= label_threshold). Counters ridge shrinkage (predictions pulled
     toward the mean would otherwise under-keep at a naive 3.0 cutoff)."""
@@ -104,7 +118,9 @@ def best_threshold(pred: torch.Tensor, true: torch.Tensor, label_threshold: floa
     t = lo
     while t <= hi + 1e-9:
         pk = pred >= t
-        tp = int((pk & tk).sum()); fp = int((pk & ~tk).sum()); fn = int((~pk & tk).sum())
+        tp = int((pk & tk).sum())
+        fp = int((pk & ~tk).sum())
+        fn = int((~pk & tk).sum())
         prec = tp / (tp + fp) if (tp + fp) else 0.0
         rec = tp / (tp + fn) if (tp + fn) else 0.0
         f1 = 2 * prec * rec / (prec + rec) if (prec + rec) else 0.0
@@ -115,10 +131,16 @@ def best_threshold(pred: torch.Tensor, true: torch.Tensor, label_threshold: floa
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--labels", type=Path, nargs="+", required=True,
-                    help="one or more JSONL files with 'text' + 'score' rows")
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    ap.add_argument(
+        "--labels",
+        type=Path,
+        nargs="+",
+        required=True,
+        help="one or more JSONL files with 'text' + 'score' rows",
+    )
     ap.add_argument("--output", type=Path, required=True, help="artifact .pt path")
     ap.add_argument("--emb-model", default=DEFAULT_MODEL)
     ap.add_argument("--prefix", default=DEFAULT_PREFIX)
@@ -173,17 +195,26 @@ def main() -> int:
     print(f"\n=== val @ naive cutoff {args.threshold} ===\n{json.dumps(val_raw, indent=2)}")
     print(f"\ncalibrated cutoff (max train keep-F1): {cal_t}")
     print(f"=== val @ calibrated {cal_t} ===\n{json.dumps(val_cal, indent=2)}")
-    print(f"\nbaseline val RMSE (predict train-mean): {base_rmse:.4f}  "
-          f"(classifier val RMSE {val_cal['rmse']} should be clearly lower)")
+    print(
+        f"\nbaseline val RMSE (predict train-mean): {base_rmse:.4f}  "
+        f"(classifier val RMSE {val_cal['rmse']} should be clearly lower)"
+    )
 
     art = {
-        "emb_model": args.emb_model, "prefix": args.prefix, "max_length": args.max_length,
-        "label_threshold": args.threshold,   # fixed rubric keep bar (true >= this)
-        "threshold": cal_t,                   # CALIBRATED regressor cutoff (used by scorer)
+        "emb_model": args.emb_model,
+        "prefix": args.prefix,
+        "max_length": args.max_length,
+        "label_threshold": args.threshold,  # fixed rubric keep bar (true >= this)
+        "threshold": cal_t,  # CALIBRATED regressor cutoff (used by scorer)
         "naive_threshold": args.threshold,
-        "lam": args.lam, "dim": emb.dim, "w": w,
-        "n_train": len(tr_idx), "n_val": len(val_idx),
-        "val_metrics": val_cal, "val_metrics_naive": val_raw, "label_hist": hist,
+        "lam": args.lam,
+        "dim": emb.dim,
+        "w": w,
+        "n_train": len(tr_idx),
+        "n_val": len(val_idx),
+        "val_metrics": val_cal,
+        "val_metrics_naive": val_raw,
+        "label_hist": hist,
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     torch.save(art, args.output)

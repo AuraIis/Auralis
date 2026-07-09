@@ -36,7 +36,9 @@ sys.path.insert(0, str(REPO / "src"))
 
 
 def load_smoke_module():
-    spec = importlib.util.spec_from_file_location("smoke_sft_de", REPO / "scripts/sft/smoke_sft_de.py")
+    spec = importlib.util.spec_from_file_location(
+        "smoke_sft_de", REPO / "scripts/sft/smoke_sft_de.py"
+    )
     if spec is None or spec.loader is None:
         raise RuntimeError("cannot import smoke_sft_de")
     module = importlib.util.module_from_spec(spec)
@@ -72,7 +74,9 @@ def load_probe_pairs(path: Path, system: str) -> list[dict[str, Any]]:
     probes = smoke.load_learning_probes(path)
     pairs: list[dict[str, Any]] = []
     for probe in probes:
-        prompt = build_inference_prompt([{"role": "user", "content": probe.prompt}], default_system=system)
+        prompt = build_inference_prompt(
+            [{"role": "user", "content": probe.prompt}], default_system=system
+        )
         for target in probe.target_answers:
             for negative in probe.negative_answers:
                 pairs.append(
@@ -117,7 +121,9 @@ def _load_render_function(path: Path):
     return module.render
 
 
-def write_outputs(trace: dict[str, Any], trace_json: Path | None, trace_html: Path | None, neuro_html: Path | None) -> None:
+def write_outputs(
+    trace: dict[str, Any], trace_json: Path | None, trace_html: Path | None, neuro_html: Path | None
+) -> None:
     if trace_json:
         trace_json.parent.mkdir(parents=True, exist_ok=True)
         trace_json.write_text(json.dumps(trace, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -138,13 +144,17 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--tokenizer", type=Path, default=REPO / "tokenizer/helix_v2_tokenizer.model")
     ap.add_argument("--train", type=Path, required=True)
     ap.add_argument("--val", type=Path, required=True)
-    ap.add_argument("--learning-probes", type=Path, default=REPO / "eval/learning_trace_de_core.yaml")
+    ap.add_argument(
+        "--learning-probes", type=Path, default=REPO / "eval/learning_trace_de_core.yaml"
+    )
     ap.add_argument("--output-dir", type=Path, required=True)
     ap.add_argument("--steps", type=int, default=80)
     ap.add_argument("--lr", type=float, default=4e-8)
     ap.add_argument("--warmup-steps", type=int, default=8)
     ap.add_argument("--batch-size", type=int, default=1, help="SFT micro-batch size.")
-    ap.add_argument("--grad-accum", type=int, default=4, help="SFT gradient accumulation batches per step.")
+    ap.add_argument(
+        "--grad-accum", type=int, default=4, help="SFT gradient accumulation batches per step."
+    )
     ap.add_argument("--probe-batch-size", type=int, default=4)
     ap.add_argument("--max-length", type=int, default=512)
     ap.add_argument("--train-limit", type=int, default=0)
@@ -178,7 +188,9 @@ def main() -> None:
     args = parse_args()
     smoke.set_seed(args.seed)
     rng = random.Random(args.seed)
-    device = torch.device("cuda" if args.device == "auto" and torch.cuda.is_available() else args.device)
+    device = torch.device(
+        "cuda" if args.device == "auto" and torch.cuda.is_available() else args.device
+    )
     sp = spm.SentencePieceProcessor(model_file=str(args.tokenizer))
     train_examples = smoke.load_examples(args.train, sp, args.max_length, args.train_limit or None)
     val_examples = smoke.load_examples(args.val, sp, args.max_length, args.val_limit or None)
@@ -239,7 +251,9 @@ def main() -> None:
     }
 
     def eval_trace(step: int, loss_row: dict[str, float] | None, elapsed: float) -> None:
-        val = smoke.eval_loss(model, val_examples, pad_id, device, max_batches=8, batch_size=args.batch_size)
+        val = smoke.eval_loss(
+            model, val_examples, pad_id, device, max_batches=8, batch_size=args.batch_size
+        )
         val_by_category = smoke.eval_loss_by_category(
             model,
             val_examples,
@@ -248,7 +262,9 @@ def main() -> None:
             max_batches=4,
             batch_size=args.batch_size,
         )
-        probe_rows = smoke.evaluate_learning_probes(model, sp, learning_probes, device, args.generation_system)
+        probe_rows = smoke.evaluate_learning_probes(
+            model, sp, learning_probes, device, args.generation_system
+        )
         trace["history"].append(
             {
                 "step": step,
@@ -267,7 +283,10 @@ def main() -> None:
             margin = row.get("margin")
             margin_s = "n/a" if margin is None else f"{margin:+.3f}"
             flags = f" forbidden={row['forbidden_hits']}" if row.get("forbidden_hits") else ""
-            print(f"  {row['id']}: target_nll={row['target_nll']:.3f} margin={margin_s}{flags}", flush=True)
+            print(
+                f"  {row['id']}: target_nll={row['target_nll']:.3f} margin={margin_s}{flags}",
+                flush=True,
+            )
 
     t0 = time.time()
     eval_trace(0, None, 0.0)

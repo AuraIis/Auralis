@@ -23,10 +23,11 @@ import random
 import re
 import sys
 import time
+from collections.abc import Iterable
 from contextlib import nullcontext
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import sentencepiece as spm
 import torch
@@ -53,8 +54,13 @@ def _maybe_enable_mamba_kernel() -> bool:
 
 _KERNEL_ACTIVE = _maybe_enable_mamba_kernel()
 
+from auralis.adapters import (  # noqa: E402
+    adapter_state_dict,
+    enable_input_require_grads,
+    freeze_base,
+    inject_adapters,
+)
 from auralis.model import build_model  # noqa: E402
-from auralis.adapters import inject_adapters, freeze_base, adapter_state_dict, enable_input_require_grads  # noqa: E402
 from auralis.tokenizer.chat_template import build_inference_prompt  # noqa: E402
 from auralis.training.optimizer import build_optimizer, build_scheduler  # noqa: E402
 
@@ -108,7 +114,9 @@ def _encode(sp: spm.SentencePieceProcessor, text: str) -> list[int]:
     return list(sp.EncodeAsIds(text))
 
 
-def encode_helix_sft(sp: spm.SentencePieceProcessor, text: str, max_length: int) -> SFTExample | None:
+def encode_helix_sft(
+    sp: spm.SentencePieceProcessor, text: str, max_length: int
+) -> SFTExample | None:
     """Encode one canonical Helix prompt with assistant-only labels."""
     pos = 0
     assistant_ranges: list[tuple[int, int]] = []
@@ -163,7 +171,9 @@ def encode_helix_sft(sp: spm.SentencePieceProcessor, text: str, max_length: int)
     return SFTExample(input_ids=ids, labels=labels)
 
 
-def load_examples(path: Path, sp: spm.SentencePieceProcessor, max_length: int, limit: int | None) -> list[SFTExample]:
+def load_examples(
+    path: Path, sp: spm.SentencePieceProcessor, max_length: int, limit: int | None
+) -> list[SFTExample]:
     out: list[SFTExample] = []
     dropped = 0
     with path.open("r", encoding="utf-8") as fh:
@@ -266,14 +276,23 @@ def batches(
 
 
 @torch.no_grad()
-def eval_loss(model, examples: list[SFTExample], pad_id: int, device: torch.device, max_batches: int, batch_size: int) -> float:
+def eval_loss(
+    model,
+    examples: list[SFTExample],
+    pad_id: int,
+    device: torch.device,
+    max_batches: int,
+    batch_size: int,
+) -> float:
     model.eval()
     losses: list[float] = []
     for i in range(0, min(len(examples), max_batches * batch_size), batch_size):
         batch = collate(examples[i : i + batch_size], pad_id, device)
         with autocast_context(device):
             out = model(input_ids=batch["input_ids"])
-            loss = weighted_shift_loss(out["logits"], batch["labels"], eos_id=-1, eos_loss_weight=1.0)
+            loss = weighted_shift_loss(
+                out["logits"], batch["labels"], eos_id=-1, eos_loss_weight=1.0
+            )
         losses.append(float(loss.item()))
     model.train()
     return sum(losses) / max(1, len(losses))
@@ -341,7 +360,9 @@ def load_learning_probes(path: Path) -> list[LearningProbe]:
                 negative_answers=list(raw.get("negative_answers") or raw.get("negatives") or []),
                 expect_contains=list(raw.get("expect_contains") or []),
                 forbid_contains=list(raw.get("forbid_contains") or []),
-                max_new_tokens=int(raw.get("max_new_tokens") or defaults.get("max_new_tokens") or 64),
+                max_new_tokens=int(
+                    raw.get("max_new_tokens") or defaults.get("max_new_tokens") or 64
+                ),
             )
         )
     if not probes:
@@ -360,7 +381,12 @@ def continuation_nll(
     prompt_ids = sp.EncodeAsIds(prompt)
     continuation_ids = sp.EncodeAsIds(continuation)
     if not continuation_ids:
-        return {"avg_nll": float("inf"), "total_nll": float("inf"), "tokens": 0, "ppl": float("inf")}
+        return {
+            "avg_nll": float("inf"),
+            "total_nll": float("inf"),
+            "tokens": 0,
+            "ppl": float("inf"),
+        }
     ids = prompt_ids + continuation_ids
     input_ids = torch.tensor([ids], device=device, dtype=torch.long)
     labels = torch.tensor(continuation_ids, device=device, dtype=torch.long)
@@ -370,7 +396,12 @@ def continuation_nll(
     losses = F.cross_entropy(logits.float(), labels, reduction="none")
     avg = float(losses.mean().item())
     total = float(losses.sum().item())
-    return {"avg_nll": avg, "total_nll": total, "tokens": len(continuation_ids), "ppl": float(torch.exp(losses.mean()).item())}
+    return {
+        "avg_nll": avg,
+        "total_nll": total,
+        "tokens": len(continuation_ids),
+        "ppl": float(torch.exp(losses.mean()).item()),
+    }
 
 
 @torch.no_grad()
@@ -388,7 +419,14 @@ def next_token_topk(
     values, indices = torch.topk(probs, k=min(k, probs.numel()))
     out = []
     for prob, idx in zip(values.tolist(), indices.tolist()):
-        out.append({"token_id": int(idx), "piece": sp.IdToPiece(int(idx)), "text": sp.DecodeIds([int(idx)]), "prob": float(prob)})
+        out.append(
+            {
+                "token_id": int(idx),
+                "piece": sp.IdToPiece(int(idx)),
+                "text": sp.DecodeIds([int(idx)]),
+                "prob": float(prob),
+            }
+        )
     return out
 
 
@@ -403,7 +441,9 @@ def evaluate_learning_probes(
     model.eval()
     rows: list[dict[str, Any]] = []
     for probe in probes:
-        prompt = build_inference_prompt([{"role": "user", "content": probe.prompt}], default_system=generation_system)
+        prompt = build_inference_prompt(
+            [{"role": "user", "content": probe.prompt}], default_system=generation_system
+        )
         answer = generate(model, sp, prompt, device, max_new_tokens=probe.max_new_tokens).strip()
         target_scores = [
             {"text": target, **continuation_nll(model, sp, prompt, target, device)}
@@ -414,7 +454,11 @@ def evaluate_learning_probes(
             for negative in probe.negative_answers
         ]
         best_target = min(target_scores, key=lambda item: float(item["avg_nll"]))
-        best_negative = min(negative_scores, key=lambda item: float(item["avg_nll"])) if negative_scores else None
+        best_negative = (
+            min(negative_scores, key=lambda item: float(item["avg_nll"]))
+            if negative_scores
+            else None
+        )
         target_nll = float(best_target["avg_nll"])
         negative_nll = float(best_negative["avg_nll"]) if best_negative else None
         margin = (negative_nll - target_nll) if negative_nll is not None else None
@@ -441,7 +485,9 @@ def evaluate_learning_probes(
 
 
 @torch.no_grad()
-def generate(model, sp: spm.SentencePieceProcessor, prompt: str, device: torch.device, max_new_tokens: int) -> str:
+def generate(
+    model, sp: spm.SentencePieceProcessor, prompt: str, device: torch.device, max_new_tokens: int
+) -> str:
     model.eval()
     input_ids = torch.tensor([sp.EncodeAsIds(prompt)], device=device, dtype=torch.long)
     new_ids: list[int] = []
@@ -497,8 +543,9 @@ def load_checkpoint_weights(model, checkpoint: Path, device: torch.device) -> in
     return payload.get("state", {}).get("step")
 
 
-def save_sft_checkpoint(model, optimizer, scheduler, step: int, output_dir: Path,
-                        adapter_only: bool = False) -> Path:
+def save_sft_checkpoint(
+    model, optimizer, scheduler, step: int, output_dir: Path, adapter_only: bool = False
+) -> Path:
     output_dir.mkdir(parents=True, exist_ok=True)
     if adapter_only:
         path = output_dir / f"adapter_step_{step}.pt"
@@ -549,12 +596,22 @@ def write_learning_trace_outputs(
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument("--model-config", type=Path, default=REPO / "configs/model/helix_v2_1b.yaml")
     ap.add_argument("--checkpoint", type=Path, default=REPO / "checkpoints/phase1_pretrain/best.pt")
     ap.add_argument("--tokenizer", type=Path, default=REPO / "tokenizer/helix_v2_tokenizer.model")
-    ap.add_argument("--train", type=Path, default=REPO / "data/training/sft_rescued/balanced/de_strict/train.helix.jsonl")
-    ap.add_argument("--val", type=Path, default=REPO / "data/training/sft_rescued/balanced/de_strict/val.helix.jsonl")
+    ap.add_argument(
+        "--train",
+        type=Path,
+        default=REPO / "data/training/sft_rescued/balanced/de_strict/train.helix.jsonl",
+    )
+    ap.add_argument(
+        "--val",
+        type=Path,
+        default=REPO / "data/training/sft_rescued/balanced/de_strict/val.helix.jsonl",
+    )
     ap.add_argument("--output-dir", type=Path, default=REPO / "checkpoints/sft_smoke_de")
     ap.add_argument("--device", default="auto")
     ap.add_argument("--steps", type=int, default=50)
@@ -567,10 +624,23 @@ def main() -> None:
     ap.add_argument("--warmup-steps", type=int, default=5)
     ap.add_argument("--eval-every", type=int, default=10)
     ap.add_argument("--save-final", action="store_true")
-    ap.add_argument("--grad-ckpt", action="store_true", help="enable gradient checkpointing (slower, less VRAM)")
-    ap.add_argument("--save-every", type=int, default=0, help="save checkpoint every N steps (0=off)")
-    ap.add_argument("--bucket", action="store_true", help="length-bucketed batching (minimal padding, no contamination)")
-    ap.add_argument("--adapter-r", type=int, default=0, help="LoRA/DoRA rank (0=off -> full fine-tune). Freezes base, trains adapter only.")
+    ap.add_argument(
+        "--grad-ckpt", action="store_true", help="enable gradient checkpointing (slower, less VRAM)"
+    )
+    ap.add_argument(
+        "--save-every", type=int, default=0, help="save checkpoint every N steps (0=off)"
+    )
+    ap.add_argument(
+        "--bucket",
+        action="store_true",
+        help="length-bucketed batching (minimal padding, no contamination)",
+    )
+    ap.add_argument(
+        "--adapter-r",
+        type=int,
+        default=0,
+        help="LoRA/DoRA rank (0=off -> full fine-tune). Freezes base, trains adapter only.",
+    )
     ap.add_argument("--adapter-alpha", type=float, default=32.0, help="adapter scaling alpha")
     ap.add_argument("--adapter-kind", choices=["dora", "lora"], default="dora")
     ap.add_argument(
@@ -583,9 +653,21 @@ def main() -> None:
         action="store_true",
         help="Sample across family/block groups before category weighting.",
     )
-    ap.add_argument("--eos-loss-weight", type=float, default=1.0, help="Extra loss weight for assistant <|end|> tokens.")
-    ap.add_argument("--diag-json", type=Path, default=None, help="Optional JSON report with losses and generations.")
-    ap.add_argument("--probe", action="append", default=None, help="Extra fixed generation probe. Repeatable.")
+    ap.add_argument(
+        "--eos-loss-weight",
+        type=float,
+        default=1.0,
+        help="Extra loss weight for assistant <|end|> tokens.",
+    )
+    ap.add_argument(
+        "--diag-json",
+        type=Path,
+        default=None,
+        help="Optional JSON report with losses and generations.",
+    )
+    ap.add_argument(
+        "--probe", action="append", default=None, help="Extra fixed generation probe. Repeatable."
+    )
     ap.add_argument(
         "--learning-probes",
         type=Path,
@@ -629,8 +711,11 @@ def main() -> None:
             "Antworte korrekt, knapp und ehrlich. Wenn etwas unsicher oder erfunden ist, sage das deutlich."
         ),
     )
-    ap.add_argument("--data-check-only", action="store_true",
-                    help="Only load/tokenize examples and verify assistant masks; do not build the model.")
+    ap.add_argument(
+        "--data-check-only",
+        action="store_true",
+        help="Only load/tokenize examples and verify assistant masks; do not build the model.",
+    )
     ap.add_argument("--seed", type=int, default=42)
     args = ap.parse_args()
 
@@ -654,16 +739,20 @@ def main() -> None:
     val_by_category: dict[str, int] = {}
     train_by_family: dict[str, int] = {}
     for ex in train_examples:
-        train_by_category[ex.category or "unknown"] = train_by_category.get(ex.category or "unknown", 0) + 1
+        train_by_category[ex.category or "unknown"] = (
+            train_by_category.get(ex.category or "unknown", 0) + 1
+        )
         family = ex.family or ex.block or "unknown"
         train_by_family[family] = train_by_family.get(family, 0) + 1
     for ex in val_examples:
-        val_by_category[ex.category or "unknown"] = val_by_category.get(ex.category or "unknown", 0) + 1
+        val_by_category[ex.category or "unknown"] = (
+            val_by_category.get(ex.category or "unknown", 0) + 1
+        )
     print(
         "mask check: "
         f"train assistant tokens min/avg/max="
-        f"{min(train_masked)}/{sum(train_masked)/len(train_masked):.1f}/{max(train_masked)}; "
-        f"val={min(val_masked)}/{sum(val_masked)/len(val_masked):.1f}/{max(val_masked)}",
+        f"{min(train_masked)}/{sum(train_masked) / len(train_masked):.1f}/{max(train_masked)}; "
+        f"val={min(val_masked)}/{sum(val_masked) / len(val_masked):.1f}/{max(val_masked)}",
         flush=True,
     )
     print(f"train categories: {train_by_category}", flush=True)
@@ -700,14 +789,18 @@ def main() -> None:
     # Adapter mode: inject AFTER loading the base (so the base load stays clean),
     # then freeze base -> build_optimizer picks up only the adapter params.
     if args.adapter_r > 0:
-        inj = inject_adapters(model, r=args.adapter_r, alpha=args.adapter_alpha, kind=args.adapter_kind)
+        inj = inject_adapters(
+            model, r=args.adapter_r, alpha=args.adapter_alpha, kind=args.adapter_kind
+        )
         model = model.to(device)  # move freshly-created adapter params onto the device
         tr, tot = freeze_base(model)
         if args.grad_ckpt:
             enable_input_require_grads(model)  # else checkpointing OOMs with frozen base
-        print(f"adapter [{args.adapter_kind} r={args.adapter_r} a={args.adapter_alpha:g}]: "
-              f"{len(inj)} modules · trainable {tr/1e6:.1f}M/{tot/1e6:.0f}M ({100*tr/tot:.2f}%) · base FROZEN",
-              flush=True)
+        print(
+            f"adapter [{args.adapter_kind} r={args.adapter_r} a={args.adapter_alpha:g}]: "
+            f"{len(inj)} modules · trainable {tr / 1e6:.1f}M/{tot / 1e6:.0f}M ({100 * tr / tot:.2f}%) · base FROZEN",
+            flush=True,
+        )
 
     optimizer = build_optimizer(
         model,
@@ -748,12 +841,16 @@ def main() -> None:
     }
     print("\n--- generations before SFT ---", flush=True)
     for probe in probes:
-        prompt = build_inference_prompt([{"role": "user", "content": probe}], default_system=args.generation_system)
+        prompt = build_inference_prompt(
+            [{"role": "user", "content": probe}], default_system=args.generation_system
+        )
         answer = generate(model, sp, prompt, device, max_new_tokens=64)
         diag["generations_before"].append({"prompt": probe, "answer": answer})
         print(f"\nPROMPT: {probe}\n{answer!r}", flush=True)
 
-    initial_val = eval_loss(model, val_examples, pad_id, device, max_batches=8, batch_size=args.batch_size)
+    initial_val = eval_loss(
+        model, val_examples, pad_id, device, max_batches=8, batch_size=args.batch_size
+    )
     initial_by_category = eval_loss_by_category(
         model, val_examples, pad_id, device, max_batches=8, batch_size=args.batch_size
     )
@@ -762,7 +859,9 @@ def main() -> None:
     diag["initial_val_loss"] = initial_val
     diag["initial_val_by_category"] = initial_by_category
     if learning_probes:
-        initial_learning = evaluate_learning_probes(model, sp, learning_probes, device, args.generation_system)
+        initial_learning = evaluate_learning_probes(
+            model, sp, learning_probes, device, args.generation_system
+        )
         learning_trace["history"].append(
             {
                 "step": 0,
@@ -811,12 +910,15 @@ def main() -> None:
             batch = collate(next(batch_iter), pad_id, device)
             with autocast_context(device):
                 out = model(input_ids=batch["input_ids"])
-                loss = weighted_shift_loss(
-                    out["logits"],
-                    batch["labels"],
-                    eos_id=eos_id,
-                    eos_loss_weight=args.eos_loss_weight,
-                ) / args.grad_accum
+                loss = (
+                    weighted_shift_loss(
+                        out["logits"],
+                        batch["labels"],
+                        eos_id=eos_id,
+                        eos_loss_weight=args.eos_loss_weight,
+                    )
+                    / args.grad_accum
+                )
             if not torch.isfinite(loss):
                 raise RuntimeError(f"non-finite SFT loss at step {step}: {loss.item()}")
             loss.backward()
@@ -827,17 +929,24 @@ def main() -> None:
         optimizer.zero_grad(set_to_none=True)
 
         if args.save_every and step % args.save_every == 0:
-            sp_path = save_sft_checkpoint(model, optimizer, scheduler, step, args.output_dir, adapter_only=args.adapter_r > 0)
+            sp_path = save_sft_checkpoint(
+                model, optimizer, scheduler, step, args.output_dir, adapter_only=args.adapter_r > 0
+            )
             print(f"  [checkpoint] step {step} -> {sp_path}", flush=True)
 
         if step == 1 or step % args.eval_every == 0 or step == args.steps:
-            val = eval_loss(model, val_examples, pad_id, device, max_batches=8, batch_size=args.batch_size)
+            val = eval_loss(
+                model, val_examples, pad_id, device, max_batches=8, batch_size=args.batch_size
+            )
             val_by_category = eval_loss_by_category(
                 model, val_examples, pad_id, device, max_batches=8, batch_size=args.batch_size
             )
             lr = scheduler.get_last_lr()[0]
             elapsed = time.time() - t0
-            print(f"step {step:4d} | train_loss={step_loss:.4f} | val_loss={val:.4f} | lr={lr:.2e} | {elapsed:.1f}s", flush=True)
+            print(
+                f"step {step:4d} | train_loss={step_loss:.4f} | val_loss={val:.4f} | lr={lr:.2e} | {elapsed:.1f}s",
+                flush=True,
+            )
             print(f"           val_by_category={val_by_category}", flush=True)
             diag["history"].append(
                 {
@@ -854,14 +963,20 @@ def main() -> None:
         ):
             # Reuse the latest scalar eval when the learning trace aligns with
             # normal eval. Otherwise compute a small validation snapshot here.
-            if "val" not in locals() or not (step == 1 or step % args.eval_every == 0 or step == args.steps):
-                val = eval_loss(model, val_examples, pad_id, device, max_batches=8, batch_size=args.batch_size)
+            if "val" not in locals() or not (
+                step == 1 or step % args.eval_every == 0 or step == args.steps
+            ):
+                val = eval_loss(
+                    model, val_examples, pad_id, device, max_batches=8, batch_size=args.batch_size
+                )
                 val_by_category = eval_loss_by_category(
                     model, val_examples, pad_id, device, max_batches=8, batch_size=args.batch_size
                 )
                 lr = scheduler.get_last_lr()[0]
                 elapsed = time.time() - t0
-            probe_rows = evaluate_learning_probes(model, sp, learning_probes, device, args.generation_system)
+            probe_rows = evaluate_learning_probes(
+                model, sp, learning_probes, device, args.generation_system
+            )
             learning_trace["history"].append(
                 {
                     "step": step,
@@ -892,13 +1007,22 @@ def main() -> None:
 
     print("\n--- generations after SFT smoke ---", flush=True)
     for probe in probes:
-        prompt = build_inference_prompt([{"role": "user", "content": probe}], default_system=args.generation_system)
+        prompt = build_inference_prompt(
+            [{"role": "user", "content": probe}], default_system=args.generation_system
+        )
         answer = generate(model, sp, prompt, device, max_new_tokens=96)
         diag["generations_after"].append({"prompt": probe, "answer": answer})
         print(f"\nPROMPT: {probe}\n{answer!r}", flush=True)
 
     if args.save_final:
-        path = save_sft_checkpoint(model, optimizer, scheduler, args.steps, args.output_dir, adapter_only=args.adapter_r > 0)
+        path = save_sft_checkpoint(
+            model,
+            optimizer,
+            scheduler,
+            args.steps,
+            args.output_dir,
+            adapter_only=args.adapter_r > 0,
+        )
         diag["saved_checkpoint"] = str(path)
         print(f"\nsaved: {path}", flush=True)
     if args.diag_json:

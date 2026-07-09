@@ -12,6 +12,7 @@ Usage:
 
 Output: JSONL with {doc_id, score, length_chars, head}.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -19,7 +20,6 @@ import json
 import re
 import time
 from pathlib import Path
-
 
 PROMPT_TEMPLATE = """\
 You are a strict data-quality evaluator for an LLM-pretraining corpus.
@@ -58,19 +58,21 @@ def read_blank_separated_docs(path: Path):
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__,
-                                       formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--input", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--max-docs", type=int, default=50)
     parser.add_argument("--model", default="google/flan-t5-base")
-    parser.add_argument("--head-chars", type=int, default=1500,
-                        help="how many chars of each doc to feed the scorer")
+    parser.add_argument(
+        "--head-chars", type=int, default=1500, help="how many chars of each doc to feed the scorer"
+    )
     args = parser.parse_args()
 
     print(f"Loading {args.model} ...", flush=True)
-    from transformers import T5Tokenizer, T5ForConditionalGeneration
     import torch
+    from transformers import T5ForConditionalGeneration, T5Tokenizer
 
     tokenizer = T5Tokenizer.from_pretrained(args.model)
     model = T5ForConditionalGeneration.from_pretrained(args.model)
@@ -92,7 +94,9 @@ def main() -> None:
                 break
             head = doc[: args.head_chars]
             prompt = PROMPT_TEMPLATE.format(doc_head=head)
-            inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=512).to(device)
+            inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=512).to(
+                device
+            )
             with torch.no_grad():
                 out = model.generate(**inputs, max_new_tokens=2, do_sample=False)
             text = tokenizer.decode(out[0], skip_special_tokens=True).strip()
@@ -114,10 +118,10 @@ def main() -> None:
                 print(f"  {n_scored}/{args.max_docs} ({rate:.1f} docs/s)", flush=True)
 
     elapsed = time.time() - t0
-    print(f"\n=== Ask-LLM POC results ===")
-    print(f"  scored: {n_scored} docs in {elapsed:.1f}s ({n_scored/elapsed:.1f} docs/s)")
+    print("\n=== Ask-LLM POC results ===")
+    print(f"  scored: {n_scored} docs in {elapsed:.1f}s ({n_scored / elapsed:.1f} docs/s)")
     print(f"  output: {args.output}")
-    print(f"  score distribution:")
+    print("  score distribution:")
     for k in [1, 2, 3, 4, 5, "?"]:
         bar = "█" * histogram[k]
         print(f"    {k}: {histogram[k]:3d}  {bar}")

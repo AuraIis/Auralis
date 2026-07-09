@@ -18,7 +18,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 REPO = Path(__file__).resolve().parents[2]
 
 SOURCES = [
@@ -132,19 +131,25 @@ def write_summary(output_dir: Path, mix_manifest: Path) -> None:
         top = ", ".join(f"{k}: {v:,}" for k, v in list(row["dropped"].items())[:5])
         md.append(
             f"| `{row['name']}` | {row['lines_in']:,} | {row['lines_written']:,} | "
-            f"{row['keep_rate']*100:.1f}% | {row['bytes_in']/1e9:.2f} | "
-            f"{row['bytes_written']/1e9:.2f} | {top or '-'} |"
+            f"{row['keep_rate'] * 100:.1f}% | {row['bytes_in'] / 1e9:.2f} | "
+            f"{row['bytes_written'] / 1e9:.2f} | {top or '-'} |"
         )
     if summary["mix"]:
         mix = summary["mix"]
         md.append("\n## Mix\n")
         md.append(f"- Documents: {mix['documents']:,}")
-        md.append(f"- Bytes: {mix['bytes_written']/1e9:.2f} GB")
-        md.append(f"- Validation tail: {mix['val_tail_bytes']/1e6:.1f} MB / {mix['val_tail_documents']:,} docs")
+        md.append(f"- Bytes: {mix['bytes_written'] / 1e9:.2f} GB")
+        md.append(
+            f"- Validation tail: {mix['val_tail_bytes'] / 1e6:.1f} MB / {mix['val_tail_documents']:,} docs"
+        )
     md.append("\n## Notes\n")
-    md.append("- Prose sources use clean-v3 structural filters for TOC/index/list/OCR/catalogue fragments.")
+    md.append(
+        "- Prose sources use clean-v3 structural filters for TOC/index/list/OCR/catalogue fragments."
+    )
     md.append("- OpenMath uses a math profile so symbolic examples are preserved.")
-    md.append("- Booster remains separate and should be used as a small upsampled specialty source, not dominant base text.")
+    md.append(
+        "- Booster remains separate and should be used as a small upsampled specialty source, not dominant base text."
+    )
     (output_dir / "summary.md").write_text("\n".join(md) + "\n", encoding="utf-8")
 
 

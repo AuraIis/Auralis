@@ -203,7 +203,10 @@ def main() -> None:
         "dtype": args.dtype,
         "hidden_scale": args.hidden_scale,
         "weight_scale": args.weight_scale,
-        "full_logits_gb": args.tokens * args.vocab_size * torch.empty((), dtype=dtype).element_size() / 1e9,
+        "full_logits_gb": args.tokens
+        * args.vocab_size
+        * torch.empty((), dtype=dtype).element_size()
+        / 1e9,
         "results": [],
     }
 
@@ -218,7 +221,9 @@ def main() -> None:
             "block_m": max(block_m, 16),
             "block_v": max(block_v, 16),
             "block_d": max(block_d, 16),
-            "row_group_blocks": int(args.row_group_blocks) if backward_mode == "partial_weight" else None,
+            "row_group_blocks": int(args.row_group_blocks)
+            if backward_mode == "partial_weight"
+            else None,
         }
         try:
             if not args.skip_parity:
@@ -233,22 +238,17 @@ def main() -> None:
                     int(args.row_group_blocks),
                 )
             item["bench"] = bench(
-                lambda h,
-                w,
-                y,
-                bm=item["block_m"],
-                bv=item["block_v"],
-                bd=item["block_d"],
-                mode=backward_mode,
-                rgb=int(args.row_group_blocks): fused_step(
-                    h,
-                    w,
-                    y,
-                    bm,
-                    bv,
-                    bd,
-                    mode,
-                    rgb,
+                lambda h, w, y, bm=item["block_m"], bv=item["block_v"], bd=item["block_d"], mode=backward_mode, rgb=int(args.row_group_blocks): (
+                    fused_step(
+                        h,
+                        w,
+                        y,
+                        bm,
+                        bv,
+                        bd,
+                        mode,
+                        rgb,
+                    )
                 ),
                 hidden,
                 weight,
@@ -258,8 +258,10 @@ def main() -> None:
             )
             if full_result:
                 item["full_vs_fused"] = {
-                    "speed_ratio_full_over_fused": full_result["seconds_avg"] / item["bench"]["seconds_avg"],
-                    "peak_memory_delta_gb": full_result["peak_alloc_gb_avg"] - item["bench"]["peak_alloc_gb_avg"],
+                    "speed_ratio_full_over_fused": full_result["seconds_avg"]
+                    / item["bench"]["seconds_avg"],
+                    "peak_memory_delta_gb": full_result["peak_alloc_gb_avg"]
+                    - item["bench"]["peak_alloc_gb_avg"],
                 }
         except Exception as exc:  # keep sweeps alive across failed tile shapes
             item["error"] = {

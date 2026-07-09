@@ -5,6 +5,7 @@ Helix v2 applies RoPE in its 6 sparse-attention layers (n_heads=10, head_dim=128
 theta=10000). This compares a standard HF-style `apply_rotary_pos_emb`
 (rotate_half) against Liger's fused Triton RoPE on `q,k = [B, H, S, D]`.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -36,14 +37,15 @@ def torch_rope(q, k, cos, sin, unsqueeze_dim: int = 1):
 def liger_rope_fn(q, k, cos, sin, unsqueeze_dim: int = 1):
     import torch.distributed.tensor  # noqa: F401  Liger references DTensor
     from liger_kernel.transformers.functional import liger_rope
+
     return liger_rope(q, k, cos, sin, unsqueeze_dim=unsqueeze_dim)
 
 
 def build_cos_sin(seq: int, head_dim: int, theta: float, batch: int, device, dtype):
     inv_freq = 1.0 / (theta ** (torch.arange(0, head_dim, 2, device=device).float() / head_dim))
     pos = torch.arange(seq, device=device).float()
-    freqs = torch.outer(pos, inv_freq)             # [S, D/2]
-    emb = torch.cat((freqs, freqs), dim=-1)        # [S, D]
+    freqs = torch.outer(pos, inv_freq)  # [S, D/2]
+    emb = torch.cat((freqs, freqs), dim=-1)  # [S, D]
     cos = emb.cos().to(dtype).unsqueeze(0).expand(batch, seq, head_dim).contiguous()
     sin = emb.sin().to(dtype).unsqueeze(0).expand(batch, seq, head_dim).contiguous()
     return cos, sin
@@ -87,8 +89,10 @@ def main() -> None:
     cos, sin = build_cos_sin(args.seq, args.head_dim, args.theta, args.batch, "cuda", dtype)
 
     def make():
-        return (q_base.detach().clone().requires_grad_(True),
-                k_base.detach().clone().requires_grad_(True))
+        return (
+            q_base.detach().clone().requires_grad_(True),
+            k_base.detach().clone().requires_grad_(True),
+        )
 
     candidate = liger_rope_fn
 
@@ -118,19 +122,28 @@ def main() -> None:
     t_avg, t_min = timed(run_torch, warmup=args.warmup, iters=args.iters)
     c_avg, c_min = timed(run_cand, warmup=args.warmup, iters=args.iters)
 
-    print(json.dumps({
-        "gpu": torch.cuda.get_device_name(0),
-        "op": "rope",
-        "impl": args.impl,
-        "batch": args.batch, "heads": args.heads, "seq": args.seq, "head_dim": args.head_dim,
-        "dtype": args.dtype,
-        "parity": parity,
-        "torch_seconds_avg": t_avg,
-        "candidate_seconds_avg": c_avg,
-        "speedup": t_avg / c_avg if c_avg else None,
-        "torch_seconds_min": t_min,
-        "candidate_seconds_min": c_min,
-    }, indent=2), flush=True)
+    print(
+        json.dumps(
+            {
+                "gpu": torch.cuda.get_device_name(0),
+                "op": "rope",
+                "impl": args.impl,
+                "batch": args.batch,
+                "heads": args.heads,
+                "seq": args.seq,
+                "head_dim": args.head_dim,
+                "dtype": args.dtype,
+                "parity": parity,
+                "torch_seconds_avg": t_avg,
+                "candidate_seconds_avg": c_avg,
+                "speedup": t_avg / c_avg if c_avg else None,
+                "torch_seconds_min": t_min,
+                "candidate_seconds_min": c_min,
+            },
+            indent=2,
+        ),
+        flush=True,
+    )
 
 
 if __name__ == "__main__":

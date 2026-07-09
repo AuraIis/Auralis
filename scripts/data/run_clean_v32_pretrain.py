@@ -14,7 +14,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 REPO = Path(__file__).resolve().parents[2]
 
 BASE_SOURCES = [
@@ -275,7 +274,9 @@ def write_summary(output_dir: Path, sources: list[dict], mix_manifest: Path) -> 
             "This does not alter the active v4 boosted 500M run.",
         ],
     }
-    (output_dir / "manifest.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
+    (output_dir / "manifest.json").write_text(
+        json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
 
     md = ["# Pretrain Clean-v3.2 Summary\n"]
     md.append("| Source | Base | Docs In | Docs Out | Keep | GB In | GB Out | Top Drops |")
@@ -284,15 +285,17 @@ def write_summary(output_dir: Path, sources: list[dict], mix_manifest: Path) -> 
         top = ", ".join(f"{k}: {v:,}" for k, v in list(row["dropped"].items())[:5])
         md.append(
             f"| `{row['name']}` | {row['input_base']} | {row['lines_in']:,} | "
-            f"{row['lines_written']:,} | {row['keep_rate']*100:.1f}% | "
-            f"{row['bytes_in']/1e9:.2f} | {row['bytes_written']/1e9:.2f} | {top or '-'} |"
+            f"{row['lines_written']:,} | {row['keep_rate'] * 100:.1f}% | "
+            f"{row['bytes_in'] / 1e9:.2f} | {row['bytes_written'] / 1e9:.2f} | {top or '-'} |"
         )
     if summary["mix"]:
         mix = summary["mix"]
         md.append("\n## Mix\n")
         md.append(f"- Documents: {mix['documents']:,}")
-        md.append(f"- Bytes: {mix['bytes_written']/1e9:.2f} GB")
-        md.append(f"- Validation tail: {mix['val_tail_bytes']/1e6:.1f} MB / {mix['val_tail_documents']:,} docs")
+        md.append(f"- Bytes: {mix['bytes_written'] / 1e9:.2f} GB")
+        md.append(
+            f"- Validation tail: {mix['val_tail_bytes'] / 1e6:.1f} MB / {mix['val_tail_documents']:,} docs"
+        )
     md.append("\n## Notes\n")
     md.extend(f"- {note}" for note in summary["notes"])
     (output_dir / "summary.md").write_text("\n".join(md) + "\n", encoding="utf-8")
@@ -300,9 +303,15 @@ def write_summary(output_dir: Path, sources: list[dict], mix_manifest: Path) -> 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--clean-v31-dir", type=Path, default=REPO / "data/training/pretrain_clean_v31")
-    parser.add_argument("--raw-1b-root", type=Path, default=REPO / "data/pretrain_1b_sources_v1/raw")
-    parser.add_argument("--output-dir", type=Path, default=REPO / "data/training/pretrain_clean_v32")
+    parser.add_argument(
+        "--clean-v31-dir", type=Path, default=REPO / "data/training/pretrain_clean_v31"
+    )
+    parser.add_argument(
+        "--raw-1b-root", type=Path, default=REPO / "data/pretrain_1b_sources_v1/raw"
+    )
+    parser.add_argument(
+        "--output-dir", type=Path, default=REPO / "data/training/pretrain_clean_v32"
+    )
     parser.add_argument("--mix-output", type=Path, default=None)
     parser.add_argument("--val-tail-bytes", type=int, default=120_000_000)
     parser.add_argument("--chunk-lines", type=int, default=2048)
@@ -312,7 +321,9 @@ def main() -> None:
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
-    clean_v31_dir = args.clean_v31_dir if args.clean_v31_dir.is_absolute() else REPO / args.clean_v31_dir
+    clean_v31_dir = (
+        args.clean_v31_dir if args.clean_v31_dir.is_absolute() else REPO / args.clean_v31_dir
+    )
     raw_1b_root = args.raw_1b_root if args.raw_1b_root.is_absolute() else REPO / args.raw_1b_root
     output_dir = args.output_dir if args.output_dir.is_absolute() else REPO / args.output_dir
     output_dir.mkdir(parents=True, exist_ok=True)

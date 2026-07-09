@@ -16,13 +16,23 @@ from pathlib import Path
 
 import sentencepiece as spm
 
-
-HTML_RE = re.compile(r"<\s*/?\s*(html|body|div|script|style|table|iframe|a)\b|&(?:amp|gt|lt|quot|#x?[0-9a-f]+);", re.I)
-CHAT_RE = re.compile(r"<\|(?:im_start|im_end|endoftext|user|assistant|system)\|>|_end_of_the_data|</?think>", re.I)
+HTML_RE = re.compile(
+    r"<\s*/?\s*(html|body|div|script|style|table|iframe|a)\b|&(?:amp|gt|lt|quot|#x?[0-9a-f]+);",
+    re.I,
+)
+CHAT_RE = re.compile(
+    r"<\|(?:im_start|im_end|endoftext|user|assistant|system)\|>|_end_of_the_data|</?think>", re.I
+)
 URL_RE = re.compile(r"https?://|www\.", re.I)
-ADULT_CASINO_RE = re.compile(r"\b(?:onlyfans|porn|xxx|casino|jackpot|free spins|sportwetten|sexkontakte)\b", re.I)
-SHOP_RE = re.compile(r"\b(?:warenkorb|checkout|rabattcode|gutschein|trusted shops|lieferzeit|versandkosten)\b", re.I)
-TOC_RE = re.compile(r"\b(?:inhaltsverzeichnis|table of contents|seite|page)\b|\.{3,}\s*\d{1,5}", re.I)
+ADULT_CASINO_RE = re.compile(
+    r"\b(?:onlyfans|porn|xxx|casino|jackpot|free spins|sportwetten|sexkontakte)\b", re.I
+)
+SHOP_RE = re.compile(
+    r"\b(?:warenkorb|checkout|rabattcode|gutschein|trusted shops|lieferzeit|versandkosten)\b", re.I
+)
+TOC_RE = re.compile(
+    r"\b(?:inhaltsverzeichnis|table of contents|seite|page)\b|\.{3,}\s*\d{1,5}", re.I
+)
 OCR_RE = re.compile(r"Ã.|�|Å¿|\b[a-zA-ZÄÖÜäöüß](?:\s+[a-zA-ZÄÖÜäöüß]){4,}\b")
 LIST_RE = re.compile(r"(^|\s)(?:[-*•]|\d{1,3}[.)])\s+|[|]{2,}|\t")
 WIKI_TALK_RE = re.compile(
@@ -31,7 +41,9 @@ WIKI_TALK_RE = re.compile(
     re.I,
 )
 TABLE_RE = re.compile(r"\|\s*[-:]+\s*\||\{\||\|\}|^\s*\|", re.I)
-INDEX_RE = re.compile(r"\b(?:kategorie:|liste der|personen nach|artikel des tages|portal:)\b|\.{3,}\s*\d{1,5}", re.I)
+INDEX_RE = re.compile(
+    r"\b(?:kategorie:|liste der|personen nach|artikel des tages|portal:)\b|\.{3,}\s*\d{1,5}", re.I
+)
 WORD_RE = re.compile(r"[A-Za-zÄÖÜäöüß]+")
 
 
@@ -62,7 +74,7 @@ def short_kind(text: str) -> str:
     stripped = text.strip()
     words = WORD_RE.findall(stripped)
     lower_start = bool(stripped[:1] and stripped[:1].islower())
-    terminal = stripped.endswith((".", "!", "?", ":", ")", "]", "\""))
+    terminal = stripped.endswith((".", "!", "?", ":", ")", "]", '"'))
     flags = hard_flags(stripped)
     if flags:
         return "hard_noise"
@@ -87,7 +99,9 @@ def short_kind(text: str) -> str:
     return "compact_valid"
 
 
-def reservoir_add(rng: random.Random, reservoir: list[dict], item: dict, seen: int, limit: int) -> None:
+def reservoir_add(
+    rng: random.Random, reservoir: list[dict], item: dict, seen: int, limit: int
+) -> None:
     if len(reservoir) < limit:
         reservoir.append(item)
         return
@@ -184,7 +198,9 @@ def main() -> None:
         "samples": short_samples,
         "kind_samples": kind_samples,
     }
-    (args.output_dir / "results.json").write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8")
+    (args.output_dir / "results.json").write_text(
+        json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
 
     lines = [
         "# Short Document Audit",

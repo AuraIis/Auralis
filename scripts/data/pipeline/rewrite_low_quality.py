@@ -20,15 +20,15 @@ Usage:
         --model  qwen/qwen3.6-35b-a3b \\
         --max-docs 50
 """
+
 from __future__ import annotations
 
 import argparse
 import json
 import os
 import sys
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
-
 
 # IMPORTANT: prompts are language-matched to the source doc.
 # A first-pass with a single German prompt caused DeepSeek-V3.2 to translate
@@ -80,12 +80,44 @@ def detect_language(text: str) -> str:
     """Lightweight DE-vs-EN classifier based on stop-word counts.
     No dependency on external libraries. Returns 'de' or 'en'."""
     sample = text[:1000].lower()
-    de_markers = (" der ", " die ", " das ", " und ", " ist ", " nicht ",
-                  " sich ", " wird ", " mit ", " auf ", " den ", " für ",
-                  " eine ", " auch ", " von ", " im ", " zu ")
-    en_markers = (" the ", " and ", " of ", " is ", " that ", " to ",
-                  " a ", " in ", " for ", " with ", " on ", " was ",
-                  " it ", " be ", " as ", " at ", " by ")
+    de_markers = (
+        " der ",
+        " die ",
+        " das ",
+        " und ",
+        " ist ",
+        " nicht ",
+        " sich ",
+        " wird ",
+        " mit ",
+        " auf ",
+        " den ",
+        " für ",
+        " eine ",
+        " auch ",
+        " von ",
+        " im ",
+        " zu ",
+    )
+    en_markers = (
+        " the ",
+        " and ",
+        " of ",
+        " is ",
+        " that ",
+        " to ",
+        " a ",
+        " in ",
+        " for ",
+        " with ",
+        " on ",
+        " was ",
+        " it ",
+        " be ",
+        " as ",
+        " at ",
+        " by ",
+    )
     de = sum(sample.count(m) for m in de_markers)
     en = sum(sample.count(m) for m in en_markers)
     return "de" if de > en else "en"
@@ -120,8 +152,9 @@ def read_blank_separated_docs(path: Path) -> Iterable[tuple[int, str]]:
                 yield n, text
 
 
-def load_scored_band(scored_path: Path, score_min: int, score_max: int,
-                     max_docs: int | None) -> dict[int, int]:
+def load_scored_band(
+    scored_path: Path, score_min: int, score_max: int, max_docs: int | None
+) -> dict[int, int]:
     """Returns {doc_id -> original_score} for docs in the chosen score band."""
     keep: dict[int, int] = {}
     with scored_path.open("r", encoding="utf-8") as f:
@@ -141,34 +174,59 @@ def load_scored_band(scored_path: Path, score_min: int, score_max: int,
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(description=__doc__,
-                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--scored", type=Path, required=True,
-                   help="Ask-LLM-scored JSONL (input)")
-    p.add_argument("--source", type=Path, required=True,
-                   help="Original blank-separated raw text corpus")
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    p.add_argument("--scored", type=Path, required=True, help="Ask-LLM-scored JSONL (input)")
+    p.add_argument(
+        "--source", type=Path, required=True, help="Original blank-separated raw text corpus"
+    )
     p.add_argument("--output", type=Path, required=True)
-    p.add_argument("--score-min", type=int, default=2,
-                   help="Pick docs with score >= this (default 2)")
-    p.add_argument("--score-max", type=int, default=3,
-                   help="Pick docs with score <= this (default 3)")
-    p.add_argument("--max-docs", type=int, default=50,
-                   help="Cap rewrite candidates (default 50, use 0 for unlimited)")
-    p.add_argument("--head-chars", type=int, default=4000,
-                   help="Truncate source doc to this many chars before rewrite (default 4000)")
-    p.add_argument("--model", default="qwen/qwen3.6-35b-a3b",
-                   help="OpenRouter model id (default qwen3.6-35b-a3b)")
+    p.add_argument(
+        "--score-min", type=int, default=2, help="Pick docs with score >= this (default 2)"
+    )
+    p.add_argument(
+        "--score-max", type=int, default=3, help="Pick docs with score <= this (default 3)"
+    )
+    p.add_argument(
+        "--max-docs",
+        type=int,
+        default=50,
+        help="Cap rewrite candidates (default 50, use 0 for unlimited)",
+    )
+    p.add_argument(
+        "--head-chars",
+        type=int,
+        default=4000,
+        help="Truncate source doc to this many chars before rewrite (default 4000)",
+    )
+    p.add_argument(
+        "--model",
+        default="qwen/qwen3.6-35b-a3b",
+        help="OpenRouter model id (default qwen3.6-35b-a3b)",
+    )
     p.add_argument("--batch-size", type=int, default=8)
-    p.add_argument("--max-output-tokens", type=int, default=1024,
-                   help="Max tokens for the rewrite (default 1024)")
-    p.add_argument("--chunk-size", type=int, default=200,
-                   help="Process this many docs per pipeline.run() call. "
-                        "Each rewrite is ~1024 output tokens, so chunks of 200 "
-                        "≈ 200 s of work + ~1 s overhead. Smaller = better "
-                        "crash-resumability. Set 0 to disable chunking.")
-    p.add_argument("--resume", action="store_true",
-                   help="If output exists, skip doc_ids already present and "
-                        "append new ones. Default: fresh run (truncate).")
+    p.add_argument(
+        "--max-output-tokens",
+        type=int,
+        default=1024,
+        help="Max tokens for the rewrite (default 1024)",
+    )
+    p.add_argument(
+        "--chunk-size",
+        type=int,
+        default=200,
+        help="Process this many docs per pipeline.run() call. "
+        "Each rewrite is ~1024 output tokens, so chunks of 200 "
+        "≈ 200 s of work + ~1 s overhead. Smaller = better "
+        "crash-resumability. Set 0 to disable chunking.",
+    )
+    p.add_argument(
+        "--resume",
+        action="store_true",
+        help="If output exists, skip doc_ids already present and "
+        "append new ones. Default: fresh run (truncate).",
+    )
     args = p.parse_args()
 
     api_key = os.environ.get("OPENROUTER_API_KEY")
@@ -187,21 +245,25 @@ def main() -> int:
                         done_ids.add(rec["doc_id"])
                 except json.JSONDecodeError:
                     continue
-        print(f"Resume: {len(done_ids)} doc_ids already in output, will skip.",
-              flush=True)
+        print(f"Resume: {len(done_ids)} doc_ids already in output, will skip.", flush=True)
     elif args.output.exists() and not args.resume:
         args.output.write_text("")
 
-    print(f"Loading scored band [{args.score_min}, {args.score_max}] from "
-          f"{args.scored} ...", flush=True)
-    candidates = load_scored_band(args.scored, args.score_min, args.score_max,
-                                   args.max_docs if args.max_docs > 0 else None)
+    print(
+        f"Loading scored band [{args.score_min}, {args.score_max}] from {args.scored} ...",
+        flush=True,
+    )
+    candidates = load_scored_band(
+        args.scored, args.score_min, args.score_max, args.max_docs if args.max_docs > 0 else None
+    )
     # Drop already-done IDs from candidates so the source-walk only loads
     # the texts we still need (saves disk I/O on big corpora).
     n_resumed = sum(1 for did in candidates if did in done_ids)
     candidates = {did: s for did, s in candidates.items() if did not in done_ids}
-    print(f"  {len(candidates)} candidate doc_ids "
-          f"({n_resumed} already in output, skipped)", flush=True)
+    print(
+        f"  {len(candidates)} candidate doc_ids ({n_resumed} already in output, skipped)",
+        flush=True,
+    )
 
     if not candidates:
         print("Nothing to rewrite. Exiting.", flush=True)
@@ -214,28 +276,32 @@ def main() -> int:
     seen = 0
     for doc_id, text in read_blank_separated_docs(args.source):
         if doc_id in candidates:
-            truncated = text[:args.head_chars]
+            truncated = text[: args.head_chars]
             lang, rendered = render_prompt(truncated)
             lang_counts[lang] += 1
-            docs.append({
-                "doc_id": doc_id,
-                "original_score": candidates[doc_id],
-                "original_chars": len(text),
-                "source_lang": lang,
-                "instruction": rendered,
-                "head": text[:200],
-            })
+            docs.append(
+                {
+                    "doc_id": doc_id,
+                    "original_score": candidates[doc_id],
+                    "original_chars": len(text),
+                    "source_lang": lang,
+                    "instruction": rendered,
+                    "head": text[:200],
+                }
+            )
             seen += 1
             if seen == len(candidates):
                 break
-    print(f"  {len(docs)} docs loaded "
-          f"(detected language: DE={lang_counts['de']}, EN={lang_counts['en']})",
-          flush=True)
+    print(
+        f"  {len(docs)} docs loaded "
+        f"(detected language: DE={lang_counts['de']}, EN={lang_counts['en']})",
+        flush=True,
+    )
 
+    from distilabel.models import OpenAILLM
     from distilabel.pipeline import Pipeline
     from distilabel.steps import LoadDataFromDicts
     from distilabel.steps.tasks import TextGeneration
-    from distilabel.models import OpenAILLM
 
     # extra_body disables reasoning for Qwen3.6 / GPT-5 / etc.
     # Non-reasoning models silently ignore it.
@@ -264,14 +330,16 @@ def main() -> int:
                 for row in ds:
                     yield row
 
-    print(f"Processing {len(docs)} docs in {n_chunks} chunk(s) of "
-          f"{chunk_size} (streaming-append, resumable).", flush=True)
+    print(
+        f"Processing {len(docs)} docs in {n_chunks} chunk(s) of "
+        f"{chunk_size} (streaming-append, resumable).",
+        flush=True,
+    )
 
     with args.output.open("a", encoding="utf-8") as out_f:
         for chunk_idx in range(n_chunks):
-            chunk_docs = docs[chunk_idx * chunk_size:(chunk_idx + 1) * chunk_size]
-            print(f"  chunk {chunk_idx + 1}/{n_chunks}: "
-                  f"{len(chunk_docs)} docs ...", flush=True)
+            chunk_docs = docs[chunk_idx * chunk_size : (chunk_idx + 1) * chunk_size]
+            print(f"  chunk {chunk_idx + 1}/{n_chunks}: {len(chunk_docs)} docs ...", flush=True)
 
             with Pipeline(name=f"rewrite-{args.model.replace('/', '_')}") as pipeline:
                 loader = LoadDataFromDicts(data=chunk_docs)
@@ -311,16 +379,18 @@ def main() -> int:
                 }
                 out_f.write(json.dumps(rec, ensure_ascii=False) + "\n")
             out_f.flush()
-            print(f"    chunk {chunk_idx + 1} done: {chunk_rewritten} rewritten, "
-                  f"{chunk_skip} SKIP — running total: {n_rewritten}/{n_total}",
-                  flush=True)
+            print(
+                f"    chunk {chunk_idx + 1} done: {chunk_rewritten} rewritten, "
+                f"{chunk_skip} SKIP — running total: {n_rewritten}/{n_total}",
+                flush=True,
+            )
 
     print()
     print(f"=== Rewrite results ({args.model}) ===")
     print(f"  candidates:  {n_total} (this run)")
     if n_resumed:
         print(f"  resumed:     {n_resumed} previously-done docs not re-rewritten")
-    print(f"  rewritten:   {n_rewritten}  ({100*n_rewritten/max(n_total,1):.1f}%)")
+    print(f"  rewritten:   {n_rewritten}  ({100 * n_rewritten / max(n_total, 1):.1f}%)")
     print(f"  skipped:     {n_skip}")
     print(f"  empty:       {n_empty}")
     print(f"  output:      {args.output}")

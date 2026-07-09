@@ -9,6 +9,7 @@ Usage:
         --output raw/sft/synth/inputs/halfilter_v2.jsonl \\
         --samples-per-prompt 10
 """
+
 from __future__ import annotations
 
 import argparse
@@ -99,14 +100,16 @@ def main() -> None:
         for prompt in prompt_set:
             for _ in range(args.samples_per_prompt):
                 n += 1
-                records.append({
-                    "id": f"halv2_{prefix}_{n:04d}",
-                    "task_type": "honest_refusal",
-                    "system_prompt": NEW_SYSTEM_PROMPT_V2,
-                    "user_prompt": prompt,
-                    "max_tokens": 250,  # etwas mehr Raum für context-debunking
-                    "temperature": 0.5,  # leicht niedriger → konsistenter
-                })
+                records.append(
+                    {
+                        "id": f"halv2_{prefix}_{n:04d}",
+                        "task_type": "honest_refusal",
+                        "system_prompt": NEW_SYSTEM_PROMPT_V2,
+                        "user_prompt": prompt,
+                        "max_tokens": 250,  # etwas mehr Raum für context-debunking
+                        "temperature": 0.5,  # leicht niedriger → konsistenter
+                    }
+                )
 
     add(TRAP_PROMPTS, "trap")
     add(CONTROL_PROMPTS, "ctrl")
@@ -117,8 +120,12 @@ def main() -> None:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
 
     print(f"=== Generated {len(records)} records ===")
-    print(f"  trap:    {len(TRAP_PROMPTS)} × {args.samples_per_prompt} = {len(TRAP_PROMPTS) * args.samples_per_prompt}")
-    print(f"  control: {len(CONTROL_PROMPTS)} × {args.samples_per_prompt} = {len(CONTROL_PROMPTS) * args.samples_per_prompt}")
+    print(
+        f"  trap:    {len(TRAP_PROMPTS)} × {args.samples_per_prompt} = {len(TRAP_PROMPTS) * args.samples_per_prompt}"
+    )
+    print(
+        f"  control: {len(CONTROL_PROMPTS)} × {args.samples_per_prompt} = {len(CONTROL_PROMPTS) * args.samples_per_prompt}"
+    )
     print(f"  output: {args.output}")
 
 

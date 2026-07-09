@@ -16,7 +16,6 @@ It will spill RAM; set ``--num-threads`` and be patient rather than bumping
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import subprocess
 import sys
@@ -32,10 +31,14 @@ DEFAULT_CFG = REPO_ROOT / "configs" / "tokenizer" / "helix_v2.yaml"
 
 def _git_sha() -> str:
     try:
-        return subprocess.check_output(
-            ["git", "-C", str(REPO_ROOT), "rev-parse", "HEAD"],
-            stderr=subprocess.DEVNULL,
-        ).decode().strip()
+        return (
+            subprocess.check_output(
+                ["git", "-C", str(REPO_ROOT), "rev-parse", "HEAD"],
+                stderr=subprocess.DEVNULL,
+            )
+            .decode()
+            .strip()
+        )
     except Exception:
         return "unknown"
 
@@ -46,16 +49,34 @@ def _user_defined_symbols(cfg: dict) -> list[str]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--config", type=Path, default=DEFAULT_CFG)
-    parser.add_argument("--corpus", type=Path, required=True,
-                        help="Path to the mixed tokenizer training corpus (from prepare_corpus.py)")
-    parser.add_argument("--output-dir", type=Path, required=True,
-                        help="Where to write helix_v2_tokenizer.{model,vocab} and manifest")
-    parser.add_argument("--num-threads", type=int, default=0,
-                        help="0 = auto (os.cpu_count()). SentencePiece requires 1-1024.")
-    parser.add_argument("--input-sentence-size", type=int, default=None,
-                        help="Override cap on sentences fed to EM training.")
+    parser.add_argument(
+        "--corpus",
+        type=Path,
+        required=True,
+        help="Path to the mixed tokenizer training corpus (from prepare_corpus.py)",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        required=True,
+        help="Where to write helix_v2_tokenizer.{model,vocab} and manifest",
+    )
+    parser.add_argument(
+        "--num-threads",
+        type=int,
+        default=0,
+        help="0 = auto (os.cpu_count()). SentencePiece requires 1-1024.",
+    )
+    parser.add_argument(
+        "--input-sentence-size",
+        type=int,
+        default=None,
+        help="Override cap on sentences fed to EM training.",
+    )
     args = parser.parse_args()
 
     cfg = yaml.safe_load(args.config.read_text(encoding="utf-8"))
@@ -76,7 +97,10 @@ def main() -> None:
         "vocab_size": int(cfg["vocab_size"]),
         "model_type": training["model_type"],
         "character_coverage": float(cfg["character_coverage"]),
-        "pad_id": 0, "unk_id": 1, "bos_id": 2, "eos_id": 3,
+        "pad_id": 0,
+        "unk_id": 1,
+        "bos_id": 2,
+        "eos_id": 3,
         "pad_piece": cfg["special_tokens"][0],
         "unk_piece": cfg["special_tokens"][1],
         "bos_piece": cfg["special_tokens"][2],
@@ -93,7 +117,7 @@ def main() -> None:
     }
 
     print(f"Training tokenizer ({cfg['algorithm']}, vocab={cfg['vocab_size']:,})")
-    print(f"Corpus: {args.corpus} ({args.corpus.stat().st_size/1e9:.2f} GB)")
+    print(f"Corpus: {args.corpus} ({args.corpus.stat().st_size / 1e9:.2f} GB)")
     print(f"Output: {model_prefix}.*\n")
 
     t0 = time.time()
@@ -127,7 +151,7 @@ def main() -> None:
         encoding="utf-8",
     )
 
-    print(f"\nDone in {elapsed/60:.1f} min. vocab={n_pieces:,}")
+    print(f"\nDone in {elapsed / 60:.1f} min. vocab={n_pieces:,}")
     print(f"Model : {model_prefix}.model")
     print(f"Vocab : {model_prefix}.vocab")
     print(f"Manifest: {manifest_path}")
@@ -135,6 +159,7 @@ def main() -> None:
 
 def _sha256_file(path: Path) -> str:
     import hashlib
+
     h = hashlib.sha256()
     with path.open("rb") as fh:
         for chunk in iter(lambda: fh.read(1 << 20), b""):

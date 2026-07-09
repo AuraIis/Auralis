@@ -13,11 +13,11 @@ import os
 import re
 import sys
 from collections import Counter
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from datasets import load_dataset
-
 
 WORD_RE = re.compile(r"[A-Za-z][A-Za-z']+")
 BAD_RE = re.compile(
@@ -55,7 +55,9 @@ def clean(text: str) -> str:
     return text.strip()
 
 
-def text_ok(text: str, *, min_chars: int, max_chars: int, min_words: int, allow_urls: bool) -> str | None:
+def text_ok(
+    text: str, *, min_chars: int, max_chars: int, min_words: int, allow_urls: bool
+) -> str | None:
     if len(text) < min_chars:
         return "too_short"
     if len(text) > max_chars:
@@ -122,9 +124,10 @@ def write_one(name: str, args: argparse.Namespace, out_dir: Path) -> dict[str, A
     out_jsonl = out_dir / f"{name}.jsonl"
     out_txt = out_dir / f"{name}.txt"
     ds = load_dataset(spec["dataset"], split=spec["split"], streaming=True)
-    with out_jsonl.open("w", encoding="utf-8", newline="\n") as jsonl, out_txt.open(
-        "w", encoding="utf-8", newline="\n"
-    ) as txt:
+    with (
+        out_jsonl.open("w", encoding="utf-8", newline="\n") as jsonl,
+        out_txt.open("w", encoding="utf-8", newline="\n") as txt,
+    ):
         for row in ds:
             seen += 1
             emitted = False

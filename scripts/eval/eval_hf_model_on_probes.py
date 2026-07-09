@@ -40,8 +40,11 @@ SYSTEM_DE = (
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--model", default="Qwen/Qwen2.5-1.5B-Instruct")
-    ap.add_argument("--probes", type=Path,
-                    default=REPO_ROOT / "eval/sft_response_frozen_target_retention_v2.yaml")
+    ap.add_argument(
+        "--probes",
+        type=Path,
+        default=REPO_ROOT / "eval/sft_response_frozen_target_retention_v2.yaml",
+    )
     ap.add_argument("--output-json", type=Path, default=None)
     ap.add_argument("--max-new-tokens", type=int, default=96)
     ap.add_argument("--device", default="cuda")
@@ -52,7 +55,11 @@ def main() -> int:
     import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
-    dtype = torch.bfloat16 if (args.device.startswith("cuda") and torch.cuda.is_available()) else torch.float32
+    dtype = (
+        torch.bfloat16
+        if (args.device.startswith("cuda") and torch.cuda.is_available())
+        else torch.float32
+    )
     print(f"loading {args.model} ({dtype}) ...")
     tok = AutoTokenizer.from_pretrained(args.model)
     model = AutoModelForCausalLM.from_pretrained(args.model, torch_dtype=dtype)
@@ -74,9 +81,13 @@ def main() -> int:
             text = prompt
         enc = tok(text, return_tensors="pt").to(args.device)
         with torch.no_grad():
-            out = model.generate(**enc, max_new_tokens=args.max_new_tokens, do_sample=False,
-                                 pad_token_id=tok.pad_token_id)
-        gen = out[0][enc["input_ids"].shape[1]:]
+            out = model.generate(
+                **enc,
+                max_new_tokens=args.max_new_tokens,
+                do_sample=False,
+                pad_token_id=tok.pad_token_id,
+            )
+        gen = out[0][enc["input_ids"].shape[1] :]
         return tok.decode(gen, skip_special_tokens=True).strip()
 
     results, scored = [], []
@@ -84,8 +95,15 @@ def main() -> int:
         ans = generate(p.prompt)
         r = evaluate_answer(p, ans)
         scored.append(r)
-        results.append({"id": p.id, "split": p.split, "answer": ans,
-                        "semantic_score": r["semantic_score"], "issues": r["issues"]})
+        results.append(
+            {
+                "id": p.id,
+                "split": p.split,
+                "answer": ans,
+                "semantic_score": r["semantic_score"],
+                "issues": r["issues"],
+            }
+        )
         mark = "ok " if r["semantic_score"] == 1.0 else "FAIL"
         print(f"  [{mark}] {p.split:9s} {p.id}: {ans[:80]!r}")
 
@@ -101,13 +119,24 @@ def main() -> int:
     print("Reading: high pass = probes are sane and answerable -> our model is just")
     print("under-trained. Low pass even here = the probes are too strict / buggy.")
 
-    out_path = args.output_json or (REPO_ROOT / "eval/results" /
-                                    f"hf_probe_{re.sub(r'[^A-Za-z0-9]', '_', args.model)}.json")
+    out_path = args.output_json or (
+        REPO_ROOT / "eval/results" / f"hf_probe_{re.sub(r'[^A-Za-z0-9]', '_', args.model)}.json"
+    )
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(
-        {"model": args.model, "probes": str(args.probes),
-         "target_pass": [tp, tn], "retention_pass": [rp, rn], "results": results},
-        ensure_ascii=False, indent=2), encoding="utf-8")
+    out_path.write_text(
+        json.dumps(
+            {
+                "model": args.model,
+                "probes": str(args.probes),
+                "target_pass": [tp, tn],
+                "retention_pass": [rp, rn],
+                "results": results,
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
     print(f"wrote {out_path}")
     return 0
 

@@ -33,9 +33,14 @@ def _tiny_model() -> HelixModel:
         + [LayerConfig(type="sparse_attention", window_size=16, global_tokens=4, use_rope=True)] * 1
     )
     cfg = AuralisConfig(
-        name="tiny", version="1.0",
+        name="tiny",
+        version="1.0",
         vocab_size=4096,
-        d_model=64, n_layers=4, n_heads=4, d_head=16, d_ffn=128,
+        d_model=64,
+        n_layers=4,
+        n_heads=4,
+        d_head=16,
+        d_ffn=128,
         layers=layers,
     )
     cfg.advanced.tie_embeddings = True
@@ -100,10 +105,12 @@ def test_trainer_runs_and_loss_finite(trainer_env):
 
     # Patch the log function to capture loss values.
     original = trainer.log
+
     def capture(metrics, step):
         if "train/loss" in metrics:
             losses.append(metrics["train/loss"])
         original(metrics, step)
+
     trainer.log = capture
 
     # Capture weights before training to verify the optimizer actually moved them.
@@ -201,7 +208,9 @@ def test_trainer_runs_evaluation_when_val_loader_present(trainer_env, tmp_path: 
     # Build a tiny val loader that reuses the same synthetic bins with a
     # fresh split (no bytes reserved — just reuse the full window for the test).
     import numpy as np
+
     from auralis.training.dataset import MixedDataLoader
+
     data_dir = tmp_path / "valdata"
     data_dir.mkdir()
     rng = np.random.default_rng(1)
@@ -210,7 +219,9 @@ def test_trainer_runs_evaluation_when_val_loader_present(trainer_env, tmp_path: 
     trainer.val_dataloader = MixedDataLoader(
         data_dir=data_dir,
         mix_ratios={"english": 0.5, "german": 0.5, "code": 0.0},
-        batch_size=2, seq_length=16, seed=1,
+        batch_size=2,
+        seq_length=16,
+        seed=1,
     )
     # Make eval fire once during the 10-step run
     trainer._eval_every = 5
@@ -218,9 +229,11 @@ def test_trainer_runs_evaluation_when_val_loader_present(trainer_env, tmp_path: 
 
     metrics_captured: list[dict[str, float]] = []
     original = trainer.log
+
     def cap(m, s):
         metrics_captured.append(dict(m))
         original(m, s)
+
     trainer.log = cap
 
     trainer.train()
@@ -250,13 +263,17 @@ def test_trainer_fp16_without_cuda_rejected(trainer_env):
     Trying to configure fp16 on CPU must fail at construction, not silently
     produce NaNs later."""
     from auralis.training.trainer import PretrainTrainer
+
     trainer, _ = trainer_env
     cfg = {**trainer.config, "training": {**trainer.config["training"], "dtype": "fp16"}}
     with pytest.raises(ValueError, match="fp16 training requires a CUDA device"):
         PretrainTrainer(
-            model=trainer.model, optimizer=trainer.optimizer,
-            scheduler=trainer.scheduler, dataloader=trainer.dataloader,
-            config=cfg, device="cpu",
+            model=trainer.model,
+            optimizer=trainer.optimizer,
+            scheduler=trainer.scheduler,
+            dataloader=trainer.dataloader,
+            config=cfg,
+            device="cpu",
         )
 
 
@@ -273,11 +290,14 @@ def test_trainer_records_run_metadata(trainer_env):
 def test_safe_log_swallows_exceptions(trainer_env):
     """A crashing metrics logger must NOT kill training."""
     trainer, _ = trainer_env
+
     def boom(_m, _s):
         raise RuntimeError("pretend wandb died")
+
     trainer.log = trainer.log.__class__ if False else None  # satisfy type-checker
     # Re-wrap via the same helper the Trainer uses
     from auralis.training.trainer import _safe_log
+
     trainer.log = _safe_log(boom)
     # This must not raise
     trainer.train()
@@ -294,6 +314,7 @@ def test_trainer_saves_metadata_in_checkpoint(trainer_env, tmp_path: Path):
     # Sidecar JSON mirrors metadata
     sidecar = ckpts[0].with_suffix(".json")
     import json
+
     obj = json.loads(sidecar.read_text(encoding="utf-8"))
     assert "metadata" in obj and "state" in obj
 
@@ -325,6 +346,7 @@ def test_trainer_raises_on_nan_loss(trainer_env, monkeypatch):
         def __init__(self, inner):
             super().__init__()
             self.inner = inner
+
         def forward(self, input_ids, labels):
             out = self.inner(input_ids=input_ids, labels=labels)
             out["loss"] = torch.tensor(float("nan"))

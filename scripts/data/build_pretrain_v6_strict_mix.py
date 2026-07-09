@@ -7,9 +7,9 @@ import argparse
 import json
 import re
 from collections import Counter
+from collections.abc import Callable, Iterable
 from pathlib import Path
-from typing import Any, Callable, Iterable
-
+from typing import Any
 
 BAD_RE = re.compile(
     r"\[(?:deleted|removed)\]|onlyfans|discord\.gg|telegram|whatsapp|free karma|"
@@ -18,11 +18,19 @@ BAD_RE = re.compile(
     re.I,
 )
 URL_RE = re.compile(r"https?://|www\.", re.I)
-HTML_RE = re.compile(r"<\s*/?\s*(html|body|div|script|style|iframe)\b|href=|&(?:amp|gt|lt|quot);", re.I)
-COMMERCE_RE = re.compile(r"\b(warenkorb|rabatt|gutschein|checkout|kaufen|shop|preis|automarkt)\b", re.I)
-BOILER_RE = re.compile(r"\b(cookie|privacy policy|datenschutz|impressum|all rights reserved)\b", re.I)
+HTML_RE = re.compile(
+    r"<\s*/?\s*(html|body|div|script|style|iframe)\b|href=|&(?:amp|gt|lt|quot);", re.I
+)
+COMMERCE_RE = re.compile(
+    r"\b(warenkorb|rabatt|gutschein|checkout|kaufen|shop|preis|automarkt)\b", re.I
+)
+BOILER_RE = re.compile(
+    r"\b(cookie|privacy policy|datenschutz|impressum|all rights reserved)\b", re.I
+)
 LIST_TABLE_RE = re.compile(r"(^|\s)([-*]|\d{1,3}[.)])\s+|\|\s*[-:]+\s*\||\t|\.{3,}\s*\d{1,5}", re.I)
-DE_SENT_RE = re.compile(r"\b(der|die|das|und|ist|nicht|frage|antwort|schritt|erklaere|erklare)\b", re.I)
+DE_SENT_RE = re.compile(
+    r"\b(der|die|das|und|ist|nicht|frage|antwort|schritt|erklaere|erklare)\b", re.I
+)
 SECRET_RE = re.compile(r"api[_-]?key|secret|password|private key|token", re.I)
 GATE_NEAR_RE = re.compile(r"\bhauptstadt von deutschland\b", re.I)
 
@@ -142,10 +150,22 @@ SourceSpec = tuple[str, Path, str, Callable[[dict[str, Any]], tuple[str | None, 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input-dir", type=Path, default=Path("data/training/pretrain_v6_candidates"))
-    parser.add_argument("--instruction-dir", type=Path, default=Path("data/training/pretrain_v6_instruction_de_strict"))
-    parser.add_argument("--out-dir", type=Path, default=Path("data/training/pretrain_v6_strict_mix"))
-    parser.add_argument("--manifest", type=Path, default=Path("data/training/pretrain_v6_candidates/source_disjoint_manifest_v2.jsonl"))
+    parser.add_argument(
+        "--input-dir", type=Path, default=Path("data/training/pretrain_v6_candidates")
+    )
+    parser.add_argument(
+        "--instruction-dir",
+        type=Path,
+        default=Path("data/training/pretrain_v6_instruction_de_strict"),
+    )
+    parser.add_argument(
+        "--out-dir", type=Path, default=Path("data/training/pretrain_v6_strict_mix")
+    )
+    parser.add_argument(
+        "--manifest",
+        type=Path,
+        default=Path("data/training/pretrain_v6_candidates/source_disjoint_manifest_v2.jsonl"),
+    )
     parser.add_argument("--max-instruction", type=int, default=25000)
     parser.add_argument("--max-fineweb", type=int, default=5000)
     parser.add_argument("--max-openmath", type=int, default=5000)
@@ -183,7 +203,9 @@ def main() -> None:
         ),
         (
             "codeparrot_permissive",
-            args.input_dir / "codeparrot_clean_python_permissive" / "codeparrot_clean_python_permissive.jsonl",
+            args.input_dir
+            / "codeparrot_clean_python_permissive"
+            / "codeparrot_clean_python_permissive.jsonl",
             "codeparrot_permissive",
             keep_code,
             args.max_code,
@@ -198,9 +220,10 @@ def main() -> None:
     }
     total_docs = 0
     total_bytes = 0
-    with out_path.open("w", encoding="utf-8", newline="\n") as out, reject_path.open(
-        "w", encoding="utf-8", newline="\n"
-    ) as rejects:
+    with (
+        out_path.open("w", encoding="utf-8", newline="\n") as out,
+        reject_path.open("w", encoding="utf-8", newline="\n") as rejects,
+    ):
         for public_name, path, manifest_name, keeper, max_written in sources:
             counts: Counter[str] = Counter()
             if not path.is_file():

@@ -20,7 +20,6 @@ from typing import Any
 
 from datasets import load_dataset
 
-
 DEFAULT_SUBREDDITS = [
     "explainlikeimfive",
     "askscience",
@@ -53,7 +52,9 @@ def normalize(text: str) -> str:
     return text.strip()
 
 
-def reject_reason(row: dict[str, Any], *, min_score: int, min_chars: int, max_chars: int) -> str | None:
+def reject_reason(
+    row: dict[str, Any], *, min_score: int, min_chars: int, max_chars: int
+) -> str | None:
     body = normalize(str(row.get("body") or ""))
     if body.lower() in BAD_VALUES:
         return "deleted_or_removed"
@@ -173,9 +174,10 @@ def main() -> None:
         },
         "splits": [],
     }
-    with jsonl_path.open("w", encoding="utf-8", newline="\n") as jsonl, txt_path.open(
-        "w", encoding="utf-8", newline="\n"
-    ) as txt:
+    with (
+        jsonl_path.open("w", encoding="utf-8", newline="\n") as jsonl,
+        txt_path.open("w", encoding="utf-8", newline="\n") as txt,
+    ):
         for subreddit in subreddits:
             print(f"=== {subreddit} ===", flush=True)
             split_jsonl = args.output_dir / f"{subreddit}.jsonl.tmp"
@@ -184,21 +186,29 @@ def main() -> None:
             split_stats = None
             for attempt in range(1, args.retries + 1):
                 try:
-                    with split_jsonl.open("w", encoding="utf-8", newline="\n") as sj, split_txt.open(
-                        "w", encoding="utf-8", newline="\n"
-                    ) as st:
-                        split_stats = stream_subreddit(subreddit, output_jsonl=sj, output_txt=st, args=args)
+                    with (
+                        split_jsonl.open("w", encoding="utf-8", newline="\n") as sj,
+                        split_txt.open("w", encoding="utf-8", newline="\n") as st,
+                    ):
+                        split_stats = stream_subreddit(
+                            subreddit, output_jsonl=sj, output_txt=st, args=args
+                        )
                     break
                 except KeyboardInterrupt:
                     print("interrupted", file=sys.stderr)
                     raise
                 except Exception as exc:  # network streams can fail mid-fragment
                     last_error = repr(exc)
-                    print(f"{subreddit}: attempt {attempt}/{args.retries} failed: {last_error}", flush=True)
+                    print(
+                        f"{subreddit}: attempt {attempt}/{args.retries} failed: {last_error}",
+                        flush=True,
+                    )
                     time.sleep(min(60, attempt * 5))
             if split_stats is None:
                 summary["splits"].append({"subreddit": subreddit, "error": last_error})
-                manifest_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
+                manifest_path.write_text(
+                    json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8"
+                )
                 continue
             with split_jsonl.open("r", encoding="utf-8") as sj:
                 shutil.copyfileobj(sj, jsonl, length=1024 * 1024)
@@ -207,7 +217,9 @@ def main() -> None:
             split_jsonl.unlink(missing_ok=True)
             split_txt.unlink(missing_ok=True)
             summary["splits"].append(split_stats)
-            manifest_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
+            manifest_path.write_text(
+                json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
 
     docs = sum(split.get("written", 0) for split in summary["splits"])
     bytes_written = txt_path.stat().st_size if txt_path.exists() else 0

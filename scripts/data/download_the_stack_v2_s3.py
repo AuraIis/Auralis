@@ -26,14 +26,16 @@ Usage (inside the container):
         --target-tokens 2_000_000_000 \\
         --workers 16
 """
+
 from __future__ import annotations
 
 import argparse
 import sys
-from concurrent.futures import ThreadPoolExecutor
 from collections import deque
+from collections.abc import Iterator
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 import boto3
 import smart_open
@@ -57,29 +59,29 @@ CODE_BYTES_PER_TOKEN = 3.5
 
 # the_stack_v2 layout: data/{LinguistName}/train-*.parquet
 LANG_FOLDERS = {
-    "python":     "Python",
+    "python": "Python",
     "javascript": "JavaScript",
     "typescript": "TypeScript",
-    "rust":       "Rust",
-    "cpp":        "C++",
-    "go":         "Go",
-    "java":       "Java",
-    "shell":      "Shell",
-    "sql":        "SQL",
+    "rust": "Rust",
+    "cpp": "C++",
+    "go": "Go",
+    "java": "Java",
+    "shell": "Shell",
+    "sql": "SQL",
 }
 
 # Per-language token-budget shares. Same shares as download_code.py
 # starcoderdata to keep the 2 sources comparable.
 LANG_SHARES: dict[str, float] = {
-    "python":     0.30,
+    "python": 0.30,
     "javascript": 0.20,
     "typescript": 0.10,
-    "rust":       0.10,
-    "cpp":        0.10,
-    "go":         0.08,
-    "java":       0.07,
-    "shell":      0.03,
-    "sql":        0.02,
+    "rust": 0.10,
+    "cpp": 0.10,
+    "go": 0.08,
+    "java": 0.07,
+    "shell": 0.03,
+    "sql": 0.02,
 }
 
 
@@ -119,11 +121,7 @@ def stream_language(lang_folder: str, min_stars: int) -> Iterator[dict[str, Any]
     for ex in ds:
         if not ex.get("blob_id"):
             continue
-        stars = (
-            ex.get("star_events_count", 0)
-            or ex.get("max_stars_count", 0)
-            or 0
-        )
+        stars = ex.get("star_events_count", 0) or ex.get("max_stars_count", 0) or 0
         if stars < min_stars:
             continue
         if ex.get("is_vendor", False) or ex.get("is_generated", False):
@@ -193,9 +191,7 @@ def download_lang(
                 files_filtered += 1
                 continue
 
-            wrapped = (
-                f"<|code|>[{lang}]\n{content}\n<|endcode|>".replace("\r\n", "\n")
-            )
+            wrapped = f"<|code|>[{lang}]\n{content}\n<|endcode|>".replace("\r\n", "\n")
             out_writer.write(wrapped + "\n")
             sz = len(wrapped.encode("utf-8")) + 1
             bytes_written += sz
@@ -204,8 +200,8 @@ def download_lang(
             if files_written % 50 == 0:
                 pbar.update(50)
                 pbar.set_postfix(
-                    MB=f"{bytes_written/1e6:.0f}",
-                    pct=f"{100 * bytes_written / max(target_bytes,1):.1f}",
+                    MB=f"{bytes_written / 1e6:.0f}",
+                    pct=f"{100 * bytes_written / max(target_bytes, 1):.1f}",
                     miss=blob_fetch_failed,
                     filt=files_filtered,
                 )
@@ -273,7 +269,7 @@ def main() -> None:
     )
 
     print(f"Output:  {output_path}")
-    print(f"Target:  {target_bytes/1e9:.2f} GB ({args.target_tokens/1e9:.2f}B tokens)")
+    print(f"Target:  {target_bytes / 1e9:.2f} GB ({args.target_tokens / 1e9:.2f}B tokens)")
     print(f"Workers: {args.workers}", flush=True)
 
     with atomic_text_writer(output_path) as fh:
@@ -283,7 +279,7 @@ def main() -> None:
             lang_folder = LANG_FOLDERS[lang]
             lang_target_bytes = int(target_bytes * share)
             print(
-                f"\n=== {lang} ({lang_folder}) → {lang_target_bytes/1e6:.0f} MB target ===",
+                f"\n=== {lang} ({lang_folder}) → {lang_target_bytes / 1e6:.0f} MB target ===",
                 flush=True,
             )
             result = download_lang(
@@ -303,7 +299,7 @@ def main() -> None:
                     stats.filtered_reasons[f"{lang}:{k}"] = v
             print(
                 f"  {lang}: {result['files']:>7,} files | "
-                f"{result['bytes']/1e6:>7.0f} MB | "
+                f"{result['bytes'] / 1e6:>7.0f} MB | "
                 f"filt={result['filtered']:,} miss={result['fetch_failed']:,}",
                 flush=True,
             )
@@ -312,9 +308,9 @@ def main() -> None:
     stats.write_manifest(output_path.with_suffix(".txt.manifest.json"))
 
     print()
-    print(f"=== DONE ===")
+    print("=== DONE ===")
     print(f"  output: {output_path}")
-    print(f"  size:   {stats.final_bytes/1e9:.2f} GB")
+    print(f"  size:   {stats.final_bytes / 1e9:.2f} GB")
     print(f"  files:  {stats.final_docs:,}")
 
 

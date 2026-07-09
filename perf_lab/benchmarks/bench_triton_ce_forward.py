@@ -70,7 +70,9 @@ def main() -> None:
     dtype = {"bf16": torch.bfloat16, "fp16": torch.float16, "fp32": torch.float32}[args.dtype]
     torch.manual_seed(1234)
     hidden = torch.randn(args.tokens, args.d_model, device="cuda", dtype=dtype) * args.hidden_scale
-    weight = torch.randn(args.vocab_size, args.d_model, device="cuda", dtype=dtype) * args.weight_scale
+    weight = (
+        torch.randn(args.vocab_size, args.d_model, device="cuda", dtype=dtype) * args.weight_scale
+    )
     labels = torch.randint(0, args.vocab_size, (args.tokens,), device="cuda", dtype=torch.long)
     if args.ignore_fraction:
         if not 0.0 <= args.ignore_fraction < 1.0:
@@ -108,29 +110,35 @@ def main() -> None:
         args.warmup,
         args.iters,
     )
-    print(json.dumps({
-        "gpu": torch.cuda.get_device_name(0),
-        "tokens": args.tokens,
-        "d_model": args.d_model,
-        "vocab_size": args.vocab_size,
-        "dtype": args.dtype,
-        "hidden_scale": args.hidden_scale,
-        "weight_scale": args.weight_scale,
-        "ignore_fraction": args.ignore_fraction,
-        "block_v": args.block_v,
-        "block_d": args.block_d,
-        "block_m": args.block_m,
-        "num_stages": args.num_stages,
-        "mode": args.mode,
-        "loss_max_abs": float((full_losses - triton_losses).abs().max().item()),
-        "loss_mean_abs": float((full_losses - triton_losses).abs().mean().item()),
-        "row_max_min": float(row_max.min().item()),
-        "exp_sum_min": float(exp_sum.min().item()),
-        "full": full,
-        "triton": triton,
-        "speed_ratio_full_over_triton": full["seconds_avg"] / triton["seconds_avg"],
-        "memory_delta_gb": full["peak_alloc_gb_avg"] - triton["peak_alloc_gb_avg"],
-    }, indent=2), flush=True)
+    print(
+        json.dumps(
+            {
+                "gpu": torch.cuda.get_device_name(0),
+                "tokens": args.tokens,
+                "d_model": args.d_model,
+                "vocab_size": args.vocab_size,
+                "dtype": args.dtype,
+                "hidden_scale": args.hidden_scale,
+                "weight_scale": args.weight_scale,
+                "ignore_fraction": args.ignore_fraction,
+                "block_v": args.block_v,
+                "block_d": args.block_d,
+                "block_m": args.block_m,
+                "num_stages": args.num_stages,
+                "mode": args.mode,
+                "loss_max_abs": float((full_losses - triton_losses).abs().max().item()),
+                "loss_mean_abs": float((full_losses - triton_losses).abs().mean().item()),
+                "row_max_min": float(row_max.min().item()),
+                "exp_sum_min": float(exp_sum.min().item()),
+                "full": full,
+                "triton": triton,
+                "speed_ratio_full_over_triton": full["seconds_avg"] / triton["seconds_avg"],
+                "memory_delta_gb": full["peak_alloc_gb_avg"] - triton["peak_alloc_gb_avg"],
+            },
+            indent=2,
+        ),
+        flush=True,
+    )
 
 
 if __name__ == "__main__":

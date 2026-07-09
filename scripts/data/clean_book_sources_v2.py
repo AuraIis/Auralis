@@ -18,7 +18,6 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-
 SPACE_RE = re.compile(r"\s+")
 WORD_RE = re.compile(r"[A-Za-z][A-Za-z'-]+")
 
@@ -112,13 +111,17 @@ def reject_reason(text: str, title: str = "") -> str | None:
         return "url"
     if GUTENBERG_RE.search(t):
         return "gutenberg_boilerplate"
-    if LICENSE_RE.search(lower_head) and ("project gutenberg" in lower_head or "redistribution" in lower_head):
+    if LICENSE_RE.search(lower_head) and (
+        "project gutenberg" in lower_head or "redistribution" in lower_head
+    ):
         return "license_block"
     if LICENSE_RE.search(lower_head) and len(t) < 2500:
         return "license_short"
     if FRONT_BACK_RE.search(t[:400]):
         return "front_back_matter"
-    if TOC_RE.search(lower_head) and (PAGE_REF_RE.search(lower_head) or CHAPTER_PAGE_RE.search(lower_head)):
+    if TOC_RE.search(lower_head) and (
+        PAGE_REF_RE.search(lower_head) or CHAPTER_PAGE_RE.search(lower_head)
+    ):
         return "table_of_contents"
     if INDEX_RE.search(t[:800]) and (PAGE_REF_RE.search(t) or listish_score(t) > 0.45):
         return "index_glossary"
@@ -157,7 +160,9 @@ def main() -> None:
     args.output_text.parent.mkdir(parents=True, exist_ok=True)
     if args.reject_samples:
         args.reject_samples.parent.mkdir(parents=True, exist_ok=True)
-    manifest_path = args.manifest or args.output_jsonl.with_suffix(args.output_jsonl.suffix + ".manifest.json")
+    manifest_path = args.manifest or args.output_jsonl.with_suffix(
+        args.output_jsonl.suffix + ".manifest.json"
+    )
 
     stats: dict[str, Any] = {
         "input_jsonl": str(args.input_jsonl),
@@ -176,11 +181,17 @@ def main() -> None:
     languages: Counter[str] = Counter()
     seen: set[str] = set()
 
-    reject_fh = args.reject_samples.open("w", encoding="utf-8", newline="\n") if args.reject_samples else None
+    reject_fh = (
+        args.reject_samples.open("w", encoding="utf-8", newline="\n")
+        if args.reject_samples
+        else None
+    )
     try:
-        with args.input_jsonl.open("r", encoding="utf-8", errors="replace") as src, args.output_jsonl.open(
-            "w", encoding="utf-8", newline="\n"
-        ) as out_jsonl, args.output_text.open("w", encoding="utf-8", newline="\n") as out_txt:
+        with (
+            args.input_jsonl.open("r", encoding="utf-8", errors="replace") as src,
+            args.output_jsonl.open("w", encoding="utf-8", newline="\n") as out_jsonl,
+            args.output_text.open("w", encoding="utf-8", newline="\n") as out_txt,
+        ):
             for line in src:
                 stats["docs_in"] += 1
                 try:
@@ -241,7 +252,9 @@ def main() -> None:
     stats["sources"] = dict(sources.most_common())
     stats["languages"] = dict(languages.most_common())
     stats["unique_hashes"] = len(seen)
-    manifest_path.write_text(json.dumps(stats, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    manifest_path.write_text(
+        json.dumps(stats, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
     print(json.dumps(stats, ensure_ascii=False, indent=2, sort_keys=True))
 
 

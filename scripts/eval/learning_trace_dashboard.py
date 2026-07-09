@@ -70,8 +70,13 @@ def classify(latest: dict[str, Any]) -> str:
     return "weak"
 
 
-def sparkline(points: list[float | None], color: str = "#72a7ff", uid: str = "s",
-              width: int = 210, height: int = 52) -> str:
+def sparkline(
+    points: list[float | None],
+    color: str = "#72a7ff",
+    uid: str = "s",
+    width: int = 210,
+    height: int = 52,
+) -> str:
     """Glowing gradient-filled sparkline (self-contained SVG)."""
     vals = [float(x) for x in points if x is not None]
     if not vals:
@@ -91,7 +96,11 @@ def sparkline(points: list[float | None], color: str = "#72a7ff", uid: str = "s"
             last_y = y
         pts.append((x, y))
     poly = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts)
-    area = "M " + " L ".join(f"{x:.1f} {y:.1f}" for x, y in pts) + f" L {width:.1f} {height:.1f} L 0 {height:.1f} Z"
+    area = (
+        "M "
+        + " L ".join(f"{x:.1f} {y:.1f}" for x, y in pts)
+        + f" L {width:.1f} {height:.1f} L 0 {height:.1f} Z"
+    )
     zero = ""
     if lo < 0 < hi:
         zy = height - ((0 - lo) / (hi - lo) * (height - 10)) - 5
@@ -231,7 +240,11 @@ def render(trace: dict[str, Any]) -> str:
         target_points = [row.get("target_nll") for row in rows]
         latest_margin = latest.get("margin")
         first_margin = first.get("margin")
-        delta_margin = None if latest_margin is None or first_margin is None else float(latest_margin) - float(first_margin)
+        delta_margin = (
+            None
+            if latest_margin is None or first_margin is None
+            else float(latest_margin) - float(first_margin)
+        )
         forbidden = latest.get("forbidden_hits") or []
         expected = latest.get("expected_hits") or []
         summary_rows.append(
@@ -247,10 +260,13 @@ def render(trace: dict[str, Any]) -> str:
             }
         )
         top_tokens = latest.get("top_next_tokens") or []
-        top_html = "".join(
-            f"<span>{esc(tok.get('text') or tok.get('piece'))} <b>{float(tok.get('prob', 0.0)):.3f}</b></span>"
-            for tok in top_tokens[:8]
-        ) or '<span class="cat">n/a</span>'
+        top_html = (
+            "".join(
+                f"<span>{esc(tok.get('text') or tok.get('piece'))} <b>{float(tok.get('prob', 0.0)):.3f}</b></span>"
+                for tok in top_tokens[:8]
+            )
+            or '<span class="cat">n/a</span>'
+        )
         row_html = "".join(
             "<tr>"
             f"<td>{esc(row.get('_step'))}</td>"
@@ -264,19 +280,23 @@ def render(trace: dict[str, Any]) -> str:
         uid = re.sub(r"[^A-Za-z0-9]", "-", probe_id)
         m_spark = sparkline(margin_points, color=STATUS_COLOR.get(cls, "#72a7ff"), uid=uid + "-m")
         t_spark = sparkline(target_points, color="#7af0c8", uid=uid + "-t")
-        delta_cls = "" if delta_margin is None else (" good" if delta_margin > 0 else (" bad" if delta_margin < 0 else ""))
+        delta_cls = (
+            ""
+            if delta_margin is None
+            else (" good" if delta_margin > 0 else (" bad" if delta_margin < 0 else ""))
+        )
         cards.append(
             (
                 cls,
                 f"""
                 <section class="card {cls}">
                   <div class="card-head">
-                    <div><h2>{esc(probe_id)}</h2><span class="cat">{esc(latest.get('category', 'unknown'))}</span></div>
+                    <div><h2>{esc(probe_id)}</h2><span class="cat">{esc(latest.get("category", "unknown"))}</span></div>
                     <span class="badge {cls}">{esc(cls)}</span>
                   </div>
                   <div class="metrics">
-                    <div><label>Target NLL</label><strong>{fmt(latest.get('target_nll'))}</strong></div>
-                    <div><label>Margin</label><strong>{fmt(latest.get('margin'))}</strong></div>
+                    <div><label>Target NLL</label><strong>{fmt(latest.get("target_nll"))}</strong></div>
+                    <div><label>Margin</label><strong>{fmt(latest.get("margin"))}</strong></div>
                     <div><label>&Delta; Margin</label><strong class="{delta_cls.strip()}">{fmt(delta_margin)}</strong></div>
                   </div>
                   <div class="charts">
@@ -284,7 +304,7 @@ def render(trace: dict[str, Any]) -> str:
                     <div><label>Target-NLL-Verlauf</label>{t_spark}</div>
                   </div>
                   <h3>Letzte Antwort</h3>
-                  <pre>{esc((latest.get('answer') or '').strip())}</pre>
+                  <pre>{esc((latest.get("answer") or "").strip())}</pre>
                   <p class="hits"><span class="ok">Expected: {esc(expected)}</span><span class="no">Forbidden: {esc(forbidden)}</span></p>
                   <h3>Naechstes Token nach Prompt</h3>
                   <div class="tokens">{top_html}</div>

@@ -64,7 +64,9 @@ def build_payload(trace: dict[str, Any]) -> dict[str, Any]:
     edges: list[dict[str, Any]] = []
     rows = latest_rows(trace)
 
-    def add_node(node_id: str, label: str, kind: str, status: str = "neutral", detail: str = "") -> None:
+    def add_node(
+        node_id: str, label: str, kind: str, status: str = "neutral", detail: str = ""
+    ) -> None:
         nodes.setdefault(
             node_id,
             {
@@ -95,7 +97,9 @@ def build_payload(trace: dict[str, Any]) -> dict[str, Any]:
         add_node(cat_id, category, "category")
         add_node(probe_id, pid, "probe", status, prompt)
         add_node(target_id, "Ziel", "target", "strong", str(target.get("text") or "").strip())
-        add_node(negative_id, "Falsch", "negative", "danger", str(negative.get("text") or "").strip())
+        add_node(
+            negative_id, "Falsch", "negative", "danger", str(negative.get("text") or "").strip()
+        )
         add_node(answer_id, "Antwort", "answer", status, answer)
 
         # Enrich the probe node so the force graph can show margin/answer in one
@@ -104,7 +108,15 @@ def build_payload(trace: dict[str, Any]) -> dict[str, Any]:
         nodes[probe_id]["answer"] = answer
         nodes[probe_id]["category"] = category
 
-        edges.append({"source": cat_id, "target": probe_id, "kind": "category", "status": "neutral", "label": category})
+        edges.append(
+            {
+                "source": cat_id,
+                "target": probe_id,
+                "kind": "category",
+                "status": "neutral",
+                "label": category,
+            }
+        )
         edges.append(
             {
                 "source": probe_id,
@@ -418,9 +430,14 @@ def render(trace: dict[str, Any], auto_refresh: int = 0) -> str:
         f"<td>{esc(row.get('forbidden_hits') or [])}</td>"
         f"<td>{esc((row.get('answer') or '').strip())}</td>"
         "</tr>"
-        for row in sorted(rows, key=lambda r: {"danger": 0, "weak": 1, "watch": 2, "strong": 3}.get(status_for(r), 9))
+        for row in sorted(
+            rows,
+            key=lambda r: {"danger": 0, "weak": 1, "watch": 2, "strong": 3}.get(status_for(r), 9),
+        )
     )
-    refresh_tag = f'<meta http-equiv="refresh" content="{auto_refresh}">' if auto_refresh > 0 else ""
+    refresh_tag = (
+        f'<meta http-equiv="refresh" content="{auto_refresh}">' if auto_refresh > 0 else ""
+    )
 
     out = NEURO_TEMPLATE
     for token, value in {

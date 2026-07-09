@@ -80,7 +80,7 @@ class PretrainDataset:
     seq_length: int
     rng: np.random.Generator
     train_start: int = 0
-    train_end: int | None = None          # exclusive; None → all tokens
+    train_end: int | None = None  # exclusive; None → all tokens
 
     def __post_init__(self) -> None:
         self._mmap = _mmap_bin(Path(self.bin_path))
@@ -144,8 +144,8 @@ class MixedDataLoader:
         batch_size: int,
         seq_length: int,
         seed: int = 42,
-        split: str = "train",                    # "train" | "val"
-        val_split_bytes: int = 0,                # last N BYTES of each .bin reserved for val
+        split: str = "train",  # "train" | "val"
+        val_split_bytes: int = 0,  # last N BYTES of each .bin reserved for val
         rank: int = 0,
         world_size: int = 1,
     ):
@@ -197,7 +197,7 @@ class MixedDataLoader:
             if val_split_tokens >= n_tokens_total:
                 raise ValueError(
                     f"val_split_bytes ({val_split_bytes}) >= {lang}.bin size "
-                    f"({n_tokens_total*4}). Would leave zero or negative tokens "
+                    f"({n_tokens_total * 4}). Would leave zero or negative tokens "
                     f"for training."
                 )
             train_window = n_tokens_total - val_split_tokens
@@ -232,7 +232,7 @@ class MixedDataLoader:
                 if train_end - train_start < seq_length + 1:
                     raise ValueError(
                         f"val split for {lang} too small: {train_end - train_start} tokens "
-                        f"(need >= seq_length+1={seq_length+1}). Increase val_split_bytes."
+                        f"(need >= seq_length+1={seq_length + 1}). Increase val_split_bytes."
                     )
                 rng_seed = seed + i * 7919 + rank_seed_offset + 1_000_003
                 rng = np.random.default_rng(rng_seed)
@@ -242,8 +242,11 @@ class MixedDataLoader:
             # train_window == val_start this is exactly adjacency, no overlap.
             assert train_start < train_end, (train_start, train_end)
             self.datasets[lang] = PretrainDataset(
-                bin_path=bin_path, seq_length=seq_length, rng=rng,
-                train_start=train_start, train_end=train_end,
+                bin_path=bin_path,
+                seq_length=seq_length,
+                rng=rng,
+                train_start=train_start,
+                train_end=train_end,
             )
 
         # Expected rows-per-batch plus a carried deficit/surplus so small

@@ -115,8 +115,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Sample cleaned pools into a tokenizer corpus.")
     parser.add_argument("--data-config", type=Path, default=None)
     parser.add_argument("--tokenizer-config", type=Path, default=TOKENIZER_CFG)
-    parser.add_argument("--output", type=Path, default=None,
-                        help="Override output file (default: <data_root>/tokenizer_corpus/corpus.txt)")
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Override output file (default: <data_root>/tokenizer_corpus/corpus.txt)",
+    )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--required-free-gb", type=float, default=20.0)
     args = parser.parse_args()
@@ -157,25 +161,34 @@ def main() -> None:
             source_bytes = _total_bytes(srcs)
             stats.per_language_source_bytes[lang] = source_bytes
             stats.per_language_target_bytes[lang] = target
-            print(f"[{lang}] sources={len(srcs)} total={source_bytes/1e9:.2f}GB  target={target/1e9:.2f}GB")
+            print(
+                f"[{lang}] sources={len(srcs)} total={source_bytes / 1e9:.2f}GB  target={target / 1e9:.2f}GB"
+            )
             for p in srcs:
                 print(f"  - {p}")
             written_bytes, written_lines = _sample_and_write_language(
-                lang, srcs, target, max_line_bytes, fh, seed=args.seed + hash(lang) % 1000,
+                lang,
+                srcs,
+                target,
+                max_line_bytes,
+                fh,
+                seed=args.seed + hash(lang) % 1000,
             )
             stats.per_language_written_bytes[lang] = written_bytes
             stats.per_language_written_lines[lang] = written_lines
             stats.total_written_bytes += written_bytes
             stats.total_written_lines += written_lines
-            print(f"  wrote {written_bytes/1e9:.2f}GB, {written_lines:,} lines\n")
+            print(f"  wrote {written_bytes / 1e9:.2f}GB, {written_lines:,} lines\n")
 
     stats.finished_at = now_iso()
     manifest = output.with_suffix(".txt.manifest.json")
     import json
-    manifest.write_text(json.dumps(asdict(stats), ensure_ascii=False, indent=2),
-                        encoding="utf-8")
+
+    manifest.write_text(json.dumps(asdict(stats), ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"Manifest: {manifest}")
-    print(f"Corpus total: {stats.total_written_bytes/1e9:.2f} GB, {stats.total_written_lines:,} lines")
+    print(
+        f"Corpus total: {stats.total_written_bytes / 1e9:.2f} GB, {stats.total_written_lines:,} lines"
+    )
 
 
 if __name__ == "__main__":

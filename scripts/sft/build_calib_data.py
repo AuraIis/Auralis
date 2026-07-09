@@ -7,7 +7,12 @@ CONFIDENT: KNOWN facts -> confident answer from gold (reinforce answering-when-k
 ANCHOR   : sample of existing general SFT QA -> retention (don't destroy answering).
 
 SHAKY is EXCLUDED from abstain (might actually know it -> avoid the false-negative trap)."""
-import json, re, random, argparse, pathlib
+
+import argparse
+import json
+import pathlib
+import random
+import re
 
 REPO = pathlib.Path("/workspace/v2data")
 SYS = "Du bist Auralis, ein hilfreicher, ehrlicher KI-Assistent."
@@ -44,12 +49,21 @@ def confident_answer(q, gold, cat):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--labels", default=str(REPO / "data/training/calib/probe_labels_v2.jsonl"))
-    ap.add_argument("--anchor-src", default=str(REPO / "data/training/sft_real_v1/train.helix.jsonl"))
-    ap.add_argument("--tool-src", default=str(REPO / "data/training/tool_sft_v12_full/train.helix.jsonl"))
+    ap.add_argument(
+        "--anchor-src", default=str(REPO / "data/training/sft_real_v1/train.helix.jsonl")
+    )
+    ap.add_argument(
+        "--tool-src", default=str(REPO / "data/training/tool_sft_v12_full/train.helix.jsonl")
+    )
     ap.add_argument("--n-anchor", type=int, default=500)
-    ap.add_argument("--n-tool", type=int, default=400, help="tool traces mixed in -> preserve dispatch")
-    ap.add_argument("--abstain-unknown", action="store_true",
-                    help="also abstain on UNKNOWN real facts (v1 did this -> over-refusal leak; off in v2)")
+    ap.add_argument(
+        "--n-tool", type=int, default=400, help="tool traces mixed in -> preserve dispatch"
+    )
+    ap.add_argument(
+        "--abstain-unknown",
+        action="store_true",
+        help="also abstain on UNKNOWN real facts (v1 did this -> over-refusal leak; off in v2)",
+    )
     ap.add_argument("--out-dir", default=str(REPO / "data/training/calib_sft_v2"))
     ap.add_argument("--val", type=int, default=120)
     ap.add_argument("--seed", type=int, default=20260607)
@@ -63,9 +77,12 @@ def main():
         q, gold, cat, label = r["q"], r["gold"], r["cat"], r["label"]
         if cat == "invented" or (a.abstain_unknown and gold is not None and label == "UNKNOWN"):
             ans = rng.choice(ABSTAIN_ANSWERS)
-            rows.append({"text": helix(q, ans), "source": "calib_abstain"}); n_abstain += 1
+            rows.append({"text": helix(q, ans), "source": "calib_abstain"})
+            n_abstain += 1
         elif gold is not None and label == "KNOWN":
-            rows.append({"text": helix(q, confident_answer(q, gold, cat)), "source": "calib_confident"})
+            rows.append(
+                {"text": helix(q, confident_answer(q, gold, cat)), "source": "calib_confident"}
+            )
             n_confident += 1
         # SHAKY -> skip (uncertain whether it knows)
 
@@ -81,7 +98,7 @@ def main():
             if rr.get("source") == "tool_math":
                 tool.append({"text": rr["text"], "source": "tool"})
         rng.shuffle(tool)
-        tool = tool[:a.n_tool]
+        tool = tool[: a.n_tool]
     rows += tool
 
     # retention anchor: general SFT QA (no tool/result)
@@ -97,20 +114,23 @@ def main():
             continue
         anchor.append({"text": rr["text"], "source": "anchor"})
     rng.shuffle(anchor)
-    anchor = anchor[:a.n_anchor]
+    anchor = anchor[: a.n_anchor]
     rows += anchor
 
     rng.shuffle(rows)
     nval = min(a.val, len(rows) // 10)
     val, train = rows[:nval], rows[nval:]
-    out = pathlib.Path(a.out_dir); out.mkdir(parents=True, exist_ok=True)
+    out = pathlib.Path(a.out_dir)
+    out.mkdir(parents=True, exist_ok=True)
     for name, part in [("train", train), ("val", val)]:
         with open(out / f"{name}.helix.jsonl", "w", encoding="utf-8") as f:
             for r in part:
                 f.write(json.dumps(r, ensure_ascii=False) + "\n")
     print(f"=== calib-SFT: train {len(train)} | val {len(val)} ===")
-    print(f"    abstain {n_abstain} | confident {n_confident} | tool {len(tool)} | anchor {len(anchor)}")
-    print(f"    abstain-ratio ~{n_abstain/len(rows):.0%}  -> {out}")
+    print(
+        f"    abstain {n_abstain} | confident {n_confident} | tool {len(tool)} | anchor {len(anchor)}"
+    )
+    print(f"    abstain-ratio ~{n_abstain / len(rows):.0%}  -> {out}")
     print("\n=== SAMPLES ===")
     for src in ("calib_abstain", "calib_confident"):
         ex = next((r for r in train if r["source"] == src), None)

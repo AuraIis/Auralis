@@ -25,22 +25,22 @@ torch (scoring, the training loop) is isolated in :mod:`auralis.adaptive.scoring
 
 from __future__ import annotations
 
-from .signals import (
-    ema,
-    trend_slope,
-    is_plateaued,
-    is_stable_above,
-    detect_regression,
-    relative_improvement,
-)
-from .stages import Stage, MasteryCriterion, GuardCriterion, CurriculumSpec
 from .controller import (
     CurriculumController,
-    MetricSnapshot,
     Decision,
     DecisionKind,
+    MetricSnapshot,
 )
 from .frozen_gate import FrozenGateLiveEvaluator, summarize_frozen_results
+from .signals import (
+    detect_regression,
+    ema,
+    is_plateaued,
+    is_stable_above,
+    relative_improvement,
+    trend_slope,
+)
+from .stages import CurriculumSpec, GuardCriterion, MasteryCriterion, Stage
 
 __all__ = [
     # signals

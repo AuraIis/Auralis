@@ -15,11 +15,10 @@ Output:
 Usage (from inside the container):
     python scripts/data/download_german_speeches.py
 """
+
 from __future__ import annotations
 
 import argparse
-import gzip
-import io
 import json
 import re
 import sys
@@ -106,15 +105,17 @@ def _process_zip(archive: Path, out_path: Path, manifest: Manifest) -> None:
             else:
                 text = raw.decode("utf-8", errors="replace")
                 text = _WS_RE.sub(" ", text).strip()
-            if len(text) < 200:               # skip tiny/empty stubs
+            if len(text) < 200:  # skip tiny/empty stubs
                 continue
             line = text + "\n"
             fout.write(line)
             manifest.documents_written += 1
             manifest.bytes_written += len(line.encode("utf-8"))
             if manifest.documents_written % 5000 == 0:
-                print(f"    {manifest.documents_written} docs, "
-                      f"{manifest.bytes_written / 1e6:.1f} MB", flush=True)
+                print(
+                    f"    {manifest.documents_written} docs, {manifest.bytes_written / 1e6:.1f} MB",
+                    flush=True,
+                )
 
 
 def _process_tar(archive: Path, out_path: Path, manifest: Manifest) -> None:
@@ -145,12 +146,16 @@ def _process_tar(archive: Path, out_path: Path, manifest: Manifest) -> None:
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description=__doc__,
-                                formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     p.add_argument("--url", default=DEFAULT_URL)
     p.add_argument("--output", type=Path, default=DEFAULT_OUT)
-    p.add_argument("--keep-archive", action="store_true",
-                   help="Keep the raw archive after extraction (default: delete).")
+    p.add_argument(
+        "--keep-archive",
+        action="store_true",
+        help="Keep the raw archive after extraction (default: delete).",
+    )
     args = p.parse_args()
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -175,7 +180,7 @@ def main() -> None:
         if not args.keep_archive:
             archive.unlink()
             manifest.notes.append("archive deleted post-extract")
-    except Exception as e:                    # noqa: BLE001
+    except Exception as e:
         manifest.notes.append(f"FAILED: {type(e).__name__}: {e}")
         raise
     finally:
@@ -187,9 +192,11 @@ def main() -> None:
             encoding="utf-8",
         )
         print(f"  manifest: {manifest_path}")
-    print(f"\ndone: {manifest.documents_written} docs, "
-          f"{manifest.bytes_written / 1e6:.1f} MB, "
-          f"{manifest.elapsed_seconds:.0f}s")
+    print(
+        f"\ndone: {manifest.documents_written} docs, "
+        f"{manifest.bytes_written / 1e6:.1f} MB, "
+        f"{manifest.elapsed_seconds:.0f}s"
+    )
 
 
 if __name__ == "__main__":

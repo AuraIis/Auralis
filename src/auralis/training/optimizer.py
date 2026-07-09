@@ -71,8 +71,9 @@ def build_optimizer(model: torch.nn.Module, cfg: dict[str, Any]) -> Optimizer:
         if fused_requested and torch.cuda.is_available():
             try:
                 # Probe: cheap construction to verify the kwarg is accepted.
-                _probe = AdamW([torch.zeros(1, requires_grad=True, device="cuda")],
-                               lr=1e-3, fused=True)
+                _probe = AdamW(
+                    [torch.zeros(1, requires_grad=True, device="cuda")], lr=1e-3, fused=True
+                )
                 del _probe
                 fused_kwargs["fused"] = True
             except (TypeError, RuntimeError):
@@ -100,6 +101,7 @@ def build_scheduler(
     min_ratio = float(cfg.get("min_lr_ratio", 0.1))
 
     if sched_type == "cosine":
+
         def lr_lambda(step: int) -> float:
             if step < warmup:
                 return (step + 1) / max(1, warmup)
@@ -108,6 +110,7 @@ def build_scheduler(
             cos = 0.5 * (1.0 + math.cos(math.pi * progress))
             return min_ratio + (1.0 - min_ratio) * cos
     elif sched_type == "constant_with_warmup":
+
         def lr_lambda(step: int) -> float:
             if step < warmup:
                 return (step + 1) / max(1, warmup)

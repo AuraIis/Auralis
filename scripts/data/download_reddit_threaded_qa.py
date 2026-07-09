@@ -22,7 +22,6 @@ from typing import Any
 
 from datasets import load_dataset
 
-
 DEFAULT_SPLITS = [
     "explainlikeimfive",
     "askscience",
@@ -128,7 +127,9 @@ def clean_question(text: str, *, require_question_mark: bool) -> str:
     return normalize(text)
 
 
-def make_pair(row: dict[str, Any], split: str, args: argparse.Namespace) -> tuple[dict[str, Any] | None, str]:
+def make_pair(
+    row: dict[str, Any], split: str, args: argparse.Namespace
+) -> tuple[dict[str, Any] | None, str]:
     total_score = float(row.get("total_score") or 0.0)
     avg_score = float(row.get("avg_score") or 0.0)
     num_messages = int(row.get("num_messages") or 0)
@@ -146,7 +147,12 @@ def make_pair(row: dict[str, Any], split: str, args: argparse.Namespace) -> tupl
     question = clean_question(question, require_question_mark=args.require_question_mark)
     if not question:
         return None, "question_not_question_like"
-    q_reason = text_ok(question, min_chars=args.min_question_chars, max_chars=args.max_question_chars, allow_meta=False)
+    q_reason = text_ok(
+        question,
+        min_chars=args.min_question_chars,
+        max_chars=args.max_question_chars,
+        allow_meta=False,
+    )
     if q_reason:
         return None, f"question_{q_reason}"
 
@@ -156,7 +162,9 @@ def make_pair(row: dict[str, Any], split: str, args: argparse.Namespace) -> tupl
         if author == question_author:
             continue
         body = strip_reddit_quotes(body)
-        reason = text_ok(body, min_chars=args.min_answer_chars, max_chars=args.max_answer_chars, allow_meta=False)
+        reason = text_ok(
+            body, min_chars=args.min_answer_chars, max_chars=args.max_answer_chars, allow_meta=False
+        )
         if reason:
             continue
         answer_parts.append(body)
@@ -191,7 +199,9 @@ def stream_split(split: str, *, jsonl, txt, args: argparse.Namespace) -> dict[st
         stats[reason] += 1
         if pair:
             jsonl.write(json.dumps(pair, ensure_ascii=False, sort_keys=True) + "\n")
-            txt.write(f"Frage: {pair['question']}\nAntwort: {pair['answer'].replace(chr(10), ' ')}\n\n")
+            txt.write(
+                f"Frage: {pair['question']}\nAntwort: {pair['answer'].replace(chr(10), ' ')}\n\n"
+            )
             written += 1
         if seen >= args.max_scan_per_split or written >= args.max_pairs_per_split:
             break
@@ -216,7 +226,9 @@ def main() -> None:
     parser.add_argument("--min-answer-chars", type=int, default=120)
     parser.add_argument("--max-answer-chars", type=int, default=3_500)
     parser.add_argument("--max-answers-per-thread", type=int, default=2)
-    parser.add_argument("--require-question-mark", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument(
+        "--require-question-mark", action=argparse.BooleanOptionalAction, default=True
+    )
     parser.add_argument("--log-every", type=int, default=50_000)
     parser.add_argument("--retries", type=int, default=4)
     args = parser.parse_args()
@@ -243,9 +255,10 @@ def main() -> None:
             "require_question_mark": args.require_question_mark,
         },
     }
-    with jsonl_path.open("w", encoding="utf-8", newline="\n") as jsonl, txt_path.open(
-        "w", encoding="utf-8", newline="\n"
-    ) as txt:
+    with (
+        jsonl_path.open("w", encoding="utf-8", newline="\n") as jsonl,
+        txt_path.open("w", encoding="utf-8", newline="\n") as txt,
+    ):
         for split in splits:
             print(f"=== {split} ===", flush=True)
             tmp_jsonl = args.output_dir / f"{split}.jsonl.tmp"
@@ -254,16 +267,20 @@ def main() -> None:
             last_error = None
             for attempt in range(1, args.retries + 1):
                 try:
-                    with tmp_jsonl.open("w", encoding="utf-8", newline="\n") as tj, tmp_txt.open(
-                        "w", encoding="utf-8", newline="\n"
-                    ) as tt:
+                    with (
+                        tmp_jsonl.open("w", encoding="utf-8", newline="\n") as tj,
+                        tmp_txt.open("w", encoding="utf-8", newline="\n") as tt,
+                    ):
                         stats = stream_split(split, jsonl=tj, txt=tt, args=args)
                     break
                 except KeyboardInterrupt:
                     raise
                 except Exception as exc:
                     last_error = repr(exc)
-                    print(f"{split}: attempt {attempt}/{args.retries} failed: {last_error}", flush=True)
+                    print(
+                        f"{split}: attempt {attempt}/{args.retries} failed: {last_error}",
+                        flush=True,
+                    )
                     time.sleep(min(60, attempt * 5))
             if stats is None:
                 stats = {"split": split, "error": last_error}
@@ -275,11 +292,15 @@ def main() -> None:
                 tmp_jsonl.unlink(missing_ok=True)
                 tmp_txt.unlink(missing_ok=True)
             summary["splits"].append(stats)
-            manifest_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
+            manifest_path.write_text(
+                json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
     summary["documents"] = sum(s.get("written", 0) for s in summary["splits"])
     summary["bytes_text"] = txt_path.stat().st_size if txt_path.exists() else 0
     manifest_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"wrote {summary['documents']:,} Q&A pairs to {txt_path} ({summary['bytes_text'] / 1e9:.2f} GB)")
+    print(
+        f"wrote {summary['documents']:,} Q&A pairs to {txt_path} ({summary['bytes_text'] / 1e9:.2f} GB)"
+    )
     print(f"wrote {manifest_path}")
     sys.stdout.flush()
     sys.stderr.flush()

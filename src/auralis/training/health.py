@@ -109,9 +109,13 @@ class HealthMonitor:
             if grad > c.grad_explosion_threshold:
                 self.state.grad_explosion_count += 1
                 if self.state.grad_explosion_count >= c.grad_explosion_k:
-                    fresh.append((AlertLevel.STOP,
-                                  f"grad_norm={grad:.2f} > {c.grad_explosion_threshold} "
-                                  f"for {self.state.grad_explosion_count} windows"))
+                    fresh.append(
+                        (
+                            AlertLevel.STOP,
+                            f"grad_norm={grad:.2f} > {c.grad_explosion_threshold} "
+                            f"for {self.state.grad_explosion_count} windows",
+                        )
+                    )
                     self._request_stop("grad_explosion")
             else:
                 self.state.grad_explosion_count = 0
@@ -119,9 +123,13 @@ class HealthMonitor:
             if grad < c.grad_collapse_threshold:
                 self.state.grad_collapse_count += 1
                 if self.state.grad_collapse_count >= c.grad_collapse_k:
-                    fresh.append((AlertLevel.WARN,
-                                  f"grad_norm={grad:.2e} near zero for "
-                                  f"{self.state.grad_collapse_count} windows"))
+                    fresh.append(
+                        (
+                            AlertLevel.WARN,
+                            f"grad_norm={grad:.2e} near zero for "
+                            f"{self.state.grad_collapse_count} windows",
+                        )
+                    )
             else:
                 self.state.grad_collapse_count = 0
 
@@ -130,9 +138,13 @@ class HealthMonitor:
             if len(self.state.loss_window) >= 4:
                 avg = sum(self.state.loss_window) / len(self.state.loss_window)
                 if avg > 0 and loss > avg * c.loss_spike_factor:
-                    fresh.append((AlertLevel.WARN,
-                                  f"loss spike: {loss:.3f} > "
-                                  f"{c.loss_spike_factor}× running_avg {avg:.3f}"))
+                    fresh.append(
+                        (
+                            AlertLevel.WARN,
+                            f"loss spike: {loss:.3f} > "
+                            f"{c.loss_spike_factor}× running_avg {avg:.3f}",
+                        )
+                    )
             self.state.loss_window.append(loss)
 
         tps = metrics.get("train/tokens_per_second")
@@ -142,10 +154,14 @@ class HealthMonitor:
                 if self.state.tps_peak > 0 and tps < self.state.tps_peak * c.tps_min_ratio:
                     self.state.tps_below_count += 1
                     if self.state.tps_below_count >= c.tps_k:
-                        fresh.append((AlertLevel.WARN,
-                                      f"tok/s collapsed: {tps:.0f} < "
-                                      f"{c.tps_min_ratio:.0%} of peak "
-                                      f"{self.state.tps_peak:.0f}"))
+                        fresh.append(
+                            (
+                                AlertLevel.WARN,
+                                f"tok/s collapsed: {tps:.0f} < "
+                                f"{c.tps_min_ratio:.0%} of peak "
+                                f"{self.state.tps_peak:.0f}",
+                            )
+                        )
                 else:
                     self.state.tps_below_count = 0
 
@@ -154,15 +170,21 @@ class HealthMonitor:
         return fresh
 
     # ------------------------------------------------------------------
-    def observe_val(self, val_loss: float, best_val_loss: float, consecutive_increases: int, step: int) -> list[tuple[AlertLevel, str]]:
+    def observe_val(
+        self, val_loss: float, best_val_loss: float, consecutive_increases: int, step: int
+    ) -> list[tuple[AlertLevel, str]]:
         """Called by the trainer after each val. Separate path because the
         trainer already owns ``consecutive_val_increases`` — we just decide
         whether it's long enough to stop."""
         fresh: list[tuple[AlertLevel, str]] = []
         if consecutive_increases >= self.config.val_regression_stop_k:
-            fresh.append((AlertLevel.STOP,
-                          f"val_loss rose {consecutive_increases} evals "
-                          f"(current {val_loss:.4f}, best {best_val_loss:.4f})"))
+            fresh.append(
+                (
+                    AlertLevel.STOP,
+                    f"val_loss rose {consecutive_increases} evals "
+                    f"(current {val_loss:.4f}, best {best_val_loss:.4f})",
+                )
+            )
             self._request_stop("val_regression")
         for level, msg in fresh:
             self.state.alerts.append((step, level, msg))
@@ -211,16 +233,18 @@ class HealthMonitor:
                 count = self.state.bpb_regression_counts.get(lang, 0) + 1
                 self.state.bpb_regression_counts[lang] = count
                 if count >= c.bpb_regression_k:
-                    lookback = series[-(c.bpb_regression_lookback + 1):-1]
+                    lookback = series[-(c.bpb_regression_lookback + 1) : -1]
                     if not lookback:
                         lookback = series[:-1]
                     recent_best = min(lookback) if lookback else min(series[:-1])
-                    fresh.append((
-                        AlertLevel.STOP,
-                        f"bpb/{lang} regressed {count} evals "
-                        f"(current {bpb:.4f}, recent_best {recent_best:.4f}, "
-                        f"max_increase {c.bpb_regression_max_increase:.4f})",
-                    ))
+                    fresh.append(
+                        (
+                            AlertLevel.STOP,
+                            f"bpb/{lang} regressed {count} evals "
+                            f"(current {bpb:.4f}, recent_best {recent_best:.4f}, "
+                            f"max_increase {c.bpb_regression_max_increase:.4f})",
+                        )
+                    )
                     self._request_stop(f"bpb_regression:{lang}")
             else:
                 self.state.bpb_regression_counts[lang] = 0
@@ -230,18 +254,20 @@ class HealthMonitor:
         return fresh
 
     # ------------------------------------------------------------------
-    def observe_vram(self, alloc_gb: float, total_gb: float, step: int) -> list[tuple[AlertLevel, str]]:
+    def observe_vram(
+        self, alloc_gb: float, total_gb: float, step: int
+    ) -> list[tuple[AlertLevel, str]]:
         """Allocated/total ratio — fires at 95 % / 98 %."""
         fresh: list[tuple[AlertLevel, str]] = []
         if total_gb <= 0:
             return fresh
         frac = alloc_gb / total_gb
         if frac >= self.config.vram_frac_stop:
-            msg = f"VRAM {alloc_gb:.1f}/{total_gb:.1f}GB = {frac*100:.1f}% (stop threshold)"
+            msg = f"VRAM {alloc_gb:.1f}/{total_gb:.1f}GB = {frac * 100:.1f}% (stop threshold)"
             fresh.append((AlertLevel.STOP, msg))
             self._request_stop("vram_saturated")
         elif frac >= self.config.vram_frac_warn:
-            msg = f"VRAM {alloc_gb:.1f}/{total_gb:.1f}GB = {frac*100:.1f}% (warn threshold)"
+            msg = f"VRAM {alloc_gb:.1f}/{total_gb:.1f}GB = {frac * 100:.1f}% (warn threshold)"
             fresh.append((AlertLevel.WARN, msg))
         for level, m in fresh:
             self.state.alerts.append((step, level, m))
@@ -254,24 +280,30 @@ class HealthMonitor:
         window = self.state.ckpt_times
         if len(window) >= 3:
             import statistics
+
             median = statistics.median(window)
             if median > 0 and seconds > self.config.ckpt_time_factor * median:
-                fresh.append((AlertLevel.WARN,
-                              f"ckpt write {seconds:.1f}s > "
-                              f"{self.config.ckpt_time_factor}× median "
-                              f"{median:.1f}s (last {len(window)} saves)"))
+                fresh.append(
+                    (
+                        AlertLevel.WARN,
+                        f"ckpt write {seconds:.1f}s > "
+                        f"{self.config.ckpt_time_factor}× median "
+                        f"{median:.1f}s (last {len(window)} saves)",
+                    )
+                )
         window.append(seconds)
         for level, m in fresh:
             self.state.alerts.append((step, level, m))
         return fresh
 
     # ------------------------------------------------------------------
-    def observe_backup(self, ok: bool, fail_count: int, consecutive_fail_threshold: int = 3) -> list[tuple[AlertLevel, str]]:
+    def observe_backup(
+        self, ok: bool, fail_count: int, consecutive_fail_threshold: int = 3
+    ) -> list[tuple[AlertLevel, str]]:
         """Repeated backup failures ⇒ stop before the checkpoint graveyard."""
         fresh: list[tuple[AlertLevel, str]] = []
         if not ok and fail_count >= consecutive_fail_threshold:
-            fresh.append((AlertLevel.STOP,
-                          f"{fail_count} consecutive backup failures"))
+            fresh.append((AlertLevel.STOP, f"{fail_count} consecutive backup failures"))
             self._request_stop("backup_failures")
         return fresh
 
@@ -293,14 +325,11 @@ class HealthMonitor:
             "grad_collapse_count": self.state.grad_collapse_count,
             "bpb_regression_counts": dict(self.state.bpb_regression_counts),
             "bpb_latest": {
-                lang: values[-1]
-                for lang, values in self.state.bpb_series.items()
-                if values
+                lang: values[-1] for lang, values in self.state.bpb_series.items() if values
             },
             "tps_peak": self.state.tps_peak,
             "alerts": [
-                {"step": s, "level": lvl.value, "msg": m}
-                for (s, lvl, m) in self.state.alerts[-20:]
+                {"step": s, "level": lvl.value, "msg": m} for (s, lvl, m) in self.state.alerts[-20:]
             ],
         }
 

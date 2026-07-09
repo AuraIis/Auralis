@@ -21,14 +21,12 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import random
 import re
 from collections import Counter, defaultdict
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable
-
 
 REPO = Path(__file__).resolve().parents[2]
 
@@ -43,7 +41,9 @@ DEFAULT_SOURCES = {
 WORD_RE = re.compile(r"[A-Za-zÄÖÜäöüß]+")
 URL_RE = re.compile(r"https?://|www\.|\.com\b|\.de\b|\.org\b", re.I)
 HTML_RE = re.compile(r"<\s*/?\s*(html|body|div|span|script|style|table|a|p|br|iframe)\b", re.I)
-CHAT_RE = re.compile(r"<\|(?:system|user|assistant|end|im_start|im_end)\|>|###\s*(?:Aufgabe|Antwort):", re.I)
+CHAT_RE = re.compile(
+    r"<\|(?:system|user|assistant|end|im_start|im_end)\|>|###\s*(?:Aufgabe|Antwort):", re.I
+)
 MOJIBAKE_RE = re.compile(r"Ã.|Â.|â€|�|ï¿½")
 TOC_RE = re.compile(
     r"\b(contents?|inhaltsverzeichnis|table of contents|page|seite)\b|"
@@ -69,8 +69,12 @@ BOILERPLATE_RE = re.compile(
     r"alle rechte vorbehalten|nutzungsbedingungen|datenschutzerklärung",
     re.I,
 )
-CODE_RE = re.compile(r"\b(def|class|import|return|function|const|let|var|public static|#include)\b|[{};]{3,}")
-MATH_RE = re.compile(r"\\\[|\\\(|\b(theorem|lemma|proof|beweis|gleichung|integral|matrix)\b|[=+\-*/^]{3,}")
+CODE_RE = re.compile(
+    r"\b(def|class|import|return|function|const|let|var|public static|#include)\b|[{};]{3,}"
+)
+MATH_RE = re.compile(
+    r"\\\[|\\\(|\b(theorem|lemma|proof|beweis|gleichung|integral|matrix)\b|[=+\-*/^]{3,}"
+)
 
 
 @dataclass
@@ -251,9 +255,13 @@ def iter_random_samples(path: Path, n: int, seed: int) -> Iterable[Sample]:
                 yield Sample(None, text, "random")
 
 
-def audit_source(name: str, path: Path, head: int, random_n: int, seed: int, examples_per_flag: int) -> SourceReport:
+def audit_source(
+    name: str, path: Path, head: int, random_n: int, seed: int, examples_per_flag: int
+) -> SourceReport:
     report = SourceReport(name=name, path=str(path), bytes=path.stat().st_size)
-    for sample in list(iter_head_samples(path, head)) + list(iter_random_samples(path, random_n, seed)):
+    for sample in list(iter_head_samples(path, head)) + list(
+        iter_random_samples(path, random_n, seed)
+    ):
         report.samples += 1
         text = sample.text
         words = WORD_RE.findall(text)
@@ -295,9 +303,13 @@ def as_dict(report: SourceReport) -> dict:
         "gib": round(report.bytes / 1024**3, 3),
         "samples": report.samples,
         "class_counts": dict(report.class_counts),
-        "class_rates": {k: round(v / max(report.samples, 1), 4) for k, v in report.class_counts.items()},
+        "class_rates": {
+            k: round(v / max(report.samples, 1), 4) for k, v in report.class_counts.items()
+        },
         "flag_counts": dict(report.flag_counts.most_common()),
-        "flag_rates": {k: round(v / max(report.samples, 1), 4) for k, v in report.flag_counts.items()},
+        "flag_rates": {
+            k: round(v / max(report.samples, 1), 4) for k, v in report.flag_counts.items()
+        },
         "avg_chars": round(report.length_sum / max(report.samples, 1), 1),
         "avg_words": round(report.word_sum / max(report.samples, 1), 1),
         "recommendation": recommendation(report),
@@ -315,7 +327,9 @@ def write_markdown(reports: list[SourceReport], output: Path) -> None:
     lines.append("| Source | GiB | Samples | Keep | Repair | Trash | Top Flags | Recommendation |")
     lines.append("|---|---:|---:|---:|---:|---:|---|---|")
     for r in reports:
-        top_flags = ", ".join(f"{k} {pct(v, r.samples):.1f}%" for k, v in r.flag_counts.most_common(4))
+        top_flags = ", ".join(
+            f"{k} {pct(v, r.samples):.1f}%" for k, v in r.flag_counts.most_common(4)
+        )
         lines.append(
             f"| `{r.name}` | {r.bytes / 1024**3:.2f} | {r.samples:,} | "
             f"{pct(r.class_counts['keep'], r.samples):.1f}% | "
@@ -334,9 +348,16 @@ def write_markdown(reports: list[SourceReport], output: Path) -> None:
     for r in reports:
         lines.append(f"### {r.name}\n")
         lines.append(f"- Action: `{recommendation(r)}`")
-        lines.append(f"- Avg size: {r.length_sum / max(r.samples, 1):.0f} chars, {r.word_sum / max(r.samples, 1):.0f} words")
+        lines.append(
+            f"- Avg size: {r.length_sum / max(r.samples, 1):.0f} chars, {r.word_sum / max(r.samples, 1):.0f} words"
+        )
         if r.flag_counts:
-            lines.append("- Main flags: " + ", ".join(f"`{k}` {pct(v, r.samples):.1f}%" for k, v in r.flag_counts.most_common(8)))
+            lines.append(
+                "- Main flags: "
+                + ", ".join(
+                    f"`{k}` {pct(v, r.samples):.1f}%" for k, v in r.flag_counts.most_common(8)
+                )
+            )
         for flag, examples in list(r.examples.items())[:6]:
             if not examples:
                 continue
@@ -348,24 +369,40 @@ def write_markdown(reports: list[SourceReport], output: Path) -> None:
 
     lines.append("## Clean-v3 Filter Priorities\n")
     lines.append("1. Drop TOC/index/bibliography/catalogue documents before tokenization.")
-    lines.append("2. Split or exclude very long scanned book lines instead of feeding whole pages as one document.")
-    lines.append("3. Add OCR-fragment scoring for old book sources, especially legacy `german.strict`.")
-    lines.append("4. Keep German Commons/Wikipedia as high-priority base, then add code/math in controlled shares.")
-    lines.append("5. Keep synthetic/SFT-style data out of base pretraining unless explicitly marked as a small booster.")
+    lines.append(
+        "2. Split or exclude very long scanned book lines instead of feeding whole pages as one document."
+    )
+    lines.append(
+        "3. Add OCR-fragment scoring for old book sources, especially legacy `german.strict`."
+    )
+    lines.append(
+        "4. Keep German Commons/Wikipedia as high-priority base, then add code/math in controlled shares."
+    )
+    lines.append(
+        "5. Keep synthetic/SFT-style data out of base pretraining unless explicitly marked as a small booster."
+    )
 
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--source", action="append", default=None, help="name=path. Can be repeated.")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "--source", action="append", default=None, help="name=path. Can be repeated."
+    )
     parser.add_argument("--head-samples", type=int, default=2_000)
     parser.add_argument("--random-samples", type=int, default=8_000)
     parser.add_argument("--seed", type=int, default=20260512)
     parser.add_argument("--examples-per-flag", type=int, default=3)
-    parser.add_argument("--output-json", type=Path, default=REPO / "data/eval/pretrain_clean_v2_audit_v3.json")
-    parser.add_argument("--output-md", type=Path, default=REPO / "data/eval/pretrain_clean_v2_audit_v3.md")
+    parser.add_argument(
+        "--output-json", type=Path, default=REPO / "data/eval/pretrain_clean_v2_audit_v3.json"
+    )
+    parser.add_argument(
+        "--output-md", type=Path, default=REPO / "data/eval/pretrain_clean_v2_audit_v3.md"
+    )
     args = parser.parse_args()
 
     if args.source:

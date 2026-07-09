@@ -17,9 +17,9 @@ Emitted metrics (all higher-is-better unless prefixed ``neg_``):
 from __future__ import annotations
 
 import json
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from statistics import mean
-from typing import Callable, Sequence
 
 import torch
 
@@ -71,15 +71,16 @@ class LearningMonitor:
         self._family_metrics(per_probe, metrics)
 
         if self.canary_batch is not None:
-            cl = canary_loss(self.ma.model, self.canary_batch["input_ids"],
-                             self.canary_batch["labels"])
+            cl = canary_loss(
+                self.ma.model, self.canary_batch["input_ids"], self.canary_batch["labels"]
+            )
             metrics["canary_loss"] = cl
             metrics["neg_canary_loss"] = -cl
 
         if self.extra_metrics_fn is not None:
             try:
                 metrics.update(self.extra_metrics_fn(step))
-            except Exception as exc:   # never let optional metrics kill the run
+            except Exception as exc:  # never let optional metrics kill the run
                 metrics["extra_metrics_error"] = 1.0
                 print(f"[monitor] extra_metrics_fn failed at step {step}: {exc}")
 
@@ -125,9 +126,15 @@ class LearningMonitor:
 
     @staticmethod
     def _print(step, stage_name, metrics) -> None:
-        keys = ["target_pass", "retention_pass", "target_margin_mean",
-                "retention_margin_mean", "frozen_target_pass",
-                "frozen_retention_pass", "canary_loss"]
+        keys = [
+            "target_pass",
+            "retention_pass",
+            "target_margin_mean",
+            "retention_margin_mean",
+            "frozen_target_pass",
+            "frozen_retention_pass",
+            "canary_loss",
+        ]
         parts = [f"{k}={metrics[k]:.3f}" for k in keys if k in metrics]
         print(f"[eval step {step} | {stage_name}] " + " ".join(parts))
 

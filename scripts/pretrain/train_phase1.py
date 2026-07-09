@@ -122,7 +122,9 @@ def _configure_kernel_env(config: dict, device: torch.device) -> None:
     enabled = bool(kcfg.get("enabled", False))
     os.environ["AURALIS_USE_MAMBA_KERNEL"] = "1" if enabled and kcfg.get("mamba", True) else "0"
     os.environ["AURALIS_USE_GLA_KERNEL"] = "1" if enabled and kcfg.get("gla", True) else "0"
-    os.environ["AURALIS_USE_FLASH_ATTN"] = "1" if enabled and kcfg.get("flash_attention", True) else "0"
+    os.environ["AURALIS_USE_FLASH_ATTN"] = (
+        "1" if enabled and kcfg.get("flash_attention", True) else "0"
+    )
 
 
 def _configure_torch_runtime(config: dict, device: torch.device) -> None:
@@ -137,18 +139,30 @@ def _configure_torch_runtime(config: dict, device: torch.device) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--config", type=Path, default=REPO / "configs" / "training" / "phase1_pretrain.yaml")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "--config", type=Path, default=REPO / "configs" / "training" / "phase1_pretrain.yaml"
+    )
     parser.add_argument("--resume", type=Path, default=None)
-    parser.add_argument("--init-weights", type=Path, default=None,
-                        help="Deprecated alias for --warm-start.")
-    parser.add_argument("--warm-start", type=Path, default=None,
-                        help="Load model weights from a checkpoint, but start fresh optimizer/scheduler/state.")
+    parser.add_argument(
+        "--init-weights", type=Path, default=None, help="Deprecated alias for --warm-start."
+    )
+    parser.add_argument(
+        "--warm-start",
+        type=Path,
+        default=None,
+        help="Load model weights from a checkpoint, but start fresh optimizer/scheduler/state.",
+    )
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--device", default=None, help="Override config.training.device")
     parser.add_argument("--no-compile", action="store_true")
-    parser.add_argument("--no-wandb", action="store_true",
-                        help="Skip wandb.init even if config.logging.wandb.enabled.")
+    parser.add_argument(
+        "--no-wandb",
+        action="store_true",
+        help="Skip wandb.init even if config.logging.wandb.enabled.",
+    )
     args = parser.parse_args()
     warm_start = args.warm_start or args.init_weights
     if args.resume and warm_start:
@@ -187,7 +201,7 @@ def main() -> None:
     print(f"building model from {config['model']['config_path']}")
     model = build_model(REPO / config["model"]["config_path"]).to(device)
     n_params = sum(p.numel() for p in model.parameters())
-    print(f"  parameters: {n_params/1e9:.2f} B ({n_params/1e6:.1f} M)")
+    print(f"  parameters: {n_params / 1e9:.2f} B ({n_params / 1e6:.1f} M)")
 
     # Gradient checkpointing defaults to the model config, but an explicit
     # training.gradient_checkpointing true/false must override it either way.
@@ -254,14 +268,16 @@ def main() -> None:
             rank=rank,
             world_size=world_size,
         )
-        print(f"  val enabled: hold-out {val_split_bytes/1e6:.1f} MB per language")
+        print(f"  val enabled: hold-out {val_split_bytes / 1e6:.1f} MB per language")
     else:
         print("  val disabled: set data.val_split_bytes > 0 to enable")
 
     # ---- Optim + sched ----
     optimizer = build_optimizer(model, config["training"]["optimizer"])
     scheduler = build_scheduler(
-        optimizer, config["training"]["scheduler"], total_steps=int(config["training"]["total_steps"])
+        optimizer,
+        config["training"]["scheduler"],
+        total_steps=int(config["training"]["total_steps"]),
     )
 
     # ---- W&B (rank 0 only; other ranks get a no-op logger) ----
@@ -291,7 +307,9 @@ def main() -> None:
 
     # Kernel/back-end summary (unwrap DDP so .inner is reachable)
     core_model = model.module if is_distributed else model
-    backends = describe_model_backends(core_model.inner if hasattr(core_model, "inner") else core_model)
+    backends = describe_model_backends(
+        core_model.inner if hasattr(core_model, "inner") else core_model
+    )
     print(format_backend_summary(backends))
 
     # Run-report: start (rank 0 only — avoid concurrent writes to MANIFEST.yaml)
@@ -313,7 +331,7 @@ def main() -> None:
         print(f"  exit: {exit_reason}")
     except KeyboardInterrupt:
         exit_reason = "keyboard_interrupt"
-    except Exception as e:                                     # noqa: BLE001
+    except Exception as e:
         exit_reason = f"{type(e).__name__}: {e}"
         raise
     finally:

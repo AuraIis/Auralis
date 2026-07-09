@@ -7,34 +7,88 @@ Two kinds of rows:
 
 Only facts I am confident about are included (gold must be correct, else we'd train
 wrong abstention). Output JSONL is consumed by calib_probe.py --bank."""
-import argparse, json, random, pathlib
+
+import argparse
+import json
+import pathlib
+import random
 
 REPO = pathlib.Path("/workspace/v2data")
 
 CAPITALS = {
-    "Deutschland": "Berlin", "Frankreich": "Paris", "Italien": "Rom", "Spanien": "Madrid",
-    "Oesterreich": "Wien", "Schweiz": "Bern", "Polen": "Warschau", "Niederlande": "Amsterdam",
-    "Belgien": "Bruessel", "Portugal": "Lissabon", "Griechenland": "Athen", "Schweden": "Stockholm",
-    "Norwegen": "Oslo", "Daenemark": "Kopenhagen", "Finnland": "Helsinki", "Russland": "Moskau",
-    "Japan": "Tokio", "China": "Peking", "USA": "Washington", "Kanada": "Ottawa",
-    "Mexiko": "Mexiko-Stadt", "Australien": "Canberra", "Aegypten": "Kairo", "Tuerkei": "Ankara",
-    "Grossbritannien": "London", "Irland": "Dublin", "Tschechien": "Prag", "Ungarn": "Budapest",
-    "Argentinien": "Buenos Aires", "Suedkorea": "Seoul", "Thailand": "Bangkok", "Kuba": "Havanna",
-    "Kenia": "Nairobi", "Brasilien": "Brasilia", "Indien": "Delhi",
+    "Deutschland": "Berlin",
+    "Frankreich": "Paris",
+    "Italien": "Rom",
+    "Spanien": "Madrid",
+    "Oesterreich": "Wien",
+    "Schweiz": "Bern",
+    "Polen": "Warschau",
+    "Niederlande": "Amsterdam",
+    "Belgien": "Bruessel",
+    "Portugal": "Lissabon",
+    "Griechenland": "Athen",
+    "Schweden": "Stockholm",
+    "Norwegen": "Oslo",
+    "Daenemark": "Kopenhagen",
+    "Finnland": "Helsinki",
+    "Russland": "Moskau",
+    "Japan": "Tokio",
+    "China": "Peking",
+    "USA": "Washington",
+    "Kanada": "Ottawa",
+    "Mexiko": "Mexiko-Stadt",
+    "Australien": "Canberra",
+    "Aegypten": "Kairo",
+    "Tuerkei": "Ankara",
+    "Grossbritannien": "London",
+    "Irland": "Dublin",
+    "Tschechien": "Prag",
+    "Ungarn": "Budapest",
+    "Argentinien": "Buenos Aires",
+    "Suedkorea": "Seoul",
+    "Thailand": "Bangkok",
+    "Kuba": "Havanna",
+    "Kenia": "Nairobi",
+    "Brasilien": "Brasilia",
+    "Indien": "Delhi",
 }
 WORKS = {
-    "Faust": "Goethe", "Die Verwandlung": "Kafka", "Der Prozess": "Kafka",
-    "Romeo und Julia": "Shakespeare", "Hamlet": "Shakespeare", "Die Zauberfloete": "Mozart",
-    "Die Raeuber": "Schiller", "Wilhelm Tell": "Schiller", "Buddenbrooks": "Mann",
-    "Der Steppenwolf": "Hesse", "Das Parfum": "Sueskind", "Die Blechtrommel": "Grass",
-    "Effi Briest": "Fontane", "Krieg und Frieden": "Tolstoi", "Don Quijote": "Cervantes",
+    "Faust": "Goethe",
+    "Die Verwandlung": "Kafka",
+    "Der Prozess": "Kafka",
+    "Romeo und Julia": "Shakespeare",
+    "Hamlet": "Shakespeare",
+    "Die Zauberfloete": "Mozart",
+    "Die Raeuber": "Schiller",
+    "Wilhelm Tell": "Schiller",
+    "Buddenbrooks": "Mann",
+    "Der Steppenwolf": "Hesse",
+    "Das Parfum": "Sueskind",
+    "Die Blechtrommel": "Grass",
+    "Effi Briest": "Fontane",
+    "Krieg und Frieden": "Tolstoi",
+    "Don Quijote": "Cervantes",
     "Die Odyssee": "Homer",
 }
 ELEMENTS = {
-    "Au": "Gold", "Ag": "Silber", "Fe": "Eisen", "O": "Sauerstoff", "H": "Wasserstoff",
-    "C": "Kohlenstoff", "N": "Stickstoff", "Na": "Natrium", "Cl": "Chlor", "He": "Helium",
-    "Cu": "Kupfer", "Pb": "Blei", "Sn": "Zinn", "K": "Kalium", "Ca": "Calcium",
-    "Hg": "Quecksilber", "Zn": "Zink", "U": "Uran",
+    "Au": "Gold",
+    "Ag": "Silber",
+    "Fe": "Eisen",
+    "O": "Sauerstoff",
+    "H": "Wasserstoff",
+    "C": "Kohlenstoff",
+    "N": "Stickstoff",
+    "Na": "Natrium",
+    "Cl": "Chlor",
+    "He": "Helium",
+    "Cu": "Kupfer",
+    "Pb": "Blei",
+    "Sn": "Zinn",
+    "K": "Kalium",
+    "Ca": "Calcium",
+    "Hg": "Quecksilber",
+    "Zn": "Zink",
+    "U": "Uran",
 }
 MISC = [
     ("Wie heisst der hoechste Berg der Welt?", ["everest"], "geo"),
@@ -52,7 +106,11 @@ MISC = [
     ("Wie viele Kontinente gibt es?", ["sieben", "7"], "geo"),
     ("Wie viele Bundeslaender hat Deutschland?", ["16", "sechzehn"], "geo"),
     ("Was ist die chemische Formel von Wasser?", ["h2o", "h₂o"], "science"),
-    ("Welches Gas nehmen Pflanzen fuer die Photosynthese auf?", ["kohlendioxid", "co2", "co₂"], "science"),
+    (
+        "Welches Gas nehmen Pflanzen fuer die Photosynthese auf?",
+        ["kohlendioxid", "co2", "co₂"],
+        "science",
+    ),
     ("Welches Gas atmen Menschen zum Leben ein?", ["sauerstoff"], "science"),
     ("Wie heisst die Waehrung in Japan?", ["yen"], "geo"),
     ("Wie heisst die Waehrung in den USA?", ["dollar"], "geo"),
@@ -64,9 +122,38 @@ MISC = [
     ("Welche Farbe entsteht aus Blau und Gelb?", ["gruen"], "science"),
 ]
 
-SYL = ["bra", "vor", "quel", "zar", "pli", "grom", "fendt", "mox", "tarn", "welk", "drub",
-       "skel", "yon", "krav", "pomb", "thal", "wisp", "gorn", "flim", "bos", "nurr", "kel",
-       "vant", "rho", "klin", "murr", "dax", "frell", "ston", "glubb"]
+SYL = [
+    "bra",
+    "vor",
+    "quel",
+    "zar",
+    "pli",
+    "grom",
+    "fendt",
+    "mox",
+    "tarn",
+    "welk",
+    "drub",
+    "skel",
+    "yon",
+    "krav",
+    "pomb",
+    "thal",
+    "wisp",
+    "gorn",
+    "flim",
+    "bos",
+    "nurr",
+    "kel",
+    "vant",
+    "rho",
+    "klin",
+    "murr",
+    "dax",
+    "frell",
+    "ston",
+    "glubb",
+]
 
 
 def cap(s):
@@ -95,7 +182,8 @@ def invented(rng, n):
         q = rng.choice(tmpl)()[0]
         if q in seen:
             continue
-        seen.add(q); out.append((q, None, "invented"))
+        seen.add(q)
+        out.append((q, None, "invented"))
     return out
 
 
@@ -108,7 +196,13 @@ def main():
     rng = random.Random(a.seed)
     rows = []
     for land, hs in CAPITALS.items():
-        rows.append((f"Was ist die Hauptstadt von {land}?", [hs.split('-')[0].lower(), hs.lower()], "capital"))
+        rows.append(
+            (
+                f"Was ist die Hauptstadt von {land}?",
+                [hs.split("-")[0].lower(), hs.lower()],
+                "capital",
+            )
+        )
     for work, author in WORKS.items():
         rows.append((f"Wer schrieb '{work}'?", [author.lower()], "work"))
     for sym, name in ELEMENTS.items():
@@ -116,7 +210,8 @@ def main():
     rows.extend(MISC)
     rows.extend(invented(rng, a.n_invented))
     rng.shuffle(rows)
-    p = pathlib.Path(a.out); p.parent.mkdir(parents=True, exist_ok=True)
+    p = pathlib.Path(a.out)
+    p.parent.mkdir(parents=True, exist_ok=True)
     with open(p, "w", encoding="utf-8") as f:
         for q, gold, cat in rows:
             f.write(json.dumps({"q": q, "gold": gold, "cat": cat}, ensure_ascii=False) + "\n")
@@ -124,6 +219,7 @@ def main():
     ninv = sum(1 for _, g, _ in rows if g is None)
     print(f"=== calib bank: {len(rows)} rows (facts {nfact} / invented {ninv}) -> {a.out} ===")
     from collections import Counter
+
     print("by cat:", dict(Counter(c for _, _, c in rows)))
 
 

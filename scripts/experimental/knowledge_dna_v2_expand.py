@@ -25,7 +25,6 @@ from scripts.experimental.knowledge_dna_v2 import (
     sample_entries,
 )
 
-
 COUNTRY_CAPITALS = [
     ("Deutschland", "Berlin", "Europa"),
     ("Frankreich", "Paris", "Europa"),
@@ -81,17 +80,57 @@ GERMAN_CITIES = [
 
 SCIENCE_TERMS = [
     ("Atom", "Ein Atom ist eine kleine Einheit chemischer Elemente.", "Atomkern", "Elektronen"),
-    ("Molekuel", "Ein Molekuel besteht aus zwei oder mehr verbundenen Atomen.", "Atome", "chemische Bindung"),
-    ("Zelle", "Eine Zelle ist eine grundlegende Einheit lebender Organismen.", "Zellkern", "Membran"),
+    (
+        "Molekuel",
+        "Ein Molekuel besteht aus zwei oder mehr verbundenen Atomen.",
+        "Atome",
+        "chemische Bindung",
+    ),
+    (
+        "Zelle",
+        "Eine Zelle ist eine grundlegende Einheit lebender Organismen.",
+        "Zellkern",
+        "Membran",
+    ),
     ("DNA", "DNA traegt genetische Information in Lebewesen.", "Gene", "Erbinformation"),
-    ("Protein", "Ein Protein ist ein biologisches Molekuel aus Aminosaeuren.", "Aminosaeure", "Enzym"),
-    ("Evolution", "Evolution beschreibt die Veraenderung vererbbarer Merkmale ueber Generationen.", "Mutation", "Selektion"),
+    (
+        "Protein",
+        "Ein Protein ist ein biologisches Molekuel aus Aminosaeuren.",
+        "Aminosaeure",
+        "Enzym",
+    ),
+    (
+        "Evolution",
+        "Evolution beschreibt die Veraenderung vererbbarer Merkmale ueber Generationen.",
+        "Mutation",
+        "Selektion",
+    ),
     ("Gravitation", "Gravitation ist die Anziehung zwischen Massen.", "Masse", "Schwerkraft"),
-    ("Energie", "Energie ist die Faehigkeit, Arbeit zu verrichten oder Waerme abzugeben.", "Arbeit", "Waerme"),
-    ("Magnetismus", "Magnetismus ist eine physikalische Wirkung bewegter elektrischer Ladungen.", "Magnetfeld", "Ladung"),
+    (
+        "Energie",
+        "Energie ist die Faehigkeit, Arbeit zu verrichten oder Waerme abzugeben.",
+        "Arbeit",
+        "Waerme",
+    ),
+    (
+        "Magnetismus",
+        "Magnetismus ist eine physikalische Wirkung bewegter elektrischer Ladungen.",
+        "Magnetfeld",
+        "Ladung",
+    ),
     ("Elektron", "Ein Elektron ist ein negativ geladenes Elementarteilchen.", "Ladung", "Atom"),
-    ("Oekosystem", "Ein Oekosystem besteht aus Lebewesen und ihrer Umwelt.", "Lebensraum", "Wechselwirkung"),
-    ("Klima", "Klima beschreibt typische Wetterbedingungen ueber lange Zeitraeume.", "Temperatur", "Niederschlag"),
+    (
+        "Oekosystem",
+        "Ein Oekosystem besteht aus Lebewesen und ihrer Umwelt.",
+        "Lebensraum",
+        "Wechselwirkung",
+    ),
+    (
+        "Klima",
+        "Klima beschreibt typische Wetterbedingungen ueber lange Zeitraeume.",
+        "Temperatur",
+        "Niederschlag",
+    ),
 ]
 
 
@@ -102,7 +141,11 @@ CODE_TERMS = [
     ("Dictionary", "Ein Dictionary speichert Werte unter Schluesseln.", "data = {'name': 'Ada'}"),
     ("Bedingung", "Eine Bedingung fuehrt Code nur bei erfuellter Voraussetzung aus.", "if x > 0:"),
     ("Klasse", "Eine Klasse beschreibt Bauplan und Verhalten von Objekten.", "class User:"),
-    ("Methode", "Eine Methode ist eine Funktion, die zu einem Objekt oder einer Klasse gehoert.", "user.save()"),
+    (
+        "Methode",
+        "Eine Methode ist eine Funktion, die zu einem Objekt oder einer Klasse gehoert.",
+        "user.save()",
+    ),
     ("Import", "Ein Import bindet Code aus einem Modul ein.", "import math"),
     ("Exception", "Eine Exception beschreibt einen Fehlerzustand im Programmablauf.", "try:"),
     ("JSON", "JSON ist ein textbasiertes Format fuer strukturierte Daten.", '{"ok": true}'),
@@ -122,10 +165,14 @@ def country_entries() -> list[KnowledgeDNAEntry]:
                 ],
                 examples=[f"Frage: Was ist die Hauptstadt von {country}? Antwort: {capital}."],
                 related=[country, capital, continent],
-                counterfacts=[f"Die Hauptstadt von {country} ist nicht Berlin, ausser bei Deutschland."],
+                counterfacts=[
+                    f"Die Hauptstadt von {country} ist nicht Berlin, ausser bei Deutschland."
+                ],
                 source="generated_country_capitals_seed",
                 probes=[
-                    Probe(f"Was ist die Hauptstadt von {country}?", f"{capital}.", "fact", [capital]),
+                    Probe(
+                        f"Was ist die Hauptstadt von {country}?", f"{capital}.", "fact", [capital]
+                    ),
                     Probe(f"Liegt {country} in {continent}?", "Ja.", "fact", ["Ja"]),
                 ],
             )
@@ -143,10 +190,14 @@ def city_entries() -> list[KnowledgeDNAEntry]:
                 facts=[f"{city} ist {role}.", f"{city} liegt in Deutschland."],
                 examples=[f"{city} kann in deutschen Geografiefragen als Stadt erkannt werden."],
                 related=[state, "Deutschland"],
-                counterfacts=[f"{city} ist nicht dasselbe wie Berlin, ausser wenn der Begriff Berlin selbst ist."],
+                counterfacts=[
+                    f"{city} ist nicht dasselbe wie Berlin, ausser wenn der Begriff Berlin selbst ist."
+                ],
                 source="generated_german_cities_seed",
                 probes=[
-                    Probe(f"In welchem Land liegt {city}?", "Deutschland.", "fact", ["Deutschland"]),
+                    Probe(
+                        f"In welchem Land liegt {city}?", "Deutschland.", "fact", ["Deutschland"]
+                    ),
                     Probe(f"Ist {city} eine deutsche Stadt?", "Ja.", "fact", ["Ja"]),
                 ],
             )
@@ -170,7 +221,13 @@ def arithmetic_entries(limit: int) -> list[KnowledgeDNAEntry]:
                     source="generated_arithmetic_seed",
                     probes=[
                         Probe(f"Rechne {a} + {b}.", f"{s}.", "fact", [str(s)], [str(s + 1)]),
-                        Probe(f"Ist {a} + {b} gleich {s + 1}?", f"Nein. {a} + {b} ergibt {s}.", "counterfact", ["Nein", str(s)], ["Ja."]),
+                        Probe(
+                            f"Ist {a} + {b} gleich {s + 1}?",
+                            f"Nein. {a} + {b} ergibt {s}.",
+                            "counterfact",
+                            ["Nein", str(s)],
+                            ["Ja."],
+                        ),
                     ],
                 )
             )
@@ -181,8 +238,13 @@ def arithmetic_entries(limit: int) -> list[KnowledgeDNAEntry]:
                 KnowledgeDNAEntry(
                     term=f"Multiplikation {a} mal {b}",
                     definition=f"Die Multiplikation {a} mal {b} ergibt {p}.",
-                    facts=[f"{a} * {b} = {p}.", "Multiplikation kann als wiederholte Addition verstanden werden."],
-                    examples=[f"{a} Gruppen mit jeweils {b} Elementen enthalten zusammen {p} Elemente."],
+                    facts=[
+                        f"{a} * {b} = {p}.",
+                        "Multiplikation kann als wiederholte Addition verstanden werden.",
+                    ],
+                    examples=[
+                        f"{a} Gruppen mit jeweils {b} Elementen enthalten zusammen {p} Elemente."
+                    ],
                     related=["Multiplikation", "Produkt", "Mathematik"],
                     counterfacts=[f"{a} * {b} ergibt nicht {p + 1}."],
                     source="generated_arithmetic_seed",
@@ -201,7 +263,10 @@ def science_entries() -> list[KnowledgeDNAEntry]:
             KnowledgeDNAEntry(
                 term=term,
                 definition=definition,
-                facts=[f"{term} ist ein Begriff aus Naturwissenschaft oder Technik.", f"{term} steht in Beziehung zu {rel_a} und {rel_b}."],
+                facts=[
+                    f"{term} ist ein Begriff aus Naturwissenschaft oder Technik.",
+                    f"{term} steht in Beziehung zu {rel_a} und {rel_b}.",
+                ],
                 examples=[f"Der Begriff {term} kann in einer kurzen Definition erklaert werden."],
                 related=[rel_a, rel_b],
                 counterfacts=[f"{term} ist kein beliebiger Ortsname."],
@@ -227,7 +292,12 @@ def code_entries() -> list[KnowledgeDNAEntry]:
                 counterfacts=[f"{term} ist keine deutsche Stadt."],
                 source="generated_code_seed",
                 probes=[
-                    Probe(f"Was ist eine {term} in der Programmierung?", definition, "definition", [term]),
+                    Probe(
+                        f"Was ist eine {term} in der Programmierung?",
+                        definition,
+                        "definition",
+                        [term],
+                    ),
                 ],
             )
         )
@@ -254,7 +324,9 @@ def build_expanded_entries(min_entries: int) -> list[KnowledgeDNAEntry]:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", type=Path, required=True)
-    parser.add_argument("--tokenizer", type=Path, default=Path("tokenizer/helix_v2_tokenizer.model"))
+    parser.add_argument(
+        "--tokenizer", type=Path, default=Path("tokenizer/helix_v2_tokenizer.model")
+    )
     parser.add_argument("--entries", type=int, default=750)
     parser.add_argument("--seed", type=int, default=20260514)
     args = parser.parse_args()

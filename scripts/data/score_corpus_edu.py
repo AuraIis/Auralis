@@ -13,6 +13,7 @@ keep rate, and mean predicted score.
 
 Big files take a while (GPU-bound on the embedder). Use --limit to dry-run a slice.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -43,31 +44,56 @@ def clip_excerpt(text: str, cap: int) -> tuple[str, bool]:
         return text, False
     head = text[:cap]
     sp = head.rfind(" ")
-    if sp >= cap - 80:   # only back off to the last space if we lose little
+    if sp >= cap - 80:  # only back off to the last space if we lose little
         head = head[:sp]
     return head.rstrip() + " […]", True
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument("--input", type=Path, required=True)
     ap.add_argument("--output", type=Path, required=True, help="kept docs (>= threshold)")
-    ap.add_argument("--artifact", type=Path, required=True, help="edu_clf.pt from train_edu_classifier.py")
+    ap.add_argument(
+        "--artifact", type=Path, required=True, help="edu_clf.pt from train_edu_classifier.py"
+    )
     ap.add_argument("--threshold", type=float, default=None, help="override artifact threshold")
-    ap.add_argument("--min-length", type=int, default=200, help="skip lines shorter than this (chars)")
-    ap.add_argument("--max-chars", type=int, default=2000, help="truncate before embedding (match training)")
+    ap.add_argument(
+        "--min-length", type=int, default=200, help="skip lines shorter than this (chars)"
+    )
+    ap.add_argument(
+        "--max-chars", type=int, default=2000, help="truncate before embedding (match training)"
+    )
     ap.add_argument("--batch-size", type=int, default=256)
     ap.add_argument("--limit", type=int, default=0, help="stop after N scored docs (0 = all)")
-    ap.add_argument("--skip-lines", type=int, default=0,
-                    help="skip the first N raw lines (probe a deeper, less position-biased slice)")
-    ap.add_argument("--scores-jsonl", type=Path, default=None,
-                    help="optional: write {len, score} per scored doc for inspection")
-    ap.add_argument("--review-pool", type=Path, default=None,
-                    help="optional: write borderline docs {text, model_score, source} for human "
-                         "review in the data-game app (active learning on the decision boundary)")
-    ap.add_argument("--review-band", type=float, nargs=2, default=(1.5, 3.0), metavar=("LO", "HI"),
-                    help="predicted-score band counted as 'borderline' for the review pool")
+    ap.add_argument(
+        "--skip-lines",
+        type=int,
+        default=0,
+        help="skip the first N raw lines (probe a deeper, less position-biased slice)",
+    )
+    ap.add_argument(
+        "--scores-jsonl",
+        type=Path,
+        default=None,
+        help="optional: write {len, score} per scored doc for inspection",
+    )
+    ap.add_argument(
+        "--review-pool",
+        type=Path,
+        default=None,
+        help="optional: write borderline docs {text, model_score, source} for human "
+        "review in the data-game app (active learning on the decision boundary)",
+    )
+    ap.add_argument(
+        "--review-band",
+        type=float,
+        nargs=2,
+        default=(1.5, 3.0),
+        metavar=("LO", "HI"),
+        help="predicted-score band counted as 'borderline' for the review pool",
+    )
     ap.add_argument("--review-max", type=int, default=3000, help="cap on review-pool docs")
     args = ap.parse_args()
 
@@ -75,8 +101,10 @@ def main() -> int:
     w = art["w"].float()
     threshold = args.threshold if args.threshold is not None else float(art["threshold"])
     emb = EduEmbedder(art["emb_model"], art["prefix"], max_length=art["max_length"])
-    print(f"artifact: emb={art['emb_model']} dim={art['dim']} threshold={threshold} "
-          f"(val_metrics={art.get('val_metrics')})")
+    print(
+        f"artifact: emb={art['emb_model']} dim={art['dim']} threshold={threshold} "
+        f"(val_metrics={art.get('val_metrics')})"
+    )
 
     hist = {s: 0 for s in range(6)}
     lines_in = kept = scored = 0
@@ -93,8 +121,8 @@ def main() -> int:
     r_lo, r_hi = args.review_band
     review_written = 0
 
-    buf_orig: list[str] = []   # original lines (written verbatim if kept)
-    buf_text: list[str] = []   # truncated text fed to the embedder
+    buf_orig: list[str] = []  # original lines (written verbatim if kept)
+    buf_text: list[str] = []  # truncated text fed to the embedder
 
     def flush() -> None:
         nonlocal kept, scored, score_sum, review_written
@@ -108,14 +136,22 @@ def main() -> int:
             hist[int(round(pr))] = hist.get(int(round(pr)), 0) + 1
             if sc_fh:
                 sc_fh.write(json.dumps({"len": len(orig), "score": round(pr, 3)}) + "\n")
-            if (review_fh is not None and review_written < args.review_max
-                    and r_lo <= pr <= r_hi):
+            if review_fh is not None and review_written < args.review_max and r_lo <= pr <= r_hi:
                 excerpt, was_trunc = clip_excerpt(orig, args.max_chars)
-                review_fh.write(json.dumps(
-                    {"text": excerpt, "model_score": round(pr, 3),
-                     "truncated": was_trunc, "orig_len": len(orig),
-                     "source": args.input.name, "source_line": scored},
-                    ensure_ascii=False) + "\n")
+                review_fh.write(
+                    json.dumps(
+                        {
+                            "text": excerpt,
+                            "model_score": round(pr, 3),
+                            "truncated": was_trunc,
+                            "orig_len": len(orig),
+                            "source": args.input.name,
+                            "source_line": scored,
+                        },
+                        ensure_ascii=False,
+                    )
+                    + "\n"
+                )
                 review_written += 1
             if pr >= threshold:
                 out_fh.write(orig + "\n")
@@ -140,8 +176,11 @@ def main() -> int:
                     flush()
                     if scored % (args.batch_size * 20) == 0:
                         rate = scored / max(1e-9, time.monotonic() - t0)
-                        print(f"  scored {scored} | kept {kept} ({100*kept/max(1,scored):.1f}%) "
-                              f"| {rate:.0f} docs/s", flush=True)
+                        print(
+                            f"  scored {scored} | kept {kept} ({100 * kept / max(1, scored):.1f}%) "
+                            f"| {rate:.0f} docs/s",
+                            flush=True,
+                        )
                 if args.limit and scored + len(buf_text) >= args.limit:
                     break
             flush()
@@ -155,12 +194,18 @@ def main() -> int:
     keep_rate = kept / max(1, scored)
     mean_score = score_sum / max(1, scored)
     manifest = {
-        "input": str(args.input), "output": str(args.output),
-        "artifact": str(args.artifact), "threshold": threshold,
-        "lines_in": lines_in, "scored": scored, "kept": kept,
-        "keep_rate": round(keep_rate, 4), "mean_score": round(mean_score, 4),
+        "input": str(args.input),
+        "output": str(args.output),
+        "artifact": str(args.artifact),
+        "threshold": threshold,
+        "lines_in": lines_in,
+        "scored": scored,
+        "kept": kept,
+        "keep_rate": round(keep_rate, 4),
+        "mean_score": round(mean_score, 4),
         "review_pool_written": review_written,
-        "score_hist": hist, "elapsed_s": round(time.monotonic() - t0, 1),
+        "score_hist": hist,
+        "elapsed_s": round(time.monotonic() - t0, 1),
     }
     man_path = args.output.with_suffix(args.output.suffix + ".manifest.json")
     man_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")

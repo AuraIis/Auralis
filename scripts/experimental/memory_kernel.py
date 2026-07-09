@@ -15,12 +15,9 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-
 MEMORY_VERSION = "auralis-memory-v0.1"
 
-PATH_RE = re.compile(
-    r"(?P<path>(?:[A-Za-z]:\\[^\s\"']+)|(?:/mnt/[^\s\"']+)|(?:\\\\[^\s\"']+))"
-)
+PATH_RE = re.compile(r"(?P<path>(?:[A-Za-z]:\\[^\s\"']+)|(?:/mnt/[^\s\"']+)|(?:\\\\[^\s\"']+))")
 HARDWARE_RE = re.compile(
     r"\b("
     r"RTX|NVIDIA|AMD|Ryzen|5950X|3090|5090|GPU|VRAM|Unraid|BITBASTION|"
@@ -136,9 +133,7 @@ class MemoryExtractor:
                 memories.append(memory)
         return memories
 
-    def _extract_from_message(
-        self, idx: int, msg: ChatMessage, content: str
-    ) -> list[Memory]:
+    def _extract_from_message(self, idx: int, msg: ChatMessage, content: str) -> list[Memory]:
         source = {
             "chat_id": self.chat_id,
             "message_index": str(idx),
@@ -348,9 +343,7 @@ def write_report(path: Path, memories: list[Memory], pairs: list[dict[str, str]]
     lines.extend(f"- {k}: {v}" for k, v in sorted(counts.items()))
     lines.extend(["", "## Sample Memories", ""])
     for memory in memories[:8]:
-        lines.append(
-            f"- `{memory.type}` train={memory.train_into_adapter}: {memory.content}"
-        )
+        lines.append(f"- `{memory.type}` train={memory.train_into_adapter}: {memory.content}")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 

@@ -14,15 +14,16 @@ Run (from inside the container):
     python scripts/data/download_qa_seeds.py --source msmarco
     python scripts/data/download_qa_seeds.py --source all
 """
+
 from __future__ import annotations
 
 import argparse
 import json
 import sys
 import time
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Iterable
 
 from tqdm import tqdm
 
@@ -65,7 +66,7 @@ def _squad_records(ex: dict) -> Iterable[dict]:
         "question": ex.get("question", ""),
         "answer": answer_texts[0] if has_answer else "",
         "all_answers": answer_texts,
-        "is_impossible": not has_answer,           # SQuAD v2 has unanswerable Qs
+        "is_impossible": not has_answer,  # SQuAD v2 has unanswerable Qs
     }
 
 
@@ -120,8 +121,8 @@ SOURCES = {
         "config": None,
         "split": "train",
         "fn": _squad_records,
-        "max_records": None,                         # ~130k train, all of it
-        "streaming": False,                          # SQuAD is small, fits in RAM
+        "max_records": None,  # ~130k train, all of it
+        "streaming": False,  # SQuAD is small, fits in RAM
         "notes": "SQuAD v2 train split. Includes ~50k unanswerable (is_impossible).",
     },
     "msmarco": {
@@ -130,8 +131,8 @@ SOURCES = {
         "config": "v2.1",
         "split": "train",
         "fn": _msmarco_records,
-        "max_records": 200_000,                      # cap at 200k for speed
-        "streaming": True,                           # MS MARCO train is ~10 GB
+        "max_records": 200_000,  # cap at 200k for speed
+        "streaming": True,  # MS MARCO train is ~10 GB
         "notes": "MS MARCO v2.1 train, capped to 200k records with answers.",
     },
 }
@@ -156,13 +157,16 @@ def _download_one(spec: dict, out_dir: Path) -> DownloadManifest:
     max_records = spec.get("max_records")
 
     print(f"\n=== [{spec['source']}] -> {out_file} ===", flush=True)
-    print(f"  hf: {spec['hf_dataset']} (config={spec['config']}, split={spec['split']})", flush=True)
+    print(
+        f"  hf: {spec['hf_dataset']} (config={spec['config']}, split={spec['split']})", flush=True
+    )
     print(f"  max: {max_records or 'all'}  streaming: {spec.get('streaming', True)}", flush=True)
 
     try:
-        ds = _open_hf(spec["hf_dataset"], spec["config"], spec["split"],
-                      streaming=spec.get("streaming", True))
-    except Exception as e:  # noqa: BLE001
+        ds = _open_hf(
+            spec["hf_dataset"], spec["config"], spec["split"], streaming=spec.get("streaming", True)
+        )
+    except Exception as e:
         manifest.notes.append(f"LOAD FAILED: {type(e).__name__}: {e}")
         manifest.finished_at = now_iso()
         manifest.elapsed_seconds = round(time.time() - t0, 1)
@@ -191,18 +195,21 @@ def _download_one(spec: dict, out_dir: Path) -> DownloadManifest:
         json.dumps(asdict(manifest), indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
-    print(f"  done: {manifest.records_written} records, "
-          f"{manifest.bytes_written / 1e6:.1f} MB, "
-          f"{manifest.elapsed_seconds:.0f}s", flush=True)
+    print(
+        f"  done: {manifest.records_written} records, "
+        f"{manifest.bytes_written / 1e6:.1f} MB, "
+        f"{manifest.elapsed_seconds:.0f}s",
+        flush=True,
+    )
     print(f"  manifest: {manifest_path}", flush=True)
     return manifest
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description=__doc__,
-                                formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--source", required=True,
-                   choices=list(SOURCES) + ["all"])
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    p.add_argument("--source", required=True, choices=list(SOURCES) + ["all"])
     p.add_argument("--output-dir", type=Path, default=DEFAULT_OUT_DIR)
     args = p.parse_args()
 

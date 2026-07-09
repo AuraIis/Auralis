@@ -8,19 +8,32 @@ Why: full fine-tuning on the 0.9B catastrophically forgets prior skills (tool-us
 facts) within ~50 steps. A frozen base + small adapter cannot overwrite the base,
 and the adapter strength is tunable at inference.
 """
+
 from __future__ import annotations
+
 import math
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-DEFAULT_TARGETS = ("q_proj", "k_proj", "v_proj", "g_proj", "out_proj",
-                   "in_proj", "gate_proj", "up_proj", "down_proj")
+DEFAULT_TARGETS = (
+    "q_proj",
+    "k_proj",
+    "v_proj",
+    "g_proj",
+    "out_proj",
+    "in_proj",
+    "gate_proj",
+    "up_proj",
+    "down_proj",
+)
 ADAPTER_KEYS = ("lora_A", "lora_B", "magnitude")
 
 
 class LoRALinear(nn.Module):
     """y = W0 x + (alpha/r) * (B A) x   ·   W0 frozen, B init 0 -> starts as identity."""
+
     def __init__(self, base: nn.Linear, r: int, alpha: float, dropout: float = 0.0):
         super().__init__()
         self.base = base
@@ -43,6 +56,7 @@ class LoRALinear(nn.Module):
 class DoRALinear(nn.Module):
     """Weight-decomposed LoRA. W = W0 + (alpha/r) B A ; y = m * (W / ||W||_row) x + b.
     m (per output row) inits to ||W0||_row -> starts as exact identity."""
+
     def __init__(self, base: nn.Linear, r: int, alpha: float, dropout: float = 0.0):
         super().__init__()
         self.base = base
@@ -75,9 +89,15 @@ def _parent(model: nn.Module, dotted: str):
     return parent, parts[-1]
 
 
-def inject_adapters(model: nn.Module, targets=DEFAULT_TARGETS, r: int = 16,
-                    alpha: float = 32.0, dropout: float = 0.0, kind: str = "dora",
-                    exclude=("inner",)) -> list[str]:
+def inject_adapters(
+    model: nn.Module,
+    targets=DEFAULT_TARGETS,
+    r: int = 16,
+    alpha: float = 32.0,
+    dropout: float = 0.0,
+    kind: str = "dora",
+    exclude=("inner",),
+) -> list[str]:
     """Replace matching nn.Linear modules with LoRA/DoRA wrappers in place.
 
     `exclude`: skip any module whose full path contains one of these substrings.
@@ -110,8 +130,11 @@ def freeze_base(model: nn.Module) -> tuple[int, int]:
 
 
 def adapter_state_dict(model: nn.Module) -> dict:
-    return {n: p.detach().cpu() for n, p in model.named_parameters()
-            if any(k in n for k in ADAPTER_KEYS)}
+    return {
+        n: p.detach().cpu()
+        for n, p in model.named_parameters()
+        if any(k in n for k in ADAPTER_KEYS)
+    }
 
 
 def load_adapter_state_dict(model: nn.Module, sd: dict):
@@ -150,6 +173,7 @@ def enable_input_require_grads(model: nn.Module):
 
 def _selftest():
     """Lightweight plumbing test on a mock model (no big model needed)."""
+
     class Mock(nn.Module):
         def __init__(s):
             super().__init__()
@@ -174,7 +198,9 @@ def _selftest():
         sd = adapter_state_dict(m)
         assert all(any(k in n for k in ADAPTER_KEYS) for n in sd)
         load_adapter_state_dict(m, sd)
-        print(f"  [{kind}] OK  injected={inj}  trainable={train}/{total} ({100*train/total:.1f}%)  adapter-keys={len(sd)}")
+        print(
+            f"  [{kind}] OK  injected={inj}  trainable={train}/{total} ({100 * train / total:.1f}%)  adapter-keys={len(sd)}"
+        )
     print("=== LoRA/DoRA SELFTEST PASS ===")
 
 

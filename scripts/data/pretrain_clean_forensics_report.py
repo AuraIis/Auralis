@@ -27,18 +27,38 @@ except Exception:  # pragma: no cover
     spm = None
 
 
-HTML_RE = re.compile(r"<\s*/?\s*(html|body|div|script|style|table|iframe|a)\b|&(?:amp|gt|lt|quot|#x?[0-9a-f]+);", re.I)
-CHAT_RE = re.compile(r"<\|(?:im_start|im_end|endoftext|user|assistant|system)\|>|_end_of_the_data|</?think>", re.I)
+HTML_RE = re.compile(
+    r"<\s*/?\s*(html|body|div|script|style|table|iframe|a)\b|&(?:amp|gt|lt|quot|#x?[0-9a-f]+);",
+    re.I,
+)
+CHAT_RE = re.compile(
+    r"<\|(?:im_start|im_end|endoftext|user|assistant|system)\|>|_end_of_the_data|</?think>", re.I
+)
 URL_RE = re.compile(r"https?://|www\.", re.I)
-ADULT_CASINO_RE = re.compile(r"\b(?:onlyfans|porn|xxx|casino|jackpot|free spins|sportwetten|sexkontakte)\b", re.I)
-SHOP_RE = re.compile(r"\b(?:warenkorb|checkout|rabattcode|gutschein|trusted shops|lieferzeit|versandkosten)\b", re.I)
-TOC_RE = re.compile(r"\b(?:inhaltsverzeichnis|table of contents|seite|page)\b|\.{3,}\s*\d{1,5}", re.I)
+ADULT_CASINO_RE = re.compile(
+    r"\b(?:onlyfans|porn|xxx|casino|jackpot|free spins|sportwetten|sexkontakte)\b", re.I
+)
+SHOP_RE = re.compile(
+    r"\b(?:warenkorb|checkout|rabattcode|gutschein|trusted shops|lieferzeit|versandkosten)\b", re.I
+)
+TOC_RE = re.compile(
+    r"\b(?:inhaltsverzeichnis|table of contents|seite|page)\b|\.{3,}\s*\d{1,5}", re.I
+)
 OCR_RE = re.compile(r"Ã.|�|Å¿|\b[a-zA-ZÄÖÜäöüß](?:\s+[a-zA-ZÄÖÜäöüß]){4,}\b")
-MATH_RE = re.compile(r"\b(?:mathematik|problem:|loesung:|lösung:|beweis|theorem|lemma|integral|gleichung)\b|[=+\-*/^]{4,}", re.I)
+MATH_RE = re.compile(
+    r"\b(?:mathematik|problem:|loesung:|lösung:|beweis|theorem|lemma|integral|gleichung)\b|[=+\-*/^]{4,}",
+    re.I,
+)
 QA_RE = re.compile(r"\b(?:frage:|antwort:|question:|answer:|instruction:|response:)\b", re.I)
-CODE_RE = re.compile(r"\b(?:def|class|import|return|function|const|let|var|public static|#include)\b|[{};]{4,}", re.I)
-GERMAN_RE = re.compile(r"\b(?:der|die|das|und|ist|nicht|eine|einer|mit|für|ueber|über|werden|wurde)\b|[äöüÄÖÜß]", re.I)
-ENGLISH_RE = re.compile(r"\b(?:the|and|that|with|this|from|were|would|should|because|there)\b", re.I)
+CODE_RE = re.compile(
+    r"\b(?:def|class|import|return|function|const|let|var|public static|#include)\b|[{};]{4,}", re.I
+)
+GERMAN_RE = re.compile(
+    r"\b(?:der|die|das|und|ist|nicht|eine|einer|mit|für|ueber|über|werden|wurde)\b|[äöüÄÖÜß]", re.I
+)
+ENGLISH_RE = re.compile(
+    r"\b(?:the|and|that|with|this|from|were|would|should|because|there)\b", re.I
+)
 
 
 def pct(value: int | float, total: int | float) -> float:
@@ -135,7 +155,9 @@ def token_length_stats(samples: list[str], tokenizer: Path | None) -> dict:
         "sample_avg_tokens_per_doc": round(statistics.mean(lengths), 3),
         "sample_median_tokens_per_doc": round(statistics.median(lengths), 3),
         "sample_p05_tokens": round(sorted(lengths)[max(0, int(len(lengths) * 0.05) - 1)], 3),
-        "sample_p95_tokens": round(sorted(lengths)[min(len(lengths) - 1, int(len(lengths) * 0.95))], 3),
+        "sample_p95_tokens": round(
+            sorted(lengths)[min(len(lengths) - 1, int(len(lengths) * 0.95))], 3
+        ),
         "sample_docs_lt_64": sum(1 for x in lengths if x < 64),
         "sample_docs_lt_64_pct": pct(sum(1 for x in lengths if x < 64), len(lengths)),
         "sample_docs_lt_100": sum(1 for x in lengths if x < 100),
@@ -182,7 +204,9 @@ def source_manifest(path: Path) -> dict:
     }
 
 
-def analyze_source(path: Path, *, tokenizer: Path | None, samples_per_source: int, seed: int, full_scan: bool) -> dict:
+def analyze_source(
+    path: Path, *, tokenizer: Path | None, samples_per_source: int, seed: int, full_scan: bool
+) -> dict:
     manifest = source_manifest(path)
     samples = random_line_samples(path, samples_per_source, seed)
     domain_counts = Counter()
@@ -244,14 +268,20 @@ def markdown(results: dict) -> str:
         "|---|---:|---:|---:|---:|---:|---|---|",
     ]
     for src in results["sources"]:
-        flags = ", ".join(f"{k}:{v}" for k, v in (src.get("sample_flag_counts") or {}).items()) or "-"
-        domains = ", ".join(f"{k}:{v}" for k, v in (src.get("sample_domain_counts") or {}).items()) or "-"
+        flags = (
+            ", ".join(f"{k}:{v}" for k, v in (src.get("sample_flag_counts") or {}).items()) or "-"
+        )
+        domains = (
+            ", ".join(f"{k}:{v}" for k, v in (src.get("sample_domain_counts") or {}).items()) or "-"
+        )
         lines.append(
             "| {name} | {docs} | {gb:.2f} | {tokdoc} | {lt64}% | {lt100}% | {domains} | {flags} |".format(
                 name=src["name"],
                 docs=f"{src.get('docs'):,}" if isinstance(src.get("docs"), int) else "-",
                 gb=(src.get("bytes_written") or 0) / (1024**3),
-                tokdoc=src.get("exact_avg_tokens_per_doc", src.get("sample_avg_tokens_per_doc", "-")),
+                tokdoc=src.get(
+                    "exact_avg_tokens_per_doc", src.get("sample_avg_tokens_per_doc", "-")
+                ),
                 lt64=src.get("exact_docs_lt_64_pct", src.get("sample_docs_lt_64_pct", "-")),
                 lt100=src.get("exact_docs_lt_100_pct", src.get("sample_docs_lt_100_pct", "-")),
                 domains=domains,
@@ -299,14 +329,16 @@ def main() -> None:
         for idx, path in enumerate(files)
     ]
     results = {
-        "generated_at": _dt.datetime.now(_dt.timezone.utc).isoformat(),
+        "generated_at": _dt.datetime.now(_dt.UTC).isoformat(),
         "clean_dir": str(args.clean_dir),
         "samples_per_source": args.samples_per_source,
         "full_token_scan": args.full_token_scan,
         "sources": sources,
         "gate_notes": gate_notes(sources, args.sample_lt100_warn),
     }
-    (args.output_dir / "results.json").write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8")
+    (args.output_dir / "results.json").write_text(
+        json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     (args.output_dir / "report.md").write_text(markdown(results), encoding="utf-8")
     print(f"wrote {args.output_dir / 'report.md'}")
 

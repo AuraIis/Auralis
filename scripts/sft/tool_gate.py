@@ -11,59 +11,116 @@ NON-MATH probes (expect NO tool-call):
 
 Composite score = correct_rate - false_tool_rate  (high math recall, no false calls).
 Builds the model ONCE and swaps checkpoint weights -> compares many ckpts fast."""
-import os, sys, argparse, pathlib, random
+
+import argparse
+import os
+import pathlib
+import random
+import sys
 from collections import defaultdict
 
 REPO = pathlib.Path("/workspace/v2data")
 for p in (REPO / "scripts/sft", REPO, REPO / "src"):
     sys.path.insert(0, str(p))
 os.environ.setdefault("AURALIS_USE_MAMBA_KERNEL", "1")
-from tool_harness import safe_calc, extract_code, gen_until, run_with_tools, TOOL_OPEN, TOOL_CLOSE, RES_OPEN  # noqa
 import gen_tool_traces as G  # noqa
+from tool_harness import (
+    RES_OPEN,
+    TOOL_CLOSE,
+    TOOL_OPEN,
+    extract_code,
+    gen_until,
+    run_with_tools,
+    safe_calc,
+)
 
 SYS = "Du bist Auralis, ein hilfreicher, ehrlicher KI-Assistent."
 NONMATH = [
     # --- Fakten (DE) ---
-    "Was ist die Hauptstadt von Oesterreich?", "Was ist die Hauptstadt von Italien?",
-    "Was ist die Hauptstadt von Frankreich?", "Was ist die Hauptstadt von Spanien?",
-    "Was ist die Hauptstadt von Deutschland?", "Wer schrieb Faust?", "Wer malte die Mona Lisa?",
-    "Wer war Albert Einstein?", "Was ist die Donau?", "Was ist Photosynthese?",
-    "Welche Farbe hat der Himmel?", "Was ist ein Saeugetier?", "Was ist die Hauptstadt von Polen?",
+    "Was ist die Hauptstadt von Oesterreich?",
+    "Was ist die Hauptstadt von Italien?",
+    "Was ist die Hauptstadt von Frankreich?",
+    "Was ist die Hauptstadt von Spanien?",
+    "Was ist die Hauptstadt von Deutschland?",
+    "Wer schrieb Faust?",
+    "Wer malte die Mona Lisa?",
+    "Wer war Albert Einstein?",
+    "Was ist die Donau?",
+    "Was ist Photosynthese?",
+    "Welche Farbe hat der Himmel?",
+    "Was ist ein Saeugetier?",
+    "Was ist die Hauptstadt von Polen?",
     # --- Ja/Nein ---
-    "Ist Pluto ein Planet?", "Ist die Erde flach?", "Ist Berlin eine Stadt?",
-    "Ist ein Wal ein Fisch?", "Ist Gold ein Metall?", "Ist die Sonne ein Stern?",
-    "Kann ein Pinguin fliegen?", "Ist Wasser bei Zimmertemperatur fluessig?",
+    "Ist Pluto ein Planet?",
+    "Ist die Erde flach?",
+    "Ist Berlin eine Stadt?",
+    "Ist ein Wal ein Fisch?",
+    "Ist Gold ein Metall?",
+    "Ist die Sonne ein Stern?",
+    "Kann ein Pinguin fliegen?",
+    "Ist Wasser bei Zimmertemperatur fluessig?",
     # --- Erklaerfragen ---
-    "Erklaere kurz, was ein Vulkan ist.", "Erklaere kurz, was Wasser ist.",
-    "Erklaere kurz, wie ein Regenbogen entsteht.", "Erklaere kurz, was ein Computer ist.",
-    "Erklaere kurz, was Demokratie bedeutet.", "Warum muss man Zaehne putzen?",
-    "Warum ist der Himmel blau?", "Wie funktioniert ein Fahrrad grob?",
+    "Erklaere kurz, was ein Vulkan ist.",
+    "Erklaere kurz, was Wasser ist.",
+    "Erklaere kurz, wie ein Regenbogen entsteht.",
+    "Erklaere kurz, was ein Computer ist.",
+    "Erklaere kurz, was Demokratie bedeutet.",
+    "Warum muss man Zaehne putzen?",
+    "Warum ist der Himmel blau?",
+    "Wie funktioniert ein Fahrrad grob?",
     # --- Alltag ---
-    "Wie kocht man Reis?", "Was kann man bei Regen drinnen machen?", "Wie pflanzt man einen Baum?",
-    "Was zieht man im Winter an?", "Wie haelt man sich gesund?",
+    "Wie kocht man Reis?",
+    "Was kann man bei Regen drinnen machen?",
+    "Wie pflanzt man einen Baum?",
+    "Was zieht man im Winter an?",
+    "Wie haelt man sich gesund?",
     # --- numerisch, aber KEINE Rechnung (darf KEIN Tool ausloesen) ---
-    "Wie viele Bundeslaender hat Deutschland?", "Wie viele Planeten hat unser Sonnensystem?",
-    "Wie viele Kontinente gibt es?", "In welchem Jahr fiel die Berliner Mauer?",
+    "Wie viele Bundeslaender hat Deutschland?",
+    "Wie viele Planeten hat unser Sonnensystem?",
+    "Wie viele Kontinente gibt es?",
+    "In welchem Jahr fiel die Berliner Mauer?",
     "Wie viele Beine hat eine Spinne?",
     # --- English ---
-    "What is the capital of Spain?", "What is the capital of Japan?",
-    "Who wrote Romeo and Juliet?", "What is a volcano?", "Is the moon a planet?",
-    "Why is the sky blue?", "How do you boil an egg?", "What is gravity?",
-    "Is a tomato a fruit?", "Explain briefly what water is.",
-    "Who painted the Mona Lisa?", "What is the largest ocean?",
+    "What is the capital of Spain?",
+    "What is the capital of Japan?",
+    "Who wrote Romeo and Juliet?",
+    "What is a volcano?",
+    "Is the moon a planet?",
+    "Why is the sky blue?",
+    "How do you boil an egg?",
+    "What is gravity?",
+    "Is a tomato a fruit?",
+    "Explain briefly what water is.",
+    "Who painted the Mona Lisa?",
+    "What is the largest ocean?",
 ]
 
 
 BUCKET = {
-    "g_add": "simple", "g_sub": "simple", "g_mul": "simple", "g_div": "simple",
-    "g_square": "simple", "g_sqrt": "simple",
-    "g_percent": "percent", "g_discount_price": "percent", "g_discount_amount": "percent",
+    "g_add": "simple",
+    "g_sub": "simple",
+    "g_mul": "simple",
+    "g_div": "simple",
+    "g_square": "simple",
+    "g_sqrt": "simple",
+    "g_percent": "percent",
+    "g_discount_price": "percent",
+    "g_discount_amount": "percent",
     "g_markup_price": "percent",
-    "g_hours_min": "time_unit", "g_days_hours": "time_unit", "g_min_sec": "time_unit", "g_km_m": "time_unit",
-    "g_speed_dist": "speed", "g_dist_time": "speed",
-    "g_word_total": "word", "g_word_change": "word", "g_price_total": "word",
-    "g_recipe_scale": "word", "g_fraction": "word", "g_avg": "word",
-    "g_en_mul": "english", "g_en_pct": "english",
+    "g_hours_min": "time_unit",
+    "g_days_hours": "time_unit",
+    "g_min_sec": "time_unit",
+    "g_km_m": "time_unit",
+    "g_speed_dist": "speed",
+    "g_dist_time": "speed",
+    "g_word_total": "word",
+    "g_word_change": "word",
+    "g_price_total": "word",
+    "g_recipe_scale": "word",
+    "g_fraction": "word",
+    "g_avg": "word",
+    "g_en_mul": "english",
+    "g_en_pct": "english",
 }
 
 
@@ -79,15 +136,18 @@ def math_probes(n, seed=999):
         ok, res = safe_calc(f"print({expr})")
         if not ok:
             continue
-        seen.add(q); out.append((q, res, BUCKET.get(g.__name__, "other")))
+        seen.add(q)
+        out.append((q, res, BUCKET.get(g.__name__, "other")))
     return out
 
 
 def main():
-    import torch
     import sentencepiece as spm
+    import torch
+
     from auralis.model import build_model
     from auralis.tokenizer.chat_template import build_inference_prompt
+
     ap = argparse.ArgumentParser()
     ap.add_argument("--checkpoints", required=True, help="comma-separated .pt paths")
     ap.add_argument("--model-config", default=str(REPO / "configs/model/helix_v2_1b.yaml"))
@@ -124,11 +184,13 @@ def main():
         bkt = defaultdict(lambda: [0, 0])
         for q, truth, bucket in probes:
             if a.mode == "full":
-                prompt = build_inference_prompt([{"role": "user", "content": q}], default_system=SYS)
+                prompt = build_inference_prompt(
+                    [{"role": "user", "content": q}], default_system=SYS
+                )
                 t = run_with_tools(model, sp, prompt, device, verbose=False, max_tool_calls=1)
             else:
                 t = ask(q)
-            has = (TOOL_OPEN in t and TOOL_CLOSE in t)
+            has = TOOL_OPEN in t and TOOL_CLOSE in t
             if has:
                 em += 1
             code = extract_code(t)
@@ -139,7 +201,9 @@ def main():
                 if res == truth:
                     co += 1
                     bkt[bucket][0] += 1
-            if (a.mode == "call_only" and RES_OPEN in t) or (a.mode == "full" and t.count(RES_OPEN) != 1):
+            if (a.mode == "call_only" and RES_OPEN in t) or (
+                a.mode == "full" and t.count(RES_OPEN) != 1
+            ):
                 fk += 1
             after_result = t.split("</result>", 1)[1] if "</result>" in t else t
             if a.mode == "full" and res == truth and truth in after_result:
@@ -151,9 +215,13 @@ def main():
         score = corr_r - false_r
         name = pathlib.Path(ckpt).name
         print(f"\n## {name}")
-        print(f"  MATH  tool_rate={tool_r:.0%}  parse_rate={parse_r:.0%}  correct_rate={corr_r:.0%}  fake_result={fake_r:.0%}")
+        print(
+            f"  MATH  tool_rate={tool_r:.0%}  parse_rate={parse_r:.0%}  correct_rate={corr_r:.0%}  fake_result={fake_r:.0%}"
+        )
         if a.mode == "full":
-            print(f"  E2E   result_usage_rate={used/N:.0%}  answer_numeric_match={ansmatch/N:.0%}")
+            print(
+                f"  E2E   result_usage_rate={used / N:.0%}  answer_numeric_match={ansmatch / N:.0%}"
+            )
         print(f"  NONM  false_tool_rate={false_r:.0%}")
         print(f"  SCORE (correct - false_tool) = {score:.3f}")
         bd = "  ".join(f"{k}:{v[0]}/{v[1]}" for k, v in sorted(bkt.items()))

@@ -19,15 +19,15 @@ Usage:
         --max-docs 5000 \\
         --threshold 3
 """
+
 from __future__ import annotations
 
 import argparse
 import json
 import os
 import sys
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
-
 
 # Code-specific rubric. The "1 = useless" bucket is intentionally generous
 # because the_stack contains many auto-generated stubs that should be
@@ -75,7 +75,7 @@ def read_repo_marker_docs(path: Path, marker: str = "<reponame>") -> Iterable[tu
                     yield n, current_repo, code
                     n += 1
                     buf.clear()
-                current_repo = line[len(marker):].strip()
+                current_repo = line[len(marker) :].strip()
             else:
                 if current_repo is not None:
                     buf.append(line)
@@ -86,43 +86,68 @@ def read_repo_marker_docs(path: Path, marker: str = "<reponame>") -> Iterable[tu
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(description=__doc__,
-                                  formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     p.add_argument("--input", type=Path, required=True)
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--max-docs", type=int, default=100)
-    p.add_argument("--threshold", type=int, default=3,
-                   help="keep files with score >= threshold (default 3)")
-    p.add_argument("--head-chars", type=int, default=2000,
-                   help="show this many chars of the file to the scorer (default 2000 — "
-                        "code is denser than prose, this is roughly the first ~80 lines)")
-    p.add_argument("--min-chars", type=int, default=100,
-                   help="Skip files with fewer than this many chars before scoring "
-                        "(default 100 — drops empty files and trivial __init__.py).")
-    p.add_argument("--max-chars", type=int, default=50000,
-                   help="Skip files with more than this many chars (default 50000 — "
-                        "drops vendored bundles, generated protobuf, etc.)")
-    p.add_argument("--marker", default="<reponame>",
-                   help="The reponame separator marker (default '<reponame>')")
-    p.add_argument("--model", default="qwen/qwen3.6-35b-a3b",
-                   help="OpenRouter model id. Default matches text scorer for "
-                        "consistent calibration. Reasoning auto-disabled.")
+    p.add_argument(
+        "--threshold", type=int, default=3, help="keep files with score >= threshold (default 3)"
+    )
+    p.add_argument(
+        "--head-chars",
+        type=int,
+        default=2000,
+        help="show this many chars of the file to the scorer (default 2000 — "
+        "code is denser than prose, this is roughly the first ~80 lines)",
+    )
+    p.add_argument(
+        "--min-chars",
+        type=int,
+        default=100,
+        help="Skip files with fewer than this many chars before scoring "
+        "(default 100 — drops empty files and trivial __init__.py).",
+    )
+    p.add_argument(
+        "--max-chars",
+        type=int,
+        default=50000,
+        help="Skip files with more than this many chars (default 50000 — "
+        "drops vendored bundles, generated protobuf, etc.)",
+    )
+    p.add_argument(
+        "--marker",
+        default="<reponame>",
+        help="The reponame separator marker (default '<reponame>')",
+    )
+    p.add_argument(
+        "--model",
+        default="qwen/qwen3.6-35b-a3b",
+        help="OpenRouter model id. Default matches text scorer for "
+        "consistent calibration. Reasoning auto-disabled.",
+    )
     p.add_argument("--batch-size", type=int, default=8)
-    p.add_argument("--chunk-size", type=int, default=500,
-                   help="Process this many files per pipeline.run(). Smaller = "
-                        "better crash-resumability + more overhead. Default 500.")
-    p.add_argument("--resume", action="store_true",
-                   help="If output exists, skip doc_ids already present.")
+    p.add_argument(
+        "--chunk-size",
+        type=int,
+        default=500,
+        help="Process this many files per pipeline.run(). Smaller = "
+        "better crash-resumability + more overhead. Default 500.",
+    )
+    p.add_argument(
+        "--resume", action="store_true", help="If output exists, skip doc_ids already present."
+    )
     args = p.parse_args()
 
     api_key = os.environ.get("OPENROUTER_API_KEY")
     if not api_key:
         sys.exit("FATAL: OPENROUTER_API_KEY env var is required")
 
+    from distilabel.models import OpenAILLM
     from distilabel.pipeline import Pipeline
     from distilabel.steps import LoadDataFromDicts
     from distilabel.steps.tasks import TextGeneration
-    from distilabel.models import OpenAILLM
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     done_ids: set[int] = set()
@@ -135,8 +160,7 @@ def main() -> int:
                         done_ids.add(rec["doc_id"])
                 except json.JSONDecodeError:
                     continue
-        print(f"Resume: {len(done_ids)} doc_ids already in output, will skip them.",
-              flush=True)
+        print(f"Resume: {len(done_ids)} doc_ids already in output, will skip them.", flush=True)
     elif args.output.exists() and not args.resume:
         args.output.write_text("")
 
@@ -152,27 +176,32 @@ def main() -> int:
             n_resumed += 1
             continue
         L = len(code)
-        if args.min_chars and L < args.min_chars:
+        if args.min_chars and args.min_chars > L:
             n_too_short += 1
             continue
-        if args.max_chars and L > args.max_chars:
+        if args.max_chars and args.max_chars < L:
             n_too_long += 1
             continue
-        docs.append({
-            "doc_id": doc_id,
-            "reponame": reponame,
-            "instruction": SCORE_PROMPT.format(
-                reponame=reponame,
-                head_chars=args.head_chars,
-                code_head=code[:args.head_chars],
-            ),
-            "head": code[:200],
-            "length_chars": L,
-        })
+        docs.append(
+            {
+                "doc_id": doc_id,
+                "reponame": reponame,
+                "instruction": SCORE_PROMPT.format(
+                    reponame=reponame,
+                    head_chars=args.head_chars,
+                    code_head=code[: args.head_chars],
+                ),
+                "head": code[:200],
+                "length_chars": L,
+            }
+        )
     print(f"  {len(docs)} files prepared", flush=True)
     if n_too_short or n_too_long:
-        print(f"  pre-filtered: {n_too_short} too-short (<{args.min_chars}), "
-              f"{n_too_long} too-long (>{args.max_chars})", flush=True)
+        print(
+            f"  pre-filtered: {n_too_short} too-short (<{args.min_chars}), "
+            f"{n_too_long} too-long (>{args.max_chars})",
+            flush=True,
+        )
     if n_resumed:
         print(f"  resumed: {n_resumed} doc_ids already done, skipped", flush=True)
 
@@ -204,14 +233,16 @@ def main() -> int:
                 for row in ds:
                     yield row
 
-    print(f"Processing {len(docs)} files in {n_chunks} chunk(s) of "
-          f"{chunk_size} (streaming-append, resumable).", flush=True)
+    print(
+        f"Processing {len(docs)} files in {n_chunks} chunk(s) of "
+        f"{chunk_size} (streaming-append, resumable).",
+        flush=True,
+    )
 
     with args.output.open("a", encoding="utf-8") as out_f:
         for chunk_idx in range(n_chunks):
-            chunk_docs = docs[chunk_idx * chunk_size:(chunk_idx + 1) * chunk_size]
-            print(f"  chunk {chunk_idx + 1}/{n_chunks}: "
-                  f"{len(chunk_docs)} files ...", flush=True)
+            chunk_docs = docs[chunk_idx * chunk_size : (chunk_idx + 1) * chunk_size]
+            print(f"  chunk {chunk_idx + 1}/{n_chunks}: {len(chunk_docs)} files ...", flush=True)
 
             with Pipeline(name="ask-llm-code") as pipeline:
                 loader = LoadDataFromDicts(data=chunk_docs)
@@ -248,18 +279,23 @@ def main() -> int:
                     chunk_kept += 1
                 out_f.write(json.dumps(rec, ensure_ascii=False) + "\n")
             out_f.flush()
-            print(f"    chunk {chunk_idx + 1} done: {chunk_kept} kept "
-                  f"(running total: {n_kept}/{n_total})", flush=True)
+            print(
+                f"    chunk {chunk_idx + 1} done: {chunk_kept} kept "
+                f"(running total: {n_kept}/{n_total})",
+                flush=True,
+            )
 
     print()
-    print(f"=== Ask-LLM-Code (Qwen3.6) results ===")
+    print("=== Ask-LLM-Code (Qwen3.6) results ===")
     print(f"  scored:  {n_total} files (this run)")
     if n_resumed:
         print(f"  resumed: {n_resumed} previously-done files not re-scored")
-    print(f"  kept:    {n_kept} (threshold ≥ {args.threshold}) — "
-          f"{100*n_kept/max(n_total,1):.1f}%")
+    print(
+        f"  kept:    {n_kept} (threshold ≥ {args.threshold}) — "
+        f"{100 * n_kept / max(n_total, 1):.1f}%"
+    )
     print(f"  output:  {args.output}")
-    print(f"  histogram:")
+    print("  histogram:")
     for k in [1, 2, 3, 4, 5, "?"]:
         bar = "█" * histogram[k]
         print(f"    {k}: {histogram[k]:4d}  {bar}")

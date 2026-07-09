@@ -103,7 +103,7 @@ def _write_report(statuses: list[SourceStatus], out_path: Path) -> None:
         exists = "yes" if row.exists else "no"
         lines.append(
             f"| {row.language} | `{row.name}` | {row.status} | {exists} | "
-            f"{row.size_bytes/1e9:.2f} | {row.target_tokens/1e9:.2f}B | {row.notes} |"
+            f"{row.size_bytes / 1e9:.2f} | {row.target_tokens / 1e9:.2f}B | {row.notes} |"
         )
     out_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -121,7 +121,9 @@ def _download_missing(statuses: list[SourceStatus], config_path: Path) -> None:
         if not rows:
             continue
         script = SCRIPT_BY_LANGUAGE[language]
-        source_names = [DOWNLOAD_NAME_MAP[row.name] for row in rows if row.name in DOWNLOAD_NAME_MAP]
+        source_names = [
+            DOWNLOAD_NAME_MAP[row.name] for row in rows if row.name in DOWNLOAD_NAME_MAP
+        ]
         if not source_names:
             continue
         overrides = [f"{row.name}={row.target_tokens}" for row in rows]
@@ -139,7 +141,9 @@ def _download_missing(statuses: list[SourceStatus], config_path: Path) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument(
         "--config",
         type=Path,

@@ -19,8 +19,8 @@ import json
 import random
 import re
 from collections import Counter
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 import yaml
 
@@ -164,20 +164,72 @@ def bridge_rows(gate_prompts: set[str]) -> list[dict]:
         "Das Werk Faust gehoert zu Johann Wolfgang von Goethe.",
     ]
     keepalive = [
-        ("Ist Wien die Hauptstadt von Oesterreich?", "Ja. Wien ist die Hauptstadt von Oesterreich.", "facts_de", "polarity_keepalive", "polarity_keepalive"),
-        ("Ist Bern die Hauptstadt der Schweiz?", "Ja. Bern ist die Hauptstadt der Schweiz.", "facts_de", "polarity_keepalive", "polarity_keepalive"),
-        ("Ist Bonn aktuell Deutschlands Hauptstadt?", "Nein. Heute ist Berlin die Hauptstadt von Deutschland.", "hallucination_guard", "capital_keepalive", "capital_keepalive"),
-        ("Ist Hamburg Bayerns Hauptstadt?", "Nein. Die Hauptstadt von Bayern ist Muenchen.", "hallucination_guard", "capital_keepalive", "capital_keepalive"),
-        ("Ist Wasser ein Element?", "Nein. Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.", "qa_de", "science_keepalive", "science_keepalive"),
-        ("Wie antwortest du bei erfundenen Details?", "Ich sage, dass ich keine verlaessliche Information habe, und erfinde keine Details.", "honesty", "honesty_keepalive", "honesty_keepalive"),
+        (
+            "Ist Wien die Hauptstadt von Oesterreich?",
+            "Ja. Wien ist die Hauptstadt von Oesterreich.",
+            "facts_de",
+            "polarity_keepalive",
+            "polarity_keepalive",
+        ),
+        (
+            "Ist Bern die Hauptstadt der Schweiz?",
+            "Ja. Bern ist die Hauptstadt der Schweiz.",
+            "facts_de",
+            "polarity_keepalive",
+            "polarity_keepalive",
+        ),
+        (
+            "Ist Bonn aktuell Deutschlands Hauptstadt?",
+            "Nein. Heute ist Berlin die Hauptstadt von Deutschland.",
+            "hallucination_guard",
+            "capital_keepalive",
+            "capital_keepalive",
+        ),
+        (
+            "Ist Hamburg Bayerns Hauptstadt?",
+            "Nein. Die Hauptstadt von Bayern ist Muenchen.",
+            "hallucination_guard",
+            "capital_keepalive",
+            "capital_keepalive",
+        ),
+        (
+            "Ist Wasser ein Element?",
+            "Nein. Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff.",
+            "qa_de",
+            "science_keepalive",
+            "science_keepalive",
+        ),
+        (
+            "Wie antwortest du bei erfundenen Details?",
+            "Ich sage, dass ich keine verlaessliche Information habe, und erfinde keine Details.",
+            "honesty",
+            "honesty_keepalive",
+            "honesty_keepalive",
+        ),
     ]
     out: list[dict] = []
     for i, prompt in enumerate(photo_prompts()):
         if norm_text(prompt) not in gate_prompts:
-            out.append(row(prompt, photo_answers[i % len(photo_answers)], "qa_de", "photosynthesis_bridge", "photosynthesis_bridge"))
+            out.append(
+                row(
+                    prompt,
+                    photo_answers[i % len(photo_answers)],
+                    "qa_de",
+                    "photosynthesis_bridge",
+                    "photosynthesis_bridge",
+                )
+            )
     for i, prompt in enumerate(faust_prompts()):
         if norm_text(prompt) not in gate_prompts:
-            out.append(row(prompt, faust_answers[i % len(faust_answers)], "facts_de", "faust_goethe_bridge", "faust_goethe_bridge"))
+            out.append(
+                row(
+                    prompt,
+                    faust_answers[i % len(faust_answers)],
+                    "facts_de",
+                    "faust_goethe_bridge",
+                    "faust_goethe_bridge",
+                )
+            )
     for prompt, answer, category, block, family in keepalive:
         if norm_text(prompt) not in gate_prompts:
             out.append(row(prompt, answer, category, block, family))
@@ -220,7 +272,11 @@ def write_jsonl(path: Path, items: list[dict]) -> int:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--output-dir", type=Path, default=REPO / "data/training/sft_response_fix_de_v12_photo_faust_bridge")
+    ap.add_argument(
+        "--output-dir",
+        type=Path,
+        default=REPO / "data/training/sft_response_fix_de_v12_photo_faust_bridge",
+    )
     ap.add_argument("--seed", type=int, default=20260529)
     args = ap.parse_args()
 
@@ -242,11 +298,17 @@ def main() -> None:
         "val_records": val_n,
         "patch_records": len(patch),
         "exact_gate_prompts_excluded": True,
-        "train_categories": dict(Counter(x.get("category", "unknown") for x in train).most_common()),
-        "patch_categories": dict(Counter(x.get("category", "unknown") for x in patch).most_common()),
+        "train_categories": dict(
+            Counter(x.get("category", "unknown") for x in train).most_common()
+        ),
+        "patch_categories": dict(
+            Counter(x.get("category", "unknown") for x in patch).most_common()
+        ),
         "inputs": [str(BASE_TRAIN.relative_to(REPO)), "synthetic v12 bridge rows"],
     }
-    (args.output_dir / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    (args.output_dir / "manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     print(json.dumps(manifest, ensure_ascii=False, indent=2))
 
 

@@ -22,7 +22,6 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 
-
 STEP_RE = re.compile(
     r"step\s+(?P<step>\d+)\s+\|\s+loss\s+(?P<loss>[-+0-9.eE]+)\s+\|\s+"
     r"lr\s+(?P<lr>[-+0-9.eE]+)\s+\|\s+grad_norm\s+(?P<grad>[-+0-9.eE]+)\s+\|\s+"
@@ -86,12 +85,14 @@ def list_logs(root: Path, log_dirs: list[Path]) -> list[dict[str, object]]:
                 rel = str(p.relative_to(root)).replace("\\", "/")
             except ValueError:
                 rel = "abs:" + str(p.resolve())
-            out.append({
-                "name": f"{p.name}  [{logs_dir.name}]",
-                "path": rel,
-                "bytes": p.stat().st_size,
-                "mtime": p.stat().st_mtime,
-            })
+            out.append(
+                {
+                    "name": f"{p.name}  [{logs_dir.name}]",
+                    "path": rel,
+                    "bytes": p.stat().st_size,
+                    "mtime": p.stat().st_mtime,
+                }
+            )
     return sorted(out, key=lambda x: float(x["mtime"]), reverse=True)
 
 
@@ -125,23 +126,28 @@ def parse_log(path: Path, max_lines: int = 6000) -> dict[str, object]:
     for line in lines:
         if "health[" in line or "AUTO-STOP" in line:
             health.append(line.strip())
-        if any(token in line for token in ("Traceback", "RuntimeError", "CUDA out of memory", "non-finite")):
+        if any(
+            token in line
+            for token in ("Traceback", "RuntimeError", "CUDA out of memory", "non-finite")
+        ):
             last_error = line.strip()
         if m := MIX_RE.search(line):
             mix = m.group("mix")
         if m := MANIFEST_RE.search(line):
             manifest = m.group("path").strip()
         if m := STEP_RE.search(line):
-            train.append(TrainPoint(
-                step=int(m.group("step")),
-                loss=float(m.group("loss")),
-                lr=float(m.group("lr")),
-                grad_norm=float(m.group("grad")),
-                tok_s=float(m.group("tps")) * 1000.0,
-                data_pct=float(m.group("data")),
-                vram_alloc_gb=_float_or_none(m.group("vram_alloc")),
-                vram_peak_gb=_float_or_none(m.group("vram_peak")),
-            ))
+            train.append(
+                TrainPoint(
+                    step=int(m.group("step")),
+                    loss=float(m.group("loss")),
+                    lr=float(m.group("lr")),
+                    grad_norm=float(m.group("grad")),
+                    tok_s=float(m.group("tps")) * 1000.0,
+                    data_pct=float(m.group("data")),
+                    vram_alloc_gb=_float_or_none(m.group("vram_alloc")),
+                    vram_peak_gb=_float_or_none(m.group("vram_peak")),
+                )
+            )
         elif m := EVAL_RE.search(line):
             row: dict[str, float] = {"step": float(m.group("step"))}
             for kv in KV_RE.finditer(m.group("body")):
@@ -265,6 +271,7 @@ def representative_snapshot(root: Path) -> dict[str, object] | None:
 def parse_sft_log(root: Path) -> dict[str, object]:
     """Parse the SFT run log (diag/sft_v1.log) — different format from pretrain."""
     import time
+
     path = root / "diag" / "sft_v1.log"
     out: dict[str, object] = {"present": False}
     if not path.exists():
@@ -283,8 +290,14 @@ def parse_sft_log(root: Path) -> dict[str, object]:
     for line in text.splitlines():
         m = step_re.match(line.strip())
         if m:
-            steps.append({"step": int(m.group(1)), "train": float(m.group(2)),
-                          "val": float(m.group(3)), "lr": float(m.group(4))})
+            steps.append(
+                {
+                    "step": int(m.group(1)),
+                    "train": float(m.group(2)),
+                    "val": float(m.group(3)),
+                    "lr": float(m.group(4)),
+                }
+            )
             last_elapsed = float(m.group(5))
         elif "[checkpoint] step" in line:
             cm = re.search(r"step (\d+)", line)
@@ -292,11 +305,20 @@ def parse_sft_log(root: Path) -> dict[str, object]:
                 ckpts.append(int(cm.group(1)))
     if not steps:
         return out
-    cur = int(steps[-1]["step"]); total = 6000
-    out.update({"current_step": cur, "total_steps": total,
-                "train": steps[-1]["train"], "val": steps[-1]["val"], "lr": steps[-1]["lr"],
-                "checkpoints": ckpts, "recent": steps[-12:],
-                "age_min": round((time.time() - path.stat().st_mtime) / 60, 1)})
+    cur = int(steps[-1]["step"])
+    total = 6000
+    out.update(
+        {
+            "current_step": cur,
+            "total_steps": total,
+            "train": steps[-1]["train"],
+            "val": steps[-1]["val"],
+            "lr": steps[-1]["lr"],
+            "checkpoints": ckpts,
+            "recent": steps[-12:],
+            "age_min": round((time.time() - path.stat().st_mtime) / 60, 1),
+        }
+    )
     if cur > 0 and last_elapsed > 0:
         rate = last_elapsed / cur
         out["sec_per_step"] = round(rate, 2)
@@ -337,12 +359,16 @@ def latest_neuro_summary(root: Path) -> dict[str, object]:
 
     # Per-step frames for the timeline scrubber (watch the graph grow).
     frames = [
-        {"step": h.get("step"), "val_loss": h.get("val_loss"),
-         "concepts": [_probe_to_concept(pr) for pr in (h.get("probes") or [])]}
+        {
+            "step": h.get("step"),
+            "val_loss": h.get("val_loss"),
+            "concepts": [_probe_to_concept(pr) for pr in (h.get("probes") or [])],
+        }
         for h in history[-120:]
     ]
     concepts_sorted = sorted(
-        concepts, key=lambda c: (c["margin"] is None, c["margin"] if c["margin"] is not None else 0.0)
+        concepts,
+        key=lambda c: (c["margin"] is None, c["margin"] if c["margin"] is not None else 0.0),
     )
     return {
         "source": json_rel,
@@ -1157,18 +1183,22 @@ class Handler(BaseHTTPRequestHandler):
             selected = qs.get("log", [""])[0]
             if not selected and logs:
                 selected = str(logs[0]["path"])
-            selected_path = resolve_log_path(self.root, self.log_dirs, selected) if selected else None
+            selected_path = (
+                resolve_log_path(self.root, self.log_dirs, selected) if selected else None
+            )
             run = parse_log(selected_path) if selected_path else {}
-            self.send_json({
-                "root": str(self.root),
-                "selected_log": selected,
-                "logs": logs,
-                "run": run,
-                "learning_reports": learning_reports(self.root),
-                "neuro": latest_neuro_summary(self.root),
-                "repr": representative_snapshot(self.root),
-                "sft": parse_sft_log(self.root),
-            })
+            self.send_json(
+                {
+                    "root": str(self.root),
+                    "selected_log": selected,
+                    "logs": logs,
+                    "run": run,
+                    "learning_reports": learning_reports(self.root),
+                    "neuro": latest_neuro_summary(self.root),
+                    "repr": representative_snapshot(self.root),
+                    "sft": parse_sft_log(self.root),
+                }
+            )
             return
 
         if parsed.path.startswith("/static/"):
@@ -1199,7 +1229,9 @@ def main() -> None:
     args = ap.parse_args()
 
     Handler.root = args.root.resolve()
-    Handler.log_dirs = [p.resolve() for p in (args.log_dir or default_log_dirs(Handler.root)) if p.exists()]
+    Handler.log_dirs = [
+        p.resolve() for p in (args.log_dir or default_log_dirs(Handler.root)) if p.exists()
+    ]
     server = ThreadingHTTPServer((args.host, args.port), Handler)
     print(f"Auralis Training Monitor: http://{args.host}:{args.port}")
     print(f"root: {Handler.root}")

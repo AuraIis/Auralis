@@ -467,7 +467,9 @@ def estimate_logits_gb(tokens: int, vocab_size: int, dtype: torch.dtype) -> floa
     return tokens * vocab_size * bytes_per / 1e9
 
 
-def suggest_chunk_size(vocab_size: int, target_logits_gb: float, dtype: torch.dtype, tokens: int) -> int:
+def suggest_chunk_size(
+    vocab_size: int, target_logits_gb: float, dtype: torch.dtype, tokens: int
+) -> int:
     """Pick a chunk size that keeps transient logits near target memory."""
 
     bytes_per = torch.empty((), dtype=dtype).element_size()
@@ -481,6 +483,6 @@ __all__ = [
     "chunked_linear_cross_entropy",
     "estimate_logits_gb",
     "suggest_chunk_size",
-    "triton_fused_linear_cross_entropy",
     "triton_forward_linear_cross_entropy",
+    "triton_fused_linear_cross_entropy",
 ]

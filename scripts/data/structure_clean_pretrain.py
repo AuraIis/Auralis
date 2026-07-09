@@ -18,14 +18,12 @@ import argparse
 import hashlib
 import html
 import json
-import math
 import re
 import time
 from collections import Counter, deque
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Iterable
-
 
 WORD_RE = re.compile(r"[A-Za-zÄÖÜäöüß]+")
 SENTENCE_END_RE = re.compile(r"(?<=[.!?])\s+")
@@ -86,7 +84,6 @@ DE_STOPWORDS = {
     "auf",
     "von",
     "zu",
-    "im",
     "im",
     "den",
     "dem",
@@ -179,8 +176,13 @@ def _line_is_noise(line: str) -> bool:
 
 
 _CRUMB_LABELS = (
-    "sie befinden sich hier", "sie sind hier", "aktuelle seite",
-    "you are here", "navigation:", "startseite", "you are at",
+    "sie befinden sich hier",
+    "sie sind hier",
+    "aktuelle seite",
+    "you are here",
+    "navigation:",
+    "startseite",
+    "you are at",
 )
 # On a line we already KNOW starts with a nav label, these separators reliably
 # delimit crumbs, so cutting at the last one in the head is safe.
@@ -196,8 +198,8 @@ def _cut_at_duplicated_phrase(text: str, window: int = 30) -> str:
     n = min(len(toks), window)
     for k in range(6, 0, -1):
         for i in range(0, n - 2 * k + 1):
-            if toks[i:i + k] == toks[i + k:i + 2 * k]:
-                return " ".join(toks[i + k:])
+            if toks[i : i + k] == toks[i + k : i + 2 * k]:
+                return " ".join(toks[i + k :])
     return text
 
 
@@ -211,11 +213,11 @@ def strip_breadcrumbs(line: str) -> str:
     if low.startswith(_CRUMB_LABELS):
         seps = list(_CRUMB_SEP_RE.finditer(head))
         if seps:
-            return line[seps[-1].end():].strip()
+            return line[seps[-1].end() :].strip()
         # no nav separator (space-separated crumbs): drop the label, then cut
         # at the duplicated page-title that breadcrumb pages repeat as the H1.
         colon = head.find(":")
-        rest = line[colon + 1:].strip() if 0 <= colon <= 24 else line
+        rest = line[colon + 1 :].strip() if 0 <= colon <= 24 else line
         return _cut_at_duplicated_phrase(rest)
     # bare pipe trail: 'X | Y | Z | content' with short crumb segments
     if head.count("|") >= 2:
@@ -418,10 +420,13 @@ def run(args: argparse.Namespace) -> dict:
     if args.output_text:
         args.output_text.parent.mkdir(parents=True, exist_ok=True)
 
-    with args.input.open("r", encoding="utf-8", errors="replace") as src, args.output_jsonl.open(
-        "w", encoding="utf-8", newline="\n"
-    ) as jsonl:
-        text_fh = args.output_text.open("w", encoding="utf-8", newline="\n") if args.output_text else None
+    with (
+        args.input.open("r", encoding="utf-8", errors="replace") as src,
+        args.output_jsonl.open("w", encoding="utf-8", newline="\n") as jsonl,
+    ):
+        text_fh = (
+            args.output_text.open("w", encoding="utf-8", newline="\n") if args.output_text else None
+        )
         try:
             for raw in src:
                 manifest.docs_in += 1
@@ -477,7 +482,9 @@ def run(args: argparse.Namespace) -> dict:
 
     manifest.finished_at = time.time()
     out_manifest = args.output_jsonl.with_suffix(args.output_jsonl.suffix + ".manifest.json")
-    out_manifest.write_text(json.dumps(manifest_payload(manifest), indent=2, ensure_ascii=False), encoding="utf-8")
+    out_manifest.write_text(
+        json.dumps(manifest_payload(manifest), indent=2, ensure_ascii=False), encoding="utf-8"
+    )
     print(f"wrote {args.output_jsonl} ({manifest.docs_written:,} docs)")
     if args.output_text:
         print(f"wrote {args.output_text}")
@@ -487,7 +494,9 @@ def run(args: argparse.Namespace) -> dict:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--input", type=Path, required=True)
     parser.add_argument("--output-jsonl", type=Path, required=True)
     parser.add_argument("--output-text", type=Path, default=None)

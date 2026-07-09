@@ -88,7 +88,9 @@ def load_probe_pairs(path: Path, system: str) -> list[dict[str, Any]]:
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     pairs: list[dict[str, Any]] = []
     for probe in data.get("probes", []):
-        prompt = build_inference_prompt([{"role": "user", "content": probe["prompt"]}], default_system=system)
+        prompt = build_inference_prompt(
+            [{"role": "user", "content": probe["prompt"]}], default_system=system
+        )
         for target in probe.get("target_answers", []):
             for negative in probe.get("negative_answers", []):
                 pairs.append(
@@ -133,7 +135,9 @@ def _load_render_function(path: Path):
     return module.render
 
 
-def write_outputs(trace: dict[str, Any], trace_json: Path | None, trace_html: Path | None, neuro_html: Path | None) -> None:
+def write_outputs(
+    trace: dict[str, Any], trace_json: Path | None, trace_html: Path | None, neuro_html: Path | None
+) -> None:
     if trace_json:
         trace_json.parent.mkdir(parents=True, exist_ok=True)
         trace_json.write_text(json.dumps(trace, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -152,7 +156,9 @@ def main() -> None:
     ap.add_argument("--model-config", type=Path, required=True)
     ap.add_argument("--checkpoint", type=Path, required=True)
     ap.add_argument("--tokenizer", type=Path, default=REPO / "tokenizer/helix_v2_tokenizer.model")
-    ap.add_argument("--learning-probes", type=Path, default=REPO / "eval/learning_trace_de_core.yaml")
+    ap.add_argument(
+        "--learning-probes", type=Path, default=REPO / "eval/learning_trace_de_core.yaml"
+    )
     ap.add_argument("--output-dir", type=Path, required=True)
     ap.add_argument("--steps", type=int, default=80)
     ap.add_argument("--lr", type=float, default=5e-8)
@@ -179,7 +185,9 @@ def main() -> None:
     torch.manual_seed(args.seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(args.seed)
-    device = torch.device("cuda" if args.device == "auto" and torch.cuda.is_available() else args.device)
+    device = torch.device(
+        "cuda" if args.device == "auto" and torch.cuda.is_available() else args.device
+    )
     sp = spm.SentencePieceProcessor(model_file=str(args.tokenizer))
     pairs = load_probe_pairs(args.learning_probes, args.generation_system)
     print(f"loaded {len(pairs)} contrastive pairs from {args.learning_probes}")
@@ -202,7 +210,9 @@ def main() -> None:
     )
 
     # Reuse the existing visual probe evaluator.
-    smoke_spec = importlib.util.spec_from_file_location("smoke_sft_de", REPO / "scripts/sft/smoke_sft_de.py")
+    smoke_spec = importlib.util.spec_from_file_location(
+        "smoke_sft_de", REPO / "scripts/sft/smoke_sft_de.py"
+    )
     if smoke_spec is None or smoke_spec.loader is None:
         raise RuntimeError("cannot import smoke_sft_de")
     smoke = importlib.util.module_from_spec(smoke_spec)
@@ -219,7 +229,9 @@ def main() -> None:
     }
 
     def eval_trace(step: int, loss_value: float | None, elapsed: float) -> None:
-        rows = smoke.evaluate_learning_probes(model, sp, learning_probes, device, args.generation_system)
+        rows = smoke.evaluate_learning_probes(
+            model, sp, learning_probes, device, args.generation_system
+        )
         trace["history"].append(
             {
                 "step": step,
@@ -261,7 +273,9 @@ def main() -> None:
         if not math.isfinite(loss_value):
             raise RuntimeError(f"non-finite loss at step {step}: {loss_value}")
         if step == 1 or step % args.eval_every == 0 or step == args.steps:
-            print(f"step {step:4d} | contrastive_loss={loss_value:.4f} | lr={scheduler.get_last_lr()[0]:.2e}")
+            print(
+                f"step {step:4d} | contrastive_loss={loss_value:.4f} | lr={scheduler.get_last_lr()[0]:.2e}"
+            )
             eval_trace(step, loss_value, time.time() - t0)
 
     path = save_checkpoint(model, optimizer, scheduler, args.steps, args.output_dir)

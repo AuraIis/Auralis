@@ -21,15 +21,14 @@ import json
 import re
 import sys
 from collections import defaultdict
-from dataclasses import dataclass, field
+from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
 
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO))
 
 from scripts.data.structure_clean_pretrain import clean_document, normalize_text  # noqa: E402
-
 
 HTML_HINT_RE = re.compile(r"<\s*(?:html|body|article|main|section|div|p|h1|nav|footer)\b", re.I)
 
@@ -132,7 +131,8 @@ SAMPLES = [
         forbid_any=("frage:", "antwort:", "###"),
         note="Base pretraining prose should not be dominated by SFT/QA template text.",
         text=(
-            "### Aufgabe: Was ist Berlin?\n### Antwort: Berlin ist die Hauptstadt Deutschlands.\n" * 12
+            "### Aufgabe: Was ist Berlin?\n### Antwort: Berlin ist die Hauptstadt Deutschlands.\n"
+            * 12
         ),
     ),
     Sample(
@@ -363,8 +363,12 @@ def run() -> dict:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--output", type=Path, default=REPO / "data" / "eval" / "cleaner_compare_smoke.json")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "--output", type=Path, default=REPO / "data" / "eval" / "cleaner_compare_smoke.json"
+    )
     args = parser.parse_args()
     report = run()
     args.output.parent.mkdir(parents=True, exist_ok=True)

@@ -37,10 +37,9 @@ import hashlib
 import json
 import re
 from collections import Counter
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable
-
 
 CANON_SYSTEM_NEUTRAL = "Du bist Auralis, ein hilfreicher KI-Assistent."
 CANON_SYSTEM_DE = "Du bist Auralis, ein hilfreicher KI-Assistent. Antworte auf Deutsch."
@@ -52,16 +51,78 @@ CHATML_RE = re.compile(
 )
 
 GERMAN_WORDS = {
-    "der", "die", "das", "und", "oder", "nicht", "ist", "sind", "ein", "eine",
-    "einer", "einen", "mit", "für", "auf", "von", "zu", "im", "im", "den",
-    "dem", "des", "dass", "ich", "du", "sie", "wir", "kann", "können",
-    "wird", "werden", "wenn", "weil", "aber", "auch", "als", "wie", "was",
-    "warum", "bitte", "erkläre", "beispiel", "lösung", "antwort",
+    "der",
+    "die",
+    "das",
+    "und",
+    "oder",
+    "nicht",
+    "ist",
+    "sind",
+    "ein",
+    "eine",
+    "einer",
+    "einen",
+    "mit",
+    "für",
+    "auf",
+    "von",
+    "zu",
+    "im",
+    "den",
+    "dem",
+    "des",
+    "dass",
+    "ich",
+    "du",
+    "sie",
+    "wir",
+    "kann",
+    "können",
+    "wird",
+    "werden",
+    "wenn",
+    "weil",
+    "aber",
+    "auch",
+    "als",
+    "wie",
+    "was",
+    "warum",
+    "bitte",
+    "erkläre",
+    "beispiel",
+    "lösung",
+    "antwort",
 }
 ENGLISH_WORDS = {
-    "the", "and", "or", "not", "is", "are", "a", "an", "with", "for", "to",
-    "of", "in", "that", "this", "you", "your", "we", "can", "will", "if",
-    "because", "please", "explain", "example", "solution", "answer",
+    "the",
+    "and",
+    "or",
+    "not",
+    "is",
+    "are",
+    "a",
+    "an",
+    "with",
+    "for",
+    "to",
+    "of",
+    "in",
+    "that",
+    "this",
+    "you",
+    "your",
+    "we",
+    "can",
+    "will",
+    "if",
+    "because",
+    "please",
+    "explain",
+    "example",
+    "solution",
+    "answer",
 }
 MOJIBAKE_HINTS = ("Ã", "Â", "â€", "â€“", "â€”", "â€ž", "â€œ", "â€™", "ðŸ")
 HTML_HINT_RE = re.compile(r"<\s*/?\s*(?:html|body|div|script|style|a|span|table)\b", re.I)
@@ -111,7 +172,9 @@ def clean_content(text: str) -> str:
 
 def parse_chatml(text: str) -> list[dict[str, str]] | None:
     text = text.replace("<|EOT|>", "")
-    turns = [{"role": m.group(1), "content": clean_content(m.group(2))} for m in CHATML_RE.finditer(text)]
+    turns = [
+        {"role": m.group(1), "content": clean_content(m.group(2))} for m in CHATML_RE.finditer(text)
+    ]
     if not turns:
         return None
     if any(t["role"] not in ROLE_ORDER or not t["content"] for t in turns):
@@ -139,7 +202,7 @@ def looks_german(text: str) -> bool:
     # German generated with mojibake repair may still have no umlauts; do not
     # require them. The stopword gap avoids keeping English examples whose
     # only German text is the old system prompt.
-    return de_hits >= 4 and de_hits >= en_hits * 1.35 or (umlauts >= 2 and de_hits >= en_hits)
+    return (de_hits >= 4 and de_hits >= en_hits * 1.35) or (umlauts >= 2 and de_hits >= en_hits)
 
 
 def is_probably_garbage(messages: list[dict[str, str]]) -> bool:
@@ -295,7 +358,9 @@ def stats_to_json(stats: Stats) -> dict:
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument("--input-dir", type=Path, default=Path("sft_train_balanced"))
     ap.add_argument("--output-dir", type=Path, default=Path("data/training/sft_rescued/balanced"))
     ap.add_argument("--train-name", default="train.chatml.jsonl")

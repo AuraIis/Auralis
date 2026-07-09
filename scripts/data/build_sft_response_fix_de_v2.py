@@ -16,9 +16,8 @@ import json
 import random
 import re
 from collections import Counter
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
-
 
 REPO = Path(__file__).resolve().parents[2]
 SYSTEM_DE = (
@@ -63,7 +62,9 @@ def dedup_key(text: str) -> str:
 
 
 def parse_helix(text: str) -> tuple[str, str] | None:
-    turns = [{"role": m.group(1), "content": clean_text(m.group(2))} for m in ROLE_RE.finditer(text)]
+    turns = [
+        {"role": m.group(1), "content": clean_text(m.group(2))} for m in ROLE_RE.finditer(text)
+    ]
     users = [t["content"] for t in turns if t["role"] == "user"]
     assistants = [t["content"] for t in turns if t["role"] == "assistant"]
     if not users or not assistants:
@@ -112,15 +113,45 @@ def base_pairs() -> list[tuple[str, str, str]]:
         ("Griechenland", "Athen", "Thessaloniki"),
     ]
     for country, capital, wrong in countries:
-        pairs.extend([
-            (f"Was ist die Hauptstadt von {country}?", f"Die Hauptstadt von {country} ist {capital}.", "facts_de"),
-            (f"Ist {capital} die Hauptstadt von {country}?", f"Ja. {capital} ist die Hauptstadt von {country}.", "facts_de"),
-            (f"Stimmt es, dass {capital} die Hauptstadt von {country} ist?", f"Ja. {capital} ist die Hauptstadt von {country}.", "facts_de"),
-            (f"Ist die Hauptstadt von {country} {capital}?", f"Ja. Die Hauptstadt von {country} ist {capital}.", "facts_de"),
-            (f"Ist {wrong} die Hauptstadt von {country}?", f"Nein. Die Hauptstadt von {country} ist {capital}.", "hallucination_guard"),
-            (f"Korrigiere kurz: {wrong} ist die Hauptstadt von {country}.", f"Das ist falsch. Die Hauptstadt von {country} ist {capital}.", "hallucination_guard"),
-            (f"Antworte knapp: Welche Stadt ist die Hauptstadt von {country}?", capital, "facts_de"),
-        ])
+        pairs.extend(
+            [
+                (
+                    f"Was ist die Hauptstadt von {country}?",
+                    f"Die Hauptstadt von {country} ist {capital}.",
+                    "facts_de",
+                ),
+                (
+                    f"Ist {capital} die Hauptstadt von {country}?",
+                    f"Ja. {capital} ist die Hauptstadt von {country}.",
+                    "facts_de",
+                ),
+                (
+                    f"Stimmt es, dass {capital} die Hauptstadt von {country} ist?",
+                    f"Ja. {capital} ist die Hauptstadt von {country}.",
+                    "facts_de",
+                ),
+                (
+                    f"Ist die Hauptstadt von {country} {capital}?",
+                    f"Ja. Die Hauptstadt von {country} ist {capital}.",
+                    "facts_de",
+                ),
+                (
+                    f"Ist {wrong} die Hauptstadt von {country}?",
+                    f"Nein. Die Hauptstadt von {country} ist {capital}.",
+                    "hallucination_guard",
+                ),
+                (
+                    f"Korrigiere kurz: {wrong} ist die Hauptstadt von {country}.",
+                    f"Das ist falsch. Die Hauptstadt von {country} ist {capital}.",
+                    "hallucination_guard",
+                ),
+                (
+                    f"Antworte knapp: Welche Stadt ist die Hauptstadt von {country}?",
+                    capital,
+                    "facts_de",
+                ),
+            ]
+        )
 
     states = [
         ("Bayern", "Muenchen", "Nuernberg"),
@@ -133,64 +164,151 @@ def base_pairs() -> list[tuple[str, str, str]]:
         ("Schleswig-Holstein", "Kiel", "Luebeck"),
     ]
     for state, capital, wrong in states:
-        pairs.extend([
-            (f"In welchem Bundesland liegt {capital}?", f"{capital} liegt in {state}.", "facts_de"),
-            (f"Ist {capital} die Hauptstadt von {state}?", f"Ja. {capital} ist die Hauptstadt von {state}.", "facts_de"),
-            (f"Stimmt es, dass {capital} die Hauptstadt von {state} ist?", f"Ja. {capital} ist die Hauptstadt von {state}.", "facts_de"),
-            (f"Ist die Hauptstadt von {state} {capital}?", f"Ja. Die Hauptstadt von {state} ist {capital}.", "facts_de"),
-            (f"Ist {wrong} die Hauptstadt von {state}?", f"Nein. Die Hauptstadt von {state} ist {capital}.", "hallucination_guard"),
-            (f"Korrigiere: {wrong} ist die Hauptstadt von {state}.", f"Richtig ist: {capital} ist die Hauptstadt von {state}.", "hallucination_guard"),
-        ])
+        pairs.extend(
+            [
+                (
+                    f"In welchem Bundesland liegt {capital}?",
+                    f"{capital} liegt in {state}.",
+                    "facts_de",
+                ),
+                (
+                    f"Ist {capital} die Hauptstadt von {state}?",
+                    f"Ja. {capital} ist die Hauptstadt von {state}.",
+                    "facts_de",
+                ),
+                (
+                    f"Stimmt es, dass {capital} die Hauptstadt von {state} ist?",
+                    f"Ja. {capital} ist die Hauptstadt von {state}.",
+                    "facts_de",
+                ),
+                (
+                    f"Ist die Hauptstadt von {state} {capital}?",
+                    f"Ja. Die Hauptstadt von {state} ist {capital}.",
+                    "facts_de",
+                ),
+                (
+                    f"Ist {wrong} die Hauptstadt von {state}?",
+                    f"Nein. Die Hauptstadt von {state} ist {capital}.",
+                    "hallucination_guard",
+                ),
+                (
+                    f"Korrigiere: {wrong} ist die Hauptstadt von {state}.",
+                    f"Richtig ist: {capital} ist die Hauptstadt von {state}.",
+                    "hallucination_guard",
+                ),
+            ]
+        )
 
     concepts = [
-        ("Wasser", "Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff und ist bei Raumtemperatur meist fluessig."),
+        (
+            "Wasser",
+            "Wasser ist eine chemische Verbindung aus Wasserstoff und Sauerstoff und ist bei Raumtemperatur meist fluessig.",
+        ),
         ("H2O", "H2O ist die chemische Formel fuer Wasser."),
-        ("Sauerstoff", "Sauerstoff ist ein chemisches Element und ein wichtiger Bestandteil der Luft."),
-        ("Kohlenstoffdioxid", "Kohlenstoffdioxid ist eine chemische Verbindung aus Kohlenstoff und Sauerstoff."),
+        (
+            "Sauerstoff",
+            "Sauerstoff ist ein chemisches Element und ein wichtiger Bestandteil der Luft.",
+        ),
+        (
+            "Kohlenstoffdioxid",
+            "Kohlenstoffdioxid ist eine chemische Verbindung aus Kohlenstoff und Sauerstoff.",
+        ),
         ("Luft", "Luft ist ein Gemisch aus Gasen, vor allem Stickstoff und Sauerstoff."),
-        ("Photosynthese", "Photosynthese ist der Prozess, bei dem Pflanzen mit Licht aus Wasser und Kohlenstoffdioxid Zucker und Sauerstoff bilden."),
-        ("Computer", "Ein Computer ist eine Maschine, die Daten verarbeitet, speichert und Programme ausfuehrt."),
-        ("Taschenrechner", "Ein Taschenrechner ist ein Geraet, mit dem man Rechenaufgaben loesen kann."),
+        (
+            "Photosynthese",
+            "Photosynthese ist der Prozess, bei dem Pflanzen mit Licht aus Wasser und Kohlenstoffdioxid Zucker und Sauerstoff bilden.",
+        ),
+        (
+            "Computer",
+            "Ein Computer ist eine Maschine, die Daten verarbeitet, speichert und Programme ausfuehrt.",
+        ),
+        (
+            "Taschenrechner",
+            "Ein Taschenrechner ist ein Geraet, mit dem man Rechenaufgaben loesen kann.",
+        ),
         ("Apfel", "Ein Apfel ist eine essbare Frucht."),
         ("Regen", "Regen ist Wasser, das aus Wolken auf die Erde faellt."),
         ("Sonne", "Die Sonne ist ein Stern und die wichtigste Licht- und Waermequelle der Erde."),
         ("Mond", "Der Mond ist der natuerliche Begleiter der Erde."),
         ("Pflanze", "Eine Pflanze ist ein Lebewesen, das meist mit Licht Energie gewinnt."),
-        ("Saeugetier", "Ein Saeugetier ist ein Tier, dessen Nachwuchs normalerweise mit Milch gesaeugt wird."),
+        (
+            "Saeugetier",
+            "Ein Saeugetier ist ein Tier, dessen Nachwuchs normalerweise mit Milch gesaeugt wird.",
+        ),
         ("Demokratie", "Demokratie ist eine Staatsform, in der das Volk politisch mitbestimmt."),
         ("Quelle", "Eine Quelle ist ein Ursprung von Information oder Wasser."),
     ]
     for term, answer in concepts:
-        pairs.extend([
-            (f"Was ist {term}? Antworte kurz.", answer, "qa_de"),
-            (f"Erklaere in einem Satz: {term}.", answer, "qa_de"),
-            (f"Formuliere einfach, was {term} ist.", answer, "instruction_de"),
-        ])
+        pairs.extend(
+            [
+                (f"Was ist {term}? Antworte kurz.", answer, "qa_de"),
+                (f"Erklaere in einem Satz: {term}.", answer, "qa_de"),
+                (f"Formuliere einfach, was {term} ist.", answer, "instruction_de"),
+            ]
+        )
 
     false_claims = [
-        ("Wasser ist ein chemisches Element.", "Wasser ist kein chemisches Element, sondern eine chemische Verbindung."),
-        ("Wasser ist ein Element.", "Nein. Wasser ist kein Element, sondern eine chemische Verbindung aus Wasserstoff und Sauerstoff."),
-        ("H2O ist ein chemisches Element.", "Nein. H2O ist Wasser und damit eine chemische Verbindung, kein Element."),
-        ("Sauerstoff ist eine Fluessigkeit bei Raumtemperatur.", "Nein. Sauerstoff ist bei Raumtemperatur ein Gas."),
-        ("Photosynthese macht aus Licht direkt Metall.", "Nein. Photosynthese bildet vor allem Zucker und Sauerstoff aus Wasser und Kohlenstoffdioxid."),
-        ("Ein Computer ist dasselbe wie ein Taschenrechner.", "Nein. Ein Taschenrechner ist spezieller; ein Computer kann viele Arten von Programmen ausfuehren."),
+        (
+            "Wasser ist ein chemisches Element.",
+            "Wasser ist kein chemisches Element, sondern eine chemische Verbindung.",
+        ),
+        (
+            "Wasser ist ein Element.",
+            "Nein. Wasser ist kein Element, sondern eine chemische Verbindung aus Wasserstoff und Sauerstoff.",
+        ),
+        (
+            "H2O ist ein chemisches Element.",
+            "Nein. H2O ist Wasser und damit eine chemische Verbindung, kein Element.",
+        ),
+        (
+            "Sauerstoff ist eine Fluessigkeit bei Raumtemperatur.",
+            "Nein. Sauerstoff ist bei Raumtemperatur ein Gas.",
+        ),
+        (
+            "Photosynthese macht aus Licht direkt Metall.",
+            "Nein. Photosynthese bildet vor allem Zucker und Sauerstoff aus Wasser und Kohlenstoffdioxid.",
+        ),
+        (
+            "Ein Computer ist dasselbe wie ein Taschenrechner.",
+            "Nein. Ein Taschenrechner ist spezieller; ein Computer kann viele Arten von Programmen ausfuehren.",
+        ),
         ("Ein Apfel ist ein Tier.", "Nein. Ein Apfel ist eine Frucht."),
         ("Der Rhein fliesst durch Australien.", "Nein. Der Rhein fliesst durch Europa."),
         ("Paris liegt in Deutschland.", "Nein. Paris liegt in Frankreich."),
         ("Muenchen liegt in Hamburg.", "Nein. Muenchen liegt in Bayern."),
-        ("Faust wurde von Hitler geschrieben.", "Nein. Faust wurde von Johann Wolfgang von Goethe geschrieben."),
-        ("Goethe schrieb Mein Kampf.", "Nein. Mein Kampf stammt von Adolf Hitler, nicht von Goethe."),
-        ("Mein Kampf wurde von Goethe geschrieben.", "Nein. Mein Kampf wurde von Adolf Hitler geschrieben."),
-        ("Schrieb Goethe Mein Kampf?", "Nein. Goethe schrieb Mein Kampf nicht; das Buch stammt von Adolf Hitler."),
-        ("Hat Goethe Mein Kampf geschrieben?", "Nein. Mein Kampf stammt von Adolf Hitler, nicht von Goethe."),
-        ("Ist Mein Kampf von Goethe?", "Nein. Mein Kampf ist nicht von Goethe, sondern von Adolf Hitler."),
+        (
+            "Faust wurde von Hitler geschrieben.",
+            "Nein. Faust wurde von Johann Wolfgang von Goethe geschrieben.",
+        ),
+        (
+            "Goethe schrieb Mein Kampf.",
+            "Nein. Mein Kampf stammt von Adolf Hitler, nicht von Goethe.",
+        ),
+        (
+            "Mein Kampf wurde von Goethe geschrieben.",
+            "Nein. Mein Kampf wurde von Adolf Hitler geschrieben.",
+        ),
+        (
+            "Schrieb Goethe Mein Kampf?",
+            "Nein. Goethe schrieb Mein Kampf nicht; das Buch stammt von Adolf Hitler.",
+        ),
+        (
+            "Hat Goethe Mein Kampf geschrieben?",
+            "Nein. Mein Kampf stammt von Adolf Hitler, nicht von Goethe.",
+        ),
+        (
+            "Ist Mein Kampf von Goethe?",
+            "Nein. Mein Kampf ist nicht von Goethe, sondern von Adolf Hitler.",
+        ),
     ]
     for claim, correction in false_claims:
-        pairs.extend([
-            (f"Stimmt diese Aussage? {claim}", correction, "hallucination_guard"),
-            (f"Korrigiere kurz: {claim}", correction, "hallucination_guard"),
-            (f"Antworte ehrlich: {claim}", correction, "hallucination_guard"),
-        ])
+        pairs.extend(
+            [
+                (f"Stimmt diese Aussage? {claim}", correction, "hallucination_guard"),
+                (f"Korrigiere kurz: {claim}", correction, "hallucination_guard"),
+                (f"Antworte ehrlich: {claim}", correction, "hallucination_guard"),
+            ]
+        )
 
     unknowns = [
         "Planet Qorblax",
@@ -203,24 +321,71 @@ def base_pairs() -> list[tuple[str, str, str]]:
         "Fluss Zendar",
     ]
     for item in unknowns:
-        pairs.extend([
-            (f"Nenne zwei sichere Fakten ueber {item}.", f"Ich kenne keine verlaesslichen Fakten ueber {item}. Ich sollte keine Details erfinden.", "honesty"),
-            (f"Welche Farbe hatte {item}? Antworte ehrlich.", f"Dazu habe ich keine verlaessliche Information. {item} klingt unklar oder erfunden.", "honesty"),
-            (f"Ist {item} eine gesicherte Tatsache?", f"Das kann ich nicht sicher bestaetigen. Ohne Quelle sollte ich es als unklar behandeln.", "honesty"),
-        ])
+        pairs.extend(
+            [
+                (
+                    f"Nenne zwei sichere Fakten ueber {item}.",
+                    f"Ich kenne keine verlaesslichen Fakten ueber {item}. Ich sollte keine Details erfinden.",
+                    "honesty",
+                ),
+                (
+                    f"Welche Farbe hatte {item}? Antworte ehrlich.",
+                    f"Dazu habe ich keine verlaessliche Information. {item} klingt unklar oder erfunden.",
+                    "honesty",
+                ),
+                (
+                    f"Ist {item} eine gesicherte Tatsache?",
+                    "Das kann ich nicht sicher bestaetigen. Ohne Quelle sollte ich es als unklar behandeln.",
+                    "honesty",
+                ),
+            ]
+        )
 
     style = [
-        ("Antworte mit genau einem kurzen Satz: Warum friert Wasser bei Kaelte?", "Wasser gefriert, wenn es kalt genug wird und Eis bildet."),
-        ("Antworte knapp: Was tust du, wenn du etwas nicht sicher weisst?", "Ich sage, dass ich unsicher bin, und erfinde nichts."),
-        ("Was machst du, wenn du eine Antwort nicht sicher weisst?", "Ich sage klar, dass ich unsicher bin, und erfinde keine Details."),
-        ("Was machst du, wenn du eine Antwort nicht sicher weisst? Antworte in Ich-Form.", "Ich sage, dass ich unsicher bin, und erfinde keine Details."),
-        ("Was ist die richtige Reaktion, wenn du etwas nicht sicher weisst?", "Ich nenne meine Unsicherheit und vermeide erfundene Fakten."),
-        ("Wie antwortest du, wenn eine Frage nicht belegbar ist?", "Ich nenne die Unsicherheit und behaupte nichts als sicher."),
-        ("Was solltest du vermeiden, wenn du keine Quelle kennst?", "Ich sollte keine Quelle erfinden und keine unsicheren Details als Fakten darstellen."),
-        ("Schreibe einen normalen kurzen Satz ueber Regen.", "Regen faellt aus Wolken und macht den Boden nass."),
-        ("Was ist eine gute Antwort, wenn eine Frage eine falsche Annahme enthaelt?", "Man korrigiert die falsche Annahme freundlich und antwortet dann kurz."),
-        ("Fasse kurz zusammen: Berlin ist die Hauptstadt Deutschlands.", "Berlin ist Deutschlands Hauptstadt."),
-        ("Formuliere einfacher: Die Nutzung erfolgt nach Authentifizierung.", "Man kann es erst benutzen, nachdem man sich angemeldet hat."),
+        (
+            "Antworte mit genau einem kurzen Satz: Warum friert Wasser bei Kaelte?",
+            "Wasser gefriert, wenn es kalt genug wird und Eis bildet.",
+        ),
+        (
+            "Antworte knapp: Was tust du, wenn du etwas nicht sicher weisst?",
+            "Ich sage, dass ich unsicher bin, und erfinde nichts.",
+        ),
+        (
+            "Was machst du, wenn du eine Antwort nicht sicher weisst?",
+            "Ich sage klar, dass ich unsicher bin, und erfinde keine Details.",
+        ),
+        (
+            "Was machst du, wenn du eine Antwort nicht sicher weisst? Antworte in Ich-Form.",
+            "Ich sage, dass ich unsicher bin, und erfinde keine Details.",
+        ),
+        (
+            "Was ist die richtige Reaktion, wenn du etwas nicht sicher weisst?",
+            "Ich nenne meine Unsicherheit und vermeide erfundene Fakten.",
+        ),
+        (
+            "Wie antwortest du, wenn eine Frage nicht belegbar ist?",
+            "Ich nenne die Unsicherheit und behaupte nichts als sicher.",
+        ),
+        (
+            "Was solltest du vermeiden, wenn du keine Quelle kennst?",
+            "Ich sollte keine Quelle erfinden und keine unsicheren Details als Fakten darstellen.",
+        ),
+        (
+            "Schreibe einen normalen kurzen Satz ueber Regen.",
+            "Regen faellt aus Wolken und macht den Boden nass.",
+        ),
+        (
+            "Was ist eine gute Antwort, wenn eine Frage eine falsche Annahme enthaelt?",
+            "Man korrigiert die falsche Annahme freundlich und antwortet dann kurz.",
+        ),
+        (
+            "Fasse kurz zusammen: Berlin ist die Hauptstadt Deutschlands.",
+            "Berlin ist Deutschlands Hauptstadt.",
+        ),
+        (
+            "Formuliere einfacher: Die Nutzung erfolgt nach Authentifizierung.",
+            "Man kann es erst benutzen, nachdem man sich angemeldet hat.",
+        ),
     ]
     pairs.extend((q, a, "instruction_de") for q, a in style)
 
@@ -230,32 +395,102 @@ def base_pairs() -> list[tuple[str, str, str]]:
         ("War Goethe der Autor von Faust?", "Ja. Faust stammt von Johann Wolfgang von Goethe."),
         ("Hat Goethe Faust geschrieben?", "Ja. Goethe schrieb Faust."),
         ("Ist Faust von Hitler?", "Nein. Faust stammt von Johann Wolfgang von Goethe."),
-        ("Korrigiere: Faust wurde von Hitler geschrieben.", "Das ist falsch. Faust wurde von Johann Wolfgang von Goethe geschrieben."),
+        (
+            "Korrigiere: Faust wurde von Hitler geschrieben.",
+            "Das ist falsch. Faust wurde von Johann Wolfgang von Goethe geschrieben.",
+        ),
     ]
-    pairs.extend((q, a, "facts_de" if "Nein" not in a and "falsch" not in a else "hallucination_guard") for q, a in faust_pairs)
+    pairs.extend(
+        (q, a, "facts_de" if "Nein" not in a and "falsch" not in a else "hallucination_guard")
+        for q, a in faust_pairs
+    )
 
     return pairs
 
 
 def eval_pairs() -> list[tuple[str, str, str]]:
     return [
-        ("Ist Wien aktuell die Hauptstadt von Oesterreich?", "Ja. Wien ist die Hauptstadt von Oesterreich.", "facts_de"),
-        ("Ist Hamburg die Hauptstadt von Bayern?", "Nein. Die Hauptstadt von Bayern ist Muenchen.", "hallucination_guard"),
-        ("Was ist Photosynthese in einem Satz?", "Photosynthese ist der Prozess, bei dem Pflanzen mit Licht Zucker und Sauerstoff bilden.", "qa_de"),
-        ("Was ist Sauerstoff?", "Sauerstoff ist ein chemisches Element und ein wichtiger Bestandteil der Luft.", "qa_de"),
-        ("Korrigiere: Der Rhein fliesst durch Australien.", "Das ist falsch. Der Rhein fliesst durch Europa.", "hallucination_guard"),
-        ("Welche Farbe hatte der erfundene Planet Xalidor?", "Dazu habe ich keine verlaessliche Information; Xalidor klingt erfunden.", "honesty"),
-        ("Was machst du, wenn du eine Antwort nicht sicher weisst?", "Ich sage, dass ich unsicher bin, und erfinde keine Details.", "honesty"),
-        ("Erklaere kurz, was ein Computer ist.", "Ein Computer ist eine Maschine, die Daten verarbeitet und Programme ausfuehrt.", "qa_de"),
-        ("Ist Koeln die Hauptstadt von Nordrhein-Westfalen?", "Nein. Die Hauptstadt von Nordrhein-Westfalen ist Duesseldorf.", "hallucination_guard"),
-        ("Wer schrieb Faust?", "Faust wurde von Johann Wolfgang von Goethe geschrieben.", "facts_de"),
-        ("Schrieb Goethe Mein Kampf?", "Nein. Mein Kampf stammt von Adolf Hitler, nicht von Goethe.", "hallucination_guard"),
-        ("Was ist Wasser bei Raumtemperatur?", "Wasser ist bei Raumtemperatur normalerweise fluessig.", "qa_de"),
+        (
+            "Ist Wien aktuell die Hauptstadt von Oesterreich?",
+            "Ja. Wien ist die Hauptstadt von Oesterreich.",
+            "facts_de",
+        ),
+        (
+            "Ist Hamburg die Hauptstadt von Bayern?",
+            "Nein. Die Hauptstadt von Bayern ist Muenchen.",
+            "hallucination_guard",
+        ),
+        (
+            "Was ist Photosynthese in einem Satz?",
+            "Photosynthese ist der Prozess, bei dem Pflanzen mit Licht Zucker und Sauerstoff bilden.",
+            "qa_de",
+        ),
+        (
+            "Was ist Sauerstoff?",
+            "Sauerstoff ist ein chemisches Element und ein wichtiger Bestandteil der Luft.",
+            "qa_de",
+        ),
+        (
+            "Korrigiere: Der Rhein fliesst durch Australien.",
+            "Das ist falsch. Der Rhein fliesst durch Europa.",
+            "hallucination_guard",
+        ),
+        (
+            "Welche Farbe hatte der erfundene Planet Xalidor?",
+            "Dazu habe ich keine verlaessliche Information; Xalidor klingt erfunden.",
+            "honesty",
+        ),
+        (
+            "Was machst du, wenn du eine Antwort nicht sicher weisst?",
+            "Ich sage, dass ich unsicher bin, und erfinde keine Details.",
+            "honesty",
+        ),
+        (
+            "Erklaere kurz, was ein Computer ist.",
+            "Ein Computer ist eine Maschine, die Daten verarbeitet und Programme ausfuehrt.",
+            "qa_de",
+        ),
+        (
+            "Ist Koeln die Hauptstadt von Nordrhein-Westfalen?",
+            "Nein. Die Hauptstadt von Nordrhein-Westfalen ist Duesseldorf.",
+            "hallucination_guard",
+        ),
+        (
+            "Wer schrieb Faust?",
+            "Faust wurde von Johann Wolfgang von Goethe geschrieben.",
+            "facts_de",
+        ),
+        (
+            "Schrieb Goethe Mein Kampf?",
+            "Nein. Mein Kampf stammt von Adolf Hitler, nicht von Goethe.",
+            "hallucination_guard",
+        ),
+        (
+            "Was ist Wasser bei Raumtemperatur?",
+            "Wasser ist bei Raumtemperatur normalerweise fluessig.",
+            "qa_de",
+        ),
         ("Ist ein Apfel ein Tier?", "Nein. Ein Apfel ist eine Frucht.", "hallucination_guard"),
-        ("Was ist Luft?", "Luft ist ein Gemisch aus Gasen, vor allem Stickstoff und Sauerstoff.", "qa_de"),
-        ("Ist Bern die Hauptstadt der Schweiz?", "Ja. Bern ist die Hauptstadt der Schweiz.", "facts_de"),
-        ("Hat Goethe das Buch Mein Kampf geschrieben?", "Nein. Mein Kampf stammt von Adolf Hitler, nicht von Goethe.", "hallucination_guard"),
-        ("Wie antwortest du, wenn du keine sichere Quelle hast?", "Ich sage, dass ich unsicher bin, und erfinde keine Quelle.", "honesty"),
+        (
+            "Was ist Luft?",
+            "Luft ist ein Gemisch aus Gasen, vor allem Stickstoff und Sauerstoff.",
+            "qa_de",
+        ),
+        (
+            "Ist Bern die Hauptstadt der Schweiz?",
+            "Ja. Bern ist die Hauptstadt der Schweiz.",
+            "facts_de",
+        ),
+        (
+            "Hat Goethe das Buch Mein Kampf geschrieben?",
+            "Nein. Mein Kampf stammt von Adolf Hitler, nicht von Goethe.",
+            "hallucination_guard",
+        ),
+        (
+            "Wie antwortest du, wenn du keine sichere Quelle hast?",
+            "Ich sage, dass ich unsicher bin, und erfinde keine Quelle.",
+            "honesty",
+        ),
     ]
 
 
@@ -290,14 +525,23 @@ def write_jsonl(path: Path, rows: Iterable[dict]) -> int:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--output-dir", type=Path, default=REPO / "data/training/sft_response_fix_de_v2")
+    ap.add_argument(
+        "--output-dir", type=Path, default=REPO / "data/training/sft_response_fix_de_v2"
+    )
     ap.add_argument("--seed", type=int, default=20260527)
-    ap.add_argument("--existing", type=Path, default=REPO / "data/training/sft_response_fix_de_v1/train.helix.jsonl")
+    ap.add_argument(
+        "--existing",
+        type=Path,
+        default=REPO / "data/training/sft_response_fix_de_v1/train.helix.jsonl",
+    )
     ap.add_argument("--existing-limit", type=int, default=8000)
     args = ap.parse_args()
 
     synthetic = [record(q, a, cat, "synthetic_response_fix_de_v2") for q, a, cat in base_pairs()]
-    eval_rows = [record(q, a, cat, "synthetic_response_fix_de_v2_eval_disjoint") for q, a, cat in eval_pairs()]
+    eval_rows = [
+        record(q, a, cat, "synthetic_response_fix_de_v2_eval_disjoint")
+        for q, a, cat in eval_pairs()
+    ]
     existing = load_existing_short(args.existing, args.existing_limit)
 
     seen: set[str] = set()
@@ -338,7 +582,9 @@ def main() -> None:
         "core_categories": dict(core_cats.most_common()),
         "train_categories": dict(cats.most_common()),
     }
-    (args.output_dir / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    (args.output_dir / "manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     print(json.dumps(manifest, ensure_ascii=False, indent=2))
 
 

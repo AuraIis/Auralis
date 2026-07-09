@@ -39,6 +39,7 @@ Design choices:
 
 - Records with empty user / empty assistant content are skipped.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -50,7 +51,6 @@ import tempfile
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Iterable
 
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO))
@@ -119,7 +119,7 @@ def _squad_to_sft(rec: dict, stats: Stats) -> dict | None:
             return None
         sentence = _surrounding_sentence(context, answer)
         if sentence and sentence.lower() != answer.lower() and len(sentence) > len(answer) + 20:
-            assistant_msg = f"{answer}\n\n(From the context: \"{sentence}\")"
+            assistant_msg = f'{answer}\n\n(From the context: "{sentence}")'
         else:
             assistant_msg = answer
         kind = "extractive_qa"
@@ -129,7 +129,7 @@ def _squad_to_sft(rec: dict, stats: Stats) -> dict | None:
         "id": f"squad_v2-{rec.get('id', '')}",
         "source": "squad_v2",
         "messages": [
-            {"role": "user",      "content": user_msg},
+            {"role": "user", "content": user_msg},
             {"role": "assistant", "content": assistant_msg},
         ],
         "meta": {
@@ -168,12 +168,12 @@ def _msmarco_to_sft(rec: dict, stats: Stats) -> dict | None:
         "id": f"ms_marco_v2_1-{rec.get('query_id', '')}",
         "source": "ms_marco_v2_1",
         "messages": [
-            {"role": "user",      "content": user_msg},
+            {"role": "user", "content": user_msg},
             {"role": "assistant", "content": answer},
         ],
         "meta": {
             "kind": "generative_qa",
-            "domain": qtype,            # description / entity / location / numeric / person
+            "domain": qtype,  # description / entity / location / numeric / person
         },
     }
 
@@ -217,8 +217,10 @@ def _shuffle_key(line: str, seed: int) -> str:
 
 def _shuffle_combine(out_paths: list, combined_path: Path, seed: int, bucket_count: int) -> int:
     """Concatenate and deterministically shuffle without loading all lines."""
-    print(f"\n--- combining {len(out_paths)} files into {combined_path.name} (seed={seed}) ---",
-          flush=True)
+    print(
+        f"\n--- combining {len(out_paths)} files into {combined_path.name} (seed={seed}) ---",
+        flush=True,
+    )
     bucket_count = max(16, bucket_count)
     count = 0
     with tempfile.TemporaryDirectory(prefix="qa_shuffle_", dir=combined_path.parent) as tmp:
@@ -251,16 +253,21 @@ def _shuffle_combine(out_paths: list, combined_path: Path, seed: int, bucket_cou
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description=__doc__,
-                                formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     p.add_argument("--in-dir", type=Path, default=DEFAULT_IN_DIR)
     p.add_argument("--out-dir", type=Path, default=DEFAULT_OUT_DIR)
-    p.add_argument("--seed", type=int, default=42,
-                   help="Shuffle seed for the combined file.")
-    p.add_argument("--no-combine", action="store_true",
-                   help="Skip the combined-and-shuffled output.")
-    p.add_argument("--shuffle-buckets", type=int, default=256,
-                   help="Temporary buckets for memory-safe deterministic combine.")
+    p.add_argument("--seed", type=int, default=42, help="Shuffle seed for the combined file.")
+    p.add_argument(
+        "--no-combine", action="store_true", help="Skip the combined-and-shuffled output."
+    )
+    p.add_argument(
+        "--shuffle-buckets",
+        type=int,
+        default=256,
+        help="Temporary buckets for memory-safe deterministic combine.",
+    )
     args = p.parse_args()
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
@@ -292,10 +299,9 @@ def main() -> None:
     stats.finished_at = now_iso()
     elapsed = time.time() - t0
     manifest = args.out_dir / "process_qa_manifest.json"
-    manifest.write_text(json.dumps(asdict(stats), indent=2, ensure_ascii=False),
-                        encoding="utf-8")
+    manifest.write_text(json.dumps(asdict(stats), indent=2, ensure_ascii=False), encoding="utf-8")
 
-    print(f"\n=== SUMMARY ===")
+    print("\n=== SUMMARY ===")
     print(f"elapsed: {elapsed:.1f}s")
     print(f"in:      {stats.in_records}")
     print(f"out:     {stats.out_records}")

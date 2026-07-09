@@ -12,10 +12,9 @@ import argparse
 import json
 import random
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable
-
 
 DEFAULT_BASE = Path("/workspace/v2data/data/training/pretrain_clean_v31/mix_full.txt")
 DEFAULT_OUT = Path("/workspace/v2data/data/training/pretrain_mix_v4_boosted")
@@ -24,9 +23,15 @@ DEFAULT_LARGE_QA = Path("/disk5v2data/data/large_qa_sources_v1")
 DEFAULT_SUPP = Path("/disk5v2data/data/supplemental_large_sources_v1")
 DEFAULT_REDDIT_BEST = Path("/disk5v2data/data/reddit_best_answers_v1/reddit_best_answers.jsonl")
 
-CHAT_MARKER_RE = re.compile(r"<\|(?:im_start|im_end|endoftext|user|assistant|system)\|>|_end_of_the_data", re.I)
-HTML_RE = re.compile(r"<\s*/?\s*(html|body|div|script|style|table|iframe)\b|&(?:amp|gt|lt|quot|#x200b);", re.I)
-BAD_RE = re.compile(r"\[(?:deleted|removed)\]|discord\.gg|onlyfans|free karma|subscribe to|promo code", re.I)
+CHAT_MARKER_RE = re.compile(
+    r"<\|(?:im_start|im_end|endoftext|user|assistant|system)\|>|_end_of_the_data", re.I
+)
+HTML_RE = re.compile(
+    r"<\s*/?\s*(html|body|div|script|style|table|iframe)\b|&(?:amp|gt|lt|quot|#x200b);", re.I
+)
+BAD_RE = re.compile(
+    r"\[(?:deleted|removed)\]|discord\.gg|onlyfans|free karma|subscribe to|promo code", re.I
+)
 THINK_RE = re.compile(r"</?think>", re.I)
 
 
@@ -187,7 +192,9 @@ def write_audit_samples(mix_path: Path, out_dir: Path, *, n: int, seed: int) -> 
 
 
 def copy_base_fast(src: Path, dst: Path) -> SourceStats:
-    stats = SourceStats(name="clean_v31_base", kind="text_lines_fast_copy", path=str(src), cap_bytes=None)
+    stats = SourceStats(
+        name="clean_v31_base", kind="text_lines_fast_copy", path=str(src), cap_bytes=None
+    )
     last_byte = b""
     with src.open("rb") as in_fh, dst.open("wb") as out_fh:
         for chunk in iter(lambda: in_fh.read(16 * 1024 * 1024), b""):
@@ -309,8 +316,12 @@ def main() -> None:
         "source_count": len(stats),
         "sources": [s.__dict__ for s in stats],
     }
-    manifest["audit"] = write_audit_samples(mix_path, args.out_dir, n=args.audit_samples, seed=args.seed)
-    (args.out_dir / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    manifest["audit"] = write_audit_samples(
+        mix_path, args.out_dir, n=args.audit_samples, seed=args.seed
+    )
+    (args.out_dir / "manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     print(f"wrote {mix_path} ({manifest['documents']:,} docs, {total_bytes / 1e9:.2f} GB)")
     print(f"wrote {args.out_dir / 'manifest.json'}")
     print(f"wrote {args.out_dir / 'audit_samples.txt'}")

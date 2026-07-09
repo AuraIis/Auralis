@@ -16,6 +16,7 @@ Usage:
         --output raw/sft/synth/inputs/phase3_batch1.jsonl \\
         --seed 42
 """
+
 from __future__ import annotations
 
 import argparse
@@ -193,15 +194,42 @@ REFACTOR_TASKS = [
 
 DEBUG_TASKS = [
     ("Find the bug:", "```python\ndef avg(nums): return sum(nums) / len(nums) - 1\n```"),
-    ("Find the bug:", "```python\ndef factorial(n):\n    result = 0\n    for i in range(1, n+1):\n        result *= i\n    return result\n```"),
-    ("Find the bug:", "```python\ndef contains_duplicates(lst):\n    return len(lst) != len(set(lst))\n# bug: misst nur exakte Gleichheit, nicht z.B. 1 vs 1.0\n```"),
-    ("Find the bug:", "```python\ndef binary_search(arr, target):\n    lo, hi = 0, len(arr)\n    while lo < hi:\n        mid = (lo + hi) // 2\n        if arr[mid] < target: lo = mid\n        elif arr[mid] > target: hi = mid\n        else: return mid\n    return -1\n```"),
-    ("Find the bug:", "```python\ndef parse_int(s, default=0):\n    if s.isdigit():\n        return int(s)\n    return default\n# bug: was ist mit negativen Zahlen?\n```"),
-    ("Find the bug:", "```python\ndef merge_dicts(*dicts):\n    result = {}\n    for d in dicts:\n        result.update(d)\n```"),
-    ("Find the bug:", "```python\nasync def fetch_all(urls):\n    results = []\n    for url in urls:\n        results.append(await fetch(url))\n    return results\n# bug: nicht parallel\n```"),
-    ("Find the bug:", "```python\ndef strip_extension(filename):\n    return filename.split('.')[0]\n# bug: 'a.b.c' wird zu 'a' nicht 'a.b'\n```"),
-    ("Find the bug:", "```python\ndef remove_first_match(lst, x):\n    for item in lst:\n        if item == x:\n            lst.remove(item)\n            return\n# bug: modify while iterate\n```"),
-    ("Find the bug:", "```python\ndef days_between(d1_str, d2_str):\n    d1 = datetime.strptime(d1_str, '%Y-%m-%d')\n    d2 = datetime.strptime(d2_str, '%d-%m-%Y')\n    return (d2 - d1).days\n# bug: inkonsistente Formate\n```"),
+    (
+        "Find the bug:",
+        "```python\ndef factorial(n):\n    result = 0\n    for i in range(1, n+1):\n        result *= i\n    return result\n```",
+    ),
+    (
+        "Find the bug:",
+        "```python\ndef contains_duplicates(lst):\n    return len(lst) != len(set(lst))\n# bug: misst nur exakte Gleichheit, nicht z.B. 1 vs 1.0\n```",
+    ),
+    (
+        "Find the bug:",
+        "```python\ndef binary_search(arr, target):\n    lo, hi = 0, len(arr)\n    while lo < hi:\n        mid = (lo + hi) // 2\n        if arr[mid] < target: lo = mid\n        elif arr[mid] > target: hi = mid\n        else: return mid\n    return -1\n```",
+    ),
+    (
+        "Find the bug:",
+        "```python\ndef parse_int(s, default=0):\n    if s.isdigit():\n        return int(s)\n    return default\n# bug: was ist mit negativen Zahlen?\n```",
+    ),
+    (
+        "Find the bug:",
+        "```python\ndef merge_dicts(*dicts):\n    result = {}\n    for d in dicts:\n        result.update(d)\n```",
+    ),
+    (
+        "Find the bug:",
+        "```python\nasync def fetch_all(urls):\n    results = []\n    for url in urls:\n        results.append(await fetch(url))\n    return results\n# bug: nicht parallel\n```",
+    ),
+    (
+        "Find the bug:",
+        "```python\ndef strip_extension(filename):\n    return filename.split('.')[0]\n# bug: 'a.b.c' wird zu 'a' nicht 'a.b'\n```",
+    ),
+    (
+        "Find the bug:",
+        "```python\ndef remove_first_match(lst, x):\n    for item in lst:\n        if item == x:\n            lst.remove(item)\n            return\n# bug: modify while iterate\n```",
+    ),
+    (
+        "Find the bug:",
+        "```python\ndef days_between(d1_str, d2_str):\n    d1 = datetime.strptime(d1_str, '%Y-%m-%d')\n    d2 = datetime.strptime(d2_str, '%d-%m-%Y')\n    return (d2 - d1).days\n# bug: inkonsistente Formate\n```",
+    ),
 ]
 
 
@@ -210,28 +238,73 @@ DEBUG_TASKS = [
 # ---------------------------------------------------------------------------
 
 MATH_TEMPLATES = [
-    ("Anna hat {a} Tüten mit je {b} Bonbons. Sie gibt {frac} aller Bonbons an ihre Schwester. Wie viele behält sie?", ["1/3", "1/4", "1/2", "2/5", "3/7"]),
+    (
+        "Anna hat {a} Tüten mit je {b} Bonbons. Sie gibt {frac} aller Bonbons an ihre Schwester. Wie viele behält sie?",
+        ["1/3", "1/4", "1/2", "2/5", "3/7"],
+    ),
     ("Ein Zug fährt {h1}h mit {v1} km/h, dann {h2}h mit {v2} km/h. Wie viele km insgesamt?", None),
-    ("Eine Pizza kostet {p}€, ein Getränk {g}€. Eine Familie bestellt {n_p} Pizzen und {n_g} Getränke. Wie viel kostet das gesamt?", None),
-    ("In einer Klasse mit {n} Schülern sind {p}% Mädchen. Wie viele Jungen sind in der Klasse?", None),
-    ("Ein Auto verbraucht im Schnitt {v} Liter pro 100 km. Wie viel Benzin braucht es für eine Strecke von {d} km?", None),
-    ("Ein Kapital von {k}€ wird mit {r}% jährlich verzinst. Wie viel Zinsen nach {y} Jahr(en) Zinseszins?", None),
-    ("Eine Wand ist {w} m breit und {h} m hoch. Eine Tapetenrolle deckt {f} m². Wie viele Rollen braucht man (aufrunden)?", None),
-    ("Ein Rezept für {orig} Personen braucht {x} g Mehl. Wie viel Mehl für {target} Personen?", None),
-    ("Auf einer Karte 1:{scale} sind zwei Städte {cm} cm voneinander entfernt. Wie weit liegen sie wirklich auseinander?", None),
-    ("Ein Behälter ist {l1} L groß und zu {p1}% gefüllt. Es werden {l2} L hinzugefügt. Wie voll ist er jetzt prozentual?", None),
+    (
+        "Eine Pizza kostet {p}€, ein Getränk {g}€. Eine Familie bestellt {n_p} Pizzen und {n_g} Getränke. Wie viel kostet das gesamt?",
+        None,
+    ),
+    (
+        "In einer Klasse mit {n} Schülern sind {p}% Mädchen. Wie viele Jungen sind in der Klasse?",
+        None,
+    ),
+    (
+        "Ein Auto verbraucht im Schnitt {v} Liter pro 100 km. Wie viel Benzin braucht es für eine Strecke von {d} km?",
+        None,
+    ),
+    (
+        "Ein Kapital von {k}€ wird mit {r}% jährlich verzinst. Wie viel Zinsen nach {y} Jahr(en) Zinseszins?",
+        None,
+    ),
+    (
+        "Eine Wand ist {w} m breit und {h} m hoch. Eine Tapetenrolle deckt {f} m². Wie viele Rollen braucht man (aufrunden)?",
+        None,
+    ),
+    (
+        "Ein Rezept für {orig} Personen braucht {x} g Mehl. Wie viel Mehl für {target} Personen?",
+        None,
+    ),
+    (
+        "Auf einer Karte 1:{scale} sind zwei Städte {cm} cm voneinander entfernt. Wie weit liegen sie wirklich auseinander?",
+        None,
+    ),
+    (
+        "Ein Behälter ist {l1} L groß und zu {p1}% gefüllt. Es werden {l2} L hinzugefügt. Wie voll ist er jetzt prozentual?",
+        None,
+    ),
 ]
 
 MATH_VAR_RANGES = {
-    "a": (2, 6), "b": (8, 20),
-    "h1": (1, 4), "h2": (1, 4), "v1": (60, 130), "v2": (60, 130),
-    "p": (8, 16), "g": (2, 5), "n_p": (1, 4), "n_g": (1, 6),
-    "n": (18, 32), "v": (5, 9), "d": (50, 800),
-    "k": (1000, 10000), "r": (1, 8), "y": (1, 10),
-    "w": (3, 8), "h": (2, 4), "f": (5, 12),
-    "orig": (2, 6), "x": (200, 600), "target": (3, 12),
-    "scale": (10000, 200000), "cm": (2, 25),
-    "l1": (10, 100), "l2": (5, 30), "p1": (20, 80),
+    "a": (2, 6),
+    "b": (8, 20),
+    "h1": (1, 4),
+    "h2": (1, 4),
+    "v1": (60, 130),
+    "v2": (60, 130),
+    "p": (8, 16),
+    "g": (2, 5),
+    "n_p": (1, 4),
+    "n_g": (1, 6),
+    "n": (18, 32),
+    "v": (5, 9),
+    "d": (50, 800),
+    "k": (1000, 10000),
+    "r": (1, 8),
+    "y": (1, 10),
+    "w": (3, 8),
+    "h": (2, 4),
+    "f": (5, 12),
+    "orig": (2, 6),
+    "x": (200, 600),
+    "target": (3, 12),
+    "scale": (10000, 200000),
+    "cm": (2, 25),
+    "l1": (10, 100),
+    "l2": (5, 30),
+    "p1": (20, 80),
 }
 
 
@@ -258,19 +331,53 @@ REASONING_TASKS = [
 # ---------------------------------------------------------------------------
 
 CONCEPTS_DE = [
-    "Photosynthese", "Mitose", "DNA-Replikation", "Evolution durch natürliche Selektion",
-    "Quantenverschränkung", "Welle-Teilchen-Dualismus", "Schwarze Löcher", "Relativitätstheorie",
-    "Plattentektonik", "Treibhauseffekt", "El Niño", "Wasserkreislauf",
-    "Maschinelles Lernen", "Neuronale Netze", "Backpropagation", "Gradient-Descent",
-    "TCP/IP", "DNS", "Public-Key-Kryptographie", "Hash-Funktionen",
-    "Bundesverfassungsgericht", "Föderalismus", "Soziale Marktwirtschaft", "Gewaltenteilung",
-    "Grenznutzen", "Inflation", "Bruttoinlandsprodukt", "Wechselkurs",
-    "Kant's kategorischer Imperativ", "Utilitarismus", "Existenzialismus", "Determinismus",
-    "Goethe's Faust (Grundkonflikt)", "Kafkaesk", "Romantik (Literaturepoche)",
-    "Fußball-Abseitsregel", "Tennis-Tiebreak", "Schach-Eröffnungstheorie",
-    "Brexit (Auswirkungen)", "Klimawandel-Kipppunkte", "Green-Deal der EU",
-    "Mendelsche Regeln", "Periodensystem (Aufbau)", "Ionenbindung vs Atombindung",
-    "Magnetfeld der Erde", "Erdrotation und Tageslänge", "Gezeitenkraft",
+    "Photosynthese",
+    "Mitose",
+    "DNA-Replikation",
+    "Evolution durch natürliche Selektion",
+    "Quantenverschränkung",
+    "Welle-Teilchen-Dualismus",
+    "Schwarze Löcher",
+    "Relativitätstheorie",
+    "Plattentektonik",
+    "Treibhauseffekt",
+    "El Niño",
+    "Wasserkreislauf",
+    "Maschinelles Lernen",
+    "Neuronale Netze",
+    "Backpropagation",
+    "Gradient-Descent",
+    "TCP/IP",
+    "DNS",
+    "Public-Key-Kryptographie",
+    "Hash-Funktionen",
+    "Bundesverfassungsgericht",
+    "Föderalismus",
+    "Soziale Marktwirtschaft",
+    "Gewaltenteilung",
+    "Grenznutzen",
+    "Inflation",
+    "Bruttoinlandsprodukt",
+    "Wechselkurs",
+    "Kant's kategorischer Imperativ",
+    "Utilitarismus",
+    "Existenzialismus",
+    "Determinismus",
+    "Goethe's Faust (Grundkonflikt)",
+    "Kafkaesk",
+    "Romantik (Literaturepoche)",
+    "Fußball-Abseitsregel",
+    "Tennis-Tiebreak",
+    "Schach-Eröffnungstheorie",
+    "Brexit (Auswirkungen)",
+    "Klimawandel-Kipppunkte",
+    "Green-Deal der EU",
+    "Mendelsche Regeln",
+    "Periodensystem (Aufbau)",
+    "Ionenbindung vs Atombindung",
+    "Magnetfeld der Erde",
+    "Erdrotation und Tageslänge",
+    "Gezeitenkraft",
 ]
 
 # ---------------------------------------------------------------------------
@@ -340,15 +447,39 @@ REFUSAL_TASKS = [
 
 TRANSLATION_TASKS = [
     ("DE→EN", "Die Mamba-Schicht implementiert state-space-modelle mit selektiver Update-Regel."),
-    ("DE→EN", "Gradient checkpointing tauscht Rechenzeit gegen Speicherverbrauch beim Backward-Pass."),
+    (
+        "DE→EN",
+        "Gradient checkpointing tauscht Rechenzeit gegen Speicherverbrauch beim Backward-Pass.",
+    ),
     ("DE→EN", "Die Tokenisierung mit byte-fallback garantiert eine Unknown-Rate von null Prozent."),
-    ("DE→EN", "Layer-Normalisierung stabilisiert das Training tiefer Netze unabhängig von der Batch-Größe."),
-    ("DE→EN", "Bei der Aufmerksamkeit mit linearer Komplexität wird der Speicheraufwand vom quadratischen auf linearen Verlauf reduziert."),
-    ("EN→DE", "The model uses rotary positional embeddings (RoPE) with a base frequency of 10,000."),
-    ("EN→DE", "Mixed-precision training in bfloat16 yields significant memory savings without loss in accuracy."),
-    ("EN→DE", "Knowledge distillation transfers a teacher model's behavior into a smaller student via KL divergence on output logits."),
-    ("EN→DE", "Sparse mixture-of-experts gating routes each token to k of N experts, activating only a fraction of total parameters."),
-    ("EN→DE", "Curriculum learning orders training samples by difficulty to improve convergence on hard examples."),
+    (
+        "DE→EN",
+        "Layer-Normalisierung stabilisiert das Training tiefer Netze unabhängig von der Batch-Größe.",
+    ),
+    (
+        "DE→EN",
+        "Bei der Aufmerksamkeit mit linearer Komplexität wird der Speicheraufwand vom quadratischen auf linearen Verlauf reduziert.",
+    ),
+    (
+        "EN→DE",
+        "The model uses rotary positional embeddings (RoPE) with a base frequency of 10,000.",
+    ),
+    (
+        "EN→DE",
+        "Mixed-precision training in bfloat16 yields significant memory savings without loss in accuracy.",
+    ),
+    (
+        "EN→DE",
+        "Knowledge distillation transfers a teacher model's behavior into a smaller student via KL divergence on output logits.",
+    ),
+    (
+        "EN→DE",
+        "Sparse mixture-of-experts gating routes each token to k of N experts, activating only a fraction of total parameters.",
+    ),
+    (
+        "EN→DE",
+        "Curriculum learning orders training samples by difficulty to improve convergence on hard examples.",
+    ),
 ]
 
 
@@ -372,6 +503,7 @@ CREATIVE_TASKS = [
 # Generation
 # ---------------------------------------------------------------------------
 
+
 def generate_records(rng: random.Random) -> list[dict]:
     records: list[dict] = []
     n = 0
@@ -379,12 +511,14 @@ def generate_records(rng: random.Random) -> list[dict]:
     def add(task_type: str, user_prompt: str) -> None:
         nonlocal n
         n += 1
-        records.append({
-            "id": f"p3_{n:04d}",
-            "task_type": task_type,
-            "system_prompt": SYSTEM_PROMPTS[task_type],
-            "user_prompt": user_prompt,
-        })
+        records.append(
+            {
+                "id": f"p3_{n:04d}",
+                "task_type": task_type,
+                "system_prompt": SYSTEM_PROMPTS[task_type],
+                "user_prompt": user_prompt,
+            }
+        )
 
     # === code_explain (200) — Wiederhole Snippets mit unterschiedlichen Framings
     framings = [
@@ -516,6 +650,7 @@ def main() -> None:
 
     # Stats
     from collections import Counter
+
     counts = Counter(r["task_type"] for r in records)
     print(f"=== Generated {len(records)} prompts → {args.output} ===")
     for tt, c in sorted(counts.items(), key=lambda kv: -kv[1]):

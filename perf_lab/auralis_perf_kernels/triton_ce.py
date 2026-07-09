@@ -531,7 +531,9 @@ if _TRITON_AVAILABLE:
             valid_vocab = vocab < V
             logits = tl.where(valid_rows[:, None] & valid_vocab[None, :], logits, -float("inf"))
             probs = tl.exp(logits - row_max_m[:, None]) / exp_sum_m[:, None]
-            one_hot = (vocab[None, :] == labels_m[:, None]) & valid_rows[:, None] & valid_vocab[None, :]
+            one_hot = (
+                (vocab[None, :] == labels_m[:, None]) & valid_rows[:, None] & valid_vocab[None, :]
+            )
             grad_logits = tl.where(
                 valid_rows[:, None] & valid_vocab[None, :],
                 (probs - tl.where(one_hot, 1.0, 0.0)) * scale,
@@ -602,7 +604,9 @@ if _TRITON_AVAILABLE:
             valid_vocab = vocab < V
             logits = tl.where(valid_rows[:, None] & valid_vocab[None, :], logits, -float("inf"))
             probs = tl.exp(logits - row_max_m[:, None]) / exp_sum_m[:, None]
-            one_hot = (vocab[None, :] == labels_m[:, None]) & valid_rows[:, None] & valid_vocab[None, :]
+            one_hot = (
+                (vocab[None, :] == labels_m[:, None]) & valid_rows[:, None] & valid_vocab[None, :]
+            )
             grad_logits = tl.where(
                 valid_rows[:, None] & valid_vocab[None, :],
                 (probs - tl.where(one_hot, 1.0, 0.0)) * scale,
@@ -676,7 +680,9 @@ if _TRITON_AVAILABLE:
             valid_vocab = vocab < V
             logits = tl.where(valid_rows[:, None] & valid_vocab[None, :], logits, -float("inf"))
             probs = tl.exp(logits - row_max_m[:, None]) / exp_sum_m[:, None]
-            one_hot = (vocab[None, :] == labels_m[:, None]) & valid_rows[:, None] & valid_vocab[None, :]
+            one_hot = (
+                (vocab[None, :] == labels_m[:, None]) & valid_rows[:, None] & valid_vocab[None, :]
+            )
             grad_logits = tl.where(
                 valid_rows[:, None] & valid_vocab[None, :],
                 (probs - tl.where(one_hot, 1.0, 0.0)) * scale,

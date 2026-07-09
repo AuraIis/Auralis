@@ -33,22 +33,39 @@ def make_trainer(out_dir: Path):
     warmup = 5
     sched = LambdaLR(opt, lr_lambda=lambda s: min(1.0, (s + 1) / warmup))
     config = {
-        "training": {"total_steps": 100, "gradient_accumulation": 1,
-                     "gradient_clip_norm": 1.0, "batch_size_per_device": 2, "dtype": "fp32"},
+        "training": {
+            "total_steps": 100,
+            "gradient_accumulation": 1,
+            "gradient_clip_norm": 1.0,
+            "batch_size_per_device": 2,
+            "dtype": "fp32",
+        },
         "data": {"seq_length": 8},
         "logging": {"log_every": 1, "eval_every": 1000, "save_every": 1000},
-        "checkpointing": {"output_dir": str(out_dir), "save_last_n": 3,
-                          "save_best": True, "external_backup": {}},
+        "checkpointing": {
+            "output_dir": str(out_dir),
+            "save_last_n": 3,
+            "save_best": True,
+            "external_backup": {},
+        },
         "monitoring": {"health": {}},
     }
 
     def loader():
         while True:
-            yield {"input_ids": torch.zeros(2, 8, dtype=torch.long),
-                   "labels": torch.zeros(2, 8, dtype=torch.long)}
+            yield {
+                "input_ids": torch.zeros(2, 8, dtype=torch.long),
+                "labels": torch.zeros(2, 8, dtype=torch.long),
+            }
 
-    tr = PretrainTrainer(model=model, optimizer=opt, scheduler=sched,
-                         dataloader=loader(), config=config, device="cpu")
+    tr = PretrainTrainer(
+        model=model,
+        optimizer=opt,
+        scheduler=sched,
+        dataloader=loader(),
+        config=config,
+        device="cpu",
+    )
     return tr, model, opt, sched
 
 
@@ -68,7 +85,7 @@ def main() -> int:
         a.state.tokens_seen = 7 * 65536
         lr_at_save = opt_a.param_groups[0]["lr"]
         ckpt = a.save_checkpoint("resume_smoke")
-        expected_rng = torch.rand(4)            # RNG stream immediately after save
+        expected_rng = torch.rand(4)  # RNG stream immediately after save
 
         # Fresh trainer (different random init), then resume.
         b, model_b, opt_b, sched_b = make_trainer(out)
@@ -86,14 +103,16 @@ def main() -> int:
         check("step restored (==7)", b.state.step == 7)
         check("best_val_loss restored", abs(b.state.best_val_loss - 1.234) < 1e-9)
         check("tokens_seen restored", b.state.tokens_seen == 7 * 65536)
-        check("LR continued, NOT reset to warmup",
-              abs(opt_b.param_groups[0]["lr"] - lr_at_save) < 1e-12)
-        check("optimizer momentum state loaded",
-              len(opt_b.state_dict()["state"]) > 0)
-        check("RNG stream continues (reproducible)",
-              torch.allclose(expected_rng, got_rng))
-        same = all(torch.equal(pa, pb) for pa, pb in
-                   zip(model_a.state_dict().values(), model_b.state_dict().values()))
+        check(
+            "LR continued, NOT reset to warmup",
+            abs(opt_b.param_groups[0]["lr"] - lr_at_save) < 1e-12,
+        )
+        check("optimizer momentum state loaded", len(opt_b.state_dict()["state"]) > 0)
+        check("RNG stream continues (reproducible)", torch.allclose(expected_rng, got_rng))
+        same = all(
+            torch.equal(pa, pb)
+            for pa, pb in zip(model_a.state_dict().values(), model_b.state_dict().values())
+        )
         check("model weights identical after resume", same)
 
     print("\nRESUME SMOKE:", "PASS" if ok else "FAIL")

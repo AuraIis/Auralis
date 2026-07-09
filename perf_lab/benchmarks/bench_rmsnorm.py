@@ -31,6 +31,7 @@ def liger_rmsnorm(x: torch.Tensor, weight: torch.Tensor, eps: float) -> torch.Te
     on this torch build."""
     import torch.distributed.tensor  # noqa: F401
     from liger_kernel.transformers.functional import liger_rms_norm
+
     return liger_rms_norm(x, weight, eps, offset=0.0, casting_mode="llama", in_place=False)
 
 
@@ -69,9 +70,13 @@ def main() -> None:
     parser.add_argument("--eps", type=float, default=1e-6)
     parser.add_argument("--warmup", type=int, default=5)
     parser.add_argument("--iters", type=int, default=20)
-    parser.add_argument("--impl", choices=["custom", "liger"], default="custom",
-                        help="Candidate kernel compared against the PyTorch reference: "
-                             "'custom' = hand-rolled CUDA kernel, 'liger' = Liger Triton RMSNorm.")
+    parser.add_argument(
+        "--impl",
+        choices=["custom", "liger"],
+        default="custom",
+        help="Candidate kernel compared against the PyTorch reference: "
+        "'custom' = hand-rolled CUDA kernel, 'liger' = Liger Triton RMSNorm.",
+    )
     args = parser.parse_args()
 
     if not torch.cuda.is_available():
@@ -134,4 +139,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

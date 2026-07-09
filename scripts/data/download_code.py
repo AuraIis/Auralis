@@ -13,8 +13,9 @@ from __future__ import annotations
 
 import argparse
 import sys
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 from tqdm import tqdm
 
@@ -33,15 +34,15 @@ from scripts.data._common import (
 CODE_BYTES_PER_TOKEN = 3.5
 
 LANG_SHARES: dict[str, float] = {
-    "python":     0.30,
+    "python": 0.30,
     "javascript": 0.20,
     "typescript": 0.10,
-    "rust":       0.10,
-    "cpp":        0.10,
-    "go":         0.08,
-    "java":       0.07,
-    "shell":      0.03,
-    "sql":        0.02,
+    "rust": 0.10,
+    "cpp": 0.10,
+    "go": 0.08,
+    "java": 0.07,
+    "shell": 0.03,
+    "sql": 0.02,
 }
 
 
@@ -61,10 +62,13 @@ def _parse_target_overrides(values: list[str] | None) -> dict[str, int]:
 
 def _open_streaming(path: str, **kwargs: Any):
     from datasets import load_dataset
+
     return load_dataset(path, split="train", streaming=True, **kwargs)
 
 
-def _stream_starcoder_language(lang: str, filters: dict[str, Any]) -> Iterator[tuple[str, dict[str, int]]]:
+def _stream_starcoder_language(
+    lang: str, filters: dict[str, Any]
+) -> Iterator[tuple[str, dict[str, int]]]:
     ds = _open_streaming("bigcode/starcoderdata", data_dir=lang)
     min_len = filters["min_length"]
     max_len = filters["max_length"]
@@ -186,12 +190,16 @@ def _download_the_stack_v2(
             for ex in tqdm(ds, desc=f"the_stack_v2:{lang}", unit="file"):
                 stars = ex.get("star_count", 0) or ex.get("max_stars_count", 0) or 0
                 if stars < filters["min_stars"]:
-                    stats.filtered_reasons[f"{lang}:low_stars"] = stats.filtered_reasons.get(f"{lang}:low_stars", 0) + 1
+                    stats.filtered_reasons[f"{lang}:low_stars"] = (
+                        stats.filtered_reasons.get(f"{lang}:low_stars", 0) + 1
+                    )
                     stats.filtered_total += 1
                     continue
                 content = ex.get("content", "") or ""
                 if len(content) < filters["min_length"] or len(content) > filters["max_length"]:
-                    stats.filtered_reasons[f"{lang}:length"] = stats.filtered_reasons.get(f"{lang}:length", 0) + 1
+                    stats.filtered_reasons[f"{lang}:length"] = (
+                        stats.filtered_reasons.get(f"{lang}:length", 0) + 1
+                    )
                     stats.filtered_total += 1
                     continue
                 wrapped = f"<|code|>[{lang}]\n{content}\n<|endcode|>"
@@ -223,7 +231,9 @@ def _stream_open_web_math(_filters: dict[str, Any]) -> Iterator[tuple[str, dict[
         yield clean_text(text), {}
 
 
-def _download_open_web_math(out_dir: Path, target_tokens: int, filters: dict[str, Any]) -> DownloadStats:
+def _download_open_web_math(
+    out_dir: Path, target_tokens: int, filters: dict[str, Any]
+) -> DownloadStats:
     output_path = out_dir / "open_web_math.txt"
     stats = DownloadStats(
         source="open_web_math",
@@ -254,9 +264,12 @@ def _download_open_web_math(out_dir: Path, target_tokens: int, filters: dict[str
 def main() -> None:
     parser = argparse.ArgumentParser(description="Download Phase 1 Code pretraining data.")
     parser.add_argument("--config", type=Path, default=None)
-    parser.add_argument("--sources", nargs="+",
-                        choices=["starcoder", "the_stack_v2", "open_web_math"],
-                        default=["starcoder", "open_web_math"])
+    parser.add_argument(
+        "--sources",
+        nargs="+",
+        choices=["starcoder", "the_stack_v2", "open_web_math"],
+        default=["starcoder", "open_web_math"],
+    )
     parser.add_argument(
         "--target-tokens-override",
         nargs="*",
@@ -287,7 +300,7 @@ def main() -> None:
 
     print("\n=== Summary ===")
     for s in summaries:
-        print(f"  {s.source:15s} {s.final_docs:>10,} docs  {s.final_bytes/1e9:>6.2f} GB")
+        print(f"  {s.source:15s} {s.final_docs:>10,} docs  {s.final_bytes / 1e9:>6.2f} GB")
 
 
 if __name__ == "__main__":

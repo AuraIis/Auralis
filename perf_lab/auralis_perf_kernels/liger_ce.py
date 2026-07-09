@@ -17,6 +17,7 @@ benchmark / drift-gate harness::
 The returned loss is autograd-connected to BOTH ``hidden`` (so the upstream
 projection gets a gradient) and ``weight`` (the LM head).
 """
+
 from __future__ import annotations
 
 import torch
@@ -39,7 +40,7 @@ def _get_liger_fn():
             from liger_kernel.transformers.functional import (
                 liger_fused_linear_cross_entropy as fn,
             )
-        except Exception as exc:  # noqa: BLE001 - import guard
+        except Exception as exc:
             raise ImportError(
                 "liger-kernel is not installed. Install it in the GPU container with "
                 "`pip install --no-deps liger-kernel` (pure-Python + Triton, no deps "

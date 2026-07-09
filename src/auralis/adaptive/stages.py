@@ -40,7 +40,7 @@ class MasteryCriterion:
     """
 
     metric: str = "stage_primary"
-    mode: str = "either"            # "stable_above" | "plateau" | "either"
+    mode: str = "either"  # "stable_above" | "plateau" | "either"
     threshold: float = 0.9
     window: int = 3
     patience: int = 4
@@ -62,8 +62,8 @@ class GuardCriterion:
     """
 
     metric: str = "retention"
-    max_drop: float = 0.001        # > 0; retention is a pass-rate in [0, 1]
-    lookback: int = 0              # 0 = compare against all history
+    max_drop: float = 0.001  # > 0; retention is a pass-rate in [0, 1]
+    lookback: int = 0  # 0 = compare against all history
 
 
 @dataclass
@@ -76,18 +76,17 @@ class Stage:
     guard: GuardCriterion | None = None
     min_steps: int = 100
     max_steps: int = 100_000
-    eval_every: int | None = None          # override the global cadence
-    lr_scale: float = 1.0                  # multiply the base LR for this stage
-    seq_length: int | None = None          # per-stage context length (curriculum
-                                           # by length, e.g. file -> repo scale);
-                                           # None = use the trainer default
+    eval_every: int | None = None  # override the global cadence
+    lr_scale: float = 1.0  # multiply the base LR for this stage
+    seq_length: int | None = None  # per-stage context length (curriculum
+    # by length, e.g. file -> repo scale);
+    # None = use the trainer default
     notes: str = ""
 
     def __post_init__(self) -> None:
         if self.max_steps < self.min_steps:
             raise ValueError(
-                f"stage {self.name}: max_steps ({self.max_steps}) < min_steps "
-                f"({self.min_steps})"
+                f"stage {self.name}: max_steps ({self.max_steps}) < min_steps ({self.min_steps})"
             )
 
 
@@ -97,13 +96,13 @@ class CurriculumSpec:
 
     name: str
     stages: list[Stage]
-    eval_every: int = 200                  # global eval cadence (steps)
+    eval_every: int = 200  # global eval cadence (steps)
     default_guard: GuardCriterion | None = field(
         default_factory=lambda: GuardCriterion("retention", 0.001)
     )
     # If a stage has no guard, fall back to default_guard. Set to None to
     # disable guarding by default.
-    on_guard: str = "stop"                 # "stop" | "hold" | "rollback"
+    on_guard: str = "stop"  # "stop" | "hold" | "rollback"
 
     def __post_init__(self) -> None:
         if not self.stages:
@@ -120,14 +119,15 @@ class CurriculumSpec:
 
     # ---------------- YAML loader ----------------
     @classmethod
-    def from_yaml(cls, path: str | Path) -> "CurriculumSpec":
+    def from_yaml(cls, path: str | Path) -> CurriculumSpec:
         data = yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {}
         return cls.from_dict(data)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "CurriculumSpec":
-        default_guard = _guard_from(data.get("default_guard"), allow_none=True,
-                                    fallback=GuardCriterion("retention", 0.001))
+    def from_dict(cls, data: dict[str, Any]) -> CurriculumSpec:
+        default_guard = _guard_from(
+            data.get("default_guard"), allow_none=True, fallback=GuardCriterion("retention", 0.001)
+        )
         stages = [_stage_from(s) for s in (data.get("stages") or [])]
         return cls(
             name=str(data.get("name", "curriculum")),
@@ -167,4 +167,4 @@ def _guard_from(
     return GuardCriterion(**d)
 
 
-__all__ = ["Stage", "MasteryCriterion", "GuardCriterion", "CurriculumSpec"]
+__all__ = ["CurriculumSpec", "GuardCriterion", "MasteryCriterion", "Stage"]

@@ -17,7 +17,9 @@ from scripts.experimental.knowledge_kernel_ablation import (  # noqa: E402
 
 
 def test_make_lm_batch_shapes() -> None:
-    sp = spm.SentencePieceProcessor(model_file=str(REPO_ROOT / "tokenizer/helix_v2_tokenizer.model"))
+    sp = spm.SentencePieceProcessor(
+        model_file=str(REPO_ROOT / "tokenizer/helix_v2_tokenizer.model")
+    )
 
     batch = make_lm_batch(
         sp,
@@ -32,7 +34,9 @@ def test_make_lm_batch_shapes() -> None:
 
 
 def test_make_lm_batch_can_cap_rows() -> None:
-    sp = spm.SentencePieceProcessor(model_file=str(REPO_ROOT / "tokenizer/helix_v2_tokenizer.model"))
+    sp = spm.SentencePieceProcessor(
+        model_file=str(REPO_ROOT / "tokenizer/helix_v2_tokenizer.model")
+    )
 
     batch = make_lm_batch(
         sp,
@@ -47,7 +51,9 @@ def test_make_lm_batch_can_cap_rows() -> None:
 
 
 def test_answer_loss_batch_masks_prompt() -> None:
-    sp = spm.SentencePieceProcessor(model_file=str(REPO_ROOT / "tokenizer/helix_v2_tokenizer.model"))
+    sp = spm.SentencePieceProcessor(
+        model_file=str(REPO_ROOT / "tokenizer/helix_v2_tokenizer.model")
+    )
     rows = qa_rows(sample_entries())[:2]
 
     batch = encode_answer_loss_batch(sp, rows, style="kernel", device=torch.device("cpu"))
