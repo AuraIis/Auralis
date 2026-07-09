@@ -101,7 +101,7 @@ def freeze_base(model: nn.Module) -> tuple[int, int]:
     """requires_grad only on adapter params. Returns (trainable, total) param counts."""
     train = total = 0
     for n, p in model.named_parameters():
-        is_adapter = any(k in n for k in ADAPTER_KEYS)
+        is_adapter = n.rsplit(".", 1)[-1] in ADAPTER_KEYS
         p.requires_grad_(is_adapter)
         total += p.numel()
         if is_adapter:
@@ -111,7 +111,7 @@ def freeze_base(model: nn.Module) -> tuple[int, int]:
 
 def adapter_state_dict(model: nn.Module) -> dict:
     return {n: p.detach().cpu() for n, p in model.named_parameters()
-            if any(k in n for k in ADAPTER_KEYS)}
+            if n.rsplit(".", 1)[-1] in ADAPTER_KEYS}
 
 
 def load_adapter_state_dict(model: nn.Module, sd: dict):
@@ -172,7 +172,7 @@ def _selftest():
         train, total = freeze_base(m)
         assert 0 < train < total
         sd = adapter_state_dict(m)
-        assert all(any(k in n for k in ADAPTER_KEYS) for n in sd)
+        assert all(n.rsplit(".", 1)[-1] in ADAPTER_KEYS for n in sd)
         load_adapter_state_dict(m, sd)
         print(f"  [{kind}] OK  injected={inj}  trainable={train}/{total} ({100*train/total:.1f}%)  adapter-keys={len(sd)}")
     print("=== LoRA/DoRA SELFTEST PASS ===")

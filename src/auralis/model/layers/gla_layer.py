@@ -50,6 +50,15 @@ class GLALayer(nn.Module):
         self.n_heads = n_heads
         self.d_head = d_head
         self.d_state = d_state or d_head
+        if d_state is not None and d_state != d_head:
+            import warnings
+
+            warnings.warn(
+                f"GLALayer: d_state={d_state} != d_head={d_head} is ignored -- the GLA "
+                f"state is [d_head, d_head] (unlike Mamba's scalar d_state), so a "
+                f"non-d_head d_state has no effect on capacity here.",
+                stacklevel=2,
+            )
 
         self.q_proj = nn.Linear(d_model, n_heads * d_head, bias=False)
         self.k_proj = nn.Linear(d_model, n_heads * d_head, bias=False)

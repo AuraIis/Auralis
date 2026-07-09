@@ -283,13 +283,32 @@ class MixedDataLoader:
 
         rows = {lang: max(0, int(self._row_credit[lang])) for lang in self._lang_order}
         remaining = self.batch_size - sum(rows.values())
-        if remaining:
+        if remaining > 0:
+            # under-budget: hand extra rows to the largest residual credits.
             frac = sorted(
                 self._lang_order,
                 key=lambda lang: (-(self._row_credit[lang] - rows[lang]), lang),
             )
             for lang in frac[:remaining]:
                 rows[lang] += 1
+        elif remaining < 0:
+            # over-budget: max(0, int(credit)) can sum to MORE than batch_size when
+            # several languages carry negative credit (int() truncates toward zero,
+            # not floor, so a negative credit contributes 0 instead of a negative).
+            # Reclaim rows from the smallest residuals until back within budget --
+            # otherwise a negative `remaining` makes frac[:remaining] an end-slice
+            # that adds +1 to nearly every language and the batch balloons.
+            frac = sorted(
+                self._lang_order,
+                key=lambda lang: (self._row_credit[lang] - rows[lang], lang),
+            )
+            need = -remaining
+            for lang in frac:
+                if need <= 0:
+                    break
+                take = min(rows[lang], need)
+                rows[lang] -= take
+                need -= take
 
         for lang in self._lang_order:
             self._row_credit[lang] -= rows[lang]
