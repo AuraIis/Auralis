@@ -649,6 +649,7 @@ class PretrainTrainer:
             "metadata": asdict(self.metadata),
             "scaler": self._scaler.state_dict() if self._scaler is not None else None,
             "rng": rng,
+            "health": self.health.state_dict(),
         }
         t_write_0 = time.time()
         torch.save(payload, tmp)
@@ -759,6 +760,7 @@ class PretrainTrainer:
         self.optimizer.load_state_dict(payload["optimizer"])
         self.scheduler.load_state_dict(payload["scheduler"])
         self.state = TrainerState(**payload["state"])
+        self.health.load_state_dict(payload.get("health"))  # restore guard counters/trends across resume
         if self._scaler is not None and payload.get("scaler") is not None:
             self._scaler.load_state_dict(payload["scaler"])
 

@@ -58,9 +58,15 @@ class DoRALinear(nn.Module):
         nn.init.kaiming_uniform_(self.lora_A, a=math.sqrt(5))
         self.magnitude = nn.Parameter(W0.norm(dim=1))  # (out,)
         self.dropout = nn.Dropout(dropout) if dropout > 0 else nn.Identity()
-        self.scale = 1.0  # inference dial (note: DoRA scale=0 != exact base, magnitude is trained)
+        self.scale = 1.0  # inference dial; scale=0 -> exact frozen base (forward short-circuits)
 
     def forward(self, x):
+        # scale=0 must reproduce the FROZEN base EXACTLY (the A/B baseline set by
+        # set_adapter_scale(model, 0.0)). Unlike LoRA/MoRA (whose delta vanishes
+        # at scale=0), DoRA's `magnitude` is a TRAINED parameter that would still
+        # rescale the base weight at scale=0, so short-circuit to the true base.
+        if self.scale == 0.0:
+            return self.base(x)
         W = self.base.weight + (self.lora_B @ self.lora_A) * (self.scaling * self.scale)
         norm = W.norm(dim=1, keepdim=True) + 1e-8
         W_eff = (self.magnitude.unsqueeze(1) / norm) * W
