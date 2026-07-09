@@ -16,6 +16,10 @@ import torch.nn.functional as F
 
 DEFAULT_TARGETS = ("q_proj", "k_proj", "v_proj", "g_proj", "out_proj",
                    "in_proj", "gate_proj", "up_proj", "down_proj")
+# Matched against the FINAL dotted component of a parameter name (exact leaf),
+# NOT as a substring anywhere in the name — otherwise a future base parameter
+# whose name merely contains one of these (e.g. a norm "magnitude") would be
+# silently treated as an adapter param (unfrozen / exported / loaded).
 ADAPTER_KEYS = ("lora_A", "lora_B", "magnitude", "mora_M")
 
 
@@ -58,9 +62,16 @@ class DoRALinear(nn.Module):
         nn.init.kaiming_uniform_(self.lora_A, a=math.sqrt(5))
         self.magnitude = nn.Parameter(W0.norm(dim=1))  # (out,)
         self.dropout = nn.Dropout(dropout) if dropout > 0 else nn.Identity()
-        self.scale = 1.0  # inference dial (note: DoRA scale=0 != exact base, magnitude is trained)
+        self.scale = 1.0  # inference dial; scale=0 -> exact frozen base (forward short-circuits)
 
     def forward(self, x):
+        # scale=0 must reproduce the FROZEN base EXACTLY — it is the A/B baseline
+        # set by set_adapter_scale(model, 0.0). Unlike LoRA/MoRA (whose delta term
+        # simply vanishes at scale=0), DoRA's `magnitude` is a TRAINED parameter
+        # and would still rescale the base weight at scale=0 (magnitude !=
+        # ||W0||_row after training), so short-circuit to the true base here.
+        if self.scale == 0.0:
+            return self.base(x)
         W = self.base.weight + (self.lora_B @ self.lora_A) * (self.scaling * self.scale)
         norm = W.norm(dim=1, keepdim=True) + 1e-8
         W_eff = (self.magnitude.unsqueeze(1) / norm) * W
@@ -139,7 +150,7 @@ def freeze_base(model: nn.Module) -> tuple[int, int]:
     """requires_grad only on adapter params. Returns (trainable, total) param counts."""
     train = total = 0
     for n, p in model.named_parameters():
-        is_adapter = any(k in n for k in ADAPTER_KEYS)
+        is_adapter = n.rsplit(".", 1)[-1] in ADAPTER_KEYS
         p.requires_grad_(is_adapter)
         total += p.numel()
         if is_adapter:
@@ -149,7 +160,7 @@ def freeze_base(model: nn.Module) -> tuple[int, int]:
 
 def adapter_state_dict(model: nn.Module) -> dict:
     return {n: p.detach().cpu() for n, p in model.named_parameters()
-            if any(k in n for k in ADAPTER_KEYS)}
+            if n.rsplit(".", 1)[-1] in ADAPTER_KEYS}
 
 
 def load_adapter_state_dict(model: nn.Module, sd: dict):
@@ -158,12 +169,22 @@ def load_adapter_state_dict(model: nn.Module, sd: dict):
     if missing:
         raise KeyError(f"adapter keys not in model: {missing[:3]}...")
     for n, v in sd.items():
-        own[n].data.copy_(v.to(own[n].device, own[n].dtype))
+        dst = own[n]
+        # Explicit shape check: Tensor.copy_ silently BROADCASTS compatible
+        # shapes (e.g. a singleton dim), so a rank/dim mismatch could corrupt
+        # weights instead of erroring. Fail loudly instead.
+        if tuple(v.shape) != tuple(dst.shape):
+            raise ValueError(
+                f"adapter shape mismatch for {n!r}: checkpoint {tuple(v.shape)} "
+                f"!= model {tuple(dst.shape)} (different rank r / dims?)")
+        dst.data.copy_(v.to(dst.device, dst.dtype))
 
 
 def set_adapter_scale(model: nn.Module, scale: float) -> int:
     """Set the inference-time strength dial on all adapters (alpha-sweep).
-    scale=0 -> exact base (LoRA), scale=1 -> trained strength. Returns count set."""
+    scale=0 -> exact frozen base, scale=1 -> trained strength. Returns count set.
+    Holds for LoRA, MoRA AND DoRA: DoRA's forward short-circuits to the base at
+    scale=0 (its trained `magnitude` would otherwise still perturb the output)."""
     n = 0
     for m in model.modules():
         if isinstance(m, (LoRALinear, DoRALinear, MoRALinear)):
@@ -210,7 +231,7 @@ def _selftest():
         train, total = freeze_base(m)
         assert 0 < train < total
         sd = adapter_state_dict(m)
-        assert all(any(k in n for k in ADAPTER_KEYS) for n in sd)
+        assert all(n.rsplit(".", 1)[-1] in ADAPTER_KEYS for n in sd)
         load_adapter_state_dict(m, sd)
         print(f"  [{kind}] OK  injected={inj}  trainable={train}/{total} ({100*train/total:.1f}%)  adapter-keys={len(sd)}")
     print("=== LoRA/DoRA SELFTEST PASS ===")

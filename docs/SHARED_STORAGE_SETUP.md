@@ -6,7 +6,8 @@ caused the canary-runde2 config-sync incident).
 
 ## Idea
 
-The repo lives on a single SMB share on BITBASTION. Both the Windows dev
+The repo lives on a single SMB share on the storage host (`STORAGE-HOST`).
+Both the Windows dev
 machine and the Linux training host see the same files. **No sync, no
 mirroring, no drift.** Edits in `configs/training/foo.yaml` from Windows
 are immediately visible to the trainer in the container.
@@ -18,7 +19,7 @@ würde die Trainings-Throughput um 50–100× drücken.
 ```
 ┌───────────────────────┐                    ┌───────────────────────┐
 │ Windows dev machine   │                    │ Linux training host   │
-│   I:\AuralisV2\       │ ←── SMB share ──→  │   /mnt/bitbastion/    │
+│   I:\AuralisV2\       │ ←── SMB share ──→  │   /mnt/storage/    │
 │                       │   (Code, Configs,   │      auralis/         │
 │                       │    Docs, scripts)   │      AuralisV2/       │
 └───────────────────────┘                    └─────────┬─────────────┘
@@ -38,7 +39,7 @@ würde die Trainings-Throughput um 50–100× drücken.
 `/etc/fstab` ergänzen:
 
 ```fstab
-//BITBASTION/Auralis  /mnt/bitbastion/auralis  cifs  credentials=/root/.smbcreds,uid=0,gid=0,iocharset=utf8,nounix,vers=3.0,cache=strict,actimeo=10  0  0
+//STORAGE-HOST/Auralis  /mnt/storage/auralis  cifs  credentials=/root/.smbcreds,uid=0,gid=0,iocharset=utf8,nounix,vers=3.0,cache=strict,actimeo=10  0  0
 ```
 
 `/root/.smbcreds` (chmod 600):
@@ -52,9 +53,9 @@ domain=WORKGROUP
 Mounten:
 
 ```bash
-mkdir -p /mnt/bitbastion/auralis
+mkdir -p /mnt/storage/auralis
 mount -a
-ls /mnt/bitbastion/auralis/AuralisV2   # sollte den Repo-Inhalt zeigen
+ls /mnt/storage/auralis/AuralisV2   # sollte den Repo-Inhalt zeigen
 ```
 
 **Mount-Optionen erklärt:**
@@ -66,7 +67,7 @@ ls /mnt/bitbastion/auralis/AuralisV2   # sollte den Repo-Inhalt zeigen
 
 ```bash
 docker run -d --name auralis-train --gpus all \
-  -v /mnt/bitbastion/auralis/AuralisV2:/workspace/auralis \
+  -v /mnt/storage/auralis/AuralisV2:/workspace/auralis \
   -v /mnt/v2data:/workspace/v2data \
   -e PYTHONDONTWRITEBYTECODE=1 \
   -e TRITON_OVERRIDE_ARCH=sm89 \
@@ -141,7 +142,7 @@ Nach dem Setup, schneller Smoke-Test:
 echo "ping from win" > I:\AuralisV2\.smb_test
 
 # Auf Linux Trainings-Host:
-cat /mnt/bitbastion/auralis/AuralisV2/.smb_test
+cat /mnt/storage/auralis/AuralisV2/.smb_test
 # → "ping from win"
 
 # Im Container:

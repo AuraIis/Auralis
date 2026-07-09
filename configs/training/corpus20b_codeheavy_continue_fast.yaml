@@ -1,0 +1,128 @@
+experiment:
+  name: helix_v2_1b_corpus20b_continue_fast
+  version: "0.1"
+  description: >
+    THROUGHPUT A/B variant of the continued-pretrain run. Same warm-start
+    (step_60000) and token/step as the baseline, but with the config-only speed
+    levers ON: gradient_checkpointing OFF (biggest lever, +15-25%, identical
+    math), torch.compile max-autotune, and the opt-in prefetch dataloader
+    (background producer + pinned buffers, +10-24% by hiding fetch latency).
+    Run this against corpus20b_codeheavy_continue_minitest.yaml (baseline) and
+    compare steady-state tok/s (skip the first ~50 compile-warmup steps) and
+    train/vram_peak_gb. For clean attribution, toggle ONE lever at a time:
+      1. gradient_checkpointing: false   (expect +15-25%, VRAM ~30-35GB)
+      2. torch_compile_mode: max-autotune-no-cudagraphs   (expect +2-8%)
+      3. data.prefetch: true             (expect +10-24%; needs a GPU parity +
+         compute-sanitizer + nsys validation run first — see prefetch.py)
+    IMPORTANT: also set env PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True when
+    pushing peak VRAM up.
+
+model:
+  config_path: "configs/model/helix_v2_1b_flash.yaml"
+
+init_from: "/workspace/v2data/checkpoints/corpus20b_codeheavy/step_60000.pt"
+
+data:
+  data_dir: "/workspace/v2data/tokenized/corpus20b"
+  mix_ratios:
+    de_curated: 0.15
+    german_fresh: 0.13
+    german_commons: 0.07
+    en: 0.24
+    code: 0.07
+    code_algo: 0.03
+    code_snip: 0.065
+    code_qa: 0.065
+    math: 0.09
+    stackexchange: 0.09
+  seq_length: 2048
+  val_split_bytes: 2_000_000
+  dataloader_seed: 20260619
+  # Lever 3: background-producer + pinned-buffer prefetch (CUDA only; no-op on CPU).
+  # MEASURED 2026-07-04: validated-correct on GPU (data_frac 14%->0%, loss identical)
+  # but only ~+1% tok/s here (the fetch was already hidden by CUDA run-ahead; warm
+  # cache). Left OFF for the long run — not worth the extra background thread. Flip
+  # to true only if a cold/NAS-bound run shows a high data_frac.
+  prefetch: false
+  prefetch_depth: 2
+
+training:
+  device: "cuda"
+  dtype: "bfloat16"
+  matmul_precision: "high"
+  kernels:
+    enabled: true
+    mamba: true
+    gla: true
+    flash_attention: true
+  optimizer:
+    name: adamw
+    lr: 1.0e-4
+    betas: [0.9, 0.95]
+    weight_decay: 0.05
+    eps: 1.0e-8
+    fused: true
+  scheduler:
+    type: cosine
+    warmup_steps: 100
+    min_lr_ratio: 0.1
+  batch_size_per_device: 4
+  gradient_accumulation: 8     # 65,536 tok/step (unchanged — same as baseline)
+  gradient_clip_norm: 1.0
+  total_steps: 400             # enough steady-state after compile warmup for a tok/s read
+  # ---- SPEED LEVERS ----
+  gradient_checkpointing: false               # lever 1 — the big one (identical math)
+  torch_compile: true
+  torch_compile_mode: "max-autotune-no-cudagraphs"   # lever 2
+  # Lever 4: fused linear→cross-entropy — TESTED AND REJECTED for this run.
+  # It skips materialising the [N, 200k] logits and looked huge in EAGER
+  # (batch 4 peak 44.97 -> 29.17 GB, −35%). But this run is COMPILED, and the
+  # MEASURED compiled numbers (2026-07-05, default compile, real step) flip it:
+  #   fused OFF b4: 21563 tok/s @ 32.95 GB   <- best
+  #   fused ON  b4: 20363 tok/s @ 30.00 GB   (−5.6% tok/s, only −2.9 GB)
+  #   fused ON  b8: 20654 tok/s @ 47.39 GB   (no gain; GPU already saturated at b4)
+  # torch.compile ALREADY fuses/optimises the CE (fused-off drops 45→33 GB under
+  # compile), and the custom autograd.Function forces a graph break that runs the
+  # CE eager → net −5.6%. The code stays (correct, 10/10 parity tests) but is
+  # only useful WITHOUT compile. Leave OFF here.
+  fused_cross_entropy: false
+
+logging:
+  log_every: 10
+  eval_every: 100000           # pushed out: keep eval off the tok/s A/B windows
+  save_every: 100000           # no mid-run saves for a throughput test
+  wandb:
+    enabled: false
+    project: "auralis-v2"
+    tags: ["1b", "corpus20b", "continue", "throughput", "fast"]
+
+checkpointing:
+  output_dir: "/workspace/v2data/checkpoints/corpus20b_continue_fast"
+  save_last_n: 1
+  save_best: false
+  skip_step_save_if_checkpoint_written: true
+
+evaluation:
+  max_val_batches: 30
+  per_language_batches: 12
+  tokens_per_byte:
+    code: 0.28
+    math: 0.22
+    de_curated: 0.18
+    german_fresh: 0.18
+    german_commons: 0.18
+    en: 0.21
+    stackexchange: 0.21
+  baseline:
+    max_ratio: 1.5
+    abort: false
+  gate:
+    enabled: false              # off for a throughput test
+
+monitoring:
+  health:
+    grad_explosion_threshold: 100.0
+    val_regression_stop_k: 8
+    val_min_delta: 0.01
+    bpb_regression_enabled: false
+    gate_regression_stop_k: 9999

@@ -18,6 +18,7 @@ import torch.nn.functional as F
 from torch.utils.checkpoint import checkpoint as _torch_checkpoint
 
 from auralis.model.config import AuralisConfig, LayerConfig
+from auralis.model.fused_cross_entropy import fused_linear_cross_entropy
 from auralis.model.layers.ffn import build_ffn
 from auralis.model.layers.gla_layer import GLALayer
 from auralis.model.layers.mamba_layer import Mamba2Layer
@@ -180,6 +181,15 @@ class HelixModel(nn.Module):
         # can also be toggled at runtime via gradient_checkpointing_enable().
         self._gradient_checkpointing: bool = bool(config.advanced.gradient_checkpointing)
 
+        # Fused linear→cross-entropy: computes the training loss without ever
+        # materialising the full [N, vocab] logits (the largest step activation
+        # at V=200k). Math-equivalent to the plain path (chunk-order + fp32
+        # softmax only). Off by default; toggled from the training config via
+        # fused_cross_entropy_enable(). Only affects the labels-provided path —
+        # generation/scoring (labels=None) still returns real logits.
+        self._fused_ce: bool = False
+        self._fused_ce_chunk: int = 1024
+
         self.norm_out = RMSNorm(config.d_model, eps=config.norm_eps)
 
         # LM head: either a separate linear or tied to embeddings.
@@ -247,6 +257,20 @@ class HelixModel(nn.Module):
         return self._gradient_checkpointing
 
     # ------------------------------------------------------------------
+    # Fused cross-entropy toggles
+    # ------------------------------------------------------------------
+    def fused_cross_entropy_enable(self, chunk_size: int = 1024) -> None:
+        self._fused_ce = True
+        self._fused_ce_chunk = int(chunk_size)
+
+    def fused_cross_entropy_disable(self) -> None:
+        self._fused_ce = False
+
+    @property
+    def is_fused_cross_entropy(self) -> bool:
+        return self._fused_ce
+
+    # ------------------------------------------------------------------
     # Forward
     # ------------------------------------------------------------------
     def forward(
@@ -271,18 +295,35 @@ class HelixModel(nn.Module):
 
         x = self.norm_out(x)
 
-        logits = self._vocab_projection(x)
-
         loss = None
         main_loss = None
         mtp_loss = None
-        if labels is not None:
-            main_loss = self._shift_loss(logits, labels)
+        logits = None
+
+        if labels is not None and self._fused_ce:
+            # Loss-only path: never materialise the [N, vocab] logits. Callers
+            # in this branch (trainer + eval) read loss/loss_main/loss_mtp only;
+            # logits stays None. Generation/scoring go through the else branch.
+            weight = self.lm_head.weight if self.lm_head is not None else self.embedding.weight
+            main_loss = fused_linear_cross_entropy(
+                x[..., :-1, :], weight, labels[..., 1:],
+                ignore_index=-100, chunk_size=self._fused_ce_chunk,
+            )
             loss = main_loss
             if self.mtp_heads:
-                mtp_loss = self._mtp_loss(x, labels)
+                mtp_loss = self._mtp_loss_fused(x, labels, weight)
                 if mtp_loss is not None:
                     loss = main_loss + float(self.config.mtp.loss_weight) * mtp_loss
+        else:
+            logits = self._vocab_projection(x)
+            if labels is not None:
+                main_loss = self._shift_loss(logits, labels)
+                loss = main_loss
+                if self.mtp_heads:
+                    mtp_loss = self._mtp_loss(x, labels)
+                    if mtp_loss is not None:
+                        loss = main_loss + float(self.config.mtp.loss_weight) * mtp_loss
+
         return {
             "logits": logits,
             "loss": loss,
@@ -330,6 +371,29 @@ class HelixModel(nn.Module):
             return None
         return torch.stack(losses).mean()
 
+    def _mtp_loss_fused(self, hidden: torch.Tensor, labels: torch.Tensor, weight: torch.Tensor) -> torch.Tensor | None:
+        # Same offsets/targets as _mtp_loss, but each head's vocab projection +
+        # CE is fused so the [N, vocab] MTP logits are never materialised.
+        losses: list[torch.Tensor] = []
+        seq_len = hidden.size(1)
+        for head_idx, head in enumerate(self.mtp_heads):
+            offset = head_idx + 2
+            if seq_len <= offset:
+                continue
+            target = labels[..., offset:]
+            if not torch.any(target.ne(-100)):
+                continue
+            mtp_hidden = head(hidden[..., :-offset, :])
+            losses.append(
+                fused_linear_cross_entropy(
+                    mtp_hidden, weight, target,
+                    ignore_index=-100, chunk_size=self._fused_ce_chunk,
+                )
+            )
+        if not losses:
+            return None
+        return torch.stack(losses).mean()
+
     def count_parameters(self) -> int:
         return sum(p.numel() for p in self.parameters())
 
@@ -352,7 +416,12 @@ class HelixModel(nn.Module):
     ) -> torch.Tensor:
         """O(1)-per-token greedy decode: Mamba/GLA carry recurrent state,
         sparse-attn layers use a windowed KV cache. Token-identical to the
-        full re-forward loop (verified by bench_infer.py).
+        full re-forward loop ONLY for global_tokens=0 OR decode within the
+        attention window (measured ~1e-6 logit diff — tests/model/test_decoder_parity.py
+        R1/R2). With global_tokens>0 AND decoding past the window, step() omits the
+        global keys and DIVERGES (R3, ~0.3 logit diff): fine for the 1B serving
+        config (global_tokens=0), NOT safe for the 250m/500m configs until step()
+        reconstructs the {0..global-1} ∪ {window} key set.
 
         ``cuda_graph=True`` captures the single-token step once and replays
         it — removes Python/launch overhead. eos early-exit is disabled in

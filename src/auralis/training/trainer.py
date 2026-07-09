@@ -326,6 +326,7 @@ class PretrainTrainer:
         self.model.train()
         data_iter = iter(self.dataloader)
         window_loss_sum = 0.0
+        window_finite_steps = 0
         window_loss_main_sum = 0.0
         window_loss_mtp_sum = 0.0
         window_loss_main_count = 0
@@ -440,22 +441,36 @@ class PretrainTrainer:
                     self._scaler.update()
                 else:
                     self.optimizer.step()
-            self.scheduler.step()
+                self.scheduler.step()  # step the LR schedule ONLY on a real update — skip on non-finite (torch idiom): otherwise warmup/cosine drift ahead of actual progress
 
             self.state.step += 1
             self.state.tokens_seen += self._batch_tokens * self._world_size
-            window_loss_sum += loss_step
-            if loss_main_count:
-                window_loss_main_sum += float(loss_main_acc)
-                window_loss_main_count += loss_main_count
-            if loss_mtp_count:
-                window_loss_mtp_sum += float(loss_mtp_acc)
-                window_loss_mtp_count += loss_mtp_count
+            # A non-finite step's loss must not enter the logged average or the
+            # health loss-window — mirrors the grad_norm poisoning guard above.
+            # Otherwise a single bf16 NaN spike poisons the whole window's
+            # train/loss and silently disables loss-spike detection for it.
+            # Skip a non-finite step's losses entirely — for train/loss AND the
+            # per-objective train/loss_main / train/loss_mtp sub-metrics. A NaN in
+            # any of them would poison the whole logged window; loss_main/_mtp were
+            # previously accumulated unconditionally (only the total was guarded).
+            if not nonfinite_step and math.isfinite(loss_step):
+                window_loss_sum += loss_step
+                window_finite_steps += 1
+                if loss_main_count:
+                    lm = float(loss_main_acc)
+                    if math.isfinite(lm):
+                        window_loss_main_sum += lm
+                        window_loss_main_count += loss_main_count
+                if loss_mtp_count:
+                    lt = float(loss_mtp_acc)
+                    if math.isfinite(lt):
+                        window_loss_mtp_sum += lt
+                        window_loss_mtp_count += loss_mtp_count
 
             if self.state.step % self._log_every == 0:
                 elapsed = time.time() - window_t0
                 self.state.wall_clock_seconds += elapsed
-                avg_loss = window_loss_sum / self._log_every
+                avg_loss = window_loss_sum / max(window_finite_steps, 1)
                 tps = (self._batch_tokens * self._world_size * self._log_every) / max(elapsed, 1e-9)
                 lr = self.scheduler.get_last_lr()[0]
                 metrics: dict[str, float] = {
@@ -524,6 +539,7 @@ class PretrainTrainer:
                         flush=True,
                     )
                 window_loss_sum = 0.0
+                window_finite_steps = 0
                 window_loss_main_sum = 0.0
                 window_loss_mtp_sum = 0.0
                 window_loss_main_count = 0
@@ -624,7 +640,8 @@ class PretrainTrainer:
             batch = {k: v.to(self.device, non_blocking=True) for k, v in batch.items()}
             with self._autocast():
                 out = self.model(input_ids=batch["input_ids"], labels=batch["labels"])
-            losses.append(out["loss"].item())
+            lv = out.get("loss_main")  # canonical next-token CE; the combined 'loss' adds the MTP term -> noisier best/stop/bpb
+            losses.append((lv if lv is not None else out["loss"]).item())
         val = sum(losses) / max(1, len(losses))
         metrics["eval/val_loss"] = val
 
@@ -645,7 +662,8 @@ class PretrainTrainer:
                     batch = {k: v.to(self.device, non_blocking=True) for k, v in batch.items()}
                     with self._autocast():
                         out = self.model(input_ids=batch["input_ids"], labels=batch["labels"])
-                    lang_losses[lang].append(out["loss"].item())
+                    lv = out.get("loss_main")  # canonical next-token CE (MTP-independent), matches the overall val above
+                    lang_losses[lang].append((lv if lv is not None else out["loss"]).item())
             for lang, ls in lang_losses.items():
                 if ls:
                     lang_val = sum(ls) / len(ls)
@@ -852,6 +870,7 @@ class PretrainTrainer:
             "metadata": asdict(self.metadata),
             "scaler": self._scaler.state_dict() if self._scaler is not None else None,
             "rng": rng,
+            "health": self.health.state_dict(),
         }
         t_write_0 = time.time()
         torch.save(payload, tmp)
@@ -962,6 +981,9 @@ class PretrainTrainer:
         self.optimizer.load_state_dict(payload["optimizer"])
         self.scheduler.load_state_dict(payload["scheduler"])
         self.state = TrainerState(**payload["state"])
+        # Restore health-guard counters/trends so auto-stop thresholds carry
+        # across the resume boundary (older ckpts without this key: no-op).
+        self.health.load_state_dict(payload.get("health"))
         if self._scaler is not None and payload.get("scaler") is not None:
             self._scaler.load_state_dict(payload["scaler"])
 

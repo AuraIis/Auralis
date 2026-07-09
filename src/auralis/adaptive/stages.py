@@ -66,6 +66,13 @@ class GuardCriterion:
     lookback: int = 0              # 0 = compare against all history
 
 
+# Sentinel: a stage (or default) whose guard was EXPLICITLY disabled via
+# `guard: off` / `guard: false` in YAML. Distinct from None ("unspecified"), so
+# CurriculumSpec.__post_init__ resolves it to a real None instead of refilling it
+# from default_guard. Compared by identity (`is`); never mutated.
+_GUARD_OFF = GuardCriterion(metric="__off__")
+
+
 @dataclass
 class Stage:
     """One curriculum phase."""
@@ -113,10 +120,17 @@ class CurriculumSpec:
             raise ValueError(f"duplicate stage names: {names}")
         if self.on_guard not in ("stop", "hold", "rollback"):
             raise ValueError(f"unknown on_guard policy: {self.on_guard}")
-        # Materialise the effective guard per stage (stage guard or default).
+        # Resolve the "explicitly disabled" sentinel (`guard: off`) to a real
+        # None (no guard) — distinct from "guard unspecified" (also None), which
+        # DOES fall back to default_guard below. Without the sentinel an explicit
+        # `guard: off` was silently re-enabled by default_guard.
+        if self.default_guard is _GUARD_OFF:
+            self.default_guard = None
         for s in self.stages:
-            if s.guard is None:
-                s.guard = self.default_guard
+            if s.guard is _GUARD_OFF:
+                s.guard = None                       # explicit off -> stays disabled
+            elif s.guard is None:
+                s.guard = self.default_guard         # unspecified -> default (may be None)
 
     # ---------------- YAML loader ----------------
     @classmethod
@@ -163,7 +177,7 @@ def _guard_from(
     if d is None:
         return fallback if allow_none else GuardCriterion()
     if d is False or d == "off":
-        return None
+        return _GUARD_OFF
     return GuardCriterion(**d)
 
 

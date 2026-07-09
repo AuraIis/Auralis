@@ -302,7 +302,8 @@ class _Mamba2SSDInner(nn.Module):
     mamba_ssm's own ``ssd_chunk_scan_combined_ref`` (max abs diff ~1e-7).
     """
 
-    def __init__(self, d_model, d_state, d_conv, expand_factor, headdim=64, ngroups=1):
+    def __init__(self, d_model, d_state, d_conv, expand_factor, headdim=64, ngroups=1,
+                 dt_min=0.001, dt_max=0.1):
         super().__init__()
         self.d_model = d_model
         self.d_state = d_state
@@ -310,6 +311,8 @@ class _Mamba2SSDInner(nn.Module):
         self.d_inner = expand_factor * d_model
         self.headdim = headdim
         self.ngroups = ngroups
+        self.dt_min = dt_min
+        self.dt_max = dt_max
         assert self.d_inner % headdim == 0, (
             f"d_inner={self.d_inner} not divisible by headdim={headdim}")
         self.nheads = self.d_inner // headdim
@@ -325,6 +328,29 @@ class _Mamba2SSDInner(nn.Module):
         self.D = nn.Parameter(torch.ones(self.nheads))
         self.norm = _GatedRMSNorm(self.d_ssm, group_size=self.d_ssm // ngroups, eps=1e-5)
         self.out_proj = nn.Linear(self.d_inner, d_model, bias=False)
+        # A_log / dt_bias are bare Parameters the model-wide scaled-normal init
+        # does NOT touch (it only matches Embedding/Linear/Conv1d). Left at zero
+        # they give A=-1 and dt_bias=0 for every head — degenerate SSM decay that
+        # diverges from the mamba_ssm / _Mamba2Native backends this class must
+        # match. Warm-start them here (mamba_ssm-style); checkpoint loads simply
+        # overwrite them afterward, so this only affects the from-scratch path.
+        self.reset_special_parameters()
+
+    def reset_special_parameters(self) -> None:
+        with torch.no_grad():
+            # A: deterministic init A = 1..nheads -> A_log = log(A). (Stock
+            # mamba_ssm samples A ~ Uniform[1,16]; any reasonable A-init is fine
+            # here — this runs only from-scratch and a ckpt-load overwrites it.)
+            A = torch.arange(1, self.nheads + 1, dtype=torch.float32,
+                             device=self.A_log.device)
+            self.A_log.copy_(torch.log(A))
+            # dt_bias: inverse-softplus of dt sampled log-uniform in [dt_min, dt_max]
+            # (same parameterisation as _Mamba2Native.dt_proj.bias).
+            log_min = torch.log(torch.tensor(self.dt_min, dtype=torch.float32))
+            log_max = torch.log(torch.tensor(self.dt_max, dtype=torch.float32))
+            dt = torch.exp(torch.rand(self.nheads, device=self.dt_bias.device)
+                           * (log_max - log_min) + log_min)
+            self.dt_bias.copy_(dt + torch.log(-torch.expm1(-dt)))
 
     def _split(self, u):
         zxbcdt = self.in_proj(u)
@@ -440,7 +466,13 @@ class _Mamba2NativeSSD(nn.Module):
     def __init__(self, d_model, d_state=128, d_conv=4, expand_factor=2,
                  dt_min=0.001, dt_max=0.1, headdim=64):
         super().__init__()
-        self.inner = _Mamba2SSDInner(d_model, d_state, d_conv, expand_factor, headdim=headdim)
+        self.inner = _Mamba2SSDInner(d_model, d_state, d_conv, expand_factor,
+                                     headdim=headdim, dt_min=dt_min, dt_max=dt_max)
+
+    def reset_special_parameters(self) -> None:
+        # Delegate so Mamba2Layer.reset_special_parameters() (called from
+        # HelixModel._init_weights) reaches the inner SSM params for this backend.
+        self.inner.reset_special_parameters()
 
     @property
     def out_proj(self):

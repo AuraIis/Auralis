@@ -377,5 +377,65 @@ class HealthMonitor:
             ],
         }
 
+    # ------------------------------------------------------------------
+    def state_dict(self) -> dict[str, Any]:
+        """Serialize monitor state so guard COUNTERS/trends survive a resume.
+
+        Without this every restart resets grad-explosion / gate-regression /
+        tps-peak / bpb trend to zero, blinding the auto-stop guards exactly
+        across the resume boundary — where long runs are most often restarted.
+        """
+        s = self.state
+        return {
+            "grad_explosion_count": s.grad_explosion_count,
+            "grad_collapse_count": s.grad_collapse_count,
+            "tps_below_count": s.tps_below_count,
+            "tps_peak": s.tps_peak,
+            "loss_window": list(s.loss_window),
+            "ckpt_times": list(s.ckpt_times),
+            "bpb_series": {k: list(v) for k, v in s.bpb_series.items()},
+            "bpb_regression_counts": dict(s.bpb_regression_counts),
+            "gate_series": list(s.gate_series),
+            "gate_best": s.gate_best,
+            "gate_regression_count": s.gate_regression_count,
+            "alerts": [(step, lvl.value, msg) for (step, lvl, msg) in s.alerts],
+            "stop_requested": s.stop_requested,
+            "stop_reason": s.stop_reason,
+        }
+
+    def load_state_dict(self, sd: dict[str, Any] | None) -> None:
+        """Restore state saved by :meth:`state_dict`.
+
+        Tolerant of ``None`` / partial dicts (checkpoints predating health
+        persistence) — anything absent keeps its fresh default, so an old ckpt
+        never crashes a resume.
+
+        Deliberately does NOT restore ``stop_requested`` / ``stop_reason``: a
+        resume is an explicit decision to continue, so a terminal stop flag must
+        clear (otherwise an emergency ckpt could never be resumed). If the
+        pathology persists, the restored counters re-trip it within K steps.
+        """
+        if not sd:
+            return
+        s = self.state
+        s.grad_explosion_count = int(sd.get("grad_explosion_count", s.grad_explosion_count))
+        s.grad_collapse_count = int(sd.get("grad_collapse_count", s.grad_collapse_count))
+        s.tps_below_count = int(sd.get("tps_below_count", s.tps_below_count))
+        s.tps_peak = float(sd.get("tps_peak", s.tps_peak))
+        if sd.get("loss_window") is not None:
+            s.loss_window = deque(sd["loss_window"], maxlen=s.loss_window.maxlen)
+        if sd.get("ckpt_times") is not None:
+            s.ckpt_times = deque(sd["ckpt_times"], maxlen=s.ckpt_times.maxlen)
+        if sd.get("bpb_series") is not None:
+            s.bpb_series = {k: list(v) for k, v in sd["bpb_series"].items()}
+        if sd.get("bpb_regression_counts") is not None:
+            s.bpb_regression_counts = {k: int(v) for k, v in sd["bpb_regression_counts"].items()}
+        if sd.get("gate_series") is not None:
+            s.gate_series = [float(v) for v in sd["gate_series"]]
+        s.gate_best = float(sd.get("gate_best", s.gate_best))
+        s.gate_regression_count = int(sd.get("gate_regression_count", s.gate_regression_count))
+        if sd.get("alerts") is not None:
+            s.alerts = [(int(st), AlertLevel(lvl), msg) for (st, lvl, msg) in sd["alerts"]]
+
 
 __all__ = ["AlertLevel", "HealthConfig", "HealthMonitor", "HealthState", "HealthStop"]

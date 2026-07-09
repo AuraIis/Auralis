@@ -1,10 +1,11 @@
 """CLI entry point for Phase-1 pretraining.
 
-Runs a single-device training loop backed by :class:`PretrainTrainer`. For
-multi-GPU runs on RunPod, invoke via ``torchrun`` and wrap the model with
-FSDP or DeepSpeed outside this script — the module deliberately stays
-single-process so the smoke-test path (CPU) and the production path share
-the same code.
+Runs a training loop backed by :class:`PretrainTrainer`. Single-device by
+default; for multi-GPU, launch via ``torchrun`` — the script detects the
+process group (``_setup_distributed``) and wraps the model in
+``DistributedDataParallel`` automatically. The CPU smoke-test path and the
+single-/multi-GPU production paths share the same code. (FSDP/DeepSpeed are
+NOT wired in; DDP is the only built-in data-parallel backend.)
 
 What this wires up from ``configs/training/phase1_pretrain.yaml``:
 
@@ -198,6 +199,18 @@ def main() -> None:
     else:
         print("  gradient_checkpointing: disabled")
 
+    # Fused linear→cross-entropy: skips materialising the [N, 200k] logits in
+    # the loss path (main + MTP), the single biggest step activation. Math-
+    # equivalent; frees VRAM headroom for a larger batch. Set on the raw model
+    # before torch.compile wraps it.
+    fce = (config.get("training", {}) or {}).get("fused_cross_entropy", False)
+    if fce:
+        chunk = int((config.get("training", {}) or {}).get("fused_cross_entropy_chunk", 1024))
+        model.fused_cross_entropy_enable(chunk_size=chunk)
+        print(f"  fused_cross_entropy: ENABLED (chunk={chunk})")
+    else:
+        print("  fused_cross_entropy: disabled")
+
     # torch.compile gate
     if config["training"].get("torch_compile") and not args.no_compile and device.type == "cuda":
         compile_mode = config["training"].get("torch_compile_mode")
@@ -240,6 +253,18 @@ def main() -> None:
     print(f"  train expected rows/batch per language: {train_loader.rows_per_language}")
     if world_size > 1:
         print(f"  dataloader sharding: rank {rank}/{world_size}")
+
+    # Opt-in background-prefetch wrapper (CUDA only): hides the per-batch data
+    # fetch behind compute and stages into pinned buffers for async H2D. Default
+    # OFF — the GPU overlap + slot fencing want a one-time compute-sanitizer +
+    # nsys validation; the RNG/resume contract is unit-tested. See
+    # src/auralis/training/prefetch.py.
+    if dcfg.get("prefetch") and device.type == "cuda":
+        from auralis.training.prefetch import PrefetchLoader
+
+        depth = int(dcfg.get("prefetch_depth", 2))
+        train_loader = PrefetchLoader(train_loader, device, queue_depth=depth)
+        print(f"  prefetch: ON (background producer + pinned buffers, queue_depth={depth})")
 
     val_loader = None
     if val_split_bytes > 0:

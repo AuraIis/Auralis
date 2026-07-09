@@ -54,7 +54,20 @@ class GLALayer(nn.Module):
         self.d_model = d_model
         self.n_heads = n_heads
         self.d_head = d_head
+        # NOTE: this GLA implementation's recurrent state is [d_head, d_head]
+        # (per-head key/value outer product) — there is no separate d_state
+        # dimension to tune. d_state is accepted only for config symmetry with
+        # Mamba layers; a value != d_head has NO effect on capacity, so warn
+        # rather than silently ignore it (a mistuned ablation would otherwise
+        # waste a run believing the state size changed).
         self.d_state = d_state or d_head
+        if d_state is not None and d_state != d_head:
+            import warnings
+            warnings.warn(
+                f"GLALayer: d_state={d_state} is ignored (state is [d_head, d_head], "
+                f"d_head={d_head}); it does not change capacity.",
+                stacklevel=2,
+            )
 
         self.q_proj = nn.Linear(d_model, n_heads * d_head, bias=False)
         self.k_proj = nn.Linear(d_model, n_heads * d_head, bias=False)

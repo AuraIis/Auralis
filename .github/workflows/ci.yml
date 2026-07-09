@@ -1,0 +1,54 @@
+name: CI
+
+# Lint / typecheck / test on every push and PR. Split into independent jobs so
+# each surfaces its own status (a mypy finding does not mask the test signal).
+# First run is a diagnostic: it reports the true state of a codebase whose
+# ruff/mypy/pytest configs existed in pyproject.toml but were never enforced.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -e ".[dev]"
+      - name: ruff format (check)
+        run: ruff format --check .
+      - name: ruff lint
+        run: ruff check .
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -e ".[dev]"
+      - name: mypy
+        run: mypy src
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -e ".[dev]"
+      - name: pytest (CPU — CUDA/kernel paths auto-skip without a GPU)
+        run: pytest -q

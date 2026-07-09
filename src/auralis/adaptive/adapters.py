@@ -49,11 +49,20 @@ class TokenizerAdapter:
         return self.sp.decode(ids)
 
     def chat_prompt(self, user: str, system: str = SYSTEM_DE) -> str:
-        """User turn up to (and including) the assistant marker — no answer."""
-        return (
-            f"<|system|>\n{system}\n<|end|>\n"
-            f"<|user|>\n{user.strip()}\n<|end|>\n"
-            f"<|assistant|>\n"
+        """User turn up to (and including) the assistant marker — no answer.
+
+        Delegates to the canonical builder in ``tokenizer.chat_template`` (the
+        single source of truth for the chat format — see LESSONS.md L-001) so
+        this probe path can never drift from the training/inference rendering.
+        The probe-specific ``SYSTEM_DE`` default is passed through unchanged as
+        the system turn, so probe calibration stays byte-for-byte identical to
+        the previous hand-built string — only the RENDERING is now shared.
+        """
+        from auralis.tokenizer.chat_template import build_inference_prompt
+
+        return build_inference_prompt(
+            [{"role": "user", "content": user.strip()}],
+            default_system=system,
         )
 
     def split_continuation(self, prompt: str, continuation: str) -> tuple[list[int], list[int]]:
@@ -186,10 +195,30 @@ def _sft_jsonl_iterator(
         ids = tokenizer.encode(text)[:seq_length]
         labels = list(ids)
         if assistant_only and _ASSISTANT_MARKER in text:
-            prefix = text.split(_ASSISTANT_MARKER)[0] + _ASSISTANT_MARKER
-            mask_len = min(len(tokenizer.encode(prefix)), len(ids))
-            for i in range(mask_len):
-                labels[i] = -100
+            # Train ONLY on assistant responses; mask everything else. Each
+            # assistant turn's target runs from just after "<|assistant|>\n" to
+            # the end of that turn — the next "<|end|>" (inclusive, so the model
+            # learns to stop) or end-of-text. This is multi-turn safe: the earlier
+            # version masked only up to the FIRST marker, so in a
+            # user->assistant->user->assistant example every later <|user|> turn
+            # was trained as a generation target. Char spans map to token indices
+            # via cumulative-prefix encode lengths (robust to boundary merges
+            # within a single token; clamped to len(ids)).
+            end_marker = "<|end|>"
+            labels = [-100] * len(ids)
+            search = 0
+            while True:
+                a = text.find(_ASSISTANT_MARKER, search)
+                if a == -1:
+                    break
+                cs = a + len(_ASSISTANT_MARKER)
+                e = text.find(end_marker, cs)
+                ce = (e + len(end_marker)) if e != -1 else len(text)
+                t_start = len(tokenizer.encode(text[:cs]))
+                t_end = len(tokenizer.encode(text[:ce]))
+                for i in range(t_start, min(t_end, len(ids))):
+                    labels[i] = ids[i]
+                search = ce
         return ids, labels
 
     pad = tokenizer.pad_id
