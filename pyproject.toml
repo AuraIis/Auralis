@@ -83,8 +83,14 @@ inference = [
     "autoawq>=0.2.6",
 ]
 
+# -- Data preparation -------------------------------------------------------
+data = [
+    "datasketch>=1.6.5,<2",
+]
+
 # -- Dev / test toolchain ---------------------------------------------------
 dev = [
+    "auralis-v2[data]",
     "pytest>=8.3.0",
     "pytest-cov>=5.0.0",
     "ruff>=0.7.0",
