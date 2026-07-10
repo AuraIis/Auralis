@@ -2,11 +2,16 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
 from scripts.data.dedup_de_sequential import main
+
+ROOT = Path(__file__).resolve().parents[2]
+SCRIPT = ROOT / "scripts" / "data" / "dedup_de_sequential.py"
 
 
 def write_manifest(path: Path, references: list[Path]) -> None:
@@ -23,6 +28,19 @@ def write_manifest(path: Path, references: list[Path]) -> None:
         ],
     }
     path.write_text(json.dumps(payload), encoding="utf-8")
+
+
+def test_direct_script_invocation_resolves_repo_package(tmp_path: Path) -> None:
+    result = subprocess.run(
+        [sys.executable, str(SCRIPT), "--help"],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "--ref-manifest" in result.stdout
 
 
 def test_sequential_dedup_aggregates_stages_and_bounds_intermediates(tmp_path: Path) -> None:
