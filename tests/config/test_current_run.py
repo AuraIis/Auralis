@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import yaml
 from pathlib import Path
 
 
@@ -9,6 +8,8 @@ CURRENT_RUN = ROOT / "configs" / "runs" / "current_run.yaml"
 
 
 def load_current_run() -> dict:
+    import yaml
+
     return yaml.safe_load(CURRENT_RUN.read_text(encoding="utf-8"))
 
 
