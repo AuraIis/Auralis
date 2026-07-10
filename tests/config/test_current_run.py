@@ -36,16 +36,21 @@ def test_current_run_requires_clean_code_and_records_the_valid_data_symlink() ->
     ]
 
 
-def test_current_run_keeps_unmeasured_provenance_as_launch_blockers() -> None:
+def test_current_run_marks_data_pull_ready_with_only_launch_time_blockers() -> None:
     run = load_current_run()
 
-    assert run["status"] == "draft_waiting_for_resume_fix_reference_hashes_and_lineage"
+    assert run["status"] == "data_pull_ready_waiting_for_full_dedup_report"
     assert run["code"]["resolved_commit_sha"] is None
     assert run["base_checkpoint"]["selected_file_sha256"]
     assert all(component["bin_sha256"] for component in run["data"]["german_components"])
-    assert run["data"]["deduplication"]["reference_manifest"] is None
+    assert run["data"]["deduplication"]["reference_manifest"] == (
+        "configs/runs/manifests/dedup_reference_sha256.json"
+    )
     assert run["fineweb2_hq_de_pilot"]["full_dedup_report"] is None
-    assert "code.resolved_commit_sha" in run["launch_blockers"]
+    assert run["launch_blockers"] == [
+        "code.resolved_commit_sha",
+        "fineweb2_hq_de_pilot.full_dedup_report",
+    ]
 
 
 def test_current_run_records_required_blackwell_compatibility_override() -> None:
@@ -79,7 +84,7 @@ def test_current_run_records_probe_without_promoting_it_to_full_evidence() -> No
     run = load_current_run()
     pilot = run["fineweb2_hq_de_pilot"]
 
-    assert pilot["status"] == "download_approved_sequential_dedup_required"
+    assert pilot["status"] == "ready_for_text_pull_and_sequential_dedup"
     assert pilot["probe"]["fresh_seen"] == 127590
     assert pilot["probe"]["kept"] == 70034
     assert pilot["probe"]["drop_pct"] == 45.11
@@ -101,7 +106,11 @@ def test_current_run_does_not_claim_unproven_training_sources() -> None:
     commons = components["german_commons"]
     assert commons["source_path"] is None
     assert commons["lineage_status"] == "unresolved_pending_build_log"
-    assert "data.german_components.source_lineage" in run["launch_blockers"]
+    assert run["data"]["known_provenance_gaps"] == [
+        "german_fresh_bin_source_subsampling_stage_unlogged",
+        "german_commons_bin_source_subsampling_stage_unlogged",
+    ]
+    assert "data.german_components.source_lineage" not in run["launch_blockers"]
 
 
 
@@ -136,12 +145,16 @@ def test_current_run_rejects_combined_reference_index_capacity() -> None:
     assert dedup["execution_strategy"] == "sequential_single_reference_passes"
 
 
-def test_current_run_records_resume_failure_and_supersedes_old_observation() -> None:
+def test_current_run_records_bit_exact_resume_retest_and_fast_forward_cost() -> None:
     run = load_current_run()
     resume = run["verified_checks"]["single_gpu_resume"]
 
-    assert resume["status"] == "failed_dataloader_rng_not_restored"
-    assert resume["scheduler_lr"] == "identical"
-    assert resume["root_cause"] == "per_language_and_shuffle_generators_restart_from_seed"
-    assert resume["previous_bit_identical_observation"] == "superseded_not_reproducible"
-    assert "verified_checks.clean_checkout.resume_fix_retest" in run["launch_blockers"]
+    assert resume["status"] == "passed_bit_exact_after_loader_fix"
+    assert resume["reconstructed_batches"] == 160
+    assert resume["scheduler_lr"] == "bit_exact"
+    assert resume["train_loss"]["continuous_step_25"] == resume["train_loss"]["resumed_step_25"]
+    assert resume["train_loss"]["continuous_step_30"] == resume["train_loss"]["resumed_step_30"]
+    assert resume["eval_step_30"]["resumed_all_values"] == "bit_exact"
+    assert resume["fast_forward_timing"]["batches_160_seconds"] == 0.0012
+    assert resume["fast_forward_timing"]["batches_480000_seconds"] == 3.18
+    assert "verified_checks.clean_checkout.resume_fix_retest" not in run["launch_blockers"]
