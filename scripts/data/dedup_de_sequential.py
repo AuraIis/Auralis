@@ -15,10 +15,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from scripts.data.dedup_de_fresh import (
-    load_reference_manifest,
-    main as dedup_main,
-)
+from scripts.data import dedup_de_fresh
 
 
 def report_path(output: Path) -> Path:
@@ -65,7 +62,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.fresh.resolve() == args.out.resolve():
         raise ValueError("--fresh and --out must be different files")
 
-    full_manifest = load_reference_manifest(args.ref_manifest, references)
+    full_manifest = dedup_de_fresh.load_reference_manifest(args.ref_manifest, references)
     work_dir = args.work_dir or args.out.parent / f".{args.out.stem}.dedup_stages"
     work_dir.mkdir(parents=True, exist_ok=True)
     args.out.parent.mkdir(parents=True, exist_ok=True)
@@ -104,7 +101,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.verify_ref_hashes:
             stage_argv.append("--verify-ref-hashes")
 
-        dedup_main(stage_argv)
+        dedup_de_fresh.main(stage_argv)
         stage_report = json.loads(report_path(stage_output).read_text(encoding="utf-8"))
         stages.append(
             {
