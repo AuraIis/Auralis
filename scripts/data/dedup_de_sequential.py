@@ -15,7 +15,10 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from scripts.data.dedup_de_fresh import load_reference_manifest, main as dedup_main
+from scripts.data.dedup_de_fresh import (
+    load_reference_manifest,
+    main as dedup_main,
+)
 
 
 def report_path(output: Path) -> Path:
