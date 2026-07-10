@@ -25,6 +25,10 @@ def args(**overrides):
         max_ngram_repetition=0.28,
         drop_web_boilerplate=False,
         max_web_boilerplate_hits=1,
+        drop_commercial_boilerplate=False,
+        max_commercial_boilerplate_hits=1,
+        drop_adult_gambling_spam=False,
+        max_adult_gambling_hits=1,
         drop_old_ocr=False,
         max_old_ocr_hits=8,
     )

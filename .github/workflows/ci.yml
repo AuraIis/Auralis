@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cpu-quality-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install test toolchain
+        run: pip install -e ".[dev]"
+
+      # Blocking from day one: known behaviour must stay green.
+      - name: Pytest (CPU; CUDA/kernel paths auto-skip)
+        run: pytest -q
+
+      # Blocking ratchet: files touched by a change may not add lint errors.
+      - name: Ruff lint changed Python files
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+            BASE_SHA="$(git rev-list --max-parents=0 HEAD)"
+          fi
+          mapfile -d '' files < <(
+            git diff --name-only --diff-filter=ACMR -z "$BASE_SHA" "$GITHUB_SHA" -- '*.py'
+          )
+          if (( ${#files[@]} == 0 )); then
+            echo "No changed Python files."
+            exit 0
+          fi
+          printf 'Checking %s\n' "${files[@]}"
+          ruff check "${files[@]}"
+
+      # Blocking ratchet for production modules only. A touched module must be
+      # made type-clean even while the untouched legacy baseline is reduced.
+      - name: Mypy changed source modules
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+            BASE_SHA="$(git rev-list --max-parents=0 HEAD)"
+          fi
+          mapfile -d '' files < <(
+            git diff --name-only --diff-filter=ACMR -z "$BASE_SHA" "$GITHUB_SHA" -- 'src/**/*.py'
+          )
+          if (( ${#files[@]} == 0 )); then
+            echo "No changed source modules."
+            exit 0
+          fi
+          printf 'Type-checking %s\n' "${files[@]}"
+          mypy "${files[@]}"
+
+      # Diagnostic baselines: visible in every run, but non-blocking until the
+      # existing debt is paid down. Remove continue-on-error per gate once green.
+      - name: Ruff format baseline
+        continue-on-error: true
+        run: ruff format --check .
+      - name: Ruff lint baseline
+        continue-on-error: true
+        run: ruff check .
+      - name: Mypy baseline
+        continue-on-error: true
+        run: mypy src
