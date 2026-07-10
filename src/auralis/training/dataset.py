@@ -17,7 +17,7 @@ Two classes:
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import numpy as np
@@ -81,20 +81,22 @@ class PretrainDataset:
     rng: np.random.Generator
     train_start: int = 0
     train_end: int | None = None          # exclusive; None → all tokens
+    _mmap: np.memmap | None = field(init=False, repr=False)
+    _n_tokens: int = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         self._mmap = _mmap_bin(Path(self.bin_path))
-        self._n_tokens = self._mmap.shape[0]
-        if self.train_end is None:
-            self.train_end = self._n_tokens
+        self._n_tokens = int(self._mmap.shape[0])
+        train_end = self._n_tokens if self.train_end is None else self.train_end
+        self.train_end = train_end
         # A window of exactly seq_length+1 tokens is the smallest valid one:
         # sample() picks start ∈ [train_start, train_end - seq_length) which
         # then has exactly one legal offset. Strict `<` keeps the validation
         # consistent with sample()'s upper bound (Codex P3).
-        if self.train_end - self.train_start < self.seq_length + 1:
+        if train_end - self.train_start < self.seq_length + 1:
             raise ValueError(
-                f"{self.bin_path} window [{self.train_start}, {self.train_end}) has "
-                f"{self.train_end - self.train_start} tokens, need >= seq_length+1"
+                f"{self.bin_path} window [{self.train_start}, {train_end}) has "
+                f"{train_end - self.train_start} tokens, need >= seq_length+1"
             )
 
     @property
@@ -117,7 +119,10 @@ class PretrainDataset:
         if self._mmap is None:
             raise RuntimeError(f"{self.bin_path} is closed")
         lo = self.train_start
-        hi = self.train_end - self.seq_length
+        train_end = self.train_end
+        if train_end is None:
+            raise RuntimeError(f"{self.bin_path} has no train_end")
+        hi = train_end - self.seq_length
         start = int(self.rng.integers(lo, hi))
         block = self._mmap[start : start + self.seq_length + 1].astype(np.int64, copy=True)
         return torch.from_numpy(block)
@@ -253,6 +258,7 @@ class MixedDataLoader:
             lang: self.batch_size * self.mix_ratios[lang] for lang in self._lang_order
         }
         self._row_credit = {lang: 0.0 for lang in self._lang_order}
+        self._batches_yielded = 0
 
     def reset_rngs(self) -> None:
         """Rewind every RNG to its construction seed.
@@ -260,7 +266,7 @@ class MixedDataLoader:
         Call this at the START of each evaluation so the val loader yields the
         IDENTICAL token stream every time. Without it, ``sample()`` advances a
         stateful RNG, so eval@250 and eval@500 see different val tokens and the
-        loss trajectory mixes real model change with ~1σ sampling noise. With
+        loss trajectory mixes real model change with sampling noise. With
         it, the trajectory is apples-to-apples. Harmless on the train loader,
         but only ever called on the val loader.
         """
@@ -268,6 +274,43 @@ class MixedDataLoader:
         for lang, ds in self.datasets.items():
             ds.rng = np.random.default_rng(self._lang_rng_seeds[lang])
         self._row_credit = {lang: 0.0 for lang in self._lang_order}
+        self._batches_yielded = 0
+
+    @property
+    def batches_yielded(self) -> int:
+        """Number of mixed batches consumed since construction or reset."""
+        return self._batches_yielded
+
+    def fast_forward_batches(self, batches: int) -> None:
+        """Reconstruct loader-owned RNGs at a deterministic batch boundary.
+
+        This advances only sampler RNGs, row-credit scheduling, and row
+        shuffling. It never reads token data. A checkpoint after optimizer step
+        S consumed S times gradient_accumulation mixed batches, so legacy
+        checkpoints can recover the exact next batch without serialized
+        Generator objects.
+
+        This assumes the same loader config and no direct sample_language calls
+        on the training loader. Both are Phase-1 entry-point invariants.
+        """
+        if batches < 0:
+            raise ValueError(f"batches must be >= 0, got {batches}")
+
+        self.reset_rngs()
+        dummy_rows = list(range(self.batch_size))
+        for _ in range(batches):
+            batch_rows = self._allocate_rows_for_batch()
+            for lang, count in batch_rows.items():
+                dataset = self.datasets[lang]
+                train_end = dataset.train_end
+                if train_end is None:
+                    raise RuntimeError(f"{dataset.bin_path} has no train_end")
+                lo = dataset.train_start
+                hi = train_end - dataset.seq_length
+                for _ in range(count):
+                    dataset.rng.integers(lo, hi)
+            self._shuffle_rng.shuffle(dummy_rows)
+            self._batches_yielded += 1
 
     def _allocate_rows_for_batch(self) -> dict[str, int]:
         """Allocate concrete row counts for the next batch.
@@ -314,7 +357,7 @@ class MixedDataLoader:
         input_ids = batch[:, :-1].contiguous()
         return {"input_ids": input_ids, "labels": input_ids.clone()}
 
-    def __iter__(self):
+    def __iter__(self) -> MixedDataLoader:
         return self
 
     def __next__(self) -> dict[str, torch.Tensor]:
@@ -329,6 +372,7 @@ class MixedDataLoader:
         # seed produces byte-identical batches — independent of the global
         # torch RNG state.
         self._shuffle_rng.shuffle(rows)
+        self._batches_yielded += 1
         batch = torch.stack(rows, dim=0)
         # Drop the extra sampled token — HelixModel._shift_loss shifts labels
         # internally, so both tensors are the same length and the same content.
