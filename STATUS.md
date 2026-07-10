@@ -2,6 +2,11 @@
 
 As of: 2026-06-07
 
+> **Planned-run truth:** This file is a historical capability snapshot. The
+> machine-readable source of truth for the next training run is
+> `configs/runs/current_run.yaml`; null values listed there are launch blockers,
+> not values to infer from this document.
+
 This is the current short-form truth for the repo. If old phase plans,
 April/May status states, or specs contradict it, this file takes precedence first,
 then the reports from 2026-05-29, then the respective working docs.

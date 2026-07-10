@@ -1,0 +1,122 @@
+schema_version: 1
+status: draft_waiting_for_data_measurements
+measured_at: "2026-07-10"
+purpose: german_primary_40b_continued_pretraining
+
+# This file describes the next run, not historical experiments. Null values are
+# launch blockers and must be replaced by measured values rather than guesses.
+code:
+  repository: AuraIis/Auralis
+  required_ref: main
+  resolved_commit_sha: null
+  server_checkout:
+    required_mode: clean_repo_checkout
+    forbidden_training_tree: NEWGPT/v2data
+    working_tree_must_be_clean: true
+    container_source_must_match_resolved_commit: true
+    record_at_launch:
+      - git_rev_parse_head
+      - git_status_porcelain
+      - container_source_tree_hash
+
+base_checkpoint:
+  path: corpus20b_codeheavy/step_60000
+  tokens_seen: 3930000000
+  validation_loss: 1.843
+  gate_score: 0.14
+  creation_environment_reported:
+    pytorch: "2.12"
+    cuda: cu130
+
+tokenizer:
+  immutable_for_run: true
+  measured_hash: a24fbea439bc8b78
+  measured_hash_scope: sha256_prefix_16
+  full_sha256: null
+
+runtime_environment:
+  python: null
+  pytorch: 2.7.0+cu128
+  cuda_wheel: cu128
+  gpu_architecture_reported: blackwell
+  required_environment:
+    TRITON_OVERRIDE_ARCH: sm89
+  compatibility_note: >-
+    The base checkpoint was created under the reported torch 2.12/cu130 environment.
+    The current server uses torch 2.7.0+cu128 and requires TRITON_OVERRIDE_ARCH=sm89
+    to avoid the observed Mamba Triton PassManager failure.
+
+training:
+  planned_total_tokens: 40000000000
+  architecture_frozen_until_data_ab: true
+  mix_percent:
+    german: 65
+    english: 15
+    code: 12
+    math_science: 8
+
+data:
+  german_measured_tokens: 7460000000
+  german_components:
+    - id: de_curated
+      path: curated_40b/german.bin
+      tokens: 3240000000
+      sha256: null
+    - id: german_fresh
+      path: null
+      tokens: 2670000000
+      sha256: null
+    - id: german_commons
+      path: null
+      tokens: 1550000000
+      sha256: null
+  forbidden_inputs:
+    - path: corpus20b/de_curated.bin
+      observed_size_bytes: 25
+      reason: placeholder_stub_not_training_data
+  deduplication:
+    implementation: scripts/data/dedup_de_fresh.py
+    mode: cross_dataset_against_existing_reference
+    reference_manifest: null
+    defaults:
+      normalized_exact_hash: sha1
+      minhash_num_perm: 64
+      minhash_threshold: 0.85
+      word_shingle_size: 5
+
+fineweb2_hq_de_pilot:
+  status: retention_measurement_running
+  gross_tokens: 28500000000
+  storage_with_embeddings_gb: 663
+  estimated_text_only_gb: 155
+  dedup_reference: german_fresh
+  measured_index_rate_docs_per_second: 1230
+  dedup_report: null
+  promotion_rule: >-
+    Scale only after retained tokens, exact/near drop counts, quality probes and
+    cross-source dedup retention are recorded. Otherwise move budget to
+    FinePDFs-Edu or HPLT2-DE.
+
+verified_checks:
+  single_gpu_resume:
+    status: passed
+    resume_step: 20
+    compared_steps: [25, 30]
+    loss_and_learning_rate: bit_identical
+  two_gpu_ddp:
+    status: pending_hardware
+  sparse_attention_flash_variant:
+    state_dict: identical
+    semantics: intentionally_different
+    standard_global_tokens: 32
+    standard_window: 1024
+    flash_global_tokens: 0
+    flash_window: 2048
+    parity_test: pending
+
+launch_blockers:
+  - resolved_commit_sha
+  - tokenizer.full_sha256
+  - data.german_components.sha256
+  - data.deduplication.reference_manifest
+  - fineweb2_hq_de_pilot.dedup_report
