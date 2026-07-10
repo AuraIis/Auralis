@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 CURRENT_RUN = ROOT / "configs" / "runs" / "current_run.yaml"
 
