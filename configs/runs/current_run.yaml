@@ -1,5 +1,5 @@
 schema_version: 1
-status: draft_waiting_for_data_measurements
+status: draft_waiting_for_reference_and_artifact_hashes
 measured_at: "2026-07-10"
 purpose: german_primary_40b_continued_pretraining
 
@@ -21,24 +21,37 @@ code:
 
 base_checkpoint:
   path: corpus20b_codeheavy/step_60000
+  manifest_sha256: null
   tokens_seen: 3930000000
   validation_loss: 1.843
   gate_score: 0.14
   creation_environment_reported:
-    pytorch: "2.12"
+    pytorch: "2.12.0"
     cuda: cu130
 
 tokenizer:
   immutable_for_run: true
+  path: tokenizer/helix_v2_tokenizer.model
+  size_bytes: 3592329
+  vocab_size: 200000
   measured_hash: a24fbea439bc8b78
   measured_hash_scope: sha256_prefix_16
-  full_sha256: null
+  full_sha256: a24fbea439bc8b78c78653b9febf708d96cf023745199d8f6e7c0b3f6285f2bc
 
 runtime_environment:
-  python: null
+  python: "3.11.12"
   pytorch: 2.7.0+cu128
+  triton: 3.3.0
+  cuda_build: "12.8"
   cuda_wheel: cu128
-  gpu_architecture_reported: blackwell
+  gpu:
+    model: NVIDIA RTX PRO 5000 Blackwell
+    compute_capability: sm_120
+    memory_gb: 48
+  kernels:
+    mamba: mamba_ssm
+    gla: fla
+    attention: flash_attn
   required_environment:
     TRITON_OVERRIDE_ARCH: sm89
   compatibility_note: >-
@@ -56,28 +69,57 @@ training:
     math_science: 8
 
 data:
-  german_measured_tokens: 7460000000
+  german_measured_tokens: 7461038089
   german_components:
     - id: de_curated
-      path: curated_40b/german.bin
-      tokens: 3240000000
-      sha256: null
+      bin_path: /workspace/v2data/tokenized/curated_40b/german.bin
+      bin_size_bytes: 12946085884
+      bin_tokens: 3236521471
+      bin_sha256: null
+      source_path: training/curated_40b/german.txt
+      source_size_bytes: 29662112686
+      source_sha256: null
     - id: german_fresh
-      path: null
-      tokens: 2670000000
-      sha256: null
+      bin_path: /workspace/v2data/tokenized/corpus20b/german_fresh.bin
+      bin_size_bytes: 10690786108
+      bin_tokens: 2672696527
+      bin_sha256: null
+      source_path: cleaned/fineweb2_de.filtered.txt
+      source_size_bytes: 11465875384
+      source_sha256: eace42f018238539cefac983a5e05c6db5a301e5b3b29c1a6c962fdcd210d4d7
     - id: german_commons
-      path: null
-      tokens: 1550000000
-      sha256: null
+      bin_path: /workspace/v2data/tokenized/corpus20b/german_commons.bin
+      bin_size_bytes: 6207280364
+      bin_tokens: 1551820091
+      bin_sha256: null
+      source_path: cleaned/german_commons.filtered.txt
+      source_size_bytes: 13611296438
+      source_sha256: null
   forbidden_inputs:
-    - path: corpus20b/de_curated.bin
+    - path: /workspace/v2data/tokenized/corpus20b/de_curated.bin
       observed_size_bytes: 25
       reason: placeholder_stub_not_training_data
   deduplication:
     implementation: scripts/data/dedup_de_fresh.py
     mode: cross_dataset_against_existing_reference
     reference_manifest: null
+    reference_measurements:
+      - path: cleaned/fineweb2_de.filtered.txt
+        size_bytes: 11465875384
+        documents: 4072620
+        sha256: eace42f018238539cefac983a5e05c6db5a301e5b3b29c1a6c962fdcd210d4d7
+      - path: training/curated_40b/german.txt
+        size_bytes: 29662112686
+        documents: null
+        sha256: null
+      - path: cleaned/german_commons.filtered.txt
+        size_bytes: 13611296438
+        documents: null
+        sha256: null
+      - path: raw/german/german_commons.txt
+        size_bytes: 22500011675
+        documents: null
+        sha256: null
     defaults:
       normalized_exact_hash: sha1
       minhash_num_perm: 64
@@ -85,17 +127,29 @@ data:
       word_shingle_size: 5
 
 fineweb2_hq_de_pilot:
-  status: retention_measurement_running
+  status: probe_measured_full_pull_approved
   gross_tokens: 28500000000
   storage_with_embeddings_gb: 663
   estimated_text_only_gb: 155
-  dedup_reference: german_fresh
   measured_index_rate_docs_per_second: 1230
-  dedup_report: null
+  probe_report: reports/data/fineweb2_hq_de_probe_dedup_report.json
+  probe:
+    shard: 000_00000.parquet
+    shards_total: 570
+    dedup_reference: cleaned/fineweb2_de.filtered.txt
+    fresh_seen: 127590
+    kept: 70034
+    dropped_exact: 57151
+    dropped_near: 405
+    drop_pct: 45.11
+    retained_pct: 54.89
+    projected_net_tokens_single_reference_only: 15643616271
+    limitation: legacy_report_one_shard_one_reference
+  full_dedup_report: null
   promotion_rule: >-
-    Scale only after retained tokens, exact/near drop counts, quality probes and
-    cross-source dedup retention are recorded. Otherwise move budget to
-    FinePDFs-Edu or HPLT2-DE.
+    The full pull is approved after disk preflight. Promote its retained corpus
+    only after deduplication against all references with the main-branch script,
+    plus quality probes and a complete manifest-backed report.
 
 verified_checks:
   single_gpu_resume:
@@ -115,8 +169,8 @@ verified_checks:
     parity_test: pending
 
 launch_blockers:
-  - resolved_commit_sha
-  - tokenizer.full_sha256
-  - data.german_components.sha256
+  - code.resolved_commit_sha
+  - base_checkpoint.manifest_sha256
+  - data.german_components.bin_sha256
   - data.deduplication.reference_manifest
-  - fineweb2_hq_de_pilot.dedup_report
+  - fineweb2_hq_de_pilot.full_dedup_report
