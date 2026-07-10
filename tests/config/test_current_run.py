@@ -25,7 +25,7 @@ def test_current_run_cannot_silently_use_stale_server_tree_or_stub() -> None:
     assert run["code"]["server_checkout"]["forbidden_training_tree"] == "NEWGPT/v2data"
     assert run["data"]["forbidden_inputs"] == [
         {
-            "path": "corpus20b/de_curated.bin",
+            "path": "/workspace/v2data/tokenized/corpus20b/de_curated.bin",
             "observed_size_bytes": 25,
             "reason": "placeholder_stub_not_training_data",
         }
@@ -35,12 +35,13 @@ def test_current_run_cannot_silently_use_stale_server_tree_or_stub() -> None:
 def test_current_run_keeps_unmeasured_provenance_as_launch_blockers() -> None:
     run = load_current_run()
 
-    assert run["status"] == "draft_waiting_for_data_measurements"
+    assert run["status"] == "draft_waiting_for_reference_and_artifact_hashes"
     assert run["code"]["resolved_commit_sha"] is None
-    assert run["tokenizer"]["full_sha256"] is None
+    assert run["base_checkpoint"]["manifest_sha256"] is None
+    assert all(component["bin_sha256"] is None for component in run["data"]["german_components"])
     assert run["data"]["deduplication"]["reference_manifest"] is None
-    assert run["fineweb2_hq_de_pilot"]["dedup_report"] is None
-    assert "resolved_commit_sha" in run["launch_blockers"]
+    assert run["fineweb2_hq_de_pilot"]["full_dedup_report"] is None
+    assert "code.resolved_commit_sha" in run["launch_blockers"]
 
 
 def test_current_run_records_required_blackwell_compatibility_override() -> None:
@@ -50,3 +51,33 @@ def test_current_run_records_required_blackwell_compatibility_override() -> None
     assert run["runtime_environment"]["required_environment"] == {
         "TRITON_OVERRIDE_ARCH": "sm89"
     }
+
+
+
+def test_current_run_records_exact_tokenizer_and_german_inventory() -> None:
+    run = load_current_run()
+
+    assert run["tokenizer"] == {
+        "immutable_for_run": True,
+        "path": "tokenizer/helix_v2_tokenizer.model",
+        "size_bytes": 3592329,
+        "vocab_size": 200000,
+        "measured_hash": "a24fbea439bc8b78",
+        "measured_hash_scope": "sha256_prefix_16",
+        "full_sha256": "a24fbea439bc8b78c78653b9febf708d96cf023745199d8f6e7c0b3f6285f2bc",
+    }
+    components = run["data"]["german_components"]
+    assert sum(component["bin_tokens"] for component in components) == 7461038089
+    assert run["data"]["german_measured_tokens"] == 7461038089
+
+
+def test_current_run_records_probe_without_promoting_it_to_full_evidence() -> None:
+    run = load_current_run()
+    pilot = run["fineweb2_hq_de_pilot"]
+
+    assert pilot["status"] == "probe_measured_full_pull_approved"
+    assert pilot["probe"]["fresh_seen"] == 127590
+    assert pilot["probe"]["kept"] == 70034
+    assert pilot["probe"]["drop_pct"] == 45.11
+    assert pilot["probe"]["limitation"] == "legacy_report_one_shard_one_reference"
+    assert pilot["full_dedup_report"] is None
