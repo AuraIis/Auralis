@@ -34,6 +34,9 @@ Dry-run (preflight only, no weights loaded)::
     python scripts/pretrain/train_phase1.py --dry-run
 """
 
+# Imports below the repository-path bootstrap are intentional.
+# ruff: noqa: E402
+
 from __future__ import annotations
 
 import argparse
@@ -286,7 +289,13 @@ def main() -> None:
     )
     if args.resume:
         trainer.load_checkpoint(args.resume)
-        print(f"  resumed from {args.resume} at step {trainer.state.step}")
+        grad_accum = int(config["training"].get("gradient_accumulation", 1))
+        consumed_batches = trainer.state.step * grad_accum
+        train_loader.fast_forward_batches(consumed_batches)
+        print(
+            f"  resumed from {args.resume} at step {trainer.state.step}; "
+            f"dataloader advanced to batch {consumed_batches}"
+        )
     elif warm_start:
         trainer.warm_start_from_checkpoint(warm_start)
 
@@ -314,7 +323,7 @@ def main() -> None:
         print(f"  exit: {exit_reason}")
     except KeyboardInterrupt:
         exit_reason = "keyboard_interrupt"
-    except Exception as e:                                     # noqa: BLE001
+    except Exception as e:
         exit_reason = f"{type(e).__name__}: {e}"
         raise
     finally:
