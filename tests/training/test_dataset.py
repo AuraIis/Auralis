@@ -300,3 +300,61 @@ def test_sample_language_bypasses_mix_ratios(three_bins: Path):
     assert en_batch["input_ids"].shape == (2, 16)
     with pytest.raises(KeyError):
         loader.sample_language("klingon", batch_size=1)
+
+
+
+def test_mixed_dataloader_fast_forward_matches_continuous_stream(three_bins: Path):
+    """Resume reconstruction must yield the exact next training batches."""
+    kwargs = {
+        "data_dir": three_bins,
+        "mix_ratios": {"english": 0.70, "german": 0.25, "code": 0.05},
+        "batch_size": 4,
+        "seq_length": 16,
+        "seed": 1234,
+    }
+    continuous = MixedDataLoader(**kwargs)
+    resumed = MixedDataLoader(**kwargs)
+
+    # Mirrors a checkpoint at optimizer step 20 with grad accumulation 8.
+    consumed_batches = 20 * 8
+    for _ in range(consumed_batches):
+        next(continuous)
+    resumed.fast_forward_batches(consumed_batches)
+
+    assert continuous.batches_yielded == consumed_batches
+    assert resumed.batches_yielded == consumed_batches
+    for _ in range(10):
+        assert torch.equal(next(continuous)["input_ids"], next(resumed)["input_ids"])
+
+
+def test_mixed_dataloader_fast_forward_is_rank_specific(tmp_path: Path):
+    np.arange(2_000, dtype=np.uint32).tofile(tmp_path / "english.bin")
+    kwargs = {
+        "data_dir": tmp_path,
+        "mix_ratios": {"english": 1.0},
+        "batch_size": 4,
+        "seq_length": 16,
+        "seed": 99,
+        "rank": 1,
+        "world_size": 2,
+    }
+    continuous = MixedDataLoader(**kwargs)
+    resumed = MixedDataLoader(**kwargs)
+
+    for _ in range(25):
+        next(continuous)
+    resumed.fast_forward_batches(25)
+
+    assert torch.equal(next(continuous)["input_ids"], next(resumed)["input_ids"])
+
+
+def test_mixed_dataloader_fast_forward_rejects_negative_count(three_bins: Path):
+    loader = MixedDataLoader(
+        data_dir=three_bins,
+        mix_ratios={"english": 1.0, "german": 0.0, "code": 0.0},
+        batch_size=2,
+        seq_length=16,
+    )
+
+    with pytest.raises(ValueError, match="batches must be"):
+        loader.fast_forward_batches(-1)
