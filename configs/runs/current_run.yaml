@@ -1,5 +1,5 @@
 schema_version: 1
-status: draft_waiting_for_reference_and_artifact_hashes
+status: draft_waiting_for_lineage_hashes_and_resume
 measured_at: "2026-07-10"
 purpose: german_primary_40b_continued_pretraining
 
@@ -9,6 +9,7 @@ code:
   repository: AuraIis/Auralis
   required_ref: main
   resolved_commit_sha: null
+  validated_commit_sha: 9723d4f4a8df7fe24bc99cd51aa38a0b174e3e45
   server_checkout:
     required_mode: clean_repo_checkout
     forbidden_training_tree: NEWGPT/v2data
@@ -73,32 +74,48 @@ data:
   german_components:
     - id: de_curated
       bin_path: /workspace/v2data/tokenized/curated_40b/german.bin
+      bin_aliases:
+        - path: /workspace/v2data/tokenized/corpus20b/de_curated.bin
+          type: symlink
+          resolves_to: /workspace/v2data/tokenized/curated_40b/german.bin
+          status: valid
       bin_size_bytes: 12946085884
       bin_tokens: 3236521471
       bin_sha256: null
       source_path: training/curated_40b/german.txt
       source_size_bytes: 29662112686
       source_sha256: null
+      lineage_status: source_confirmed_by_tokenize_manifest
     - id: german_fresh
       bin_path: /workspace/v2data/tokenized/corpus20b/german_fresh.bin
       bin_size_bytes: 10690786108
       bin_tokens: 2672696527
+      bin_documents_from_index: 4763746
       bin_sha256: null
-      source_path: cleaned/fineweb2_de.filtered.txt
-      source_size_bytes: 11465875384
-      source_sha256: eace42f018238539cefac983a5e05c6db5a301e5b3b29c1a6c962fdcd210d4d7
+      source_path: null
+      source_size_bytes: null
+      source_sha256: null
+      lineage_status: unresolved
+      lineage_evidence:
+        final_tokenize_log:
+          source_candidate: data/fresh/de_fresh.jsonl
+          documents: 7412611
+          tokens: 4295893465
+        current_bin:
+          documents: 4763746
+          tokens: 2672696527
+        mismatch_note: >-
+          The logged source and current bin differ materially. A missing
+          filter/dedup/subset stage must be identified before assigning a source.
     - id: german_commons
       bin_path: /workspace/v2data/tokenized/corpus20b/german_commons.bin
       bin_size_bytes: 6207280364
       bin_tokens: 1551820091
       bin_sha256: null
-      source_path: cleaned/german_commons.filtered.txt
-      source_size_bytes: 13611296438
+      source_path: null
+      source_size_bytes: null
       source_sha256: null
-  forbidden_inputs:
-    - path: /workspace/v2data/tokenized/corpus20b/de_curated.bin
-      observed_size_bytes: 25
-      reason: placeholder_stub_not_training_data
+      lineage_status: unresolved_pending_build_log
   deduplication:
     implementation: scripts/data/dedup_de_fresh.py
     mode: cross_dataset_against_existing_reference
@@ -108,18 +125,22 @@ data:
         size_bytes: 11465875384
         documents: 4072620
         sha256: eace42f018238539cefac983a5e05c6db5a301e5b3b29c1a6c962fdcd210d4d7
+        relation_to_training_bin: overlap_reference_not_proven_tokenization_source
       - path: training/curated_40b/german.txt
         size_bytes: 29662112686
         documents: null
         sha256: null
+        relation_to_training_bin: confirmed_source
       - path: cleaned/german_commons.filtered.txt
         size_bytes: 13611296438
         documents: null
         sha256: null
+        relation_to_training_bin: candidate_unresolved
       - path: raw/german/german_commons.txt
         size_bytes: 22500011675
         documents: null
         sha256: null
+        relation_to_training_bin: candidate_unresolved
     defaults:
       normalized_exact_hash: sha1
       minhash_num_perm: 64
@@ -127,7 +148,7 @@ data:
       word_shingle_size: 5
 
 fineweb2_hq_de_pilot:
-  status: probe_measured_full_pull_approved
+  status: download_approved_dedup_blocked_on_lineage
   gross_tokens: 28500000000
   storage_with_embeddings_gb: 663
   estimated_text_only_gb: 155
@@ -152,6 +173,15 @@ fineweb2_hq_de_pilot:
     plus quality probes and a complete manifest-backed report.
 
 verified_checks:
+  clean_checkout:
+    validated_commit_sha: 9723d4f4a8df7fe24bc99cd51aa38a0b174e3e45
+    git_clone: passed
+    working_tree_clean: passed
+    container_commit_visibility: passed
+    tokenizer_sha256_match: passed
+    import_preflight: passed
+    stage_a_through_step_30: passed
+    resume_from_step_20: running_io_wait
   single_gpu_resume:
     status: passed
     resume_step: 20
@@ -172,5 +202,7 @@ launch_blockers:
   - code.resolved_commit_sha
   - base_checkpoint.manifest_sha256
   - data.german_components.bin_sha256
+  - data.german_components.source_lineage
   - data.deduplication.reference_manifest
+  - verified_checks.clean_checkout.resume_from_step_20
   - fineweb2_hq_de_pilot.full_dedup_report
