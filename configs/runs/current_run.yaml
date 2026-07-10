@@ -1,5 +1,5 @@
 schema_version: 1
-status: draft_waiting_for_lineage_hashes_and_resume
+status: draft_waiting_for_resume_fix_reference_hashes_and_lineage
 measured_at: "2026-07-10"
 purpose: german_primary_40b_continued_pretraining
 
@@ -22,7 +22,15 @@ code:
 
 base_checkpoint:
   path: corpus20b_codeheavy/step_60000
-  manifest_sha256: null
+  selected_file: step_60000.pt
+  selected_file_sha256: 34988202fafea0800eb5321824e55cfc248f3d36a9272787d6edcc6524a76c42
+  files:
+    step_60000.pt: 34988202fafea0800eb5321824e55cfc248f3d36a9272787d6edcc6524a76c42
+    step_60000.json: 34a68fb01d2c0fcf61a7b25e7c65cb6bcd9abde0fac7dfc5b07053916030a348
+    MANIFEST.yaml: 0228907b58fb697852d9e8ccfd416d3503906350743a7f9d60d866a77ccc6196
+  related_non_selected_artifacts:
+    best.pt: e67b3c3dc2318fe6bb9d986d2c2c9144278783f0889a37bc1edbb0453ba05d9f
+    best.json: b9dc36ebb701e6de0365702f9df93b013893e56486f3fe8098c4c286cab36bb2
   tokens_seen: 3930000000
   validation_loss: 1.843
   gate_score: 0.14
@@ -81,7 +89,8 @@ data:
           status: valid
       bin_size_bytes: 12946085884
       bin_tokens: 3236521471
-      bin_sha256: null
+      bin_sha256: d7e0897d1a373518578bf83cf90fef2fc607949a18fe1c631c911fbcc4a8749a
+      bin_documents_from_index: 4642672
       source_path: training/curated_40b/german.txt
       source_size_bytes: 29662112686
       source_sha256: null
@@ -91,7 +100,7 @@ data:
       bin_size_bytes: 10690786108
       bin_tokens: 2672696527
       bin_documents_from_index: 4763746
-      bin_sha256: null
+      bin_sha256: 3dbdd2951868e3c87b7c681ddb26814b2b5830a9c46ac4022944b6482c72edde
       source_path: null
       source_size_bytes: null
       source_sha256: null
@@ -111,7 +120,8 @@ data:
       bin_path: /workspace/v2data/tokenized/corpus20b/german_commons.bin
       bin_size_bytes: 6207280364
       bin_tokens: 1551820091
-      bin_sha256: null
+      bin_documents_from_index: 2127503
+      bin_sha256: 936976ed4ff1f4df15c6c268487974d27f9f42bd9bbc5c76dcbe840d3f98258e
       source_path: null
       source_size_bytes: null
       source_sha256: null
@@ -128,19 +138,31 @@ data:
         relation_to_training_bin: overlap_reference_not_proven_tokenization_source
       - path: training/curated_40b/german.txt
         size_bytes: 29662112686
-        documents: null
+        documents: 12125565
         sha256: null
         relation_to_training_bin: confirmed_source
       - path: cleaned/german_commons.filtered.txt
         size_bytes: 13611296438
-        documents: null
+        documents: 6987777
         sha256: null
         relation_to_training_bin: candidate_unresolved
       - path: raw/german/german_commons.txt
         size_bytes: 22500011675
-        documents: null
+        documents: 7255534
         sha256: null
         relation_to_training_bin: candidate_unresolved
+    reference_policy: conservative_source_pools
+    execution_strategy: sequential_single_reference_passes
+    capacity_measurement:
+      sample_documents: 1000000
+      sample_peak_rss_gb: 1.448
+      measured_bytes_per_document: 1447.6
+      full_reference_documents: 30441496
+      projected_lsh_rss_gb: 44.1
+      available_ram_gb: 49
+      unmeasured_exact_set_overhead_gb: [1.5, 3.0]
+      combined_index_status: rejected_insufficient_headroom
+      expected_sequential_peak_gb: [6, 12]
     defaults:
       normalized_exact_hash: sha1
       minhash_num_perm: 64
@@ -148,7 +170,7 @@ data:
       word_shingle_size: 5
 
 fineweb2_hq_de_pilot:
-  status: download_approved_dedup_blocked_on_lineage
+  status: download_approved_sequential_dedup_required
   gross_tokens: 28500000000
   storage_with_embeddings_gb: 663
   estimated_text_only_gb: 155
@@ -181,12 +203,23 @@ verified_checks:
     tokenizer_sha256_match: passed
     import_preflight: passed
     stage_a_through_step_30: passed
-    resume_from_step_20: running_io_wait
+    resume_from_step_20: failed_loader_stream_restart
   single_gpu_resume:
-    status: passed
+    status: failed_dataloader_rng_not_restored
     resume_step: 20
     compared_steps: [25, 30]
-    loss_and_learning_rate: bit_identical
+    scheduler_lr: identical
+    eval_loss:
+      continuous_step_30: 3.382
+      resumed_step_30: 3.389
+    train_loss:
+      continuous_step_25: 3.4341
+      resumed_step_25: 3.0156
+      continuous_step_30: 3.4401
+      resumed_step_30: 3.0652
+    root_cause: per_language_and_shuffle_generators_restart_from_seed
+    previous_bit_identical_observation: superseded_not_reproducible
+    required_fix: PR_14_plus_clean_checkout_retest
   two_gpu_ddp:
     status: pending_hardware
   sparse_attention_flash_variant:
@@ -200,9 +233,7 @@ verified_checks:
 
 launch_blockers:
   - code.resolved_commit_sha
-  - base_checkpoint.manifest_sha256
-  - data.german_components.bin_sha256
   - data.german_components.source_lineage
   - data.deduplication.reference_manifest
-  - verified_checks.clean_checkout.resume_from_step_20
+  - verified_checks.clean_checkout.resume_fix_retest
   - fineweb2_hq_de_pilot.full_dedup_report
