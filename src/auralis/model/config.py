@@ -1,7 +1,11 @@
 """Helix v2 model configuration.
 
 Single source of truth for architecture hyperparameters. Backed by YAML
-(see ``configs/model/*.yaml``), no hardcoded values anywhere else.
+(see ``configs/model/*.yaml``): the architecture is reconstructed from the
+config, not scattered as magic numbers across modules. Optional per-layer
+fields fall back to documented defaults applied at construction time (e.g.
+Mamba ``d_state`` 128, ``d_conv`` 4) — those are declared fallbacks, not
+config-independent hardcodings.
 
 A ``HelixModel`` is entirely reconstructible from an ``AuralisConfig`` +
 the SentencePiece tokenizer model. Serializing/loading a config is how we
