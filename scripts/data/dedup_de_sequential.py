@@ -11,11 +11,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from scripts.data import dedup_de_fresh
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+from scripts.data import dedup_de_fresh  # noqa: E402
 
 
 def report_path(output: Path) -> Path:
