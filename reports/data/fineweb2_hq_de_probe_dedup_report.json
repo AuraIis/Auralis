@@ -1,0 +1,10 @@
+{
+  "source": "epfml/FineWeb2-HQ deu_Latn, file 000_00000.parquet (probe, 1/570)",
+  "ref": "cleaned/fineweb2_de.filtered.txt (german_fresh, 4,072,620 docs)",
+  "fresh_seen": 127590,
+  "kept": 70034,
+  "dropped_exact": 57151,
+  "dropped_near": 405,
+  "ref_docs": 4072620,
+  "drop_pct": 45.11
+}
