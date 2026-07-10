@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "hash_algorithm": "sha256",
+  "references": [
+    {
+      "path": "cleaned/fineweb2_de.filtered.txt",
+      "size_bytes": 11465875384,
+      "documents": 4072620,
+      "sha256": "eace42f018238539cefac983a5e05c6db5a301e5b3b29c1a6c962fdcd210d4d7"
+    },
+    {
+      "path": "training/curated_40b/german.txt",
+      "size_bytes": 29662112686,
+      "documents": 12125565,
+      "sha256": "f454e6d8b259b8a15b2b7ea4fa349f8c3e3d5230e2a2c18d76b3c6f85ca73cc9"
+    },
+    {
+      "path": "cleaned/german_commons.filtered.txt",
+      "size_bytes": 13611296438,
+      "documents": 6987777,
+      "sha256": "c9631eb72cf79382fd45fe11f3691531811748b947644a53bb6d0f4b3799cce4"
+    },
+    {
+      "path": "raw/german/german_commons.txt",
+      "size_bytes": 22500011675,
+      "documents": 7255534,
+      "sha256": "172c8cd14150831b452ed2de93f20b0de94640e77977e07e372fca9a731b1bb6"
+    }
+  ]
+}
