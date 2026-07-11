@@ -23,12 +23,28 @@ import torch.nn.functional as F
 from auralis.model.layers.norm import RMSNorm
 from auralis.model.utils.rotary import apply_rotary_pos_emb
 
+import importlib.util
+import warnings
+
+# find_spec = reliable 'installed?' signal (ImportError alone is not). Record ANY
+# failure; the provenance gate decides severity from present-vs-absent x requested.
+_FLASH_PRESENT = importlib.util.find_spec("flash_attn") is not None
+_FLASH_IMPORT_ERROR: Exception | None = None
 try:
     from flash_attn import flash_attn_func as _flash_attn_func  # type: ignore
     _FLASH_AVAILABLE = True
-except Exception:
+except Exception as _exc:  # noqa: BLE001 — any failure -> unavailable
     _flash_attn_func = None
     _FLASH_AVAILABLE = False
+    _FLASH_IMPORT_ERROR = _exc
+    if _FLASH_PRESENT:
+        warnings.warn(
+            f"flash-attn is installed but failed to import "
+            f"({type(_exc).__name__}: {_exc}); sparse attention falls back to the "
+            f"native O(L^2) path. A run that requested it will be aborted by "
+            f"assert_no_broken_kernels().",
+            RuntimeWarning, stacklevel=2,
+        )
 
 
 def _use_flash(on_cuda: bool, global_tokens: int) -> bool:
@@ -80,7 +96,9 @@ class SparseAttentionLayer(nn.Module):
         if self.use_rope and rope is not None:
             q, k = apply_rotary_pos_emb(q, k, rope[0], rope[1])
 
-        if _use_flash(x.is_cuda, self.global_tokens):
+        use_flash = _use_flash(x.is_cuda, self.global_tokens)
+        self._last_backend = "flash" if use_flash else "native"
+        if use_flash:
             if q.dtype not in (torch.float16, torch.bfloat16):
                 target_dtype = (
                     torch.get_autocast_dtype("cuda")

@@ -52,7 +52,10 @@ class PlainAttentionLayer(nn.Module):
             q, k = apply_rotary_pos_emb(q, k, rope[0], rope[1])
 
         # Use torch.nn.functional.scaled_dot_product_attention for flash-attn
-        # auto-selection when available (torch>=2.0, CUDA/Metal).
+        # auto-selection when available (torch>=2.0, CUDA/Metal). Note SDPA
+        # picks flash/mem-efficient/math internally — an invisible backend
+        # switch we cannot introspect from here; report it honestly as sdpa.
+        self._last_backend = "torch_sdpa"
         q = q.transpose(1, 2)  # [B, H, L, D]
         k = k.transpose(1, 2)
         v = v.transpose(1, 2)

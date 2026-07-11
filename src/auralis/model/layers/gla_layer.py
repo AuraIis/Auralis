@@ -21,12 +21,29 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+import importlib.util
+import warnings
+
+# find_spec is the RELIABLE 'is the package installed' signal — an ImportError
+# alone is not (a broken install can raise ImportError from a missing transitive
+# dep). We record ANY import failure; assert_no_broken_kernels() decides severity
+# from (present-but-broken vs genuinely-absent) x (kernel requested via env).
+_FLA_PRESENT = importlib.util.find_spec("fla") is not None
+_FLA_IMPORT_ERROR: Exception | None = None
 try:
     from fla.ops.gla import chunk_gla as _chunk_gla  # type: ignore
     _FLA_AVAILABLE = True
-except Exception:
+except Exception as _exc:  # noqa: BLE001 — any failure -> unavailable
     _chunk_gla = None
     _FLA_AVAILABLE = False
+    _FLA_IMPORT_ERROR = _exc
+    if _FLA_PRESENT:  # installed but FAILED to load -> the dangerous silent case
+        warnings.warn(
+            f"flash-linear-attention is installed but failed to import "
+            f"({type(_exc).__name__}: {_exc}); GLA falls back to native. A run "
+            f"that requested it will be aborted by assert_no_broken_kernels().",
+            RuntimeWarning, stacklevel=2,
+        )
 
 
 def _use_fla(on_cuda: bool) -> bool:
@@ -84,7 +101,11 @@ class GLALayer(nn.Module):
         # log-decay gate for the scan: keep it negative (decay in (0,1])
         log_alpha = -F.softplus(-self.alpha_proj(x).view(B, L, H, D))
 
-        if _use_fla(x.is_cuda):
+        use_fla = _use_fla(x.is_cuda)
+        # Record the actually-executed backend so introspection reports what
+        # ran, not what would hypothetically run on CUDA (see backend_info).
+        self._last_backend = "fla" if use_fla else "native"
+        if use_fla:
             out, new_state = _chunk_gla(q, k, v, log_alpha,
                                         scale=D ** -0.5,
                                         initial_state=state,
@@ -96,24 +117,42 @@ class GLALayer(nn.Module):
         return self.out_proj(out.reshape(B, L, H * D)), new_state
 
     def _native_scan(self, q, k, v, log_alpha, state):
-        """Sequential reference — matches chunk_gla semantics."""
+        """Sequential reference — matches chunk_gla semantics.
+
+        The recurrent state S is accumulated in fp32 regardless of the input
+        (autocast) dtype. A bf16-accumulated state drifts ~10% (mean-relative)
+        from the fp32-internal fla kernel over the trained length L=2048
+        (measured), so a native/bf16 fallback would silently run a materially
+        different recurrence. Output is cast back to the input dtype so the
+        native/fused contract still matches at the block boundary.
+        """
         B, L, H, D = q.shape
-        q = q * (D ** -0.5)
-        alpha = torch.exp(log_alpha)                          # [B, L, H, D] in (0, 1]
+        out_dtype = q.dtype
+        # Accumulate in AT LEAST fp32; preserve higher precision (e.g. the
+        # float64 CPU reference test) instead of clobbering it to fp32.
+        acc = torch.float32 if out_dtype in (torch.float16, torch.bfloat16) else out_dtype
+        q = (q * (D ** -0.5)).to(acc)
+        k = k.to(acc)
+        v = v.to(acc)
+        alpha = torch.exp(log_alpha.to(acc))                 # [B, L, H, D] in (0, 1]
 
         if state is None:
-            S = torch.zeros(B, H, D, D, device=q.device, dtype=q.dtype)
+            S = torch.zeros(B, H, D, D, device=q.device, dtype=acc)
         else:
-            S = state.to(q.dtype)
+            S = state.to(acc)
 
         outs = []
         for t in range(L):
-            # per-channel decay broadcast over the D key dimension of S
-            a_t = alpha[:, t].unsqueeze(-2)                   # [B, H, 1, D]
+            # GLA gate is per-KEY-channel: S[..., d, e] decays by alpha[..., d],
+            # i.e. broadcast the decay over the value axis (-1), not the key axis.
+            # (unsqueeze(-2) would decay per value-channel — a different, wrong
+            # recurrence that stays shape-valid only because d_k == d_v here, and
+            # diverges ~92% from fla's chunk_gla; see tests/model/test_gla_parity.)
+            a_t = alpha[:, t].unsqueeze(-1)                   # [B, H, D, 1]
             update = torch.einsum("bhd,bhe->bhde", k[:, t], v[:, t])
             S = a_t * S + update
             outs.append(torch.einsum("bhd,bhde->bhe", q[:, t], S))
-        return torch.stack(outs, dim=1), S
+        return torch.stack(outs, dim=1).to(out_dtype), S
 
 
 __all__ = ["GLALayer"]

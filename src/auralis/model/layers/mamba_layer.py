@@ -21,13 +21,29 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-# Optional CUDA back-end
+import importlib.util
+import warnings
+
+# find_spec = reliable 'installed?' signal (ImportError alone is not — a broken
+# install can raise it). Record ANY failure; the provenance gate decides severity.
+# NOTE: mamba_ssm importing OK does not mean it RUNS on Blackwell — its Triton
+# kernel can fail to compile at first call (a runtime error, loud, not our scope).
+_MAMBA_SSM_PRESENT = importlib.util.find_spec("mamba_ssm") is not None
+_MAMBA_SSM_IMPORT_ERROR: Exception | None = None
 try:
     from mamba_ssm import Mamba2 as _Mamba2SSM
     _MAMBA_SSM_AVAILABLE = True
-except Exception:
+except Exception as _exc:  # noqa: BLE001 — any failure -> unavailable
     _Mamba2SSM = None
     _MAMBA_SSM_AVAILABLE = False
+    _MAMBA_SSM_IMPORT_ERROR = _exc
+    if _MAMBA_SSM_PRESENT:
+        warnings.warn(
+            f"mamba_ssm is installed but failed to import "
+            f"({type(_exc).__name__}: {_exc}); Mamba falls back to native. A run "
+            f"that requested it will be aborted by assert_no_broken_kernels().",
+            RuntimeWarning, stacklevel=2,
+        )
 
 
 def _cuda_kernels_enabled() -> bool:
@@ -179,6 +195,7 @@ class Mamba2Layer(nn.Module):
         super().__init__()
         use_cuda = _cuda_kernels_enabled() and _MAMBA_SSM_AVAILABLE and torch.cuda.is_available()
         self.backend = "mamba_ssm" if use_cuda else "native"
+        self._last_backend = self.backend   # construction-fixed; uniform interface
         impl = _Mamba2CUDA if use_cuda else _Mamba2Native
         self._impl = impl(
             d_model=d_model, d_state=d_state, d_conv=d_conv,

@@ -51,7 +51,11 @@ sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(REPO / "src"))
 
 from auralis.model import build_model
-from auralis.model.backend_info import describe_model_backends, format_backend_summary
+from auralis.model.backend_info import (
+    assert_no_broken_kernels,
+    describe_model_backends,
+    format_backend_summary,
+)
 from auralis.training.dataset import MixedDataLoader
 from auralis.training.health import HealthStop
 from auralis.training.optimizer import build_optimizer, build_scheduler
@@ -192,6 +196,10 @@ def main() -> None:
     model = build_model(REPO / config["model"]["config_path"]).to(device)
     n_params = sum(p.numel() for p in model.parameters())
     print(f"  parameters: {n_params/1e9:.2f} B ({n_params/1e6:.1f} M)")
+    # Fail loud BEFORE warm-start / resume / any forward: a REQUESTED fused kernel
+    # that is unavailable would otherwise silently run (and even baseline-eval) on
+    # the unverified native path. Runs as early as possible after build.
+    assert_no_broken_kernels()
 
     # Gradient checkpointing defaults to the model config, but an explicit
     # training.gradient_checkpointing true/false must override it either way.

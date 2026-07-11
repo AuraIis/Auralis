@@ -21,23 +21,30 @@ def _mamba_backend(layer: nn.Module) -> str:
 
 
 def _gla_backend(layer: nn.Module) -> str:
-    # The runtime decision is made inside forward(); check module-level flag.
+    # Prefer the ACTUALLY-executed backend recorded by the last forward; only
+    # fall back to a hypothetical (on_cuda=True) resolution before any forward.
+    actual = getattr(layer, "_last_backend", None)
+    if actual is not None:
+        return actual
     try:
         from auralis.model.layers import gla_layer
         fla = gla_layer._FLA_AVAILABLE and gla_layer._use_fla(on_cuda=True)
-        return "fla" if fla else "native"
+        return "fla?" if fla else "native?"   # '?' = pre-forward hypothetical
     except Exception:
-        return "native"
+        return "native?"
 
 
 def _sparse_backend(layer: nn.Module) -> str:
+    actual = getattr(layer, "_last_backend", None)
+    if actual is not None:
+        return "flash_attn" if actual == "flash" else actual
     try:
         from auralis.model.layers import sparse_attn_layer
         gt = getattr(layer, "global_tokens", 0) or 0
         flash = sparse_attn_layer._FLASH_AVAILABLE and sparse_attn_layer._use_flash(on_cuda=True, global_tokens=gt)
-        return "flash_attn" if flash else "native"
+        return "flash_attn?" if flash else "native?"
     except Exception:
-        return "native"
+        return "native?"
 
 
 def describe_model_backends(model: nn.Module) -> dict[str, Any]:
@@ -57,8 +64,9 @@ def describe_model_backends(model: nn.Module) -> dict[str, Any]:
             backend = _sparse_backend(attn)
         elif layer_type == "plain_attention":
             # Plain attention uses F.scaled_dot_product_attention which auto-
-            # selects flash-attn / memory-efficient kernels when CUDA-available.
-            backend = "native"
+            # selects flash / mem-efficient / math internally — report it as
+            # sdpa (NOT 'native': the old label was affirmatively wrong).
+            backend = getattr(attn, "_last_backend", None) or "torch_sdpa"
         else:
             backend = "unknown"
         per_layer.append({"idx": str(idx), "type": layer_type, "backend": backend})
@@ -74,4 +82,53 @@ def format_backend_summary(desc: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-__all__ = ["describe_model_backends", "format_backend_summary"]
+def assert_no_broken_kernels() -> None:
+    """Abort if a REQUESTED fused kernel is unavailable for ANY reason — the
+    silent 'you thought you trained fused, you trained native' failure.
+
+    Two unavailable cases, both fatal WHEN THE KERNEL WAS REQUESTED:
+      * present-but-broken: the package is installed (find_spec) but its import
+        raised (ABI / CUDA / version / missing transitive dep). An ImportError
+        alone is NOT a reliable 'absent' signal, so we key off find_spec.
+      * genuinely absent: not installed. If you requested it via the env flag,
+        that is still a mismatch — unset the flag for an intentional native run.
+
+    Only enforced when CUDA is available (the kernels never run on CPU, so a
+    stray flag on a CPU box must not block an intended native run). Call this as
+    EARLY as possible — before warm-start / resume / any forward — so a broken
+    kernel fails at startup, not after producing a baseline on the wrong backend.
+    """
+    import os
+
+    import torch
+
+    from auralis.model.layers import gla_layer, mamba_layer, sparse_attn_layer
+
+    if not torch.cuda.is_available():
+        return
+
+    all_on = os.environ.get("AURALIS_USE_CUDA_KERNELS", "0") == "1"
+    problems: list[str] = []
+    checks = [
+        (gla_layer._FLA_AVAILABLE, gla_layer._FLA_PRESENT, gla_layer._FLA_IMPORT_ERROR,
+         "AURALIS_USE_GLA_KERNEL", "fla (GLA)"),
+        (mamba_layer._MAMBA_SSM_AVAILABLE, mamba_layer._MAMBA_SSM_PRESENT, mamba_layer._MAMBA_SSM_IMPORT_ERROR,
+         "AURALIS_USE_MAMBA_KERNEL", "mamba_ssm (Mamba)"),
+        (sparse_attn_layer._FLASH_AVAILABLE, sparse_attn_layer._FLASH_PRESENT, sparse_attn_layer._FLASH_IMPORT_ERROR,
+         "AURALIS_USE_FLASH_ATTN", "flash-attn (Sparse)"),
+    ]
+    for available, present, err, flag, name in checks:
+        requested = all_on or os.environ.get(flag, "") == "1"
+        if requested and not available:
+            if present:
+                problems.append(f"{name}: installed but FAILED to import ({type(err).__name__}: {err})")
+            else:
+                problems.append(f"{name}: requested but NOT INSTALLED (unset {flag} for an intended native run)")
+    if problems:
+        raise RuntimeError(
+            "Requested fused kernels are unavailable; the run would silently fall "
+            "back to the unverified native path:\n  " + "\n  ".join(problems)
+        )
+
+
+__all__ = ["describe_model_backends", "format_backend_summary", "assert_no_broken_kernels"]
