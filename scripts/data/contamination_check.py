@@ -36,6 +36,21 @@ def _normalise(s: str) -> str:
     return re.sub(r"\s+", " ", s.strip().lower())
 
 
+def _answer_candidates(question: dict) -> tuple[str, ...]:
+    answers = []
+    if question.get("expected") is not None:
+        answers.append(_normalise(str(question["expected"])))
+    answers.extend(
+        _normalise(str(value))
+        for value in question.get("expected_keywords", [])
+    )
+    return tuple(value for value in answers if value)
+
+
+def _matches(norm_line: str, question: str, answers: tuple[str, ...]) -> bool:
+    return question in norm_line and (not answers or any(a in norm_line for a in answers))
+
+
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--questions", type=Path,
@@ -49,11 +64,11 @@ def main() -> None:
 
     qdoc = yaml.safe_load(args.questions.read_text(encoding="utf-8"))
     questions = qdoc["questions"]
-    targets: list[tuple[str, str]] = []
+    targets: list[tuple[str, str, tuple[str, ...]]] = []
     for q in questions:
         norm = _normalise(q["question"])
         if len(norm) >= args.min_question_length:
-            targets.append((q["id"], norm))
+            targets.append((q["id"], norm, _answer_candidates(q)))
 
     cfg = load_paths(args.data_config) if args.data_config else load_paths()
     data_root = Path(cfg["_data_root"])
@@ -72,7 +87,7 @@ def main() -> None:
                 if p_.is_file():
                     sources.append(p_)
 
-    hits: dict[str, list[tuple[str, int, str]]] = {qid: [] for qid, _ in targets}
+    hits: dict[str, list[tuple[str, int, str]]] = {qid: [] for qid, _, _ in targets}
     print(f"scanning {len(sources)} files against {len(targets)} questions...")
 
     for src in sources:
@@ -80,10 +95,10 @@ def main() -> None:
             with src.open("r", encoding="utf-8", errors="replace") as fh:
                 for line_no, line in enumerate(fh, 1):
                     norm_line = _normalise(line)
-                    # Cheap substring containment; good enough for the "did my
-                    # literal question show up verbatim?" check.
-                    for qid, qtext in targets:
-                        if qtext in norm_line:
+                    # A prompt alone is not enough to demonstrate leakage. Gate
+                    # prompt+expected-answer co-occurrence in one document.
+                    for qid, qtext, answers in targets:
+                        if _matches(norm_line, qtext, answers):
                             if len(hits[qid]) < 3:
                                 hits[qid].append((src.name, line_no, line.strip()[:200]))
         except OSError as e:

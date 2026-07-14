@@ -46,6 +46,7 @@ class TokenizeStats:
     output_bin: str
     output_idx: str
     sources: list[str] = field(default_factory=list)
+    source_fingerprints: list[dict] = field(default_factory=list)
     documents: int = 0
     tokens: int = 0
     empty_lines: int = 0
@@ -78,6 +79,85 @@ def _sha256_file(path: Path) -> str:
     return h.hexdigest()
 
 
+def _source_fingerprints(paths: list[Path]) -> list[dict]:
+    return [
+        {
+            "path": str(p),
+            "size_bytes": p.stat().st_size,
+            "mtime_ns": p.stat().st_mtime_ns,
+        }
+        for p in paths
+    ]
+
+
+def _existing_output_status(
+    out_bin: Path,
+    out_idx: Path,
+    manifest_path: Path,
+    tokenizer_hash: str,
+    sources: list[Path],
+) -> tuple[bool, str]:
+    """Validate the complete output triplet before treating it as resumable."""
+    missing = [
+        str(p) for p in (out_bin, out_idx, manifest_path) if not p.is_file()
+    ]
+    if missing:
+        return False, f"missing completion artifact(s): {', '.join(missing)}"
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return False, f"unreadable manifest: {exc}"
+
+    if manifest.get("tokenizer_sha256") != tokenizer_hash:
+        return False, "tokenizer hash differs from manifest"
+    if manifest.get("sources") != [str(p) for p in sources]:
+        return False, "resolved source list differs from manifest"
+
+    current_fingerprints = _source_fingerprints(sources)
+    recorded_fingerprints = manifest.get("source_fingerprints")
+    if recorded_fingerprints is not None:
+        if recorded_fingerprints != current_fingerprints:
+            return False, "source size or mtime differs from manifest"
+    elif manifest.get("bytes_in") != sum(p.stat().st_size for p in sources):
+        # Backward-compatible validation for older manifests.
+        return False, "source byte total differs from legacy manifest"
+
+    bin_size = out_bin.stat().st_size
+    idx_size = out_idx.stat().st_size
+    if bin_size % np.dtype(np.uint32).itemsize:
+        return False, "bin size is not uint32-aligned"
+    if idx_size % (2 * np.dtype(np.int64).itemsize):
+        return False, "idx size is not int64-pair-aligned"
+    tokens = bin_size // np.dtype(np.uint32).itemsize
+    documents = idx_size // (2 * np.dtype(np.int64).itemsize)
+    if manifest.get("tokens") != tokens:
+        return False, "bin token count differs from manifest"
+    if manifest.get("documents") != documents:
+        return False, "idx document count differs from manifest"
+    if documents:
+        with out_idx.open("rb") as fh:
+            fh.seek(-2 * np.dtype(np.int64).itemsize, os.SEEK_END)
+            last_offset, last_length = np.fromfile(fh, dtype=np.int64, count=2)
+        if int(last_offset + last_length) != tokens:
+            return False, "last idx span does not end at bin token count"
+    elif tokens:
+        return False, "non-empty bin has an empty idx"
+    return True, "validated bin/idx/manifest triplet"
+
+
+def _write_manifest_atomic(path: Path, payload: dict) -> None:
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    try:
+        tmp.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        os.replace(tmp, path)
+    finally:
+        if tmp.exists():
+            tmp.unlink()
+
+
 def _iter_documents(paths: list[Path]) -> Iterable[tuple[str, str]]:
     """Yield (source_path, text) one document at a time."""
     for p in paths:
@@ -102,6 +182,7 @@ def _tokenize_language(
         output_bin=str(out_bin),
         output_idx=str(out_idx),
         sources=[str(p) for p in sources],
+        source_fingerprints=_source_fingerprints(sources),
         started_at=now_iso(),
         tokenizer_sha256=tokenizer_hash,
         bytes_in=sum(p.stat().st_size for p in sources if p.exists()),
@@ -225,13 +306,25 @@ def main() -> None:
     for lang in args.languages:
         out_bin = out_dir / f"{lang}.bin"
         out_idx = out_dir / f"{lang}.idx"
-        if out_bin.exists() and not args.force:
-            print(f"\n[{lang}] already tokenized → {out_bin} (pass --force to redo)")
-            continue
-        print(f"\n[{lang}] tokenizing → {out_bin}")
+        manifest_path = out_bin.with_suffix(".bin.manifest.json")
         sources = _expand_sources(data_root, cfg["cleaned"][lang])
         for s in sources:
             print(f"  - {s}")
+        if not args.force and any(
+            p.exists() for p in (out_bin, out_idx, manifest_path)
+        ):
+            valid, detail = _existing_output_status(
+                out_bin, out_idx, manifest_path, tokenizer_hash, sources,
+            )
+            if valid:
+                print(f"\n[{lang}] already tokenized and verified → {out_bin}")
+                continue
+            print(
+                f"\n[{lang}] incomplete/stale output ({detail}); rebuilding "
+                "the triplet atomically"
+            )
+        else:
+            print(f"\n[{lang}] tokenizing → {out_bin}")
         stats = _tokenize_language(
             lang=lang,
             sources=sources,
@@ -241,11 +334,9 @@ def main() -> None:
             batch_size=args.batch_size,
             tokenizer_hash=tokenizer_hash,
         )
-        manifest_path = out_bin.with_suffix(".bin.manifest.json")
-        manifest_path.write_text(
-            json.dumps(asdict(stats), ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
+        # Manifest is the completion marker and is replaced last. A crash after
+        # bin/idx replacement cannot be mistaken for a completed resumable run.
+        _write_manifest_atomic(manifest_path, asdict(stats))
         all_stats.append(stats)
         print(
             f"  {stats.documents:,} docs | {stats.tokens/1e9:.2f} B tokens | "
